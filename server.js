@@ -11,19 +11,19 @@ const client = new line.Client(config);
 
 // 🗄️ Database ในหน่วยความจำ (Memory Storage)
 let gameState = 'CLOSED'; 
-let players = {};         // เก็บข้อมูลผู้เล่น โดยใช้ userId เป็น Key
-let memberMap = {};       // แผนที่ช่วยจำ: memberId -> userId
+let players = {};         
+let memberMap = {};       
 let currentBets = {};  
 let drawStatus = {};   
 let tempResults = null; 
-let memberCount = 0;      // ตัวนับลำดับสมาชิก
+let memberCount = 0;      
 
 // 💸 ระบบคิวถอนเงิน
-let withdrawQueue = [];   // เก็บรายการคิวถอน [{ memberId, amount, userId }]
+let withdrawQueue = [];   
 
-// 💬 🔗 ส่วนตั้งค่าข้อมูลติดต่อ (แอดมินแก้ไขลิงก์และไอดีตรงนี้ได้เลยครับ)
-const adminLineID = "@LINE_ADMIN"; // ไอดีไลน์ที่แสดงเป็นข้อความ
-const adminLineLink = "https://line.me/ti/p/~ไอดีไลน์ของแอดมิน"; // ลิงก์สำหรับกดแอดไลน์ (เปลี่ยนตรงนี้ได้เลย)
+// 💬 🔗 ส่วนตั้งค่าข้อมูลติดต่อ
+const adminLineID = "@LINE_ADMIN"; 
+const adminLineLink = "https://line.me/ti/p/~ไอดีไลน์ของแอดมิน"; 
 let bankAccountInfo = "🏦 ธนาคาร: กสิกรไทย\nเลขบัญชี: xxx-x-xxxxx-x\nชื่อบัญชี: บอทป๊อกเด้งอัจฉริยะ";
 
 app.post('/callback', line.middleware(config), (req, res) => {
@@ -76,7 +76,6 @@ async function handleEvent(event) {
   const text = event.message.text.trim();
   const userId = event.source.userId;
   
-  // ตรวจสอบหรือสร้างโครงสร้างข้อมูลผู้เล่น
   if (!players[userId]) {
     players[userId] = { 
       memberId: null, 
@@ -285,41 +284,67 @@ async function handleEvent(event) {
   }
 
   // ==========================================
-  // 👥 คำสั่งของฝั่งผู้เล่น
+  // 👥 คำสั่งของฝั่งผู้เล่น (ระบบวิเคราะห์โพยอัจฉริยะ)
   // ==========================================
   
-  // ส่งโพยเดิมพัน
-  const betRegex = /^([1-6\s]+)-(\d+)$/;
-  if (betRegex.test(text)) {
+  // ตรวจจับโพยแทงรูปแบบต่าง ๆ (123-50, แทง 123-50, จ123 50, มข 50, มจ 50)
+  let isBettingMessage = false;
+  let parsedLegs = [];
+  let parsedPrice = 0;
+  let betTypeLabel = "";
+
+  if (gameState === 'BETTING') {
+    let cleanText = text.replace(/\s+/g, ' '); // ยุบช่องว่างที่ซ้ำกัน
+    
+    // 1. เคสมเหมาขา หรือ เหมาเจ้า (มข / มจ) -> ตัวอย่าง: มข 50, มจ 100, เหมาขา 50, เหมาเจ้า 50
+    constเหมาRegex = /^(มข|มจ|เหมาขา|เหมาเจ้า)\s*[- ]?\s*(\d+)$/i;
+    // 2. เคสระบุขาปกติ -> ตัวอย่าง: 123-50, แทง 123-50, จ123-50, จ123 50
+    const ระบุขาRegex = /^(แทง|จ)?\s*([1-6]+)\s*[- ]\s*(\d+)$/;
+
+    if (เหมาRegex.test(cleanText)) {
+      const match = cleanText.match(เหมาRegex);
+      const type = match[1];
+      parsedPrice = parseInt(match[2]);
+      parsedLegs = ['1', '2', '3', '4', '5', '6']; // เหมาหมดทุกขาผู้เล่น
+      betTypeLabel = (type === 'มข' || type === 'เหมาขา') ? "เหมาขาผู้เล่น" : "เหมาเจ้าสู้ทุกขา";
+      isBettingMessage = true;
+    } else if (ระบุขาRegex.test(cleanText)) {
+      const match = cleanText.match(ระบุขาRegex);
+      parsedLegs = match[2].split('');
+      parsedPrice = parseInt(match[3]);
+      betTypeLabel = `ขา ${parsedLegs.join(',')}`;
+      isBettingMessage = true;
+    }
+  }
+
+  // ทำการบันทึกโพยแทงเมื่อตรงเงื่อนไข
+  if (isBettingMessage) {
     if (!user.realName) {
       return client.replyMessage(event.replyToken, { type: 'text', text: `🔒 คุณยังไม่ได้ลงทะเบียนสมาชิกกลุ่ม!\nกรุณาพิมพ์ C/ตามด้วยชื่อ-นามสกุล ก่อนทำรายการครับ\n(ตัวอย่าง: C/นายรักดี เล่นป๊อก)` });
     }
     if (user.pendingWithdraw > 0) {
       return client.replyMessage(event.replyToken, { type: 'text', text: `⚠️ บัญชีของคุณถูกล็อกการเดิมพันชั่วคราว เนื่องจากอยู่ในระหว่างรอการอนุมัติถอนเงินยอด ${user.pendingWithdraw} บาทครับ` });
     }
-    if (gameState !== 'BETTING') return null;
-    
-    const match = text.match(betRegex);
-    const legs = match[1].replace(/\s+/g, '').split(''); 
-    const baseBet = parseInt(match[2]);
-    const requiredDeposit = baseBet * 3 * legs.length;
+
+    const requiredDeposit = parsedPrice * 3 * parsedLegs.length; // ทุนค้ำประกันเด้ง 3 เท่า
     
     if (user.credit < requiredDeposit) {
       return client.replyMessage(event.replyToken, {
         type: 'text',
-        text: `❌ เครดิตไม่พอ! ยอดแทงรวมค้ำประกันเด้งที่ต้องใช้คือ ${requiredDeposit} บาท แต่ยอดปัจจุบันของคุณคือ ${user.credit} บาท`
+        text: `❌ เครดิตไม่พอ! รายการ [${betTypeLabel} ขาละ ${parsedPrice}] ต้องใช้ยอดค้ำประกันเด้งรวม ${requiredDeposit} บาท แต่ปัจจุบันคุณมีแค่ ${user.credit} บาท`
       });
     }
 
     if (!currentBets[userId]) currentBets[userId] = {};
-    legs.forEach(leg => {
-      currentBets[userId][`leg${leg}`] = baseBet;
+    parsedLegs.forEach(leg => {
+      currentBets[userId][`leg${leg}`] = parsedPrice;
       if (!drawStatus[userId]) drawStatus[userId] = {};
       drawStatus[userId][`leg${leg}`] = '-';
     });
 
     return client.replyMessage(event.replyToken, {
-      text: `📥 [คนที่ ${user.memberId}] บันทึกโพยสำเร็จ: ขา ${legs.join(',')} ขาละ ${baseBet}\nเครดิตปัจจุบันของคุณคือ: ${user.credit} บาท`
+      type: 'text',
+      text: `📥 [คนที่ ${user.memberId}] บันทึกโพยสำเร็จ: ${betTypeLabel} ขาละ ${parsedPrice}\n💰 เครดิตคงเหลือของคุณคือ: ${user.credit} บาท`
     });
   }
 
@@ -401,7 +426,7 @@ async function handleEvent(event) {
     return client.replyMessage(event.replyToken, { type: 'text', text: bankAccountInfo });
   }
 
-  // ระบบถอนเงินแบบแจ้งคิวพร้อมลิงก์กดแอดไลน์ทันที
+  // ระบบถอนเงิน
   if (text.startsWith('ถอน ')) {
     if (!user.realName) return null;
     const amount = parseInt(text.replace('ถอน ', ''));
@@ -448,7 +473,7 @@ async function handleEvent(event) {
   if (text === 'คำสั่ง') {
     return client.replyMessage(event.replyToken, {
       type: 'text',
-      text: `🤖 [คู่มือคำสั่งผู้เล่น]\n• C/[ชื่อ-นามสกุล] : ลงทะเบียนสมาชิกครั้งแรก\n• [เลขขา]-[ราคา] : ส่งโพย เช่น 123-100\n• C หรือ c : เช็คเครดิตและลำดับสมาชิกตัวเอง\n• R หรือ r : ขอคืนโพยทั้งหมดในรอบนั้น\n• ขาเลข+ : ขอจั่วไพ่ใบที่ 3 เช่น 12+\n• ขาเลข- : ขออยู่ไม่จั่วไพ่เพิ่ม เช่น 3-\n• /บช : ขอดูบัญชีโอนเงินเข้า\n• ถอน [ยอดเงิน] : ทำรายการแจ้งถอนเงิน`
+      text: `🤖 [คู่มือคำสั่งผู้เล่น]\n• C/[ชื่อ-นามสกุล] : ลงทะเบียนสมาชิกครั้งแรก\n• โพยปกติ : 123-50 หรือ แทง 123-50\n• มข [ราคา] : เหมาขาผู้เล่นทุกคนสู้เจ้า เช่น มข 50\n• มจ [ราคา] : เหมาขาเจ้าสู้ผู้เล่นทุกคน เช่น มจ 50\n• C หรือ c : เช็คเครดิตตัวเอง\n• R หรือ r : คืนโพยทั้งหมดในรอบ\n• ขาเลข+ / ขาเลข- : สั่งจั่ว/อยู่ไพ่ เช่น 12+ / 3-\n• ถอน [ยอดเงิน] : ทำรายการแจ้งถอนเงิน`
     });
   }
 }

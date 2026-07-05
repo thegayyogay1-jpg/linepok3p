@@ -11,11 +11,19 @@ const client = new line.Client(config);
 
 // 🗄️ Database ในหน่วยความจำ (Memory Storage)
 let gameState = 'CLOSED'; 
-let players = {};      
+let players = {};         // เก็บข้อมูลผู้เล่น โดยใช้ userId เป็น Key
+let memberMap = {};       // แผนที่ช่วยจำ: memberId -> userId
 let currentBets = {};  
 let drawStatus = {};   
 let tempResults = null; 
+let memberCount = 0;      // ตัวนับลำดับสมาชิก
 
+// 💸 ระบบคิวถอนเงิน
+let withdrawQueue = [];   // เก็บรายการคิวถอน [{ memberId, amount, userId }]
+
+// 💬 🔗 ส่วนตั้งค่าข้อมูลติดต่อ (แอดมินแก้ไขลิงก์และไอดีตรงนี้ได้เลยครับ)
+const adminLineID = "@LINE_ADMIN"; // ไอดีไลน์ที่แสดงเป็นข้อความ
+const adminLineLink = "https://line.me/ti/p/~ไอดีไลน์ของแอดมิน"; // ลิงก์สำหรับกดแอดไลน์ (เปลี่ยนตรงนี้ได้เลย)
 let bankAccountInfo = "🏦 ธนาคาร: กสิกรไทย\nเลขบัญชี: xxx-x-xxxxx-x\nชื่อบัญชี: บอทป๊อกเด้งอัจฉริยะ";
 
 app.post('/callback', line.middleware(config), (req, res) => {
@@ -68,17 +76,48 @@ async function handleEvent(event) {
   const text = event.message.text.trim();
   const userId = event.source.userId;
   
-  // ตรวจสอบ/สร้างข้อมูลผู้เล่น
+  // ตรวจสอบหรือสร้างโครงสร้างข้อมูลผู้เล่น
   if (!players[userId]) {
-    try {
-      let profile = await client.getProfile(userId);
-      players[userId] = { name: profile.displayName, credit: 0, pendingWithdraw: 0 };
-    } catch (e) {
-      players[userId] = { name: 'สมาชิก', credit: 0, pendingWithdraw: 0 };
-    }
+    players[userId] = { 
+      memberId: null, 
+      realName: null, 
+      credit: 0, 
+      pendingWithdraw: 0 
+    };
   }
   
   let user = players[userId];
+
+  // ==========================================
+  // 📝 ระบบลงทะเบียนสมาชิกด้วย C/ชื่อ-นามสกุล
+  // ==========================================
+  if (text.toUpperCase().startsWith('C/')) {
+    const nameInput = text.substring(2).trim();
+    if (!nameInput) {
+      return client.replyMessage(event.replyToken, { type: 'text', text: `⚠️ กรุณาระบุ ชื่อ-นามสกุล ให้ถูกต้อง เช่น C/นายสมชาย รักดี` });
+    }
+    
+    if (user.realName) {
+      user.realName = nameInput;
+      return client.replyMessage(event.replyToken, { 
+        type: 'text', 
+        text: `🔄 อัปเดตข้อมูลสำเร็จ!\nสมาชิกคนที่: ${user.memberId}\nเปลี่ยนชื่อเป็น: ${user.realName}` 
+      });
+    } else {
+      memberCount++;
+      user.memberId = memberCount;
+      user.realName = nameInput;
+      memberMap[memberCount] = userId; 
+      
+      let welcomeMsg = `🎉 ลงทะเบียนสมาชิกใหม่สำเร็จ! 🎉\n`;
+      welcomeMsg += `🆔 คุณคือสมาชิกคนที่: ${user.memberId}\n`;
+      welcomeMsg += `👤 ชื่อ-นามสกุล: ${user.realName}\n\n`;
+      welcomeMsg += `💰 ยอดเครดิตเริ่มต้น: ${user.credit} บาท\n`;
+      welcomeMsg += `*ตอนนี้คุณสามารถส่งโพยและพิมพ์ C เพื่อเช็คการ์ดสมาชิกได้แล้วครับ`;
+      
+      return client.replyMessage(event.replyToken, { type: 'text', text: welcomeMsg });
+    }
+  }
 
   // ==========================================
   // 👑 แอดมินจัดการเครดิต
@@ -86,11 +125,13 @@ async function handleEvent(event) {
   if (text.startsWith('เติม ')) {
     const parts = text.split(' ');
     if (parts.length === 3) {
-      const targetId = parts[1];
+      const mId = parseInt(parts[1]);
       const amount = parseInt(parts[2]);
-      if (players[targetId] && !isNaN(amount)) {
-        players[targetId].credit += amount;
-        return client.replyMessage(event.replyToken, { type: 'text', text: `💰 เติมเครดิตให้คุณ ${players[targetId].name} จำนวน +${amount} สำเร็จ!\nยอดคงเหลือสุทธิ: ${players[targetId].credit}` });
+      const targetUserId = memberMap[mId];
+      
+      if (targetUserId && players[targetUserId] && !isNaN(amount)) {
+        players[targetUserId].credit += amount;
+        return client.replyMessage(event.replyToken, { type: 'text', text: `💰 เติมเครดิตให้ [สมาชิกคนที่ ${mId}] คุณ ${players[targetUserId].realName} จำนวน +${amount} สำเร็จ!\nยอดคงเหลือสุทธิ: ${players[targetUserId].credit} บาท` });
       }
     }
   }
@@ -98,21 +139,31 @@ async function handleEvent(event) {
   if (text.startsWith('ลบ ')) {
     const parts = text.split(' ');
     if (parts.length === 3) {
-      const targetId = parts[1];
+      const mId = parseInt(parts[1]);
       const amount = parseInt(parts[2]);
-      if (players[targetId] && !isNaN(amount)) {
-        players[targetId].credit = Math.max(0, players[targetId].credit - amount);
-        return client.replyMessage(event.replyToken, { type: 'text', text: `🚨 ลบยอดเครดิตของคุณ ${players[targetId].name} ออก -${amount} เรียบร้อย!\nยอดคงเหลือปัจจุบัน: ${players[targetId].credit}` });
+      const targetUserId = memberMap[mId];
+      
+      if (targetUserId && players[targetUserId] && !isNaN(amount)) {
+        players[targetUserId].credit = Math.max(0, players[targetUserId].credit - amount);
+        return client.replyMessage(event.replyToken, { type: 'text', text: `🚨 ลบยอดเครดิตของ [สมาชิกคนที่ ${mId}] คุณ ${players[targetUserId].realName} ออก -${amount} เรียบร้อย!\nยอดคงเหลือปัจจุบัน: ${players[targetUserId].credit} บาท` });
       }
     }
   }
 
-  if (text.startsWith('y ') || text.startsWith('Y ')) {
-    const targetId = text.substring(2).trim();
-    if (players[targetId] && players[targetId].pendingWithdraw > 0) {
-      const withdrawAmount = players[targetId].pendingWithdraw;
-      players[targetId].pendingWithdraw = 0; 
-      return client.replyMessage(event.replyToken, { type: 'text', text: `✅ อนุมัติการถอนเงินของคุณ ${players[targetId].name} จำนวน ${withdrawAmount} บาท เรียบร้อย!` });
+  if (text.toLowerCase().startsWith('y ')) {
+    const mId = parseInt(text.substring(2).trim());
+    const targetUserId = memberMap[mId];
+    
+    if (targetUserId && players[targetUserId] && players[targetUserId].pendingWithdraw > 0) {
+      const withdrawAmount = players[targetUserId].pendingWithdraw;
+      players[targetUserId].pendingWithdraw = 0; 
+      
+      withdrawQueue = withdrawQueue.filter(q => q.memberId !== mId);
+      
+      return client.replyMessage(event.replyToken, { 
+        type: 'text', 
+        text: `✅ อนุมัติการถอนเงินสำเร็จ!\n👤 สมาชิกคนที่ ${mId} (${players[targetUserId].realName})\n💵 ยอดเงินถอน: ${withdrawAmount} บาท ถูกหักออกจากเครดิตและปลดล็อกระบบเรียบร้อยครับ` 
+      });
     }
   }
 
@@ -121,7 +172,8 @@ async function handleEvent(event) {
     drawStatus = {};
     gameState = 'CLOSED';
     tempResults = null;
-    return client.replyMessage(event.replyToken, { type: 'text', text: `🧹 ล้างระบบการเดิมพันและรีเซ็ตห้องให้เป็นสถานะปิดรอบเรียบร้อยแล้ว!` });
+    withdrawQueue = [];
+    return client.replyMessage(event.replyToken, { type: 'text', text: `🧹 ล้างระบบการเดิมพัน รีเซ็ตห้องเกม และล้างคิวถอนเงินทั้งหมดเรียบร้อยแล้ว!` });
   }
 
   // ==========================================
@@ -183,7 +235,7 @@ async function handleEvent(event) {
       let pDraw = drawStatus[pId] || {};
       let pUser = players[pId];
       let totalChange = 0;
-      let playerReport = `👤 คุณ ${pUser.name}:\n`;
+      let playerReport = `👤 [คนที่ ${pUser.memberId || '?'}] คุณ ${pUser.realName || 'ไม่ระบุชื่อ'}:\n`;
 
       for (let i = 0; i < firstSet.length - 1; i++) {
         let legNum = i + 1;
@@ -235,8 +287,16 @@ async function handleEvent(event) {
   // ==========================================
   // 👥 คำสั่งของฝั่งผู้เล่น
   // ==========================================
+  
+  // ส่งโพยเดิมพัน
   const betRegex = /^([1-6\s]+)-(\d+)$/;
   if (betRegex.test(text)) {
+    if (!user.realName) {
+      return client.replyMessage(event.replyToken, { type: 'text', text: `🔒 คุณยังไม่ได้ลงทะเบียนสมาชิกกลุ่ม!\nกรุณาพิมพ์ C/ตามด้วยชื่อ-นามสกุล ก่อนทำรายการครับ\n(ตัวอย่าง: C/นายรักดี เล่นป๊อก)` });
+    }
+    if (user.pendingWithdraw > 0) {
+      return client.replyMessage(event.replyToken, { type: 'text', text: `⚠️ บัญชีของคุณถูกล็อกการเดิมพันชั่วคราว เนื่องจากอยู่ในระหว่างรอการอนุมัติถอนเงินยอด ${user.pendingWithdraw} บาทครับ` });
+    }
     if (gameState !== 'BETTING') return null;
     
     const match = text.match(betRegex);
@@ -259,13 +319,19 @@ async function handleEvent(event) {
     });
 
     return client.replyMessage(event.replyToken, {
-      type: 'text',
-      text: `📥 บันทึกโพยสำเร็จ: ขา ${legs.join(',')} ขาละ ${baseBet}\nเครดิตปัจจุบันของคุณคือ: ${user.credit}`
+      text: `📥 [คนที่ ${user.memberId}] บันทึกโพยสำเร็จ: ขา ${legs.join(',')} ขาละ ${baseBet}\nเครดิตปัจจุบันของคุณคือ: ${user.credit} บาท`
     });
   }
 
-  // คำสั่ง C เวอร์ชันข้อความธรรมดา ชัวร์ 100% ลบโครงสร้าง Flex ออกถาวรแล้ว
+  // คำสั่ง C
   if (text.toLowerCase() === 'c') {
+    if (!user.realName) {
+      return client.replyMessage(event.replyToken, { 
+        type: 'text', 
+        text: `📢 ยินดีต้อนรับครับสมาชิกใหม่!\n\n⚠️ คุณยังไม่ได้ลงทะเบียนชื่อจริงในระบบ\nกรุณาพิมพ์: C/ชื่อ-นามสกุล ของท่านเพื่อเปิดการใช้งานบอทครับ\n(ตัวอย่าง: C/นายแจ๊ค เด้งดี)` 
+      });
+    }
+
     let activeBetsText = "❌ ไม่มีโพยค้างอยู่ในรอบนี้";
     let totalBetWithIns = 0;
     
@@ -279,22 +345,28 @@ async function handleEvent(event) {
       activeBetsText = activeBets.join('\n');
     }
 
-    let replyMsg = `👤 [ ข้อมูลสมาชิก ]\n`;
-    replyMsg += `• ชื่อ: ${user.name}\n`;
+    let replyMsg = `👤 [ ข้อมูลสมาชิกห้องป๊อกเด้ง ]\n`;
+    replyMsg += `🆔 สมาชิกคนที่: ${user.memberId}\n`;
+    replyMsg += `• ชื่อจริง: ${user.realName}\n`;
     replyMsg += `-------------------------\n`;
     replyMsg += `💰 ยอดเครดิตคงเหลือ: ${user.credit} บาท\n`;
+    if (user.pendingWithdraw > 0) {
+      replyMsg += `⏳ ยอดที่กำลังรอถอน: ${user.pendingWithdraw} บาท\n`;
+    }
     replyMsg += `📝 โพยเดิมพันปัจจุบัน:\n${activeBetsText}\n`;
     
     if (currentBets[userId]) {
       replyMsg += `-------------------------\n`;
-      replyMsg += `💵 ยอดรวมที่ต้องค้ำเด้ง (3 เท่า): ${totalBetWithIns} บาท`;
+      replyMsg += `💵 ยอดรวมที่ต้องค้ำเด้ง (3 เท่า): ${totalBetWithIns} บาท\n`;
     }
 
     return client.replyMessage(event.replyToken, { type: 'text', text: replyMsg });
   }
 
+  // คำสั่งจั่วไพ่
   const drawRegex = /^([1-6]+)([+\-])$/;
   if (drawRegex.test(text) && gameState === 'DRAWING') {
+    if (!user.realName) return null;
     const match = text.match(drawRegex);
     const legs = match[1].split('');
     const action = match[2]; 
@@ -309,17 +381,19 @@ async function handleEvent(event) {
         }
       });
       if (updatedLegs.length > 0) {
-        return client.replyMessage(event.replyToken, { type: 'text', text: `🃏 คุณ ${user.name} สั่ง ขา ${updatedLegs.join(',')} ให้ [${action === '+' ? 'จั่วไพ่เพิ่ม ➕' : 'อยู่ไม่จั่ว ➖'}] เรียบร้อยครับ` });
+        return client.replyMessage(event.replyToken, { type: 'text', text: `🃏 สมาชิกคนที่ ${user.memberId} (${user.realName}) สั่ง ขา ${updatedLegs.join(',')} ให้ [${action === '+' ? 'จั่วไพ่เพิ่ม ➕' : 'อยู่ไม่จั่ว ➖'}] เรียบร้อยครับ` });
       }
     }
   }
 
+  // คำสั่งคืนโพย
   if (text.toLowerCase() === 'r') {
+    if (!user.realName) return null;
     if (gameState !== 'BETTING') return null;
     if (currentBets[userId]) {
       delete currentBets[userId];
       if (drawStatus[userId]) delete drawStatus[userId];
-      return client.replyMessage(event.replyToken, { type: 'text', text: `↩️ คืนโพยเดิมพันทั้งหมดในรอบนี้ของคุณ ${user.name} เรียบร้อยแล้วครับ` });
+      return client.replyMessage(event.replyToken, { type: 'text', text: `↩️ คืนโพยเดิมพันทั้งหมดในรอบนี้ของ สมาชิกคนที่ ${user.memberId} (${user.realName}) เรียบร้อยแล้วครับ` });
     }
   }
 
@@ -327,18 +401,39 @@ async function handleEvent(event) {
     return client.replyMessage(event.replyToken, { type: 'text', text: bankAccountInfo });
   }
 
+  // ระบบถอนเงินแบบแจ้งคิวพร้อมลิงก์กดแอดไลน์ทันที
   if (text.startsWith('ถอน ')) {
+    if (!user.realName) return null;
     const amount = parseInt(text.replace('ถอน ', ''));
     if (!isNaN(amount) && amount > 0) {
       if (user.pendingWithdraw > 0) {
-        return client.replyMessage(event.replyToken, { type: 'text', text: `⚠️ คุณมีรายการถอนเดิมค้างอยู่ ${user.pendingWithdraw} บาท รอดำเนินการ` });
+        return client.replyMessage(event.replyToken, { type: 'text', text: `⚠️ คุณมีรายการถอนเดิมค้างอยู่ ${user.pendingWithdraw} บาท รอดำเนินการอนุมัติอยู่ครับ` });
       }
       if (user.credit >= amount) {
         user.credit -= amount;
         user.pendingWithdraw = amount; 
-        return client.replyMessage(event.replyToken, { type: 'text', text: `🔔 แจ้งถอนเงินสำเร็จ!\nคุณ ${user.name} แจ้งถอนยอด ${amount} บาท\nรอแอดมินกดยืนยันรายการ` });
+        
+        withdrawQueue.push({
+          memberId: user.memberId,
+          amount: amount,
+          userId: userId
+        });
+        
+        const currentQueueIndex = withdrawQueue.length;
+
+        let withdrawReply = `🔔 แจ้งถอนเงินสำเร็จ! (ระบบหักเครดิตรอโอนแล้ว)\n`;
+        withdrawReply += `👤 สมาชิกคนที่ ${user.memberId} (${user.realName})\n`;
+        withdrawReply += `💵 ยอดเงินแจ้งถอน: ${amount} บาท\n`;
+        withdrawReply += `🔢 คุณอยู่ในคิวถอนเงินลำดับที่: [ ${currentQueueIndex} ]\n`;
+        withdrawReply += `-------------------------\n`;
+        withdrawReply += `📲 กรุณากดลิงก์ด้านล่างเพื่อส่งเลขบัญชีให้แอดมินโอนยอดได้ทันทีครับ:\n`;
+        withdrawReply += `🔗 ลิงก์แอดไลน์: ${adminLineLink}\n`;
+        withdrawReply += `🆔 ID LINE: ${adminLineID}\n\n`;
+        withdrawReply += `*เมื่อแอดมินโอนสำเร็จ ระบบจะแจ้งอนุมัติในกลุ่มนี้อีกครั้งครับ`;
+
+        return client.replyMessage(event.replyToken, { type: 'text', text: withdrawReply });
       } else {
-        return client.replyMessage(event.replyToken, { type: 'text', text: `❌ ยอดเครดิตของท่านไม่พอสำหรับการถอนเงินจำนวนนี้` });
+        return client.replyMessage(event.replyToken, { type: 'text', text: `❌ ยอดเครดิตของท่านไม่พอสำหรับการถอนเงินจำนวนนี้ (เครดิตปัจจุบันของคุณคือ ${user.credit} บาท)` });
       }
     }
   }
@@ -353,7 +448,7 @@ async function handleEvent(event) {
   if (text === 'คำสั่ง') {
     return client.replyMessage(event.replyToken, {
       type: 'text',
-      text: `🤖 [คู่มือคำสั่งผู้เล่น]\n• [เลขขา]-[ราคา] : ส่งโพย เช่น 123-100\n• C หรือ c : เช็คเครดิตและรายการโพย\n• R หรือ r : ขอคืนโพยทั้งหมดในรอบนั้น\n• ขาเลข+ : ขอจั่วไพ่ใบที่ 3 เช่น 12+\n• ขาเลข- : ขออยู่ไม่จั่วไพ่เพิ่ม เช่น 3-\n• /บช : ขอดูบัญชีโอนเงินเข้า\n• ถอน [ยอดเงิน] : ทำรายการแจ้งถอนเงิน`
+      text: `🤖 [คู่มือคำสั่งผู้เล่น]\n• C/[ชื่อ-นามสกุล] : ลงทะเบียนสมาชิกครั้งแรก\n• [เลขขา]-[ราคา] : ส่งโพย เช่น 123-100\n• C หรือ c : เช็คเครดิตและลำดับสมาชิกตัวเอง\n• R หรือ r : ขอคืนโพยทั้งหมดในรอบนั้น\n• ขาเลข+ : ขอจั่วไพ่ใบที่ 3 เช่น 12+\n• ขาเลข- : ขออยู่ไม่จั่วไพ่เพิ่ม เช่น 3-\n• /บช : ขอดูบัญชีโอนเงินเข้า\n• ถอน [ยอดเงิน] : ทำรายการแจ้งถอนเงิน`
     });
   }
 }

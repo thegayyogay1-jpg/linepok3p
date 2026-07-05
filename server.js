@@ -35,72 +35,88 @@ app.post('/callback', line.middleware(config), (req, res) => {
     });
 });
 
-// ฟังก์ชันวิเคราะห์หน้าไพ่และแต้มอย่างละเอียด (รองรับแต้มภาษาไทยและเด้ง *, **, ***)
+// 🛠️ ฟังก์ชันแปลงตัวอักษรไพ่เดี่ยว (แก้ไข: 1-9 มีค่าตามเลข / t, j, q, k มีค่าเป็น 0)
+function getCardValue(c) {
+  if (['t', 'j', 'q', 'k'].includes(c)) return 0;
+  let val = parseInt(c);
+  return isNaN(val) ? 0 : val;
+}
+
+// ฟังก์ชันวิเคราะห์หน้าไพ่ คำนวณแต้ม และจัดกลุ่มประเภทไพ่พิเศษตามกฎป๊อกเด้งจริง
 function parseCardResult(resultStr) {
   if (!resultStr) return { type: 'POINT', score: 0, multiplier: 1, raw: '0 แต้ม', isPok: false, cardsCount: 2 };
   
   let cleaned = resultStr.trim().toLowerCase();
   let multiplier = 1;
   
-  // ตรวจสอบจำนวนเด้ง
+  // 1. ดึงข้อมูลตัวคูณเด้งจากสัญลักษณ์พิเศษ (*, **, ***)
   if (cleaned.includes('***')) { multiplier = 5; cleaned = cleaned.replace('***', ''); }
   else if (cleaned.includes('**')) { multiplier = 3; cleaned = cleaned.replace('**', ''); }
   else if (cleaned.includes('*')) { multiplier = 2; cleaned = cleaned.replace('*', ''); }
 
-  // เช็คจำนวนใบจากความยาวตัวอักษรดิบ
-  let pureDigits = resultStr.replace(/[*_a-zA-Z]/g, '').trim();
-  let cardsCount = pureDigits.length >= 3 ? 3 : 2; 
+  // แยกเฉพาะตัวอักษรหน้าไพ่เพื่อนำมาคำนวณแต้ม (เช่น "22" หรือ "kq" หรือ "225")
+  let cardChars = cleaned.replace(/[^0-9a-z]/g, '').split('');
+  let cardsCount = cardChars.length;
+  
+  // คำนวณผลรวมแต้มดิบพื้นฐาน
+  let totalScore = 0;
+  cardChars.forEach(c => { totalScore += getCardValue(c); });
+  let finalScore = totalScore % 10;
 
-  // 1. ไพ่ป๊อก (ต้องเกิดจาก 2 ใบแรกเท่านั้น)
-  if (cleaned.startsWith('ป๊อก')) {
-    let score = parseInt(cleaned.replace('ป๊อก', '')) || 0;
-    return { type: 'POK', score: score, multiplier: multiplier, raw: `ป๊อก ${score}`, isPok: true, cardsCount: 2 };
+  // ตรวจสอบสัญลักษณ์ข้อความกำกับพิเศษ (ถ้ามีพิมพ์ระบุบวกมาตรงๆ)
+  if (cleaned.includes('ตอง')) {
+    return { type: 'TONG', score: 10, multiplier: Math.max(multiplier, 5), raw: 'ไพ่ตอง 👑 (5 เด้ง)', isPok: false, cardsCount: 3 };
   }
+  if (cleaned.includes('สเตรฟลัช') || cleaned.includes('สเตรฟรัช') || cleaned.includes('เรียงดอก')) {
+    return { type: 'STRAIGHT_FLUSH', score: 9, multiplier: Math.max(multiplier, 5), raw: 'สเตรฟลัช 🏆 (5 เด้ง)', isPok: false, cardsCount: 3 };
+  }
+  if (cleaned.includes('เรียง') || cleaned.includes('สเตร')) {
+    return { type: 'STRAIGHT', score: 8, multiplier: Math.max(multiplier, 3), raw: 'ไพ่เรียง 📈 (3 เด้ง)', isPok: false, cardsCount: 3 };
+  }
+  if (cleaned.includes('เซียน') || cleaned.includes('สามเหลือง')) {
+    return { type: 'ZEAN', score: 7, multiplier: Math.max(multiplier, 3), raw: 'ไพ่เซียน 👑 (3 เด้ง)', isPok: false, cardsCount: 3 };
+  }
+
+  // 2. วิเคราะห์จากโครงสร้างหน้าไพ่โดยอัตโนมัติ (กรณีส่งมาเฉพาะหน้าไพ่ดิบ เช่น 2 ใบ หรือ 3 ใบ)
+  if (cardsCount === 2) {
+    // ตรวจสอบไพ่ป๊อก (เกิดจาก 2 ใบแรกเท่านั้น)
+    if (finalScore === 9) {
+      return { type: 'POK', score: 9, multiplier: multiplier, raw: `ป๊อก 9 💥${multiplier > 1 ? ` (${multiplier} เด้ง)` : ''}`, isPok: true, cardsCount: 2 };
+    }
+    if (finalScore === 8) {
+      return { type: 'POK', score: 8, multiplier: multiplier, raw: `ป๊อก 8 💥${multiplier > 1 ? ` (${multiplier} เด้ง)` : ''}`, isPok: true, cardsCount: 2 };
+    }
+  } 
   
-  // 2. ไพ่ตอง
-  if (cleaned === 'ตอง') {
-    return { type: 'TONG', score: 10, multiplier: multiplier, raw: 'ตอง (5 เด้ง)', isPok: false, cardsCount: 3 };
+  if (cardsCount === 3) {
+    // เช็คไพ่ตองอัตโนมัติ (เช่น 555, kkk)
+    if (cardChars[0] === cardChars[1] && cardChars[1] === cardChars[2]) {
+      return { type: 'TONG', score: 10, multiplier: 5, raw: 'ไพ่ตอง 👑 (5 เด้ง)', isPok: false, cardsCount: 3 };
+    }
+    
+    // เช็คไพ่เซียน / สามเหลืองอัตโนมัติ (J, Q, K ทั้ง 3 ใบ เช่น k q j)
+    let yellowCount = 0;
+    cardChars.forEach(c => { if (['j', 'q', 'k'].includes(c)) yellowCount++; });
+    if (yellowCount === 3) {
+      return { type: 'ZEAN', score: 7, multiplier: Math.max(multiplier, 3), raw: 'ไพ่เซียน 👑 (3 เด้ง)', isPok: false, cardsCount: 3 };
+    }
   }
-  // 3. ไพ่สเตรฟลัช / เรียงดอก
-  if (cleaned === 'สเตรฟรัช' || cleaned === 'สเตรฟลัช') {
-    return { type: 'STRAIGHT_FLUSH', score: 9, multiplier: multiplier, raw: 'สเตรฟลัช (5 เด้ง)', isPok: false, cardsCount: 3 };
-  }
-  // 4. ไพ่สเตร / เรียง
-  if (cleaned === 'สเตร' || cleaned === 'เรียง') {
-    return { type: 'STRAIGHT', score: 8, multiplier: multiplier, raw: 'เรียง (3 เด้ง)', isPok: false, cardsCount: 3 };
-  }
-  // 5. ไพ่เซียน / สามเหลือง
-  if (cleaned === 'เซียน') {
-    return { type: 'ZEAN', score: 7, multiplier: multiplier, raw: 'เซียน (3 เด้ง)', isPok: false, cardsCount: 3 };
-  }
-  
-  // 6. ไพ่แต้มปกติ
-  let score = parseInt(cleaned) || 0;
-  if (score > 9) {
-    score = score % 10;
-  }
-  
-  let multText = multiplier > 1 ? ` ${multiplier} เด้ง` : '';
-  return { type: 'POINT', score: score, multiplier: multiplier, raw: `${score} แต้ม${multText}`, isPok: false, cardsCount: cardsCount };
+
+  // 3. ผลลัพธ์แต้มปกติ
+  let multText = multiplier > 1 ? ` (${multiplier} เด้ง)` : '';
+  return { type: 'POINT', score: finalScore, multiplier: multiplier, raw: `${finalScore} แต้ม${multText}`, isPok: false, cardsCount: cardsCount };
 }
 
-// ฟังก์ชันเปรียบเทียบผลแพ้ชนะตามกฎป๊อกเด้ง (Fix บั๊ก 3 ใบชนะป๊อกเจ้า)
+// ฟังก์ชันเปรียบเทียบผลแพ้ชนะตามกฎป๊อกเด้ง
 function compareHands(player, dealer) {
-  // กฎเหล็ก: ถ้าเจ้ามือป๊อก (2 ใบ) ขาที่จั่วใบที่ 3 (3 ใบ) จะแพ้ทันทีโดยไม่มีสิทธิ์สู้
-  if (dealer.isPok && player.cardsCount === 3) {
-    return 'LOSE';
-  }
-  // ถ้าผู้เล่นป๊อก แต่เจ้ามือจั่ว 3 ใบ ผู้เล่นชนะทันที
-  if (player.isPok && dealer.cardsCount === 3) {
-    return 'WIN';
-  }
+  if (dealer.isPok && player.cardsCount === 3) return 'LOSE';
+  if (player.isPok && dealer.cardsCount === 3) return 'WIN';
 
   const typeOrder = { 'POK': 7, 'TONG': 6, 'STRAIGHT_FLUSH': 5, 'STRAIGHT': 4, 'ZEAN': 3, 'POINT': 2 };
   
   if (typeOrder[player.type] > typeOrder[dealer.type]) return 'WIN';
   if (typeOrder[player.type] < typeOrder[dealer.type]) return 'LOSE';
   
-  // ถ้าไพ่ประเภทเดียวกัน วัดกันที่แต้มสุทธิ
   if (player.score > dealer.score) return 'WIN';
   if (player.score < dealer.score) return 'LOSE';
   
@@ -220,7 +236,7 @@ async function handleEvent(event) {
   }
 
   // ==========================================
-  // 📊 แอดมินส่งผลไพ่ (แยกหน้าจอสรุปผลรวมทุกขา)
+  // 📊 แอดมินส่งผลไพ่
   // ==========================================
   if (text.startsWith('/') && gameState === 'WAITING_RESULT') {
     const lines = text.split('\n');
@@ -264,7 +280,7 @@ async function handleEvent(event) {
   }
 
   // ==========================================
-  // 💰 แอดมินพิมพ์ OK -> คำนวณเงินและส่งสรุปรายคน
+  // 💰 แอดมินพิมพ์ OK -> คำนวณเงิน
   // ==========================================
   if (text.toUpperCase() === 'OK' && gameState === 'CONFIRMING' && tempResults) {
     let billSummaryText = `📋 [สรุปบิลได้เสียรายบุคคล]\n-------------------------\n`;
@@ -321,7 +337,7 @@ async function handleEvent(event) {
       
       billSummaryText += `👤 [รหัสสมาชิก ${pUser.memberId || '?'}] คุณ ${pUser.realName}:\n`;
       billSummaryText += detailLines.map(l => `  • ${l}`).join('\n') + '\n';
-      billSummaryText += `💰 Сรุปรอบนี้: ${totalChange >= 0 ? '+' : ''}${totalChange} บาท | เครดิตสุทธิ: ${pUser.credit} บาท\n`;
+      billSummaryText += `💰 สรุปรอบนี้: ${totalChange >= 0 ? '+' : ''}${totalChange} บาท | เครดิตสุทธิ: ${pUser.credit} บาท\n`;
       billSummaryText += `-------------------------\n`;
     }
 
@@ -343,9 +359,9 @@ async function handleEvent(event) {
   }
 
   // ==========================================
-  // 👥 คำสั่งของฝั่งผู้เล่น (ระบบวิเคราะห์โพย)
+  // 👥 คำสั่งของฝั่งผู้เล่น
   // ==========================================
-  let cleanText = text.replace(/\s+/g, ' '); // แก้ไขจุดบกพร่อง: ประกาศตัวแปร cleanText ไว้บนสุดของส่วนนี้
+  let cleanText = text.replace(/\s+/g, ' '); 
   let isBettingMessage = false;
   let parsedLegs = [];
   let parsedPrice = 0;
@@ -371,7 +387,6 @@ async function handleEvent(event) {
     }
   }
 
-  // ป้องกันการแทงผิดเวลา
   const แทงRegexตรวจสอบ = /^(มข|มจ|เหมาขา|เหมาเจ้า|แทง|จ)?\s*([1-6]*)\s*[- ]?\s*(\d+)$/;
   if (gameState !== 'BETTING' && แทงRegexตรวจสอบ.test(cleanText) && (cleanText.includes('-') || cleanText.includes('มข') || cleanText.includes('มจ') || text.match(/[1-6]+-\d+/))) {
     return client.replyMessage(event.replyToken, { type: 'text', text: `⚠️ [ระบบปิดรับโพย] ขณะนี้ไม่ได้อยู่ในเวลาเปิดรับเดิมพัน หรือรอบการแทงยังไม่เริ่มขึ้นค่ะ` });

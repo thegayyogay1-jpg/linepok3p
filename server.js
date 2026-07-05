@@ -1,7 +1,6 @@
 const express = require('express');
 const line = require('@line/bot-sdk');
 
-// ใช้โครงสร้าง Config เหมือนโค้ดเวอร์ชันแรกที่ผ่านแน่นอน
 const config = {
   channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN,
   channelSecret: process.env.LINE_CHANNEL_SECRET
@@ -265,7 +264,7 @@ async function handleEvent(event) {
     });
   }
 
-  // คำสั่ง C เวอร์ชันข้อความธรรมดา อ่านง่าย ชัวร์ 100% ไม่ติดข้อจำกัดไลน์กลุ่ม
+  // คำสั่ง C เวอร์ชันข้อความธรรมดา ชัวร์ 100% ลบโครงสร้าง Flex ออกถาวรแล้ว
   if (text.toLowerCase() === 'c') {
     let activeBetsText = "❌ ไม่มีโพยค้างอยู่ในรอบนี้";
     let totalBetWithIns = 0;
@@ -280,7 +279,6 @@ async function handleEvent(event) {
       activeBetsText = activeBets.join('\n');
     }
 
-    // สร้างข้อความตอบกลับแบบธรรมดาแต่จัดรูปเล่มให้อ่านง่าย
     let replyMsg = `👤 [ ข้อมูลสมาชิก ]\n`;
     replyMsg += `• ชื่อ: ${user.name}\n`;
     replyMsg += `-------------------------\n`;
@@ -293,19 +291,6 @@ async function handleEvent(event) {
     }
 
     return client.replyMessage(event.replyToken, { type: 'text', text: replyMsg });
-  }
-
-    if (currentBets[userId]) {
-      flexPayload.contents.body.contents[3].contents.push({
-        type: "text",
-        text: `💵 ยอดแทงรวมค้ำเด้ง: ${totalBetWithIns} บาท`,
-        size: "xs",
-        color: "#aaaaaa",
-        margin: "sm"
-      });
-    }
-
-    return client.replyMessage(event.replyToken, flexPayload);
   }
 
   const drawRegex = /^([1-6]+)([+\-])$/;

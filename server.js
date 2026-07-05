@@ -1,6 +1,7 @@
 const express = require('express');
 const line = require('@line/bot-sdk');
 
+// ใช้โครงสร้าง Config เหมือนโค้ดเวอร์ชันแรกที่ผ่านแน่นอน
 const config = {
   channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN,
   channelSecret: process.env.LINE_CHANNEL_SECRET
@@ -10,13 +11,12 @@ const app = express();
 const client = new line.Client(config);
 
 // 🗄️ Database ในหน่วยความจำ (Memory Storage)
-let gameState = 'CLOSED'; // CLOSED, BETTING, DRAWING, WAITING_RESULT, CONFIRMING
-let players = {};      // { userId: { name, credit, pendingWithdraw } }
-let currentBets = {};  // { userId: { leg1: 50, leg2: 50 } }
-let drawStatus = {};   // { userId: { leg1: '-', leg2: '+' } }
-let tempResults = null; // เก็บผลชั่วคราวรอแอดมินกด OK
+let gameState = 'CLOSED'; 
+let players = {};      
+let currentBets = {};  
+let drawStatus = {};   
+let tempResults = null; 
 
-// บัญชีธนาคารสำหรับฝากเงิน
 let bankAccountInfo = "🏦 ธนาคาร: กสิกรไทย\nเลขบัญชี: xxx-x-xxxxx-x\nชื่อบัญชี: บอทป๊อกเด้งอัจฉริยะ";
 
 app.post('/callback', line.middleware(config), (req, res) => {
@@ -28,19 +28,15 @@ app.post('/callback', line.middleware(config), (req, res) => {
     });
 });
 
-// ฟังก์ชันแปลงข้อความผลไพ่แอดมินเป็นอ็อบเจกต์คะแนนและตัวคูณ
 function parseCardResult(resultStr) {
   if (!resultStr) return { type: 'POINT', score: 0, multiplier: 1, raw: '' };
-  
   let cleaned = resultStr.trim().toLowerCase();
   let multiplier = 1;
   
-  // ⭐️ คิดเด้งจากสัญลักษณ์ดาว * ที่แอดมินพิมพ์มาโดยตรง
   if (cleaned.includes('***')) { multiplier = 5; cleaned = cleaned.replace('***', ''); }
   else if (cleaned.includes('**')) { multiplier = 3; cleaned = cleaned.replace('**', ''); }
   else if (cleaned.includes('*')) { multiplier = 2; cleaned = cleaned.replace('*', ''); }
 
-  // เช็คประเภทไพ่พิเศษตามคำนำหน้า
   if (cleaned.startsWith('ป๊อก')) {
     let score = parseInt(cleaned.replace('ป๊อก', ''));
     return { type: 'POK', score: score, multiplier: multiplier, raw: resultStr };
@@ -50,26 +46,21 @@ function parseCardResult(resultStr) {
   if (cleaned === 'สเตร') return { type: 'STRAIGHT', score: 8, multiplier: multiplier, raw: resultStr };
   if (cleaned === 'เซียน') return { type: 'ZEAN', score: 7, multiplier: multiplier, raw: resultStr };
   
-  // กรณีระบุเป็นแต้มตัวเลขธรรมดา
   let score = parseInt(cleaned) || 0;
   return { type: 'POINT', score: score % 10, multiplier: multiplier, raw: resultStr };
 }
 
-// ฟังก์ชันเปรียบเทียบผลแพ้ชนะ (ผู้เล่น VS เจ้ามือ) ตามกติกา
 function compareHands(player, dealer) {
   const typeOrder = { 'POK': 7, 'TONG': 6, 'STRAIGHT_FLUSH': 5, 'STRAIGHT': 4, 'ZEAN': 3, 'POINT': 2 };
-  
   if (typeOrder[player.type] > typeOrder[dealer.type]) return 'WIN';
   if (typeOrder[player.type] < typeOrder[dealer.type]) return 'LOSE';
   
-  // ถ้าอยู่ในกลุ่มไพ่ประเภทเดียวกัน
   if (player.type === 'POK' || player.type === 'POINT') {
     if (player.score > dealer.score) return 'WIN';
     if (player.score < dealer.score) return 'LOSE';
-    return 'DRAW'; // แต้มเท่ากันในกลุ่มเดียวกัน เจ๊า
+    return 'DRAW'; 
   }
-  
-  return 'DRAW'; // ตองชนตอง, เซียนชนเซียน, สเตรชนสเตร -> เจ๊าหมด ไม่ดูดอกหรือตัวใหญ่กว่า
+  return 'DRAW'; 
 }
 
 async function handleEvent(event) {
@@ -78,7 +69,7 @@ async function handleEvent(event) {
   const text = event.message.text.trim();
   const userId = event.source.userId;
   
-  // ตรวจสอบ/สร้างข้อมูลผู้เล่นในหน่วยความจำ
+  // ตรวจสอบ/สร้างข้อมูลผู้เล่น
   if (!players[userId]) {
     try {
       let profile = await client.getProfile(userId);
@@ -91,10 +82,8 @@ async function handleEvent(event) {
   let user = players[userId];
 
   // ==========================================
-  // 👑 คำสั่งการจัดการเครดิตของแอดมิน
+  // 👑 แอดมินจัดการเครดิต
   // ==========================================
-  
-  // เติมเงิน: เติม เลขสมาชิก ยอด
   if (text.startsWith('เติม ')) {
     const parts = text.split(' ');
     if (parts.length === 3) {
@@ -102,12 +91,11 @@ async function handleEvent(event) {
       const amount = parseInt(parts[2]);
       if (players[targetId] && !isNaN(amount)) {
         players[targetId].credit += amount;
-        return client.replyMessage(event.replyToken, { type: 'text', text: `💰 เติมเครดิตให้คุณ ${players[targetId].name} จำนวน +${amount} สำเร็จ! ยอดคงเหลือสุทธิ: ${players[targetId].credit}` });
+        return client.replyMessage(event.replyToken, { type: 'text', text: `💰 เติมเครดิตให้คุณ ${players[targetId].name} จำนวน +${amount} สำเร็จ!\nยอดคงเหลือสุทธิ: ${players[targetId].credit}` });
       }
     }
   }
 
-  // ลบยอดเงิน (กรณีเติมผิด): ลบ เลขสมาชิก ยอด
   if (text.startsWith('ลบ ')) {
     const parts = text.split(' ');
     if (parts.length === 3) {
@@ -115,22 +103,20 @@ async function handleEvent(event) {
       const amount = parseInt(parts[2]);
       if (players[targetId] && !isNaN(amount)) {
         players[targetId].credit = Math.max(0, players[targetId].credit - amount);
-        return client.replyMessage(event.replyToken, { type: 'text', text: `🚨 แอดมินทำการลบยอดเครดิตของคุณ ${players[targetId].name} ออก -${amount} เรียบร้อย! ยอดคงเหลือปัจจุบัน: ${players[targetId].credit}` });
+        return client.replyMessage(event.replyToken, { type: 'text', text: `🚨 ลบยอดเครดิตของคุณ ${players[targetId].name} ออก -${amount} เรียบร้อย!\nยอดคงเหลือปัจจุบัน: ${players[targetId].credit}` });
       }
     }
   }
 
-  // ยืนยันการถอนเงิน: y เลขสมาชิก
   if (text.startsWith('y ') || text.startsWith('Y ')) {
     const targetId = text.substring(2).trim();
     if (players[targetId] && players[targetId].pendingWithdraw > 0) {
       const withdrawAmount = players[targetId].pendingWithdraw;
-      players[targetId].pendingWithdraw = 0; // ปลดล็อคสถานะถอนเงิน
+      players[targetId].pendingWithdraw = 0; 
       return client.replyMessage(event.replyToken, { type: 'text', text: `✅ อนุมัติการถอนเงินของคุณ ${players[targetId].name} จำนวน ${withdrawAmount} บาท เรียบร้อย!` });
     }
   }
 
-  // ล้างระบบ
   if (text === 'ล้างระบบ') {
     currentBets = {};
     drawStatus = {};
@@ -140,10 +126,8 @@ async function handleEvent(event) {
   }
 
   // ==========================================
-  // 🎮 คำสั่งโฟลว์เกมหลัก (Game Lifecycle)
+  // 🎮 โฟลว์เกมหลัก
   // ==========================================
-  
-  // o หรือ O -> เปิดรอบเดิมพัน
   if (text.toLowerCase() === 'o') {
     gameState = 'BETTING';
     currentBets = {};
@@ -152,34 +136,29 @@ async function handleEvent(event) {
     return client.replyMessage(event.replyToken, { type: 'text', text: `🟢 [เปิดรับโพย] ป๊อกเด้ง 3 ใบเริ่มขึ้นแล้ว! กรุณาส่งโพยเดิมพันของท่านเข้ามาได้เลยครับ` });
   }
 
-  // x หรือ X -> ปิดรับโพยเดิมพัน
   if (text.toLowerCase() === 'x') {
     if (gameState !== 'BETTING') return null;
     gameState = 'WAITING_DRAW';
     return client.replyMessage(event.replyToken, { type: 'text', text: `🛑 [ปิดรับโพยแทง] ปิดรับโพยประจำรอบแล้ว! ห้ามแก้ไขหรือส่งโพยเพิ่มหลังจากนี้ครับ` });
   }
 
-  // oo หรือ OO -> เปิดรอบเลือกจั่วไพ่ใบที่ 3
   if (text.toLowerCase() === 'oo') {
     if (gameState !== 'WAITING_DRAW') return null;
     gameState = 'DRAWING';
-    return client.replyMessage(event.replyToken, { type: 'text', text: `🃏 [เปิดรอบจั่ว] แอดมินถ่ายรูปไพ่ 2 ใบเรียบร้อยแล้ว! สมาชิกต้องการจั่วเพิ่ม พิมพ์เลขขาตามด้วย + (เช่น 12+) ถ้าขาไหนต้องการอยู่ให้เงียบไว้หรือพิมพ์ - ได้เลยครับ` });
+    return client.replyMessage(event.replyToken, { type: 'text', text: `🃏 [เปิดรอบจั่ว] แอดมินถ่ายรูปไพ่ 2 ใบเรียบร้อยแล้ว! สมาชิกต้องการจั่วเพิ่ม พิมพ์เลขขาตามด้วย + (เช่น 12+) ถ้าขาไหนต้องการอยู่ให้พิมพ์ - ได้เลยครับ` });
   }
 
-  // xx หรือ XX -> ปิดรับสิทธิ์เลือกจั่วไพ่
   if (text.toLowerCase() === 'xx') {
     if (gameState !== 'DRAWING') return null;
     gameState = 'WAITING_RESULT';
     return client.replyMessage(event.replyToken, { type: 'text', text: `🔒 [ปิดรอบจั่ว] หมดเวลาการเลือกจั่วเพิ่มแล้วครับ! ระบบกำลังล็อกคำสั่งและสแตนด์บายรอผลสรุปไพ่จากแอดมิน` });
   }
 
-  // แอดมินส่งผลไพ่ 2 บรรทัดพร้อมกัน: /ผลชุดแรก//ผลชุดสอง
   if (text.startsWith('/') && gameState === 'WAITING_RESULT') {
     const lines = text.split('\n');
     if (lines.length >= 2 && lines[0].startsWith('/') && lines[1].startsWith('//')) {
       const firstSet = lines[0].substring(1).split(',');
       const secondSet = lines[1].substring(2).split(',');
-      
       if (firstSet.length < 2 || secondSet.length < 2) return null;
       
       tempResults = { first: firstSet, second: secondSet };
@@ -192,7 +171,6 @@ async function handleEvent(event) {
     }
   }
 
-  // แอดมินกดยืนยันผล "OK" -> ประมวลผลลัพธ์และตัดเครดิตทันที
   if (text.toUpperCase() === 'OK' && gameState === 'CONFIRMING' && tempResults) {
     let summaryText = `📋 [สรุปผลการคิดบิลป๊อกเด้ง 3 ใบ]\n`;
     const firstSet = tempResults.first;
@@ -201,7 +179,6 @@ async function handleEvent(event) {
     const dealerFirst = parseCardResult(firstSet[firstSet.length - 1]);
     const dealerSecond = parseCardResult(secondSet[secondSet.length - 1]);
     
-    // วนลูปคิดเงินผู้เล่นรายบุคคล
     for (const pId in currentBets) {
       let pBet = currentBets[pId];
       let pDraw = drawStatus[pId] || {};
@@ -213,7 +190,7 @@ async function handleEvent(event) {
         let legNum = i + 1;
         if (pBet[`leg${legNum}`]) {
           let betAmount = pBet[`leg${legNum}`];
-          let isDrawing = pDraw[`leg${legNum}`] === '+'; // ดูว่ารายคนนั้นๆ สั่งจั่วหรือไม่ (+ คือจั่ว, นอกนั้นคืออยู่)
+          let isDrawing = pDraw[`leg${legNum}`] === '+'; 
           
           let pResult = isDrawing ? parseCardResult(secondSet[i]) : parseCardResult(firstSet[i]);
           let dResult = isDrawing ? dealerSecond : dealerFirst;
@@ -222,7 +199,6 @@ async function handleEvent(event) {
           let winMult = pResult.multiplier;
           let loseMult = dResult.multiplier;
           
-          // กฎข้อ 4: เจ้ามือได้ 5 เด้ง หักประกันคนแทงเสียสูงสุดแค่ 3 เด้ง
           if (loseMult === 5) loseMult = 3;
 
           if (outcome === 'WIN') {
@@ -248,11 +224,9 @@ async function handleEvent(event) {
     currentBets = {};
     drawStatus = {};
     tempResults = null;
-
     return client.replyMessage(event.replyToken, { type: 'text', text: summaryText });
   }
 
-  // แอดมินปฏิเสธผล "no"
   if (text.toLowerCase() === 'no' && gameState === 'CONFIRMING') {
     gameState = 'WAITING_RESULT';
     tempResults = null;
@@ -260,25 +234,21 @@ async function handleEvent(event) {
   }
 
   // ==========================================
-  // 👥 คำสั่งของฝั่งผู้เล่น (Player Section)
+  // 👥 คำสั่งของฝั่งผู้เล่น
   // ==========================================
-  
-  // 1. รับโพยเดิมพันระบบ 3 ใบ (ช่วงสถานะ BETTING เท่านั้น)
   const betRegex = /^([1-6\s]+)-(\d+)$/;
   if (betRegex.test(text)) {
     if (gameState !== 'BETTING') return null;
     
     const match = text.match(betRegex);
-    const legs = match[1].replace(/\s+/g, '').split(''); // ลบช่องว่างออกและแยกขา
+    const legs = match[1].replace(/\s+/g, '').split(''); 
     const baseBet = parseInt(match[2]);
-    
     const requiredDeposit = baseBet * 3 * legs.length;
     
-    // ข้อ 10: เช็คยอดเงินจริง ถ้าไม่พอบอทจะไม่บันทึกอะไรลงในระบบเลยเด็ดขาด
     if (user.credit < requiredDeposit) {
       return client.replyMessage(event.replyToken, {
         type: 'text',
-        text: `❌ เครดิตไม่พอ! ยอดแทงรวมค้ำประกันเด้งที่ต้องใช้คือ ${requiredDeposit} บาท แต่ยอดปัจจุบันของคุณคือ ${user.credit} บาท (โพยนี้จะไม่ถูกบันทึก)`
+        text: `❌ เครดิตไม่พอ! ยอดแทงรวมค้ำประกันเด้งที่ต้องใช้คือ ${requiredDeposit} บาท แต่ยอดปัจจุบันของคุณคือ ${user.credit} บาท`
       });
     }
 
@@ -291,13 +261,13 @@ async function handleEvent(event) {
 
     return client.replyMessage(event.replyToken, {
       type: 'text',
-      text: `📥 บันทึกโพยสำเร็จ: ขา ${legs.join(',')} ขาละ ${baseBet}\nค้ำประกันเด้งเรียบร้อย ยอดเครดิตคงเหลือชั่วคราว: ${user.credit}`
+      text: `📥 บันทึกโพยสำเร็จ: ขา ${legs.join(',')} ขาละ ${baseBet}\nเครดิตปัจจุบันของคุณคือ: ${user.credit}`
     });
   }
 
-  // 2. ตรวจสอบสถานะและยอดเงิน (พิมพ์ C หรือ c) -> เวอร์ชัน Flex Message ดึงรูปโปรไฟล์
+  // คำสั่ง C เวอร์ชัน Flex Message ดึงรูปโปรไฟล์ที่ถูกต้อง
   if (text.toLowerCase() === 'c') {
-    let profileUrl = "https://scdn.line-apps.com/n/channel_devcenter/img/fx/01_1_cafe.png"; // รูปสำรอง
+    let profileUrl = "https://scdn.line-apps.com/n/channel_devcenter/img/fx/01_1_cafe.png"; 
     try {
       let profile = await client.getProfile(userId);
       if (profile.pictureUrl) {
@@ -320,9 +290,10 @@ async function handleEvent(event) {
       activeBetsText = activeBets.join('\n');
     }
 
+    // โครงสร้าง Flex Message สมบูรณ์แบบ
     const flexPayload = {
       type: "flex",
-      altText: `👤 เช็คยอดเครดิตของคุณ ${user.name}`,
+      altText: `👤 ตรวจสอบเครดิตของคุณ ${user.name}`,
       contents: {
         type: "bubble",
         body: {
@@ -396,12 +367,11 @@ async function handleEvent(event) {
     return client.replyMessage(event.replyToken, flexPayload);
   }
 
-  // 3. จัดการสถานะขอจั่วไพ่ (สำหรับผู้เล่นทั่วไป)
   const drawRegex = /^([1-6]+)([+\-])$/;
   if (drawRegex.test(text) && gameState === 'DRAWING') {
     const match = text.match(drawRegex);
     const legs = match[1].split('');
-    const action = match[2]; // + คือจั่ว, - คืออยู่
+    const action = match[2]; 
     
     if (currentBets[userId]) {
       let updatedLegs = [];
@@ -418,7 +388,6 @@ async function handleEvent(event) {
     }
   }
 
-  // 4. ขอคืนโพย (พิมพ์ r หรือ R)
   if (text.toLowerCase() === 'r') {
     if (gameState !== 'BETTING') return null;
     if (currentBets[userId]) {
@@ -428,40 +397,37 @@ async function handleEvent(event) {
     }
   }
 
-  // 5. ดูเลขบัญชีโอนเงิน (/บช)
   if (text === '/บช') {
     return client.replyMessage(event.replyToken, { type: 'text', text: bankAccountInfo });
   }
 
-  // 6. แจ้งถอนเงิน: ถอน จำนวนเงิน
   if (text.startsWith('ถอน ')) {
     const amount = parseInt(text.replace('ถอน ', ''));
     if (!isNaN(amount) && amount > 0) {
       if (user.pendingWithdraw > 0) {
-        return client.replyMessage(event.replyToken, { type: 'text', text: `⚠️ คุณมีรายการถอนเดิมค้างอยู่ ${user.pendingWithdraw} บาท รอดำเนินการ ห้ามทำรายการซ้ำ` });
+        return client.replyMessage(event.replyToken, { type: 'text', text: `⚠️ คุณมีรายการถอนเดิมค้างอยู่ ${user.pendingWithdraw} บาท รอดำเนินการ` });
       }
       if (user.credit >= amount) {
         user.credit -= amount;
         user.pendingWithdraw = amount; 
-        return client.replyMessage(event.replyToken, { type: 'text', text: `🔔 แจ้งถอนเงินสำเร็จ!\nคุณ ${user.name} แจ้งถอนยอด ${amount} บาท\n[ระบบล็อคการเดิมพันและถอนซ้ำชั่วคราว] รอแอดมินกดยืนยัน` });
+        return client.replyMessage(event.replyToken, { type: 'text', text: `🔔 แจ้งถอนเงินสำเร็จ!\nคุณ ${user.name} แจ้งถอนยอด ${amount} บาท\nรอแอดมินกดยืนยันรายการ` });
       } else {
         return client.replyMessage(event.replyToken, { type: 'text', text: `❌ ยอดเครดิตของท่านไม่พอสำหรับการถอนเงินจำนวนนี้` });
       }
     }
   }
 
-  // 7. เมนูกติกาและคำสั่ง
   if (text === 'กติกา') {
     return client.replyMessage(event.replyToken, {
       type: 'text',
-      text: `📜 [กติกาป๊อกเด้ง 3 ใบสไตล์รีแร็กซ์]\n1. ลำดับไพ่: ป๊อก 9 > ป๊อก 8 > ไพ่ตอง (5 เด้ง) > สเตรฟลัช (5 เด้ง) > สเตร (3 เด้ง) > เซียน (3 เด้ง) > ไพ่แต้ม\n2. ไพ่แต้มรวม 3 ใบ จะเล็กกว่าไพ่ป๊อกเสมอ\n3. เด้งสัญลักษณ์พิเศษ: * = 2 เด้ง, ** = 3 เด้ง, *** = 5 เด้ง\n4. ประกันเด้ง: กรณีเสีย หักสูงสุดแค่ 3 เด้ง แต่กรณีชนะตอง/สเตรฟลัช ได้รับเต็ม 5 เด้ง!`
+      text: `📜 [กติกาป๊อกเด้ง 3 ใบ]\n1. ลำดับไพ่: ป๊อก 9 > ป๊อก 8 > ไพ่ตอง (5 เด้ง) > สเตรฟลัช (5 เด้ง) > สเตร (3 เด้ง) > เซียน (3 เด้ง) > ไพ่แต้ม\n2. ไพ่แต้มรวม 3 ใบ จะเล็กกว่าไพ่ป๊อกเสมอ\n3. เด้งสัญลักษณ์พิเศษ: * = 2 เด้ง, ** = 3 เด้ง, *** = 5 เด้ง\n4. ประกันเด้ง: กรณีเสีย หักสูงสุดแค่ 3 เด้ง แต่กรณีชนะตอง/สเตรฟลัช ได้รับเต็ม 5 เด้ง!`
     });
   }
 
   if (text === 'คำสั่ง') {
     return client.replyMessage(event.replyToken, {
       type: 'text',
-      text: `🤖 [คู่มือคำสั่งผู้เล่นกลุ่มป๊อกเด้ง]\n• [เลขขา]-[ราคา] : ส่งโพย เช่น 123-100\n• C หรือ c : เช็คเครดิตและรายการโพย\n• R หรือ r : ขอคืนโพยทั้งหมดในรอบนั้น\n• ขาเลข+ : ขอจั่วไพ่ใบที่ 3 เช่น 12+\n• ขาเลข- : ขออยู่ไม่จั่วไพ่เพิ่ม เช่น 3-\n• /บช : ขอดูบัญชีโอนเงินเข้า\n• ถอน [ยอดเงิน] : ทำรายการแจ้งถอนเงิน`
+      text: `🤖 [คู่มือคำสั่งผู้เล่น]\n• [เลขขา]-[ราคา] : ส่งโพย เช่น 123-100\n• C หรือ c : เช็คเครดิตและรายการโพย\n• R หรือ r : ขอคืนโพยทั้งหมดในรอบนั้น\n• ขาเลข+ : ขอจั่วไพ่ใบที่ 3 เช่น 12+\n• ขาเลข- : ขออยู่ไม่จั่วไพ่เพิ่ม เช่น 3-\n• /บช : ขอดูบัญชีโอนเงินเข้า\n• ถอน [ยอดเงิน] : ทำรายการแจ้งถอนเงิน`
     });
   }
 }

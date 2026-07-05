@@ -28,19 +28,7 @@ app.post('/callback', line.middleware(config), (req, res) => {
     });
 });
 
-// ตรวจจับสมาชิกใหม่เข้ากลุ่ม
-app.on('memberJoined', async (event) => {
-  for (const member of event.joined.members) {
-    try {
-      await client.replyMessage(event.replyToken, {
-        type: 'text',
-        text: `🎉 ยินดีต้อนรับคุณสมาชิกใหม่เข้าสู่ห้องป๊อกเด้ง 3 ใบสุดเร้าใจครับ!\n📌 กรุณาพิมพ์ "C" เพื่อตรวจสอบยอดเครดิตและสร้างบัญชีผู้เล่นครับ`
-      });
-    } catch (err) { console.error(err); }
-  }
-});
-
-// ฟังก์ชันแปลงข้อความผลไพ่แอดมินเป็นอ็อบเจกต์คะแนนและตัวคูณ (เวอร์ชันตัด ++ ออก)
+// ฟังก์ชันแปลงข้อความผลไพ่แอดมินเป็นอ็อบเจกต์คะแนนและตัวคูณ
 function parseCardResult(resultStr) {
   if (!resultStr) return { type: 'POINT', score: 0, multiplier: 1, raw: '' };
   
@@ -67,7 +55,7 @@ function parseCardResult(resultStr) {
   return { type: 'POINT', score: score % 10, multiplier: multiplier, raw: resultStr };
 }
 
-// ฟังก์ชันเปรียบเทียบผลแพ้ชนะ (ผู้เล่น VS เจ้ามือ)ตามกติกา
+// ฟังก์ชันเปรียบเทียบผลแพ้ชนะ (ผู้เล่น VS เจ้ามือ) ตามกติกา
 function compareHands(player, dealer) {
   const typeOrder = { 'POK': 7, 'TONG': 6, 'STRAIGHT_FLUSH': 5, 'STRAIGHT': 4, 'ZEAN': 3, 'POINT': 2 };
   
@@ -230,8 +218,6 @@ async function handleEvent(event) {
           let pResult = isDrawing ? parseCardResult(secondSet[i]) : parseCardResult(firstSet[i]);
           let dResult = isDrawing ? dealerSecond : dealerFirst;
           
-          // ตรวจสอบเงื่อนไขพิเศษ: แทงขาเจ้ามือ (สมมติให้ขา 6 หรือเงื่อนไขของแอดมินเป็นขาเจ้า)
-          // ในที่นี้จะคำนวณตามจริงจากผลที่แอดมินคีย์มาชนกันสู้กับเจ้ามือตามปกติ
           let outcome = compareHands(pResult, dResult);
           let winMult = pResult.multiplier;
           let loseMult = dResult.multiplier;
@@ -258,7 +244,6 @@ async function handleEvent(event) {
       summaryText += playerReport;
     }
 
-    // รีเซ็ตสถานะเกมกลับสู่จุดเริ่มต้นหลังจบรอบ
     gameState = 'CLOSED';
     currentBets = {};
     drawStatus = {};
@@ -287,10 +272,9 @@ async function handleEvent(event) {
     const legs = match[1].replace(/\s+/g, '').split(''); // ลบช่องว่างออกและแยกขา
     const baseBet = parseInt(match[2]);
     
-    // คำนวณยอดค้ำประกันสูงสุด (คิดที่ 3 เด้งตามกฎประกันเด้งข้อ 4)
     const requiredDeposit = baseBet * 3 * legs.length;
     
-    // ข้อ 10: เช็คยอดเงินจริง ถ้าไม่พอบอทจะไม่จดจำโพยและไม่บันทึกอะไรลงในระบบเลยเด็ดขาด
+    // ข้อ 10: เช็คยอดเงินจริง ถ้าไม่พอบอทจะไม่บันทึกอะไรลงในระบบเลยเด็ดขาด
     if (user.credit < requiredDeposit) {
       return client.replyMessage(event.replyToken, {
         type: 'text',
@@ -298,11 +282,9 @@ async function handleEvent(event) {
       });
     }
 
-    // บันทึกโพยลงระบบหลังผ่านการเช็คยอดเงินเรียบร้อย
     if (!currentBets[userId]) currentBets[userId] = {};
     legs.forEach(leg => {
       currentBets[userId][`leg${leg}`] = baseBet;
-      // ตั้งค่าตั้งต้นรอบจั่วให้เป็นอยู่ไม่จั่ว (-) ไว้ก่อนตามข้อ 11
       if (!drawStatus[userId]) drawStatus[userId] = {};
       drawStatus[userId][`leg${leg}`] = '-';
     });
@@ -313,20 +295,18 @@ async function handleEvent(event) {
     });
   }
 
-  // 2. ตรวจสอบสถานะและยอดเงิน (พิมพ์ C หรือ c) - เวอร์ชัน Flex Message ดึงรูปโปรไฟล์
+  // 2. ตรวจสอบสถานะและยอดเงิน (พิมพ์ C หรือ c) -> เวอร์ชัน Flex Message ดึงรูปโปรไฟล์
   if (text.toLowerCase() === 'c') {
-    // ดึงข้อมูลรูปโปรไฟล์และชื่อสดจาก LINE API
-    let profileUrl = "https://scdn.line-apps.com/n/channel_devcenter/img/fx/01_1_cafe.png"; // รูปสำรองกรณีดึงไม่ผ่าน
+    let profileUrl = "https://scdn.line-apps.com/n/channel_devcenter/img/fx/01_1_cafe.png"; // รูปสำรอง
     try {
       let profile = await client.getProfile(userId);
       if (profile.pictureUrl) {
         profileUrl = profile.pictureUrl;
       }
     } catch (e) {
-      console.log("ไม่สามารถดึงรูปโปรไฟล์ได้ ใช้รูปสำรองแทน");
+      console.log("ไม่สามารถดึงรูปโปรไฟล์ได้");
     }
 
-    // เตรียมข้อความโพย
     let activeBetsText = "ไม่มีโพยค้างอยู่";
     let totalBetWithIns = 0;
     
@@ -335,12 +315,11 @@ async function handleEvent(event) {
       for (let key in currentBets[userId]) {
         let amt = currentBets[userId][key];
         activeBets.push(`${key.replace('leg', 'ขา ')}: ${amt} บ.`);
-        totalBetWithIns += (amt * 3); // ยอดรวมค้ำประกันเด้ง 3 เท่า
+        totalBetWithIns += (amt * 3);
       }
       activeBetsText = activeBets.join('\n');
     }
 
-    // สร้างโครงสร้าง Flex Message
     const flexPayload = {
       type: "flex",
       altText: `👤 เช็คยอดเครดิตของคุณ ${user.name}`,
@@ -351,14 +330,12 @@ async function handleEvent(event) {
           layout: "vertical",
           spacing: "md",
           contents: [
-            // 🖼️ 1. รูปโปรไฟล์สมาชิกกลมๆ อยู่บนสุด
             {
               type: "avatar",
               url: profileUrl,
               size: "xl",
               align: "center"
             },
-            // 👤 2. ชื่อสมาชิก
             {
               type: "text",
               text: `👤 สมาชิก: ${user.name}`,
@@ -367,12 +344,10 @@ async function handleEvent(event) {
               align: "center",
               margin: "sm"
             },
-            // ➖ เส้นคั่นกลาง
             {
               type: "separator",
               margin: "md"
             },
-            // 💰 3. รายละเอียดเครดิตและโพย
             {
               type: "box",
               layout: "vertical",
@@ -408,7 +383,6 @@ async function handleEvent(event) {
       }
     };
 
-    // หากมีโพยเดิมพันค้างอยู่ ให้แสดงบรรทัดยอดแทงรวมค้ำประกันเพิ่มเข้าไปด้วย
     if (currentBets[userId]) {
       flexPayload.contents.body.contents[3].contents.push({
         type: "text",
@@ -422,7 +396,29 @@ async function handleEvent(event) {
     return client.replyMessage(event.replyToken, flexPayload);
   }
 
-  // 3. ขอคืนโพย (พิมพ์ r หรือ R)
+  // 3. จัดการสถานะขอจั่วไพ่ (สำหรับผู้เล่นทั่วไป)
+  const drawRegex = /^([1-6]+)([+\-])$/;
+  if (drawRegex.test(text) && gameState === 'DRAWING') {
+    const match = text.match(drawRegex);
+    const legs = match[1].split('');
+    const action = match[2]; // + คือจั่ว, - คืออยู่
+    
+    if (currentBets[userId]) {
+      let updatedLegs = [];
+      legs.forEach(leg => {
+        if (currentBets[userId][`leg${leg}`]) {
+          if (!drawStatus[userId]) drawStatus[userId] = {};
+          drawStatus[userId][`leg${leg}`] = action;
+          updatedLegs.push(leg);
+        }
+      });
+      if (updatedLegs.length > 0) {
+        return client.replyMessage(event.replyToken, { type: 'text', text: `🃏 คุณ ${user.name} สั่ง ขา ${updatedLegs.join(',')} ให้ [${action === '+' ? 'จั่วไพ่เพิ่ม ➕' : 'อยู่ไม่จั่ว ➖'}] เรียบร้อยครับ` });
+      }
+    }
+  }
+
+  // 4. ขอคืนโพย (พิมพ์ r หรือ R)
   if (text.toLowerCase() === 'r') {
     if (gameState !== 'BETTING') return null;
     if (currentBets[userId]) {
@@ -432,12 +428,12 @@ async function handleEvent(event) {
     }
   }
 
-  // 4. ดูเลขบัญชีโอนเงิน (/บช)
+  // 5. ดูเลขบัญชีโอนเงิน (/บช)
   if (text === '/บช') {
     return client.replyMessage(event.replyToken, { type: 'text', text: bankAccountInfo });
   }
 
-  // 5. แจ้งถอนเงิน: ถอน จำนวนเงิน
+  // 6. แจ้งถอนเงิน: ถอน จำนวนเงิน
   if (text.startsWith('ถอน ')) {
     const amount = parseInt(text.replace('ถอน ', ''));
     if (!isNaN(amount) && amount > 0) {
@@ -446,7 +442,7 @@ async function handleEvent(event) {
       }
       if (user.credit >= amount) {
         user.credit -= amount;
-        user.pendingWithdraw = amount; // ล็อคยอดการถอนเงิน
+        user.pendingWithdraw = amount; 
         return client.replyMessage(event.replyToken, { type: 'text', text: `🔔 แจ้งถอนเงินสำเร็จ!\nคุณ ${user.name} แจ้งถอนยอด ${amount} บาท\n[ระบบล็อคการเดิมพันและถอนซ้ำชั่วคราว] รอแอดมินกดยืนยัน` });
       } else {
         return client.replyMessage(event.replyToken, { type: 'text', text: `❌ ยอดเครดิตของท่านไม่พอสำหรับการถอนเงินจำนวนนี้` });
@@ -454,7 +450,7 @@ async function handleEvent(event) {
     }
   }
 
-  // 6. เมนูกติกาและคำสั่ง
+  // 7. เมนูกติกาและคำสั่ง
   if (text === 'กติกา') {
     return client.replyMessage(event.replyToken, {
       type: 'text',
@@ -470,7 +466,7 @@ async function handleEvent(event) {
   }
 }
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });

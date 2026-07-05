@@ -265,94 +265,35 @@ async function handleEvent(event) {
     });
   }
 
-  // คำสั่ง C เวอร์ชัน Flex Message ดึงรูปโปรไฟล์ที่ถูกต้อง
+  // คำสั่ง C เวอร์ชันข้อความธรรมดา อ่านง่าย ชัวร์ 100% ไม่ติดข้อจำกัดไลน์กลุ่ม
   if (text.toLowerCase() === 'c') {
-    let profileUrl = "https://scdn.line-apps.com/n/channel_devcenter/img/fx/01_1_cafe.png"; 
-    try {
-      let profile = await client.getProfile(userId);
-      if (profile.pictureUrl) {
-        profileUrl = profile.pictureUrl;
-      }
-    } catch (e) {
-      console.log("ไม่สามารถดึงรูปโปรไฟล์ได้");
-    }
-
-    let activeBetsText = "ไม่มีโพยค้างอยู่";
+    let activeBetsText = "❌ ไม่มีโพยค้างอยู่ในรอบนี้";
     let totalBetWithIns = 0;
     
     if (currentBets[userId]) {
       let activeBets = [];
       for (let key in currentBets[userId]) {
         let amt = currentBets[userId][key];
-        activeBets.push(`${key.replace('leg', 'ขา ')}: ${amt} บ.`);
+        activeBets.push(`  • ${key.replace('leg', 'ขา ')}: ${amt} บาท`);
         totalBetWithIns += (amt * 3);
       }
       activeBetsText = activeBets.join('\n');
     }
 
-    // โครงสร้าง Flex Message สมบูรณ์แบบ
-    const flexPayload = {
-      type: "flex",
-      altText: `👤 ตรวจสอบเครดิตของคุณ ${user.name}`,
-      contents: {
-        type: "bubble",
-        body: {
-          type: "box",
-          layout: "vertical",
-          spacing: "md",
-          contents: [
-            {
-              type: "avatar",
-              url: profileUrl,
-              size: "xl",
-              align: "center"
-            },
-            {
-              type: "text",
-              text: `👤 สมาชิก: ${user.name}`,
-              weight: "bold",
-              size: "md",
-              align: "center",
-              margin: "sm"
-            },
-            {
-              type: "separator",
-              margin: "md"
-            },
-            {
-              type: "box",
-              layout: "vertical",
-              margin: "md",
-              spacing: "sm",
-              contents: [
-                {
-                  type: "text",
-                  text: `💰 ยอดเครดิตคงเหลือ: ${user.credit} บาท`,
-                  weight: "bold",
-                  size: "sm",
-                  color: "#1DB446"
-                },
-                {
-                  type: "text",
-                  text: `📝 โพยเดิมพันในรอบนี้:`,
-                  size: "sm",
-                  color: "#555555",
-                  weight: "bold",
-                  margin: "md"
-                },
-                {
-                  type: "text",
-                  text: activeBetsText,
-                  size: "sm",
-                  color: "#666666",
-                  wrap: true
-                }
-              ]
-            }
-          ]
-        }
-      }
-    };
+    // สร้างข้อความตอบกลับแบบธรรมดาแต่จัดรูปเล่มให้อ่านง่าย
+    let replyMsg = `👤 [ ข้อมูลสมาชิก ]\n`;
+    replyMsg += `• ชื่อ: ${user.name}\n`;
+    replyMsg += `-------------------------\n`;
+    replyMsg += `💰 ยอดเครดิตคงเหลือ: ${user.credit} บาท\n`;
+    replyMsg += `📝 โพยเดิมพันปัจจุบัน:\n${activeBetsText}\n`;
+    
+    if (currentBets[userId]) {
+      replyMsg += `-------------------------\n`;
+      replyMsg += `💵 ยอดรวมที่ต้องค้ำเด้ง (3 เท่า): ${totalBetWithIns} บาท`;
+    }
+
+    return client.replyMessage(event.replyToken, { type: 'text', text: replyMsg });
+  }
 
     if (currentBets[userId]) {
       flexPayload.contents.body.contents[3].contents.push({

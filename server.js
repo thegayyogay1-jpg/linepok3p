@@ -313,23 +313,113 @@ async function handleEvent(event) {
     });
   }
 
-  // 2. ตรวจสอบสถานะและยอดเงิน (พิมพ์ C หรือ c) - ข้อ 6
+  // 2. ตรวจสอบสถานะและยอดเงิน (พิมพ์ C หรือ c) - เวอร์ชัน Flex Message ดึงรูปโปรไฟล์
   if (text.toLowerCase() === 'c') {
-    let responseText = `👤 สมาชิก: ${user.name}\n💰 ยอดเครดิตคงเหลือ: ${user.credit} บาท\n`;
+    // ดึงข้อมูลรูปโปรไฟล์และชื่อสดจาก LINE API
+    let profileUrl = "https://scdn.line-apps.com/n/channel_devcenter/img/fx/01_1_cafe.png"; // รูปสำรองกรณีดึงไม่ผ่าน
+    try {
+      let profile = await client.getProfile(userId);
+      if (profile.pictureUrl) {
+        profileUrl = profile.pictureUrl;
+      }
+    } catch (e) {
+      console.log("ไม่สามารถดึงรูปโปรไฟล์ได้ ใช้รูปสำรองแทน");
+    }
+
+    // เตรียมข้อความโพย
+    let activeBetsText = "ไม่มีโพยค้างอยู่";
+    let totalBetWithIns = 0;
     
     if (currentBets[userId]) {
       let activeBets = [];
-      let totalBetWithIns = 0;
       for (let key in currentBets[userId]) {
         let amt = currentBets[userId][key];
         activeBets.push(`${key.replace('leg', 'ขา ')}: ${amt} บ.`);
-        totalBetWithIns += (amt * 3); // รวมยอดแทงบวกค้ำเด้ง 3 เท่า
+        totalBetWithIns += (amt * 3); // ยอดรวมค้ำประกันเด้ง 3 เท่า
       }
-      responseText += `📝 โพยเดิมพันในรอบนี้: ${activeBets.join(', ')}\n💵 ยอดแทงบวกค้ำเด้งรอบนี้: ${totalBetWithIns} บาท`;
-    } else {
-      responseText += `📝 โพยเดิมพันในรอบนี้: ไม่มีโพยค้างอยู่`;
+      activeBetsText = activeBets.join('\n');
     }
-    return client.replyMessage(event.replyToken, { type: 'text', text: responseText });
+
+    // สร้างโครงสร้าง Flex Message
+    const flexPayload = {
+      type: "flex",
+      altText: `👤 เช็คยอดเครดิตของคุณ ${user.name}`,
+      contents: {
+        type: "bubble",
+        body: {
+          type: "box",
+          layout: "vertical",
+          spacing: "md",
+          contents: [
+            // 🖼️ 1. รูปโปรไฟล์สมาชิกกลมๆ อยู่บนสุด
+            {
+              type: "avatar",
+              url: profileUrl,
+              size: "xl",
+              align: "center"
+            },
+            // 👤 2. ชื่อสมาชิก
+            {
+              type: "text",
+              text: `👤 สมาชิก: ${user.name}`,
+              weight: "bold",
+              size: "md",
+              align: "center",
+              margin: "sm"
+            },
+            // ➖ เส้นคั่นกลาง
+            {
+              type: "separator",
+              margin: "md"
+            },
+            // 💰 3. รายละเอียดเครดิตและโพย
+            {
+              type: "box",
+              layout: "vertical",
+              margin: "md",
+              spacing: "sm",
+              contents: [
+                {
+                  type: "text",
+                  text: `💰 ยอดเครดิตคงเหลือ: ${user.credit} บาท`,
+                  weight: "bold",
+                  size: "sm",
+                  color: "#1DB446"
+                },
+                {
+                  type: "text",
+                  text: `📝 โพยเดิมพันในรอบนี้:`,
+                  size: "sm",
+                  color: "#555555",
+                  weight: "bold",
+                  margin: "md"
+                },
+                {
+                  type: "text",
+                  text: activeBetsText,
+                  size: "sm",
+                  color: "#666666",
+                  wrap: true
+                }
+              ]
+            }
+          ]
+        }
+      }
+    };
+
+    // หากมีโพยเดิมพันค้างอยู่ ให้แสดงบรรทัดยอดแทงรวมค้ำประกันเพิ่มเข้าไปด้วย
+    if (currentBets[userId]) {
+      flexPayload.contents.body.contents[3].contents.push({
+        type: "text",
+        text: `💵 ยอดแทงรวมค้ำเด้ง: ${totalBetWithIns} บาท`,
+        size: "xs",
+        color: "#aaaaaa",
+        margin: "sm"
+      });
+    }
+
+    return client.replyMessage(event.replyToken, flexPayload);
   }
 
   // 3. ขอคืนโพย (พิมพ์ r หรือ R)

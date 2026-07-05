@@ -47,7 +47,7 @@ function parseCardResult(resultStr) {
   else if (cleaned.includes('**')) { multiplier = 3; cleaned = cleaned.replace('**', ''); }
   else if (cleaned.includes('*')) { multiplier = 2; cleaned = cleaned.replace('*', ''); }
 
-  // เช็คจำนวนใบจากความยาวตัวอักษรดิบ (ใช้ช่วยกรองตรรกะเปรียบเทียบ)
+  // เช็คจำนวนใบจากความยาวตัวอักษรดิบ
   let pureDigits = resultStr.replace(/[*_a-zA-Z]/g, '').trim();
   let cardsCount = pureDigits.length >= 3 ? 3 : 2; 
 
@@ -76,7 +76,6 @@ function parseCardResult(resultStr) {
   
   // 6. ไพ่แต้มปกติ
   let score = parseInt(cleaned) || 0;
-  // กรณีระบุมาเป็นตัวเลขตรงๆ เช่น 62 หรือ 72* แต่ไม่ได้พิมพ์คำว่าป๊อกนำหน้า (ระบบจะแปลงเป็นแต้มหลักหน่วย)
   if (score > 9) {
     score = score % 10;
   }
@@ -105,7 +104,7 @@ function compareHands(player, dealer) {
   if (player.score > dealer.score) return 'WIN';
   if (player.score < dealer.score) return 'LOSE';
   
-  return 'DRAW'; // แต้มเท่ากัน ไพ่ประเภทเดียวกัน = เจ๊า
+  return 'DRAW'; 
 }
 
 async function handleEvent(event) {
@@ -233,13 +232,11 @@ async function handleEvent(event) {
       tempResults = { first: firstSet, second: secondSet };
       gameState = 'CONFIRMING';
       
-      // ดึงข้อมูลหน้าไพ่ของเจ้ามือ
       const dealerFirst = parseCardResult(firstSet[firstSet.length - 1]);
       const dealerSecond = parseCardResult(secondSet[secondSet.length - 1]);
 
       let displayMsg = `📊 [สรุปผลไพ่รวมประจำรอบ]\n\n`;
       
-      // 1. ชุดที่ 1 ไม่จั่ว (2 ใบแรก)
       displayMsg += `🔸 ชุดที่ 1 (ไม่จั่ว)\n👑 เจ้ามือ: ${dealerFirst.raw}\n`;
       for (let i = 0; i < firstSet.length - 1; i++) {
         let legNum = i + 1;
@@ -251,7 +248,6 @@ async function handleEvent(event) {
       
       displayMsg += `\n-------------------------\n\n`;
       
-      // 2. ชุดที่ 2 จั่ว (รวมใบที่ 3)
       displayMsg += `🔹 ชุดที่ 2 (จั่วเพิ่ม)\n👑 เจ้ามือ: ${dealerSecond.raw}\n`;
       for (let i = 0; i < secondSet.length - 1; i++) {
         let legNum = i + 1;
@@ -296,7 +292,7 @@ async function handleEvent(event) {
           let betAmount = pBet[`leg${legNum}`];
           let isDrawing = pDraw[`leg${legNum}`] === '+'; 
           
-          totalInsuranceRefund += (betAmount * 3); // สะสมยอดคืนประกันตัวเต็ม
+          totalInsuranceRefund += (betAmount * 3); 
 
           let pResult = isDrawing ? parseCardResult(secondSet[i]) : parseCardResult(firstSet[i]);
           let dResult = isDrawing ? dealerSecond : dealerFirst;
@@ -305,7 +301,7 @@ async function handleEvent(event) {
           let winMult = pResult.multiplier;
           let loseMult = dResult.multiplier;
           
-          if (loseMult === 5) loseMult = 3; // ล็อกกฎเสียสูงสุดไม่เกิน 3 เท่า
+          if (loseMult === 5) loseMult = 3; 
 
           if (outcome === 'WIN') {
             let winAmt = betAmount * winMult;
@@ -321,12 +317,11 @@ async function handleEvent(event) {
         }
       }
       
-      // อัปเดตเงินคืนพูลเครดิตจริง: เงินปัจจุบัน + คืนค่าประกันทั้งหมด + ผลได้เสียรอบนี้
       pUser.credit += (totalInsuranceRefund + totalChange);
       
       billSummaryText += `👤 [รหัสสมาชิก ${pUser.memberId || '?'}] คุณ ${pUser.realName}:\n`;
       billSummaryText += detailLines.map(l => `  • ${l}`).join('\n') + '\n';
-      billSummaryText += `💰 สรุปรอบนี้: ${totalChange >= 0 ? '+' : ''}${totalChange} บาท | เครดิตสุทธิ: ${pUser.credit} บาท\n`;
+      billSummaryText += `💰 Сรุปรอบนี้: ${totalChange >= 0 ? '+' : ''}${totalChange} บาท | เครดิตสุทธิ: ${pUser.credit} บาท\n`;
       billSummaryText += `-------------------------\n`;
     }
 
@@ -350,15 +345,16 @@ async function handleEvent(event) {
   // ==========================================
   // 👥 คำสั่งของฝั่งผู้เล่น (ระบบวิเคราะห์โพย)
   // ==========================================
+  let cleanText = text.replace(/\s+/g, ' '); // แก้ไขจุดบกพร่อง: ประกาศตัวแปร cleanText ไว้บนสุดของส่วนนี้
   let isBettingMessage = false;
   let parsedLegs = [];
   let parsedPrice = 0;
   let betTypeLabel = "";
 
-  if (gameState === 'BETTING') {
-    const เหมาRegex = /^(มข|มจ|เหมาขา|เหมาเจ้า)\s*[- ]?\s*(\d+)$/i;
-    const ระบุขาRegex = /^(แทง|จ)?\s*([1-6]+)\s*[- ]\s*(\d+)$/;
+  const เหมาRegex = /^(มข|มจ|เหมาขา|เหมาเจ้า)\s*[- ]?\s*(\d+)$/i;
+  const ระบุขาRegex = /^(แทง|จ)?\s*([1-6]+)\s*[- ]\s*(\d+)$/;
 
+  if (gameState === 'BETTING') {
     if (เหมาRegex.test(cleanText)) {
       const match = cleanText.match(เหมาRegex);
       const type = match[1];
@@ -389,7 +385,6 @@ async function handleEvent(event) {
       return client.replyMessage(event.replyToken, { type: 'text', text: `❌ เครดิตไม่พอ! รายการ [${betTypeLabel} ขาละ ${parsedPrice}] ต้องใช้ยอดค้ำประกันเด้งรวม ${requiredDeposit} บาท แต่ปัจจุบันคุณมีแค่ ${user.credit} บาท` });
     }
 
-    // หักเงินค้ำประกัน 3 เท่าทันที
     user.credit -= requiredDeposit;
 
     if (!currentBets[userId]) currentBets[userId] = {};

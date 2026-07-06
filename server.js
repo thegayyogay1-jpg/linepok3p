@@ -58,8 +58,7 @@ if (command === "เติม" || command === "ลบ") {
         }
     }
 } else { 
-
-            // 🔍 1. เช็กก่อนว่าคนนี้เคยลงทะเบียนในระบบหรือยัง?
+            // ==================== [ START: โค้ดสเต็ปที่ 1 เช็กก่อนว่าคนนี้เคยลงทะเบียนในระบบหรือยัง ] ====================
 const isRegistered = usersWallets[userId] ? true : false;
 
 if (!isRegistered) {
@@ -98,7 +97,27 @@ if (!isRegistered) {
         replyText = ""; 
     }
 }
+    }
+    
 // ==================== [ END: โค้ดสเต็ปที่ 1 เวอร์ชันแก้ไขใหม่ ] ====================
+
+            // 🚀 ยิงข้อความตอบกลับไปที่ LINE
+            if (replyText) {
+                try {
+                    await axios.post('https://api.line.me/v2/bot/message/reply', {
+                        replyToken: replyToken,
+                        messages: [{ type: 'text', text: replyText }]
+                    }, {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${TOKEN}`
+                        }
+                    });
+                } catch (error) {
+                    console.error("❌ ส่งข้อความกลับล้มเหลว:", error.response ? error.response.data : error.message);
+                }
+            }
+        }
     }
     res.sendStatus(200);
 });

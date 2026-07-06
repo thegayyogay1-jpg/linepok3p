@@ -1,498 +1,310 @@
 const express = require('express');
-const line = require('@line/bot-sdk');
+const app = express();
+app.use(express.json());
 
-const config = {
-  channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN,
-  channelSecret: process.env.LINE_CHANNEL_SECRET
+// พอร์ตสำหรับให้ Render ตรวจสอบสถานะการทำงาน (Web Service Health Check)
+const PORT = process.env.PORT || 3000;
+app.get('/', (req, res) => res.send('🎲 บอทคำนวณระบบไพ่ 3 ใบทำงานปกติบน Render!'));
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+// ----------------------------------------------------
+// 💾 ฐานข้อมูลจำลอง (ในระบบจริงควรเชื่อมต่อ MongoDB / SQL)
+// ----------------------------------------------------
+let usersWallet = {
+    "user_01": { name: "ผู้เล่น A", credit: 1000 },
+    "user_02": { name: "ผู้เล่น B", credit: 500 },
+    "admin": { name: "แอดมินระบบ", credit: 999999 }
 };
 
-const app = express();
-const client = new line.Client(config);
+let currentRoundBets = []; // เก็บโพยเดิมพันในรอบปัจจุบัน
+let isRoundOpen = false;   // สถานะเปิด-ปิดรับโพย
 
-// 🗄️ Database ในหน่วยความจำ (Memory Storage)
-let gameState = 'CLOSED'; 
-let players = {};         
-let memberMap = {};       
-let currentBets = {};  
-let drawStatus = {};   
-let tempResults = null; 
-let memberCount = 0;      
+// 👑 ลำดับความใหญ่ของไพ่ (Rank)
+const CARD_RANKS = ['$9', '$8', 't', 'sf', 's', 'h', '9', '8', '7', '6', '5', '4', '3', '2', '1', '0'];
+const SPECIAL_MULTIPLIERS = { 't': 5, 'sf': 5, 's': 3, 'h': 3 };
 
-// 💸 ระบบคิวถอนเงิน
-let withdrawQueue = [];   
-
-// 💬 🔗 ส่วนตั้งค่าข้อมูลติดต่อ
-const adminLineID = "@LINE_ADMIN"; 
-const adminLineLink = "https://line.me/ti/p/~ไอดีไลน์ของแอดมิน"; 
-let bankAccountInfo = "🏦 ธนาคาร: กสิกรไทย\nเลขบัญชี: xxx-x-xxxxx-x\nชื่อบัญชี: บอทป๊อกเด้งอัจฉริยะ";
-
-app.post('/callback', line.middleware(config), (req, res) => {
-  Promise.all(req.body.events.map(handleEvent))
-    .then(() => res.json({ status: 'ok' }))
-    .catch((err) => {
-      console.error(err);
-      res.status(500).end();
-    });
-});
-
-// 🛠️ ฟังก์ชันแปลงตัวอักษรไพ่เดี่ยว (แก้ไข: 1-9 มีค่าตามเลข / t, j, q, k มีค่าเป็น 0)
-function getCardValue(c) {
-  if (['t', 'j', 'q', 'k'].includes(c)) return 0;
-  let val = parseInt(c);
-  return isNaN(val) ? 0 : val;
+// ----------------------------------------------------
+// ⚙️ ฟังก์ชันตัวช่วยคำนวณไพ่ (Core Logic)
+// ----------------------------------------------------
+function getCleanResult(resultStr) {
+    if (!resultStr) return { cleanVal: null, bounce: 1 };
+    const cleanVal = resultStr.replace(/\*/g, '');
+    const bounce = (resultStr.match(/\*/g) || []).length + 1;
+    return { cleanVal, bounce };
 }
 
-// ฟังก์ชันวิเคราะห์หน้าไพ่ คำนวณแต้ม และจัดกลุ่มประเภทไพ่พิเศษตามกฎป๊อกเด้งจริง
-function parseCardResult(resultStr) {
-  if (!resultStr) return { type: 'POINT', score: 0, multiplier: 1, raw: '0 แต้ม', isPok: false, cardsCount: 2 };
-  
-  let cleaned = resultStr.trim().toLowerCase();
-  let multiplier = 1;
-  
-  // 1. ดึงข้อมูลตัวคูณเด้งจากสัญลักษณ์พิเศษ (*, **, ***)
-  if (cleaned.includes('***')) { multiplier = 5; cleaned = cleaned.replace('***', ''); }
-  else if (cleaned.includes('**')) { multiplier = 3; cleaned = cleaned.replace('**', ''); }
-  else if (cleaned.includes('*')) { multiplier = 2; cleaned = cleaned.replace('*', ''); }
-
-  // แยกเฉพาะตัวอักษรหน้าไพ่เพื่อนำมาคำนวณแต้ม (เช่น "22" หรือ "kq" หรือ "225")
-  let cardChars = cleaned.replace(/[^0-9a-z]/g, '').split('');
-  let cardsCount = cardChars.length;
-  
-  // คำนวณผลรวมแต้มดิบพื้นฐาน
-  let totalScore = 0;
-  cardChars.forEach(c => { totalScore += getCardValue(c); });
-  let finalScore = totalScore % 10;
-
-  // ตรวจสอบสัญลักษณ์ข้อความกำกับพิเศษ (ถ้ามีพิมพ์ระบุบวกมาตรงๆ)
-  if (cleaned.includes('ตอง')) {
-    return { type: 'TONG', score: 10, multiplier: Math.max(multiplier, 5), raw: 'ไพ่ตอง 👑 (5 เด้ง)', isPok: false, cardsCount: 3 };
-  }
-  if (cleaned.includes('สเตรฟลัช') || cleaned.includes('สเตรฟรัช') || cleaned.includes('เรียงดอก')) {
-    return { type: 'STRAIGHT_FLUSH', score: 9, multiplier: Math.max(multiplier, 5), raw: 'สเตรฟลัช 🏆 (5 เด้ง)', isPok: false, cardsCount: 3 };
-  }
-  if (cleaned.includes('เรียง') || cleaned.includes('สเตร')) {
-    return { type: 'STRAIGHT', score: 8, multiplier: Math.max(multiplier, 3), raw: 'ไพ่เรียง 📈 (3 เด้ง)', isPok: false, cardsCount: 3 };
-  }
-  if (cleaned.includes('เซียน') || cleaned.includes('สามเหลือง')) {
-    return { type: 'ZEAN', score: 7, multiplier: Math.max(multiplier, 3), raw: 'ไพ่เซียน 👑 (3 เด้ง)', isPok: false, cardsCount: 3 };
-  }
-
-  // 2. วิเคราะห์จากโครงสร้างหน้าไพ่โดยอัตโนมัติ (กรณีส่งมาเฉพาะหน้าไพ่ดิบ เช่น 2 ใบ หรือ 3 ใบ)
-  if (cardsCount === 2) {
-    // ตรวจสอบไพ่ป๊อก (เกิดจาก 2 ใบแรกเท่านั้น)
-    if (finalScore === 9) {
-      return { type: 'POK', score: 9, multiplier: multiplier, raw: `ป๊อก 9 💥${multiplier > 1 ? ` (${multiplier} เด้ง)` : ''}`, isPok: true, cardsCount: 2 };
-    }
-    if (finalScore === 8) {
-      return { type: 'POK', score: 8, multiplier: multiplier, raw: `ป๊อก 8 💥${multiplier > 1 ? ` (${multiplier} เด้ง)` : ''}`, isPok: true, cardsCount: 2 };
-    }
-  } 
-  
-  if (cardsCount === 3) {
-    // เช็คไพ่ตองอัตโนมัติ (เช่น 555, kkk)
-    if (cardChars[0] === cardChars[1] && cardChars[1] === cardChars[2]) {
-      return { type: 'TONG', score: 10, multiplier: 5, raw: 'ไพ่ตอง 👑 (5 เด้ง)', isPok: false, cardsCount: 3 };
-    }
+function compareCards(playerCard, dealerCard) {
+    const pResult = getCleanResult(playerCard);
+    const dResult = getCleanResult(dealerCard);
+    const pIdx = CARD_RANKS.indexOf(pResult.cleanVal);
+    const dIdx = CARD_RANKS.indexOf(dResult.cleanVal);
+    const finalPIdx = pIdx === -1 ? 99 : pIdx;
+    const finalDIdx = dIdx === -1 ? 99 : dIdx;
     
-    // เช็คไพ่เซียน / สามเหลืองอัตโนมัติ (J, Q, K ทั้ง 3 ใบ เช่น k q j)
-    let yellowCount = 0;
-    cardChars.forEach(c => { if (['j', 'q', 'k'].includes(c)) yellowCount++; });
-    if (yellowCount === 3) {
-      return { type: 'ZEAN', score: 7, multiplier: Math.max(multiplier, 3), raw: 'ไพ่เซียน 👑 (3 เด้ง)', isPok: false, cardsCount: 3 };
-    }
-  }
-
-  // 3. ผลลัพธ์แต้มปกติ
-  let multText = multiplier > 1 ? ` (${multiplier} เด้ง)` : '';
-  return { type: 'POINT', score: finalScore, multiplier: multiplier, raw: `${finalScore} แต้ม${multText}`, isPok: false, cardsCount: cardsCount };
+    if (finalPIdx < finalDIdx) return 'win';
+    if (finalPIdx > finalDIdx) return 'lose';
+    return 'draw';
 }
 
-// ฟังก์ชันเปรียบเทียบผลแพ้ชนะตามกฎป๊อกเด้ง
-function compareHands(player, dealer) {
-  if (dealer.isPok && player.cardsCount === 3) return 'LOSE';
-  if (player.isPok && dealer.cardsCount === 3) return 'WIN';
-
-  const typeOrder = { 'POK': 7, 'TONG': 6, 'STRAIGHT_FLUSH': 5, 'STRAIGHT': 4, 'ZEAN': 3, 'POINT': 2 };
-  
-  if (typeOrder[player.type] > typeOrder[dealer.type]) return 'WIN';
-  if (typeOrder[player.type] < typeOrder[dealer.type]) return 'LOSE';
-  
-  if (player.score > dealer.score) return 'WIN';
-  if (player.score < dealer.score) return 'LOSE';
-  
-  return 'DRAW'; 
+function calculateMultiplier(resultStr, isWinner) {
+    const { cleanVal, bounce } = getCleanResult(resultStr);
+    if (isWinner && SPECIAL_MULTIPLIERS[cleanVal]) return SPECIAL_MULTIPLIERS[cleanVal];
+    return bounce;
 }
 
-async function handleEvent(event) {
-  if (event.type !== 'message' || event.message.type !== 'text') return null;
-
-  const text = event.message.text.trim();
-  const userId = event.source.userId;
-  
-  let lineName = "ผู้เล่นทั่วไป";
-  try {
-    const profile = await client.getProfile(userId);
-    lineName = profile.displayName;
-  } catch (e) {}
-
-  if (!players[userId]) {
-    players[userId] = { memberId: null, realName: lineName, credit: 0, pendingWithdraw: 0 };
-  }
-  let user = players[userId];
-
-  // ==========================================
-  // 📝 ระบบลงทะเบียนสมาชิกด้วย C/ชื่อ-นามสกุล
-  // ==========================================
-  if (text.toUpperCase().startsWith('C/')) {
-    const nameInput = text.substring(2).trim();
-    if (!nameInput) return client.replyMessage(event.replyToken, { type: 'text', text: `⚠️ กรุณาระบุ ชื่อ-นามสกุล ให้ถูกต้อง เช่น C/นายสมชาย รักดี` });
+// ----------------------------------------------------
+// 📩 ฟังก์ชันประมวลผลการส่งโพย (พิมพ์แทง)ของผู้เล่น
+// ----------------------------------------------------
+function parseAndPlaceBet(userId, text) {
+    if (!isRoundOpen) return "❌ ขออภัย ระบบยังไม่เปิดให้ส่งโพยในรอบนี้";
+    if (!usersWallet[userId]) usersWallet[userId] = { name: `ผู้เล่น_${userId.substring(0,4)}`, credit: 0 };
     
-    if (user.memberId) {
-      user.realName = nameInput;
-      return client.replyMessage(event.replyToken, { type: 'text', text: `🔄 อัปเดตข้อมูลสำเร็จ!\nสมาชิกคนที่: ${user.memberId}\nเปลี่ยนชื่อเป็น: ${user.realName}` });
-    } else {
-      memberCount++;
-      user.memberId = memberCount;
-      user.realName = nameInput;
-      memberMap[memberCount] = userId; 
-      
-      let welcomeMsg = `🎉 ลงทะเบียนสมาชิกใหม่สำเร็จ! 🎉\n🆔 คุณคือสมาชิกคนที่: ${user.memberId}\n👤 ชื่อระบบ: ${user.realName}\n💰 ยอดเครดิตเริ่มต้น: ${user.credit} บาท`;
-      return client.replyMessage(event.replyToken, { type: 'text', text: welcomeMsg });
-    }
-  }
-
-  // ==========================================
-  // 👑 แอดมินจัดการเครดิต & เปิดห้อง
-  // ==========================================
-  if (text.startsWith('เติม ')) {
-    const parts = text.split(' ');
-    if (parts.length === 3) {
-      const mId = parseInt(parts[1]);
-      const amount = parseInt(parts[2]);
-      const targetUserId = memberMap[mId];
-      if (targetUserId && players[targetUserId] && !isNaN(amount)) {
-        players[targetUserId].credit += amount;
-        return client.replyMessage(event.replyToken, { type: 'text', text: `💰 เติมเครดิตให้ [สมาชิกคนที่ ${mId}] คุณ ${players[targetUserId].realName} +${amount} สำเร็จ!\nยอดสุทธิ: ${players[targetUserId].credit} บาท` });
-      }
-    }
-  }
-
-  if (text.startsWith('ลบ ')) {
-    const parts = text.split(' ');
-    if (parts.length === 3) {
-      const mId = parseInt(parts[1]);
-      const amount = parseInt(parts[2]);
-      const targetUserId = memberMap[mId];
-      if (targetUserId && players[targetUserId] && !isNaN(amount)) {
-        players[targetUserId].credit = Math.max(0, players[targetUserId].credit - amount);
-        return client.replyMessage(event.replyToken, { type: 'text', text: `🚨 ลบยอดเครดิตของ [สมาชิกคนที่ ${mId}] คุณ ${players[targetUserId].realName} -${amount} เรียบร้อย!\nยอดปัจจุบัน: ${players[targetUserId].credit} บาท` });
-      }
-    }
-  }
-
-  if (text.toLowerCase().startsWith('y ')) {
-    const mId = parseInt(text.substring(2).trim());
-    const targetUserId = memberMap[mId];
-    if (targetUserId && players[targetUserId] && players[targetUserId].pendingWithdraw > 0) {
-      const withdrawAmount = players[targetUserId].pendingWithdraw;
-      players[targetUserId].pendingWithdraw = 0; 
-      withdrawQueue = withdrawQueue.filter(q => q.memberId !== mId);
-      return client.replyMessage(event.replyToken, { type: 'text', text: `✅ อนุมัติการถอนเงินสำเร็จ!\n👤 สมาชิกคนที่ ${mId} (${players[targetUserId].realName}) ยอด ${withdrawAmount} บาท เรียบร้อยครับ` });
-    }
-  }
-
-  if (text === 'ล้างระบบ') {
-    for (const pId in currentBets) {
-      let pBet = currentBets[pId];
-      let totalLocked = 0;
-      for (let leg in pBet) { totalLocked += (pBet[leg] * 3); }
-      if (players[pId]) { players[pId].credit += totalLocked; }
-    }
-    currentBets = {}; drawStatus = {}; gameState = 'CLOSED'; tempResults = null; withdrawQueue = [];
-    return client.replyMessage(event.replyToken, { type: 'text', text: `🧹 ล้างระบบการเดิมพัน รีเซ็ตห้องเกม และคืนเงินประกันค้างโพยทั้งหมดเรียบร้อยแล้ว!` });
-  }
-
-  if (text.toLowerCase() === 'o') {
-    gameState = 'BETTING'; currentBets = {}; drawStatus = {}; tempResults = null;
-    return client.replyMessage(event.replyToken, { type: 'text', text: `🟢 [เปิดรับโพย] ป๊อกเด้ง 3 ใบเริ่มขึ้นแล้ว! กรุณาส่งโพยเดิมพันของท่านเข้ามาได้เลยครับ` });
-  }
-
-  if (text.toLowerCase() === 'x') {
-    if (gameState !== 'BETTING') return null;
-    gameState = 'WAITING_DRAW';
-    return client.replyMessage(event.replyToken, { type: 'text', text: `🛑 [ปิดรับโพยแทง] ปิดรับโพยประจำรอบแล้ว! ห้ามแก้ไขหรือส่งโพยเพิ่มหลังจากนี้ครับ` });
-  }
-
-  if (text.toLowerCase() === 'oo') {
-    if (gameState !== 'WAITING_DRAW') return null;
-    gameState = 'DRAWING';
-    return client.replyMessage(event.replyToken, { type: 'text', text: `🃏 [เปิดรอบจั่ว] สมาชิกต้องการจั่วเพิ่ม พิมพ์เลขขาตามด้วย + (เช่น 12+) ถ้าขาไหนต้องการอยู่ให้พิมพ์ - ได้เลยครับ` });
-  }
-
-  if (text.toLowerCase() === 'xx') {
-    if (gameState !== 'DRAWING') return null;
-    gameState = 'WAITING_RESULT';
-    return client.replyMessage(event.replyToken, { type: 'text', text: `🔒 [ปิดรอบจั่ว] หมดเวลาการเลือกจั่วเพิ่มแล้วครับ! รอกลลัพธ์สรุปไพ่จากแอดมิน` });
-  }
-
-  // ==========================================
-  // 📊 แอดมินส่งผลไพ่
-  // ==========================================
-  if (text.startsWith('/') && gameState === 'WAITING_RESULT') {
-    const lines = text.split('\n');
-    if (lines.length >= 2 && lines[0].startsWith('/') && lines[1].startsWith('//')) {
-      const firstSet = lines[0].substring(1).split(',');
-      const secondSet = lines[1].substring(2).split(',');
-      if (firstSet.length < 2 || secondSet.length < 2) return null;
-      
-      tempResults = { first: firstSet, second: secondSet };
-      gameState = 'CONFIRMING';
-      
-      const dealerFirst = parseCardResult(firstSet[firstSet.length - 1]);
-      const dealerSecond = parseCardResult(secondSet[secondSet.length - 1]);
-
-      let displayMsg = `📊 [สรุปผลไพ่รวมประจำรอบ]\n\n`;
-      
-      displayMsg += `🔸 ชุดที่ 1 (ไม่จั่ว)\n👑 เจ้ามือ: ${dealerFirst.raw}\n`;
-      for (let i = 0; i < firstSet.length - 1; i++) {
-        let legNum = i + 1;
-        let pResult = parseCardResult(firstSet[i]);
-        let outcome = compareHands(pResult, dealerFirst);
-        let statusText = outcome === 'WIN' ? 'ชนะ 🎉' : (outcome === 'LOSE' ? 'แพ้ ❌' : 'เจ๊า 🤝');
-        displayMsg += `  • ขา ${legNum} - ${pResult.raw} (${statusText})\n`;
-      }
-      
-      displayMsg += `\n-------------------------\n\n`;
-      
-      displayMsg += `🔹 ชุดที่ 2 (จั่วเพิ่ม)\n👑 เจ้ามือ: ${dealerSecond.raw}\n`;
-      for (let i = 0; i < secondSet.length - 1; i++) {
-        let legNum = i + 1;
-        let pResult = parseCardResult(secondSet[i]);
-        let outcome = compareHands(pResult, dealerSecond);
-        let statusText = outcome === 'WIN' ? 'ชนะ 🎉' : (outcome === 'LOSE' ? 'แพ้ ❌' : 'เจ๊า 🤝');
-        displayMsg += `  • ขา ${legNum} - ${pResult.raw} (${statusText})\n`;
-      }
-      
-      displayMsg += `\n⚠️ แอดมินตรวจสอบความถูกต้อง หากถูกต้องพิมพ์ "OK" เพื่อส่งบิลคิดเงินรายบุคคล หากผิดพลาดพิมพ์ "no"`;
-      
-      return client.replyMessage(event.replyToken, { type: 'text', text: displayMsg });
-    }
-  }
-
-  // ==========================================
-  // 💰 แอดมินพิมพ์ OK -> คำนวณเงิน
-  // ==========================================
-  if (text.toUpperCase() === 'OK' && gameState === 'CONFIRMING' && tempResults) {
-    let billSummaryText = `📋 [สรุปบิลได้เสียรายบุคคล]\n-------------------------\n`;
-    const firstSet = tempResults.first;
-    const secondSet = tempResults.second;
+    let user = usersWallet[userId];
+    const cleanText = text.trim();
     
-    const dealerFirst = parseCardResult(firstSet[firstSet.length - 1]);
-    const dealerSecond = parseCardResult(secondSet[secondSet.length - 1]);
-    
-    let hasBets = false;
-
-    for (const pId in currentBets) {
-      hasBets = true;
-      let pBet = currentBets[pId];
-      let pDraw = drawStatus[pId] || {};
-      let pUser = players[pId];
-      let totalChange = 0;
-      let totalInsuranceRefund = 0;
-      
-      let detailLines = [];
-
-      for (let i = 0; i < firstSet.length - 1; i++) {
-        let legNum = i + 1;
-        if (pBet[`leg${legNum}`]) {
-          let betAmount = pBet[`leg${legNum}`];
-          let isDrawing = pDraw[`leg${legNum}`] === '+'; 
-          
-          totalInsuranceRefund += (betAmount * 3); 
-
-          let pResult = isDrawing ? parseCardResult(secondSet[i]) : parseCardResult(firstSet[i]);
-          let dResult = isDrawing ? dealerSecond : dealerFirst;
-          
-          let outcome = compareHands(pResult, dResult);
-          let winMult = pResult.multiplier;
-          let loseMult = dResult.multiplier;
-          
-          if (loseMult === 5) loseMult = 3; 
-
-          if (outcome === 'WIN') {
-            let winAmt = betAmount * winMult;
-            totalChange += winAmt;
-            detailLines.push(`ขา ${legNum} (แทง ${betAmount}) ชนะ x${winMult} (+${winAmt})`);
-          } else if (outcome === 'LOSE') {
-            let loseAmt = betAmount * loseMult;
-            totalChange -= loseAmt;
-            detailLines.push(`ขา ${legNum} (แทง ${betAmount}) แพ้ x${loseAmt} (-${loseAmt})`);
-          } else {
-            detailLines.push(`ขา ${legNum} (แทง ${betAmount}) เจ๊า (0)`);
-          }
-        }
-      }
-      
-      pUser.credit += (totalInsuranceRefund + totalChange);
-      
-      billSummaryText += `👤 [รหัสสมาชิก ${pUser.memberId || '?'}] คุณ ${pUser.realName}:\n`;
-      billSummaryText += detailLines.map(l => `  • ${l}`).join('\n') + '\n';
-      billSummaryText += `💰 สรุปรอบนี้: ${totalChange >= 0 ? '+' : ''}${totalChange} บาท | เครดิตสุทธิ: ${pUser.credit} บาท\n`;
-      billSummaryText += `-------------------------\n`;
-    }
-
-    if (!hasBets) {
-      billSummaryText += `❌ ไม่มีข้อมูลการเดิมพันของสมาชิกในรอบนี้ค่ะ`;
-    }
-
-    gameState = 'CLOSED';
-    currentBets = {};
-    drawStatus = {};
-    tempResults = null;
-    return client.replyMessage(event.replyToken, { type: 'text', text: billSummaryText });
-  }
-
-  if (text.toLowerCase() === 'no' && gameState === 'CONFIRMING') {
-    gameState = 'WAITING_RESULT';
-    tempResults = null;
-    return client.replyMessage(event.replyToken, { type: 'text', text: `❌ ยกเลิกผลไพ่เรียบร้อยแล้ว แอดมินสามารถส่งผลไพ่ 2 บรรทัดใหม่อีกครั้งได้เลยครับ` });
-  }
-
-  // ==========================================
-  // 👥 คำสั่งของฝั่งผู้เล่น
-  // ==========================================
-  let cleanText = text.replace(/\s+/g, ' '); 
-  let isBettingMessage = false;
-  let parsedLegs = [];
-  let parsedPrice = 0;
-  let betTypeLabel = "";
-
-  const เหมาRegex = /^(มข|มจ|เหมาขา|เหมาเจ้า)\s*[- ]?\s*(\d+)$/i;
-  const ระบุขาRegex = /^(แทง|จ)?\s*([1-6]+)\s*[- ]\s*(\d+)$/;
-
-  if (gameState === 'BETTING') {
-    if (เหมาRegex.test(cleanText)) {
-      const match = cleanText.match(เหมาRegex);
-      const type = match[1];
-      parsedPrice = parseInt(match[2]);
-      parsedLegs = ['1', '2', '3', '4', '5', '6'];
-      betTypeLabel = (type === 'มข' || type === 'เหมาขา') ? "เหมาขาผู้เล่น" : "เหมาเจ้าสู้ทุกขา";
-      isBettingMessage = true;
-    } else if (ระบุขาRegex.test(cleanText)) {
-      const match = cleanText.match(ระบุขาRegex);
-      parsedLegs = match[2].split('');
-      parsedPrice = parseInt(match[3]);
-      betTypeLabel = `ขา ${parsedLegs.join(',')}`;
-      isBettingMessage = true;
-    }
-  }
-
-  const แทงRegexตรวจสอบ = /^(มข|มจ|เหมาขา|เหมาเจ้า|แทง|จ)?\s*([1-6]*)\s*[- ]?\s*(\d+)$/;
-  if (gameState !== 'BETTING' && แทงRegexตรวจสอบ.test(cleanText) && (cleanText.includes('-') || cleanText.includes('มข') || cleanText.includes('มจ') || text.match(/[1-6]+-\d+/))) {
-    return client.replyMessage(event.replyToken, { type: 'text', text: `⚠️ [ระบบปิดรับโพย] ขณะนี้ไม่ได้อยู่ในเวลาเปิดรับเดิมพัน หรือรอบการแทงยังไม่เริ่มขึ้นค่ะ` });
-  }
-
-  if (isBettingMessage && gameState === 'BETTING') {
-    if (user.pendingWithdraw > 0) return client.replyMessage(event.replyToken, { type: 'text', text: `⚠️ บัญชีของคุณถูกล็อกการเดิมพันชั่วคราว เนื่องจากอยู่ในระหว่างรอการอนุมัติถอนเงินยอด ${user.pendingWithdraw} บาทครับ` });
-
-    const requiredDeposit = parsedPrice * 3 * parsedLegs.length; 
-    if (user.credit < requiredDeposit) {
-      return client.replyMessage(event.replyToken, { type: 'text', text: `❌ เครดิตไม่พอ! รายการ [${betTypeLabel} ขาละ ${parsedPrice}] ต้องใช้ยอดค้ำประกันเด้งรวม ${requiredDeposit} บาท แต่ปัจจุบันคุณมีแค่ ${user.credit} บาท` });
-    }
-
-    user.credit -= requiredDeposit;
-
-    if (!currentBets[userId]) currentBets[userId] = {};
-    parsedLegs.forEach(leg => {
-      currentBets[userId][`leg${leg}`] = parsedPrice;
-      if (!drawStatus[userId]) drawStatus[userId] = {};
-      drawStatus[userId][`leg${leg}`] = '-';
-    });
-
-    let betSuccessMsg = `📥 [คนที่ ${user.memberId || 'ใหม่'}] บันทึกโพยสำเร็จ!\n📝 รายการ: ${betTypeLabel} ขาละ ${parsedPrice} บาท\n🔒 ล็อกยอดค้ำประกัน (3 เท่า): -${requiredDeposit} บาท\n💰 เครดิตใช้งานได้จริงคงเหลือ: ${user.credit} บาท`;
-    return client.replyMessage(event.replyToken, { type: 'text', text: betSuccessMsg });
-  }
-
-  // คำสั่ง C
-  if (text.toLowerCase() === 'c') {
-    let activeBetsText = "❌ ไม่มีโพยค้างอยู่ในรอบนี้";
-    let totalBetWithIns = 0;
-    if (currentBets[userId]) {
-      let activeBets = [];
-      for (let key in currentBets[userId]) {
-        let amt = currentBets[userId][key];
-        activeBets.push(`  • ${key.replace('leg', 'ขา ')}: ${amt} บาท`);
-        totalBetWithIns += (amt * 3);
-      }
-      activeBetsText = activeBets.join('\n');
-    }
-
-    let replyMsg = `👤 [ ข้อมูลสมาชิกห้องป๊อกเด้ง ]\n🆔 สมาชิกคนที่: ${user.memberId || 'ยังไม่ระบุรหัส'}\n• ชื่อระบบ: ${user.realName}\n-------------------------\n💰 เครดิตคงเหลือถอนได้: ${user.credit} บาท\n📝 โพยเดิมพันปัจจุบัน:\n${activeBetsText}\n`;
-    if (currentBets[userId]) replyMsg += `-------------------------\n🔒 ยอดที่ระบบหักค้ำเด้งไว้ชั่วคราว: ${totalBetWithIns} บาท\n`;
-    return client.replyMessage(event.replyToken, { type: 'text', text: replyMsg });
-  }
-
-  // คำสั่งจั่วไพ่
-  const drawRegex = /^([1-6]+)([+\-])$/;
-  if (drawRegex.test(text) && gameState === 'DRAWING') {
-    const match = text.match(drawRegex);
-    const legs = match[1].split('');
-    const action = match[2]; 
-    if (currentBets[userId]) {
-      let updatedLegs = [];
-      legs.forEach(leg => {
-        if (currentBets[userId][`leg${leg}`]) {
-          if (!drawStatus[userId]) drawStatus[userId] = {};
-          drawStatus[userId][`leg${leg}`] = action;
-          updatedLegs.push(leg);
-        }
-      });
-      if (updatedLegs.length > 0) return client.replyMessage(event.replyToken, { type: 'text', text: `🃏 คุณ ${user.realName} สั่ง ขา ${updatedLegs.join(',')} ให้ [${action === '+' ? 'จั่วไพ่เพิ่ม ➕' : 'อยู่ไม่จั่ว ➖'}] เรียบร้อยครับ` });
-    }
-  }
-
-  // คำสั่งคืนโพย
-  if (text.toLowerCase() === 'r') {
-    if (gameState !== 'BETTING') return null;
-    if (currentBets[userId]) {
-      let totalLocked = 0;
-      for (let leg in currentBets[userId]) { totalLocked += (currentBets[userId][leg] * 3); }
-      user.credit += totalLocked;
-      delete currentBets[userId];
-      if (drawStatus[userId]) delete drawStatus[userId];
-      return client.replyMessage(event.replyToken, { type: 'text', text: `↩️ คืนโพยเรียบร้อย! คืนค่าประกันให้คุณ ${user.realName} +${totalLocked} บาทสำเร็จ` });
-    }
-  }
-
-  if (text === '/บช') return client.replyMessage(event.replyToken, { type: 'text', text: bankAccountInfo });
-
-  // ระบบถอนเงิน
-  if (text.startsWith('ถอน ')) {
-    const amount = parseInt(text.replace('ถอน ', ''));
-    if (!isNaN(amount) && amount > 0) {
-      if (user.pendingWithdraw > 0) return client.replyMessage(event.replyToken, { type: 'text', text: `⚠️ คุณมีรายการถอนเดิมค้างอยู่ ${user.pendingWithdraw} บาท รอดำเนินการอยู่ค่ะ` });
-      if (user.credit >= amount) {
-        user.credit -= amount; user.pendingWithdraw = amount; 
-        withdrawQueue.push({ memberId: user.memberId || 0, amount: amount, userId: userId });
+    // Pattern 1: มข-50 (แทงผู้เล่นทุกขา 1-6 ขาละ 50)
+    if (/^มข-(\d+)$/i.test(cleanText)) {
+        const betPerLeg = parseInt(cleanText.match(/^มข-(\d+)$/i)[1]);
+        const totalBet = betPerLeg * 6;
+        const requiredHold = totalBet * 3; // ค้ำประกัน 3 เท่า ของยอดรวมทั้งหมด
         
-        let withdrawReply = `🔔 แจ้งถอนเงินสำเร็จ!\n👤 คุณ ${user.realName}\n💵 ยอดเงิน: ${amount} บาท\n🔢 คิวลำดับที่: [ ${withdrawQueue.length} ]\n-------------------------\n🔗 ลิงก์แอดไลน์: ${adminLineLink}\n🆔 ID LINE: ${adminLineID}`;
-        return client.replyMessage(event.replyToken, { type: 'text', text: withdrawReply });
-      } else {
-        return client.replyMessage(event.replyToken, { type: 'text', text: `❌ เครดิตไม่พอถอน (ปัจจุบันมี ${user.credit} บาท)` });
-      }
+        if (user.credit < requiredHold) return `❌ เครดิตไม่พอค้ำประกัน! มข ต้องการเครดิตค้ำประกัน ${requiredHold} (ยอดแทงรวม 6 ขา = ${totalBet})`;
+        
+        user.credit -= requiredHold; // ล็อกทุนค้ำประกัน
+        for (let leg = 1; leg <= 6; leg++) {
+            currentRoundBets.push({ userId, type: 'เดี่ยว', leg, betAmount: betPerLeg, holdCredit: betPerLeg * 3 });
+        }
+        return `✅ รับโพย มัดขา (ขา 1-6) ขาละ ${betPerLeg} [ล็อกทุนค้ำประกัน ${requiredHold} สำเร็จ]`;
     }
-  }
+    
+    // Pattern 2: มจ-50 (แทงเจ้ามือสู้กับทุกขา 1-6 ขาละ 50)
+    if (/^มจ-(\d+)$/i.test(cleanText)) {
+        const betPerLeg = parseInt(cleanText.match(/^มจ-(\d+)$/i)[1]);
+        const totalBet = betPerLeg * 6;
+        const requiredHold = totalBet * 3;
+        
+        if (user.credit < requiredHold) return `❌ เครดิตไม่พอค้ำประกัน! มจ ต้องการเครดิตค้ำประกัน ${requiredHold}`;
+        
+        user.credit -= requiredHold;
+        for (let leg = 1; leg <= 6; leg++) {
+            currentRoundBets.push({ userId, type: 'จ', leg, betAmount: betPerLeg, holdCredit: betPerLeg * 3 });
+        }
+        return `✅ รับโพย มัดเจาะ (เจ้ามือสู้ทุกขา 1-6) ขาละ ${betPerLeg} [ล็อกทุนค้ำประกัน ${requiredHold} สำเร็จ]`;
+    }
 
-  if (text === 'กติกา') {
-    return client.replyMessage(event.replyToken, { type: 'text', text: `📜 [กติกาป๊อกเด้ง 3 ใบ]\n1. ลำดับไพ่: ป๊อก 9 > ป๊อก 8 > ไพ่ตอง (5 เด้ง) > สเตรฟลัช (5 เด้ง) > สเตร (3 เด้ง) > เซียน (3 เด้ง) > ไพ่แต้ม\n2. ไพ่แต้มรวม 3 ใบ จะเล็กกว่าไพ่ป๊อกเสมอ\n3. เด้งสัญลักษณ์พิเศษ: * = 2 เด้ง, ** = 3 เด้ง, *** = 5 เด้ง\n4. ประกันเด้ง: กรณีเสีย หักสูงสุดแค่ 3 เด้ง แต่กรณีชนะตอง/สเตรฟลัช ได้รับเต็ม 5 เด้ง!` });
-  }
-
-  if (text === 'คำสั่ง') {
-    return client.replyMessage(event.replyToken, { type: 'text', text: `🤖 [คู่มือคำสั่งผู้เล่น]\n• C/[ชื่อ-นามสกุล] : ลงทะเบียนสมาชิก\n• โพยปกติ : 123-50 หรือ แทง 123-50\n• มข [ราคา] / มจ [ราคา] : เหมาขาผู้เล่น / เหมาเจ้า\n• C หรือ c : เช็คเครดิตตัวเอง\n• R หรือ r : คืนโพยทั้งหมดในรอบ\n• ขาเลข+ / ขาเลข- : สั่งจั่ว/อยู่ไพ่ เช่น 12+ / 3-\n• ถอน [ยอดเงิน] : ทำรายการแจ้งถอนเงิน` });
-  }
+    // Pattern 3: เดี่ยว (เช่น 123-50) หรือ เจาะ (เช่น จ123-50)
+    const singleMatch = cleanText.match(/^(จ)?([1-6]+)-(\d+)$/i);
+    if (singleMatch) {
+        const isDealerSide = !!singleMatch[1]; // มี 'จ' นำหน้าหรือไม่
+        const legs = singleMatch[2].split('');  // แยกตัวเลขขา เช่น ['1', '2', '3']
+        const betPerLeg = parseInt(singleMatch[3]);
+        const totalBet = betPerLeg * legs.length;
+        const requiredHold = totalBet * 3;
+        
+        if (user.credit < requiredHold) return `❌ เครดิตไม่พอค้ำประกัน! ต้องการ ${requiredHold} เครดิตคงเหลือของคุณคือ ${user.credit}`;
+        
+        user.credit -= requiredHold;
+        legs.forEach(legStr => {
+            currentRoundBets.push({
+                userId,
+                type: isDealerSide ? 'จ' : 'เดี่ยว',
+                leg: parseInt(legStr),
+                betAmount: betPerLeg,
+                holdCredit: betPerLeg * 3
+            });
+        });
+        
+        return `✅ รับโพย [${isDealerSide ? 'แทงฝั่งเจ้ามือสู้ขา' : 'แทงฝั่งผู้เล่นขา'}: ${singleMatch[2]}] ขาละ ${betPerLeg} [ล็อกทุนค้ำประกัน ${requiredHold} สำเร็จ]`;
+    }
+    
+    return null; // ถ้าไม่ตรงรูปแบบข้อความใดเลย ให้คืนค่า Null เพื่อให้ระบบปล่อยผ่าน
 }
 
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+// ----------------------------------------------------
+// 📊 ฟังก์ชันตรวจสอบและจัดหน้าตา UI การออกผล (แอดมินส่งคำสั่ง)
+// ----------------------------------------------------
+let lastProcessedCalculations = null; // เก็บผลการคำนวณรอยืนยัน OK
+
+function previewRoundResults(line1, line2) {
+    if (!line1.startsWith('/') || !line2.startsWith('//')) return "❌ รูปแบบคำสั่งผิดพลาด! แถวแรกต้องเริ่มด้วย / แถวสองด้วย //";
+    
+    const cardsSet1 = line1.substring(1).split(',');
+    const cardsSet2 = line2.substring(2).split(',');
+    const numPlayers = cardsSet1.length - 1;
+    const dealerSet1 = cardsSet1[cardsSet1.length - 1];
+    const dealerSet2 = cardsSet2[cardsSet2.length - 1];
+    
+    let summarySet1 = [];
+    let summarySet2 = [];
+    let lockedLegs = new Set();
+    
+    // ประมวลชุดที่ 1
+    for (let i = 0; i < numPlayers; i++) {
+        const leg = i + 1;
+        const playerCard = cardsSet1[i];
+        const { cleanVal } = getCleanResult(playerCard);
+        const outcome = compareCards(playerCard, dealerSet1);
+        
+        let mul = 0, text = "";
+        if (outcome === 'win') { mul = calculateMultiplier(playerCard, true); text = mul > 1 ? `ชนะเจ้า (${mul} เด้ง)` : "ชนะเจ้า"; }
+        else if (outcome === 'lose') { mul = calculateMultiplier(dealerSet1, true); text = mul > 1 ? `แพ้เจ้า (เสีย ${mul} เด้ง)` : "แพ้เจ้า"; }
+        else { mul = 0; text = "เสมอเจ้า (ป๊อกชน)"; }
+        
+        summarySet1.push({ leg, card: playerCard, outcome, multiplier: mul, text });
+        if (cleanVal.includes('$') || getCleanResult(dealerSet1).cleanVal.includes('$')) lockedLegs.add(leg);
+    }
+
+    // ประมวลชุดที่ 2
+    for (let i = 0; i < numPlayers; i++) {
+        const leg = i + 1;
+        const playerCard = cardsSet2[i];
+        if (lockedLegs.has(leg)) { summarySet2.push({ leg, text: "🔒 (ปิดบิลไปแล้วในชุดที่ 1)" }); continue; }
+        
+        const outcome = compareCards(playerCard, dealerSet2);
+        let mul = 0, text = "";
+        if (outcome === 'win') {
+            mul = calculateMultiplier(playerCard, true);
+            text = SPECIAL_MULTIPLIERS[playerCard.replace(/\*/g, '')] ? `ชนะเจ้า (${mul} เด้งอัตโนมัติ)` : `ชนะเจ้า (${mul} เด้ง)`;
+        } else if (outcome === 'lose') {
+            const rawMul = calculateMultiplier(dealerSet2, true);
+            mul = Math.min(rawMul, 3); // 🛡️ แพ้เสียสูงสุดไม่เกิน 3 เท่าตามเงินค้ำประกัน
+            text = rawMul > 3 ? `แพ้เจ้า (เสียสูงสุด ${mul} เด้งตามทุนค้ำ)` : `แพ้เจ้า (เสีย ${mul} เด้ง)`;
+        } else { mul = 0; text = "เสมอเจ้า"; }
+        
+        summarySet2.push({ leg, card: playerCard, outcome, multiplier: mul, text });
+    }
+
+    // เซฟเก็บข้อมูลดิบไว้เพื่อรอแอดมินพิมพ์ OK
+    lastProcessedCalculations = { summarySet1, summarySet2, lockedLegs };
+
+    // คืนค่ารูปแบบ UI ข้อความไปให้บอทพิมพ์
+    let output = "📊 **[สรุปผลไพ่รวมประจำรอบ]**\n\n🔸 **ชุดที่ 1 (ไม่จั่ว)**\n👑 เจ้ามือ: " + dealerSet1 + "\n";
+    summarySet1.forEach(item => {
+        let icon = item.outcome === 'win' ? "🎉" : item.outcome === 'lose' ? "❌" : "🤝";
+        output += `  • ขา ${item.leg} — ${item.card} (${icon} ${item.text})${lockedLegs.has(item.leg) ? " **[จบบิลขานี้]**" : ""}\n`;
+    });
+    output += "\n------------------------\n\n🔹 **ชุดที่ 2 (จั่วเพิ่ม)**\n👑 เจ้ามือ: " + dealerSet2 + "\n";
+    summarySet2.forEach(item => {
+        if (item.card) { output += `  • ขา ${item.leg} — ${item.card} (🏆 ${item.text})\n`; }
+        else { output += `  • ขา ${item.leg} — ${item.text}\n`; }
+    });
+    output += "\n⚠️ **แอดมินตรวจสอบความถูกต้อง**\nหากถูกต้องพิมพ์ **\"OK\"** เพื่อคิดยอดเงิน หรือผิดพลาดพิมพ์ **\"no\"**";
+    return output;
+}
+
+// ----------------------------------------------------
+// 💰 ฟังก์ชันจ่ายเงิน/หักบิลเมื่อแอดมินพิมพ์ OK
+// ----------------------------------------------------
+function confirmAndSettleBets() {
+    if (!lastProcessedCalculations) return "❌ ไม่มีผลการคำนวณค้างอยู่";
+    
+    let report = "💰 **[สรุปผลการคิดเงินรายบุคคล]**\n";
+    const { summarySet1, summarySet2, lockedLegs } = lastProcessedCalculations;
+    
+    // รวมผลแพ้ชนะของแต่ละขาเพื่อนำไปคำนวณบิล
+    let legResults = {};
+    summarySet1.forEach(item => {
+        legResults[item.leg] = { set1: { outcome: item.outcome, mult: item.multiplier } };
+    });
+    summarySet2.forEach(item => {
+        if (legResults[item.leg]) {
+            legResults[item.leg].set2 = item.card ? { outcome: item.outcome, mult: item.multiplier } : null;
+        }
+    });
+
+    // ค้นหาและคำนวณผลเงินให้คนที่มีโพยรอบนี้
+    let userSettlements = {};
+    currentRoundBets.forEach(bet => {
+        if (!userSettlements[bet.userId]) userSettlements[bet.userId] = { totalChange: 0, holdReturned: 0 };
+        
+        let legRes = legResults[bet.leg];
+        let finalOutcome = 'draw';
+        let finalMultiplier = 0;
+        
+        // คัดแยกผลตามชุดที่ทำงานจริง
+        if (lockedLegs.has(bet.leg)) {
+            finalOutcome = legRes.set1.outcome;
+            finalMultiplier = legRes.set1.mult;
+        } else if (legRes.set2) {
+            finalOutcome = legRes.set2.outcome;
+            finalMultiplier = legRes.set2.mult;
+        }
+
+        // หากผู้เล่นเดิมพันฝั่งเจ้ามือ ('จ') ให้สลับผลการตัดสินแพ้ชนะ
+        if (bet.type === 'จ') {
+            if (finalOutcome === 'win') finalOutcome = 'lose';
+            else if (finalOutcome === 'lose') finalOutcome = 'win';
+        }
+
+        // คืนเงินทุนค้ำประกันสะสมก่อน
+        userSettlements[bet.userId].holdReturned += bet.holdCredit;
+        
+        // คำนวณกำไร / ขาดทุน
+        if (finalOutcome === 'win') {
+            userSettlements[bet.userId].totalChange += (bet.betAmount * finalMultiplier);
+        } else if (finalOutcome === 'lose') {
+            userSettlements[bet.userId].totalChange -= (bet.betAmount * finalMultiplier);
+        }
+    });
+
+    // อัปเดตยอดจริงเข้ากระเป๋าเงินผู้เล่น
+    Object.keys(userSettlements).forEach(uId => {
+        let settlement = userSettlements[uId];
+        let user = usersWallet[uId];
+        // ยอดเงินสุดท้าย = เครดิตปัจจุบัน + คืนค่าค้ำประกัน + ผลกำไร/ขาดทุน
+        user.credit += settlement.holdReturned + settlement.totalChange;
+        
+        report += `👤 ${user.name}: ${settlement.totalChange >= 0 ? '🟢 +' : '🔴 '}${settlement.totalChange} (คงเหลือ: ${user.credit} ฿)\n`;
+    });
+
+    // เคลียร์ค่าระบบเพื่อเริ่มรอบใหม่
+    currentRoundBets = [];
+    lastProcessedCalculations = null;
+    isRoundOpen = false;
+    
+    return report + "\n🔒 ปิดยอดรอบนี้สำเร็จ เครดิตอัปเดตเรียบร้อย!";
+}
+
+// ----------------------------------------------------
+// 🤖 ฟังก์ชันรับข้อความหลักจาก Webhook ของคุณ (Line / Discord บอท)
+// ----------------------------------------------------
+function onIncomingMessage(userId, text, isAdmin = false) {
+    const txt = text.trim();
+    
+    // คำสั่งแอดมินเปิดระบบ
+    if (isAdmin && txt.toUpperCase() === 'O') {
+        isRoundOpen = true;
+        currentRoundBets = [];
+        return "🔓 [ระบบเปิดรับโพยไพ่ 3 ใบ] ส่งโพยแทงเข้ามาได้เลยครับ!";
+    }
+    
+    // คำสั่งตรวจเช็กเงินเครดิต
+    if (txt.toUpperCase() === 'C' || txt === '/บช') {
+        const user = usersWallet[userId] || { name: "ผู้เล่นใหม่", credit: 0 };
+        return `💳 กระเป๋าเงินของคุณ: ${user.credit} ฿`;
+    }
+    
+    // ตรวจจับระบบการแทง (ผู้เล่นส่งโพย)
+    const betResult = parseAndPlaceBet(userId, txt);
+    if (betResult) return betResult;
+    
+    // คำสั่งแอดมินส่งผลไพ่ 2 บรรทัดพร้อมกัน
+    if (isAdmin && txt.includes('\n')) {
+        const lines = txt.split('\n');
+        if (lines[0].startsWith('/') && lines[1].startsWith('//')) {
+            return previewRoundResults(lines[0], lines[1]);
+        }
+    }
+    
+    // แอดมินกดยืนยันผล
+    if (isAdmin && txt.toUpperCase() === 'OK') {
+        return confirmAndSettleBets();
+    }
+    
+    if (isAdmin && txt.toUpperCase() === 'NO') {
+        lastProcessedCalculations = null;
+        return "❌ ยกเลิกผลการออกไพ่เมื่อครู่ แอดมินกรุณาส่งผลใหม่อีกครั้ง";
+    }
+
+    return null; // ปล่อยผ่านข้อความทั่วไป
+}

@@ -113,7 +113,7 @@ if (!isRegistered) {
         replyText = `ℹ️ คุณ ${user.name} ได้ลงทะเบียนในระบบเรียบร้อยแล้วครับ\n🆔 สมาชิกคนที่: ${user.memberNumber}`;
     } else {
         // ถ้าพิมพ์ข้อความอื่น ๆ เข้ามา บอทจะเงียบ (ไม่เซ็ต replyText) เพื่อส่งต่อให้ระบบอื่นทำงาน
-        replyText = ""; 
+        replyText = `รหัส ID ของคุณคือ: ${userId}`; 
     }
 }
     }

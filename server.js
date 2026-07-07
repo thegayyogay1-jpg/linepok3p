@@ -580,6 +580,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                             // กรณีแต้มเท่ากันคือ เสมอ (ยก) ผลได้เสียสุทธิเป็น 0 เท่าเดิม
                         }
                     });
+                });
 
                 // 🧮 อัปเดตกระเป๋าเงินจริง
                 user.balance = user.balance + totalHoldRefund + userTotalWinLoss;

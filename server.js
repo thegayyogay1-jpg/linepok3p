@@ -580,14 +580,32 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                             // กรณีแต้มเท่ากันคือ เสมอ (ยก) ผลได้เสียสุทธิเป็น 0 เท่าเดิม
                         }
                     });
-                });
+                }); // ปิด userBetsArray.forEach
 
-                // 🧮 อัปเดตกระเป๋าเงินจริง
+                // 👑 [ระบบหักกำไร 10% เฉพาะฝั่งเจ้ามือที่ชนะ]
+                // ตรวจสอบโพยใบสุดท้ายของยูสเซอร์คนนี้ว่าเป็นโพยฝั่งเจ้ามือหรือไม่
+                let isLastBetOnDealer = false;
+                if (userBetsArray.length > 0) {
+                    let lastBet = userBetsArray[userBetsArray.length - 1];
+                    isLastBetOnDealer = (lastBet.betType === "มจ" || lastBet.betType.startsWith('จ'));
+                }
+
+                // ถ้าแทงฝั่งเจ้ามือ และผลลัพธ์รวมรอบนี้ได้กำไร (ยอด win/loss มากกว่า 0)
+                if (isLastBetOnDealer && userTotalWinLoss > 0) {
+                    // หักกำไรออก 10% (เหลือ 90%) เช่น ได้กำไร 100 บาท จะเหลือได้จริง 90 บาท
+                    userTotalWinLoss = Math.floor(userTotalWinLoss * 0.9);
+                }
+
+                // 🧮 อัปเดตกระเป๋าเงินจริงหลังคิดค่าต๋งเรียบร้อย
                 user.balance = user.balance + totalHoldRefund + userTotalWinLoss;
 
                 let sign = userTotalWinLoss > 0 ? "🟢 +" : (userTotalWinLoss < 0 ? "🔴 " : "🟡 ");
-                summaryPayoutText += `👤 ${user.name} (ID: ${user.memberNumber})\n   ยอดสุทธิ: ${sign}${userTotalWinLoss} บาท (เครดิต: ${user.balance} บ.)\n`;
-            }
+                
+                // หากแทงเจ้ามือแล้วชนะ จะมีคำว่า (หัก 10%) แปะท้ายให้เห็นชัดเจนเพื่อความโปร่งใส
+                let feeNote = (isLastBetOnDealer && userTotalWinLoss > 0) ? " (หักต๋ง 10%)" : "";
+                
+                summaryPayoutText += `👤 ${user.name} (ID: ${user.memberNumber})\n   ยอดสุทธิ: ${sign}${userTotalWinLoss} บาท${feeNote} (เครดิต: ${user.balance} บ.)\n`;
+            } // ปิดลูป for (let uId in roundBets)
 
             if (!hasAnyBet) {
                 summaryPayoutText += "📝 รอบนี้ไม่มีสมาชิกส่งโพยเดิมพันเข้ามาครับ\n";

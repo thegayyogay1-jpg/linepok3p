@@ -105,29 +105,32 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                         } else {
                             isRoundOpen = false;
                             
-                            // --- 📊 [เพิ่มระบบสรุปยอดแทงรายบุคคลตอนปิดรอบ] ---
+                            // --- 📊 [เพิ่มระบบสรุปยอดแทงรายบุคคลตอนปิดรอบ - เวอร์ชันแก้ไขบั๊ก NaN] ---
                             let betSummaryText = "";
                             let hasAnyBet = false;
 
-                            // วนลูปเช็กข้อมูลการแทงของสมาชิกทุกคนในรอบนี้
                             for (let uId in roundBets) {
                                 const userBetsArray = roundBets[uId];
                                 if (!userBetsArray || userBetsArray.length === 0) continue;
 
                                 hasAnyBet = true;
                                 const user = usersWallets[uId];
-                                let userTotalBetAmt = 0; // ยอดแทงรวมดิบ (ไม่รวมค้ำ) ของคนนี้ในรอบนี้
+                                let userTotalBetAmt = 0; 
 
-                                // บวกรวมยอดแทงทุกโพยที่คนนี้ส่งเข้ามาในรอบนี้
                                 userBetsArray.forEach((bet) => {
-                                    userTotalBetAmt += bet.totalBetAmount;
+                                    // 🔍 [แก้ไขจุดบั๊ก] ค้นหาตัวแปรจำนวนเงินเดิมพันดิบ ดึงค่าที่มีอยู่จริงในระบบของคุณมาคำนวณ
+                                    let currentAmt = bet.betAmount || bet.amount || bet.totalBetAmount || bet.price || 0;
+                                    
+                                    // แปลงค่าให้เป็นตัวเลขชัวร์ๆ ก่อนนำไปบวกสะสม
+                                    let parsedAmt = parseInt(currentAmt);
+                                    if (!isNaN(parsedAmt)) {
+                                        userTotalBetAmt += parsedAmt;
+                                    }
                                 });
 
-                                // ประกอบร่างข้อความ: (เลขลำดับ) (ชื่อสมาชิก) (ยอดแทงทั้งหมด)
                                 betSummaryText += `• (${user.memberNumber}) ${user.name} ➡️ ยอดแทง: ${userTotalBetAmt} บาท\n`;
                             }
 
-                            // จัดหน้าตาข้อความสรุปยอดแทงพ่วงท้าย
                             let closingBetSection = "";
                             if (hasAnyBet) {
                                 closingBetSection = `\n\n📝 **สรุปยอดแทงประจำรอบ:**\n${betSummaryText}`;
@@ -137,7 +140,6 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
 
                             replyText = `🚫 [แอดมิน] ปิดรอบแทงเรียบร้อยแล้วครับ!\n🏁 จบรอบที่: ${currentRound}${closingBetSection}\n\n🔒 หยุดรับโพยทุกกรณี รอแอดมินสรุปผลสักครู่ครับ`;
                         }
-                     }
                     } else if (userMsg === 'rst') {
             currentRound = 0;
             isRoundOpen = false;

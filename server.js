@@ -336,7 +336,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                     }
                 }
             }
-                // ==================== [ 8. ระบบแอดมินส่งผลสรุปคำนวณแต้ม - เวอร์ชันใช้เครื่องหมาย = คั่นแยกขา ] ====================
+                // ==================== [ 8. ระบบแอดมินส่งผลสรุปคำนวณแต้ม - เวอร์ชันใช้เครื่องหมาย = คั่นแยกขา (แก้ไขบั๊กตำแหน่งสลับ) ] ====================
 else if (originalMsg.startsWith('>')) {
     const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
     if (userId !== ADMIN_ID) {
@@ -344,9 +344,9 @@ else if (originalMsg.startsWith('>')) {
     } else if (isRoundOpen) {
         replyText = "⚠️ ต้องพิมพ์ปิดรอบแทง (X) และทำขั้นตอนจั่วไพ่ให้เสร็จก่อน จึงจะสรุปผลได้ครับ";
     } else {
-        // เปลี่ยนเครื่องหมายเท่ากับ (=) ให้กลายเป็นเว้นวรรค เพื่อแยกคำตามตำแหน่งขาอย่างแม่นยำ
-        let cleanMsg = originalMsg.replace(/=/g, ' ');
-        const parts = cleanMsg.split(/\s+/);
+        // เอาเครื่องหมาย > ออกก่อน แล้วตัดแบ่งข้อความด้วยเครื่องหมาย = ตรงๆ เลย
+        let textWithoutArrow = originalMsg.substring(1).trim();
+        const parts = textWithoutArrow.split('='); // แยกชิ้นส่วนด้วย =
         
         // ฟังก์ชันสำหรับแกะรหัสไพ่ (isThreeCards = true คือล็อกว่าห้ามติดป๊อกเด็ดขาด)
         const parseCardStr = (str, isDealer = false, isThreeCards = false) => {
@@ -380,15 +380,15 @@ else if (originalMsg.startsWith('>')) {
             return { score: rawScore, v: clean, mult: multiplier, name: typeName };
         };
 
-        // 👑 แกะผลของฝั่งเจ้ามือ (คำแรกหลัง >)
-        const dealerRawStr = parts[1] ? parts[1].replace('จ', '') : '0';
+        // 👑 ชิ้นส่วนแรก (parts[0]) จะเป็นผลของฝั่งเจ้ามือเสมอ เช่น "จ5" หรือ "จ5*"
+        const dealerRawStr = parts[0] ? parts[0].replace('จ', '').trim() : '0';
         const dealerResult = parseCardStr(dealerRawStr, true, false);
 
         let roomResults = {}; 
         let currentLeg = 1; 
 
-        // วนลูปแกะข้อมูลตั้งแต่คำที่ 2 เป็นต้นไป (เรียงขา 1-6 อัตโนมัติ)
-        for (let i = 2; i < parts.length; i++) {
+        // ชิ้นส่วนที่เหลือตั้งแต่ตำแหน่งที่ 1 เป็นต้นไป จะไล่เป็น ขา 1, ขา 2, ขา 3 อัตโนมัติ
+        for (let i = 1; i < parts.length; i++) {
             let innerContent = parts[i].trim();
             if (innerContent === "") continue;
             if (currentLeg > 6) break; 

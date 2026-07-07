@@ -720,7 +720,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                 }
             }
                 // ==================== [ ระบบแอดมินอนุมัติการถอนเงิน (y เลขสมาชิก) ] ====================
-            else if (command === "y") {
+            else if (command.toLowerCase() === "y") {
                 const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
                 if (userId !== ADMIN_ID) {
                     replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งอนุมัติยอดถอนเงินครับ";
@@ -728,7 +728,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                     const targetMemberId = parseInt(args[1]);
 
                     if (!targetMemberId || isNaN(targetMemberId)) {
-                        replyText = "⚠️ รูปแบบคำสั่งไม่ถูกต้อง กรุณาพิมพ์: y [เลขสมาชิก] (ตัวอย่างเช่น: y 1)";
+                        replyText = "⚠️ รูปแบบคำสั่งไม่ถูกต้อง กรุณาพิมพ์: y [เลขสมาชิก] หรือ Y [เลขสมาชิก] (ตัวอย่างเช่น: Y 1)";
                     } else {
                         let foundUserKey = null;
                         for (let key in usersWallets) {

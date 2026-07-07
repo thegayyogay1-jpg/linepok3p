@@ -27,6 +27,11 @@ app.post('/callback', async (req, res) => {
 const command = args[0]; // ดึงคำแรก เช่น เติม หรือ ลบ
 
 if (command === "เติม" || command === "ลบ") {
+    const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
+    // 🔒 เช็กสิทธิ์แอดมินก่อนเลยเป็นอันดับแรก
+    if (userId !== ADMIN_ID) {
+        replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งจัดการเครดิตครับ";
+        } else {
     const targetMemberId = parseInt(args[1]); // เลขสมาชิก
     const amount = parseFloat(args[2]); // จำนวนเงิน
 
@@ -59,6 +64,7 @@ if (command === "เติม" || command === "ลบ") {
             }
         }
     }
+        } //<-- ปีกกาปิดแอดมิน
 } else if (userMsg === 'o' || userMsg === 'x') 
 { //==================== โค้ดสเต็ป3 เปิด/ปิดรอบ ==================
     // 👑 1. ตั้งค่า LINE User ID ของแอดมินตรงนี้ (เอา ID ของคุณมาใส่เพื่อสิทธิ์สั่งการ)

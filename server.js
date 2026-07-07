@@ -343,7 +343,7 @@ else if (originalMsg.endsWith('+')) {
                         // ไล่เช็กทีละขาในโพยใบนั้น
                         // ถ้าประเภทเป็น "มข" หรือ "ผู้เล่นปกติ" ที่มีตัวเลขขา
                         drawLegsArray.forEach((leg) => {
-                            if (bet.type === "มข" || bet.type.includes(leg)) {
+                            if (bet.Type === "มข" || bet.Type.includes(leg)) {
                                 bet.drawStatus[leg] = "จั่ว";
                                 successCount++;
                             }

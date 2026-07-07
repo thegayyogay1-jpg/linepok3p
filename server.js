@@ -137,6 +137,7 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
 
                             replyText = `🚫 [แอดมิน] ปิดรอบแทงเรียบร้อยแล้วครับ!\n🏁 จบรอบที่: ${currentRound}${closingBetSection}\n\n🔒 หยุดรับโพยทุกกรณี รอแอดมินสรุปผลสักครู่ครับ`;
                         }
+                     }
                     } else if (userMsg === 'rst') {
             currentRound = 0;
             isRoundOpen = false;

@@ -11,6 +11,7 @@ let usersWallets = {};
 let nextMemberId = 1;
 let isRoundOpen = false; // ตัวแปรจำสถานะ เปิด/ปิด รอบ
 let roundBets = {};      // ตัวแปรสำหรับจำโพยแทงในแต่ละรอบ
+let currentRound = 0;    // บรรทัดนี้เพื่อจำลำดับรอบปัจจุบัน
 
 app.post('/callback', async (req, res) => {
     const events = req.body.events;
@@ -74,15 +75,22 @@ if (command === "เติม" || command === "ลบ") {
         replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งควบคุมระบบครับ";
     } else {
         if (userMsg === 'o') {
+            currentRound++; // ➕ เพิ่มรอบไปอีก 1 ทุกครั้งที่พิมพ์ o
             isRoundOpen = true;
             roundBets = {}; // ล้างข้อมูลโพยเก่าของรอบที่แล้วทิ้งทันทีเพื่อเริ่มรอบใหม่
             replyText = "📢 [แอดมิน] เริ่มเปิดรอบแทงแล้วครับ! สมาชิกทุกท่านสามารถส่งโพยเข้ามาได้เลยครับ 🎰";
         } else if (userMsg === 'x') {
             isRoundOpen = false;
-            replyText = "🚫 [แอดมิน] ปิดรอบแทงเรียบร้อยแล้วครับ! หยุดรับโพยทุกกรณี รอแอดมินสรุปผลสักครู่ครับ";
+            replyText = `🚫 [แอดมิน] ปิดรอบแทงเรียบร้อยแล้วครับ!\n🏁 จบรอบที่: ${currentRound}\n\n🔒 หยุดรับโพยทุกกรณี รอแอดมินสรุปผลสักครู่ครับ`;
+        } else if (userMsg === 'rst') {
+            // 🔄 ระบบล้างลำดับรอบ (Reset)
+            currentRound = 0; 
+            isRoundOpen = false;
+            roundBets = {};
+            replyText = "🔄 [ระบบ] ทำการล้างลำดับรอบเรียบร้อยแล้ว! รอบต่อไปจะเริ่มต้นที่ รอบที่ 1 ครับ ⚙️";
         }
     }
-} 
+}
     // ==================== [ START: โค้ดสเต็ปที่ 4 ระบบรับโพยป๊อกเด้ง + หักค้ำประกัน 3 เด้ง ] ====================
 else if (originalMsg.includes('-') && !originalMsg.startsWith('C/') && !originalMsg.startsWith('c/')) {
     if (!isRoundOpen) {

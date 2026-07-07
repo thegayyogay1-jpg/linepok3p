@@ -105,7 +105,7 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                         } else {
                             isRoundOpen = false;
                             
-                            // --- 📊 [เพิ่มระบบสรุปยอดแทงรายบุคคลตอนปิดรอบ - เวอร์ชันแก้ไขบั๊ก NaN] ---
+                            // --- 📊 [สรุปยอดแทงรายบุคคล ย้อนศรจากเงินที่โดนหักจริงในกระเป๋า] ---
                             let betSummaryText = "";
                             let hasAnyBet = false;
 
@@ -115,20 +115,23 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
 
                                 hasAnyBet = true;
                                 const user = usersWallets[uId];
-                                let userTotalBetAmt = 0; 
+                                
+                                // คำนวณหายอดเงินที่โดนล็อกค้ำประกันไว้ในรอบนี้ (เงินก่อนแทง ลบ เงินปัจจุบัน)
+                                let lockedAmount = (user.beforeBetBalance || 0) - (user.wallet || 0);
+                                
+                                // หาร 3 ย้อนกลับ เพื่อให้ได้ยอดแทงดิบที่แท้จริง
+                                let userTotalBetAmt = Math.floor(lockedAmount / 3);
 
-                                userBetsArray.forEach((bet) => {
-                                    // 🔍 [แก้ไขจุดบั๊ก] ค้นหาตัวแปรจำนวนเงินเดิมพันดิบ ดึงค่าที่มีอยู่จริงในระบบของคุณมาคำนวณ
-                                    let currentAmt = bet.betAmount || bet.amount || bet.totalBetAmount || bet.price || 0;
-                                    
-                                    // แปลงค่าให้เป็นตัวเลขชัวร์ๆ ก่อนนำไปบวกสะสม
-                                    let parsedAmt = parseInt(currentAmt);
-                                    if (!isNaN(parsedAmt)) {
-                                        userTotalBetAmt += parsedAmt;
-                                    }
-                                });
+                                // ถ้าระบบคำนวณย้อนศรแล้วติดลบหรือผิดพลาด ให้ดึงยอดแทงเริ่มต้นมาใส่แทนเพื่อความปลอดภัย
+                                if (userTotalBetAmt <= 0) {
+                                    userTotalBetAmt = 0;
+                                    // เผื่อมีกรณีพิเศษ ลองดึงค่าวนหาอีกรอบ
+                                    userBetsArray.forEach(b => {
+                                        userTotalBetAmt += (b.betAmount || b.amount || 0);
+                                    });
+                                }
 
-                                betSummaryText += `• [${user.memberNumber}] ${user.name} ➡️ ยอดแทง: ${userTotalBetAmt} บาท\n`;
+                                betSummaryText += `• [ ${user.memberNumber} ] ${user.name} ➡️ ยอดแทง: ${userTotalBetAmt} บาท\n`;
                             }
 
                             let closingBetSection = "";

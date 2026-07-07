@@ -566,14 +566,18 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                                 finalCard = matchResult.twoCards;   // ชนกับผลไพ่ 2 ใบ (5 แต้มขึ้นไป หรือ 4 แต้มเด้ง)
                             }
 
-                            // 🧮 ตรรกะคิดเงินของฝั่งคนแทงเจ้ามือ (แก้ไขบั๊กสลับฝั่ง)
+                            // 🧮 ตรรกะคิดเงินของฝั่งคนแทงเจ้ามือ (หักต๋ง 10% รายขาที่มีกำไร)
                             if (tempDealerResult.score > finalCard.score) {
                                 // เจ้ามือชนะขาผู้เล่นคนนั้น = คนแทงฝั่งเจ้าได้เงินรางวัล! (บวกเงินตามเด้งเจ้ามือ)
                                 let winMultiplier = tempDealerResult.mult;
-                                userTotalWinLoss += (betPrice * winMultiplier);
+                                let grossWin = betPrice * winMultiplier; // กำไรก่อนหักต๋ง
+                                
+                                // 🔥 [หักต๋งรายขา] ได้กำไรขาไหน หักขาเซินออก 10% ทันที
+                                let netWin = Math.floor(grossWin * 0.9);
+                                userTotalWinLoss += netWin;
                             } 
                             else if (tempDealerResult.score < finalCard.score) {
-                                // เจ้ามือแพ้ขาผู้เล่นคนนั้น = คนแทงฝั่งเจ้าเสียเงิน! (หักเงินตามเด้งของขานั้นๆ)
+                                // เจ้ามือแพ้ขาผู้เล่นคนนั้น = คนแทงฝั่งเจ้าเสียเงิน! (หักเงินเต็มจำนวนตามเด้งของขานั้นๆ)
                                 let loseMultiplier = finalCard.mult;
                                 userTotalWinLoss -= (betPrice * loseMultiplier);
                             }

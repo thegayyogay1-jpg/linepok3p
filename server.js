@@ -8,7 +8,9 @@ const TOKEN = process.env.CHANNEL_ACCESS_TOKEN;
 
 // 🗄️ ฐานข้อมูลจำลองสำหรับจำสมาชิก (จะรีเซ็ตเมื่อเซิร์ฟเวอร์ Restart)
 let usersWallets = {}; 
-let nextMemberId = 1;  
+let nextMemberId = 1;
+let isRoundOpen = false; // ตัวแปรจำสถานะ เปิด/ปิด รอบ
+let roundBets = {};      // ตัวแปรสำหรับจำโพยแทงในแต่ละรอบ
 
 app.post('/callback', async (req, res) => {
     const events = req.body.events;
@@ -57,7 +59,24 @@ if (command === "เติม" || command === "ลบ") {
             }
         }
     }
-} else { 
+} else if (userMsg === 'เปิดรอบ' || userMsg === 'ปิดรอบ') {
+    // 👑 1. ตั้งค่า LINE User ID ของแอดมินตรงนี้ (เอา ID ของคุณมาใส่เพื่อสิทธิ์สั่งการ)
+    const ADMIN_ID = "ใส่_LINE_USER_ID_แอดมินตรงนี้"; 
+
+    if (userId !== ADMIN_ID) {
+        replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งควบคุมระบบครับ";
+    } else {
+        if (userMsg === 'เปิดรอบ') {
+            isRoundOpen = true;
+            roundBets = {}; // ล้างข้อมูลโพยเก่าของรอบที่แล้วทิ้งทันทีเพื่อเริ่มรอบใหม่
+            replyText = "📢 [แอดมิน] เริ่มเปิดรอบแทงแล้วครับ! สมาชิกทุกท่านสามารถส่งโพยเข้ามาได้เลยครับ 🎰";
+        } else if (userMsg === 'ปิดรอบ') {
+            isRoundOpen = false;
+            replyText = "🚫 [แอดมิน] ปิดรอบแทงเรียบร้อยแล้วครับ! หยุดรับโพยทุกกรณี รอแอดมินสรุปผลสักครู่ครับ";
+        }
+    }
+} else {
+// ==================== [ END: โค้ดสเต็ปที่ 3 เปิดรอบ/ปิดรอบแทง ] ===================={ 
             // ==================== [ START: โค้ดสเต็ปที่ 1 เช็กก่อนว่าคนนี้เคยลงทะเบียนในระบบหรือยัง ] ====================
 const isRegistered = usersWallets[userId] ? true : false;
 

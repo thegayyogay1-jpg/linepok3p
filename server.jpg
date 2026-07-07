@@ -105,6 +105,10 @@ else if (originalMsg.includes('-') && !originalMsg.startsWith('C/') && !original
             // 🎯 กำหนดเลขขาที่อนุญาตในระบบ (ขา 1 ถึง ขา 6)
             const allowedLegs = ['1', '2', '3', '4', '5','6'];
 
+            // 💰 ⚙️ [ตั้งค่ายอดแทงตรงนี้ได้เลยครับ]
+            const MIN_BET = 20;    // ยอดแทงขั้นต่ำ ต่อ 1 ขา
+            const MAX_BET = 2000;  // ยอดแทงสูงสุด ต่อ 1 ขา
+
             for (let line of lines) {
                 let cleanLine = line.trim().toLowerCase();
                 if (cleanLine === "") continue;
@@ -122,6 +126,13 @@ else if (originalMsg.includes('-') && !originalMsg.startsWith('C/') && !original
                 if (isNaN(price) || price <= 0) {
                     hasError = true;
                     errorMsg = `⚠️ จำนวนเงินไม่ถูกต้องในบรรทัด: "${line}"`;
+                    break;
+                }
+
+                // 🔍 [จุดเช็กยอดขั้นต่ำ / สูงสุด ต่อขา]
+                if (price < MIN_BET || price > MAX_BET) {
+                    hasError = true;
+                    errorMsg = `❌ แทงไม่สำเร็จ! ยอดแทงต่อขาต้องอยู่ระหว่าง ${MIN_BET} ถึง ${MAX_BET} บาทครับ\n(คุณพิมพ์มา ขาละ ${price} บาท ในบรรทัด: "${line}")`;
                     break;
                 }
 

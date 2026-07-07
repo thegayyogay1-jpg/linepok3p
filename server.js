@@ -689,8 +689,8 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                                 `เมื่อโอนเงินเสร็จแล้ว กรุณาส่งสลิปหลักฐานเข้ามาในแชทนี้ เพื่อให้แอดมินทำการตรวจสอบและเติมยอดเครดิตในระบบให้ครับ 🎉`;
                 }
             }
-                // ==================== [ ระบบสมาชิกแจ้งถอนเงิน - รูปแบบเว้นวรรค (ถอน 500) ] ====================
-            else if (userMsg.startsWith('ถอน ') || userMsg.startsWith('ถอน')) {
+                // ==================== [ ระบบสมาชิกแจ้งถอนเงิน - รูปแบบพิมติดกัน (ถอน500) ] ====================
+            else if (userMsg.startsWith('ถอน')) {
                 const user = usersWallets[userId];
                 
                 if (!user) {
@@ -699,12 +699,11 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                 else if (user.isWithdrawLocked) {
                     replyText = `❌ ไม่สามารถทำรายการซ้ำได้ครับ!\n👤 คุณ ${user.name} มีรายการแจ้งถอนค้างอยู่จำนวน ${user.pendingWithdrawAmount} บาท อยู่ในระหว่างรอแอดมินอนุมัติครับ`;
                 } else {
-                    // ตัดคำด้วยช่องว่างเพื่อดึงตัวเลขเงินออกมา (เช่น "ถอน 500" จะได้ตัวเลข 500)
-                    const parts = userMsg.trim().split(/\s+/);
-                    const withdrawAmount = parseInt(parts[1]);
+                    // 🔍 ดึงตัวเลขทั้งหมดที่ต่อท้ายคำว่า "ถอน" ออกมาโดยตรง (พิมพ์ ถอน500 หรือ ถอน 500 ก็ดึงได้หมด)
+                    const withdrawAmount = parseInt(userMsg.replace('ถอน', '').trim());
 
                     if (isNaN(withdrawAmount) || withdrawAmount <= 0) {
-                        replyText = "⚠️ รูปแบบคำสั่งไม่ถูกต้องครับ กรุณาพิมพ์เว้นวรรคระบุจำนวนเงิน เช่น ถอน 500";
+                        replyText = "⚠️ รูปแบบคำสั่งไม่ถูกต้องครับ กรุณาพิมพ์ระบุจำนวนเงิน เช่น ถอน500";
                     } else if (user.balance < withdrawAmount) {
                         replyText = `❌ แจ้งถอนล้มเหลว: ยอดเครดิตของคุณมีไม่เพียงพอครับ (เครดิตปัจจุบัน: ${user.balance} บาท)`;
                     } else {

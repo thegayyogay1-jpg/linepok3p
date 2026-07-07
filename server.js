@@ -531,6 +531,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
             // ล้างสมองบอทหลังคิดเงินเสร็จเพื่อเริ่มตาใหม่
             tempRoomResults = null;
             tempDealerResult = null;
+            isDrawOpen = false;
             roundBets = {}; 
 
         } else if (userMsg === 'no') {

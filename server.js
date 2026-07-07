@@ -336,7 +336,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                     }
                 }
             }
-                // ==================== [ 8. ระบบแอดมินส่งผลสรุปคำนวณแต้ม - เวอร์ชันล็อกรอการยืนยัน ] ====================
+                // ==================== [ 8. ระบบแอดมินส่งผลสรุปคำนวณแต้ม - เวอร์ชันใช้ขีดคั่น + แก้บั๊ก 3 ใบป๊อก + แสดง 🟢🔴 ] ====================
 else if (originalMsg.startsWith('>')) {
     const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
     if (userId !== ADMIN_ID) {
@@ -344,10 +344,12 @@ else if (originalMsg.startsWith('>')) {
     } else if (isRoundOpen) {
         replyText = "⚠️ ต้องพิมพ์ปิดรอบแทง (X) และทำขั้นตอนจั่วไพ่ให้เสร็จก่อน จึงจะสรุปผลได้ครับ";
     } else {
-        let cleanMsg = originalMsg.replace(/,/g, ' ');
+        // เปลี่ยนเครื่องหมายขีดกลาง (-) ให้กลายเป็นเว้นวรรค เพื่อให้บอทตัดคำตามตำแหน่งได้ง่าย
+        let cleanMsg = originalMsg.replace(/-/g, ' ');
         const parts = cleanMsg.split(/\s+/);
         
-        const parseCardStr = (str, isDealer = false) => {
+        // ฟังก์ชันสำหรับแกะรหัสไพ่ (isThreeCards = true คือบังคับว่าห้ามติดสถานะป๊อก)
+        const parseCardStr = (str, isDealer = false, isThreeCards = false) => {
             let clean = str.trim().toLowerCase();
             let isPok = false;
             let multiplier = 1; 
@@ -367,7 +369,8 @@ else if (originalMsg.startsWith('>')) {
                 let pts = parseInt(clean);
                 if (isNaN(pts)) pts = 0;
                 
-                if (isPok || (!isDealer && !str.includes('/'))) {
+                // ถ้ารหัสไพ่นี้ไม่ได้มาจากฝั่ง 3 ใบ (isThreeCards เป็น false) และเป็นเลข 8 หรือ 9 ถึงจะมีสิทธิ์เป็นป๊อก
+                if (!isThreeCards && (isPok || (!isDealer && !str.includes('/')))) {
                     if (pts === 9) { rawScore = 900; typeName = "ป๊อก 9"; }
                     else if (pts === 8) { rawScore = 800; typeName = "ป๊อก 8"; }
                     else { rawScore = pts; typeName = `${pts} แต้ม`; }
@@ -378,12 +381,14 @@ else if (originalMsg.startsWith('>')) {
             return { score: rawScore, v: clean, mult: multiplier, name: typeName };
         };
 
+        // 👑 แกะผลของฝั่งเจ้ามือ
         const dealerRawStr = parts[1] ? parts[1].replace('จ', '') : '0';
-        const dealerResult = parseCardStr(dealerRawStr, true);
+        const dealerResult = parseCardStr(dealerRawStr, true, false);
 
         let roomResults = {}; 
         let currentLeg = 1; 
 
+        // วนลูปแกะข้อมูลตั้งแต่คำที่ 2 เป็นต้นไป (เรียงตามขา 1-6 อัตโนมัติ)
         for (let i = 2; i < parts.length; i++) {
             let innerContent = parts[i].trim();
             if (innerContent === "") continue;
@@ -394,11 +399,11 @@ else if (originalMsg.startsWith('>')) {
 
             if (innerContent.includes('/')) {
                 const subParts = innerContent.split('/');
-                result2Cards = parseCardStr(subParts[0], false);
-                result3Cards = parseCardStr(subParts[1], false);
+                result2Cards = parseCardStr(subParts[0], false, false); // ฝั่ง 2 ใบแรก (มีสิทธิ์ป๊อก)
+                result3Cards = parseCardStr(subParts[1], false, true);  // ฝั่ง 3 ใบ (ล็อกให้เป็นแต้มปกติ ไม่มีทางป๊อก บั๊กเคลียร์!)
             } else {
-                result2Cards = parseCardStr(innerContent, false);
-                result3Cards = parseCardStr(innerContent, false);
+                result2Cards = parseCardStr(innerContent, false, false);
+                result3Cards = parseCardStr(innerContent, false, false);
             }
 
             roomResults[currentLeg] = {
@@ -410,21 +415,33 @@ else if (originalMsg.startsWith('>')) {
             currentLeg++; 
         }
 
-        // 💾 [จุดสำคัญ] พักข้อมูลดิบเอาไว้ในตัวแปรสำรองก่อน ยังไม่บันทึกจริงลงฐานข้อมูลเงิน
+        // 💾 พักข้อมูลดิบเอาไว้ในตัวแปรสำรองรอแอดมิน OK
         tempRoomResults = roomResults;
         tempDealerResult = dealerResult;
 
-        // --- พ่นข้อความรายงานเพื่อให้แอดมินกดยืนยัน ---
+        // --- 📊 พ่นข้อความรายงานและเปรียบเทียบผลแพ้ชนะเบื้องต้นด้วยสัญลักษณ์ 🟢🔴 ---
         let checkText = `📊 [ตรวจสอบผลการเล่น] รอบที่: ${currentRound}\n`;
         checkText += `👑 เจ้ามือ: ${dealerResult.name} (${dealerResult.mult} เด้ง)\n\n`;
-        checkText += `📝 ลำดับหน้าไพ่แต่ละขา:\n`;
+        checkText += `📝 ลำดับหน้าไพ่และการประเมินผล:\n`;
 
         for (let leg = 1; leg <= 6; leg++) {
             if (roomResults[leg]) {
                 const res = roomResults[leg];
-                checkText += `• ขา ${leg} -> 2ใบ: ${res.twoCards.name} (${res.twoCards.mult}เด้ง) / 3ใบ: ${res.threeCards.name} (${res.threeCards.mult}เด้ง)\n`;
+                
+                // ฟังก์ชันเทียบแต้มดิบเพื่อหาเครื่องหมายหน้าขา
+                let status2Str = "🟡 เสมอ";
+                if (res.twoCards.score > dealerResult.score) status2Str = "🟢 ชนะ";
+                else if (res.twoCards.score < dealerResult.score) status2Str = "🔴 แพ้";
+
+                let status3Str = "🟡 เสมอ";
+                if (res.threeCards.score > dealerResult.score) status3Str = "🟢 ชนะ";
+                else if (res.threeCards.score < dealerResult.score) status3Str = "🔴 แพ้";
+
+                checkText += `• ขา ${leg}:\n`;
+                checkText += `   - [ทีมอยู่ 2ใบ]: ${res.twoCards.name} (${res.twoCards.mult}เด้ง) -> ${status2Str}\n`;
+                checkText += `   - [ทีมจั่ว 3ใบ]: ${res.threeCards.name} (${res.threeCards.mult}เด้ง) -> ${status3Str}\n`;
             } else {
-                checkText += `• ขา ${leg} -> ⚠️ ไม่มีข้อมูลผล (ตีเป็นบอด)\n`;
+                checkText += `• ขา ${leg} -> ⚠️ ไม่มีข้อมูลผล (ระบบตีเป็นบอด แพ้เจ้ามือ 🔴)\n`;
             }
         }
         

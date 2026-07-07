@@ -530,30 +530,56 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                         const legNum = parseInt(leg);
                         const matchResult = tempRoomResults[legNum];
                         
-                        // ดึงผลแต้มตาม drawStatus (ถ้ากดจั่วใช้ผล 3 ใบ, ถ้าอยู่ใช้ผล 2 ใบ)
-                        const isUserDrawn = (bet.drawStatus && bet.drawStatus[leg] === "จั่ว");
-                        const finalCard = isUserDrawn ? matchResult.threeCards : matchResult.twoCards;
+                        // 🔍 ตรวจสอบประเภทโพย: เป็นการแทงฝั่งเจ้ามือสู้ขาผู้เล่นใช่หรือไม่ (เช่น มจ หรือ จ1)
+                        const isBettingOnDealer = (bet.betType === "มจ" || bet.betType.startsWith('จ'));
 
-                        const betPrice = bet.pricePerLeg; 
+                        let finalCard;
+                        const betPrice = bet.pricePerLeg; // ยอดแทงต่อ 1 ขา
 
-                        if (finalCard.score > tempDealerResult.score) {
-                            // 🟢 ผู้เล่นชนะเจ้ามือ! -> คืนเงินค้ำประกันเต็มจำนวน + จ่ายรางวัลตามจำนวนเด้งผู้เล่น
-                            let winMultiplier = finalCard.mult;
-                            let netWin = betPrice * winMultiplier;
-                            userTotalWinLoss += netWin;
-                        } 
-                        else if (finalCard.score < tempDealerResult.score) {
-                            // 🔴 ผู้เล่นแพ้เจ้ามือ! -> ยึดเงินตามยอดแทง x จำนวนเด้งของเจ้ามือ
-                            let loseMultiplier = tempDealerResult.mult;
-                            if (isUserDrawn && (finalCard.v === 't' || finalCard.v === 'sf' || finalCard.v === 's' || finalCard.v === 'h')) {
-                                loseMultiplier = 3;
+                        if (!isBettingOnDealer) {
+                            // 👤 [ฝั่งคนแทงผู้เล่นปกติ] -> รันระบบเดิมของคุณที่สมบูรณ์แบบอยู่แล้ว 100% ไม่เปลี่ยนแปลง
+                            const isUserDrawn = (bet.drawStatus && bet.drawStatus[leg] === "จั่ว");
+                            finalCard = isUserDrawn ? matchResult.threeCards : matchResult.twoCards;
+
+                            // คำนวณผลได้เสียของฝั่งผู้เล่นปกติ
+                            if (finalCard.score > tempDealerResult.score) {
+                                let winMultiplier = finalCard.mult;
+                                userTotalWinLoss += (betPrice * winMultiplier);
+                            } 
+                            else if (finalCard.score < tempDealerResult.score) {
+                                let loseMultiplier = tempDealerResult.mult;
+                                if (isUserDrawn && (finalCard.v === 't' || finalCard.v === 'sf' || finalCard.v === 's' || finalCard.v === 'h')) {
+                                    loseMultiplier = 3;
+                                }
+                                userTotalWinLoss -= (betPrice * loseMultiplier);
                             }
-                            
-                            let netLose = betPrice * loseMultiplier;
-                            userTotalWinLoss -= netLose;
+                        } 
+                        else {
+                            // 👑 [ฝั่งคนแทงเจ้ามือ (จ หรือ มจ)] -> ใช้กฎตายตัวแยกคำนวณเด็ดขาด
+                            let playerTwoCardScore = matchResult.twoCards.score;
+                            let playerTwoCardMult = matchResult.twoCards.mult;
+
+                            // รันกฎตายตัว: ขาผู้เล่นได้ 4 แต้มหรือต่ำกว่า (และไม่ใช่ 4 แต้มเด้ง) ให้เจ้ามือไปสู้กับผล 3 ใบ
+                            if (playerTwoCardScore <= 4 && playerTwoCardMult === 1) {
+                                finalCard = matchResult.threeCards; // ชนกับผลไพ่ 3 ใบ
+                            } else {
+                                finalCard = matchResult.twoCards;   // ชนกับผลไพ่ 2 ใบ (5 แต้มขึ้นไป หรือ 4 แต้มเด้ง)
+                            }
+
+                            // 🧮 ตรรกะคิดเงินของฝั่งคนแทงเจ้ามือ (แก้ไขบั๊กสลับฝั่ง)
+                            if (tempDealerResult.score > finalCard.score) {
+                                // เจ้ามือชนะขาผู้เล่นคนนั้น = คนแทงฝั่งเจ้าได้เงินรางวัล! (บวกเงินตามเด้งเจ้ามือ)
+                                let winMultiplier = tempDealerResult.mult;
+                                userTotalWinLoss += (betPrice * winMultiplier);
+                            } 
+                            else if (tempDealerResult.score < finalCard.score) {
+                                // เจ้ามือแพ้ขาผู้เล่นคนนั้น = คนแทงฝั่งเจ้าเสียเงิน! (หักเงินตามเด้งของขานั้นๆ)
+                                let loseMultiplier = finalCard.mult;
+                                userTotalWinLoss -= (betPrice * loseMultiplier);
+                            }
+                            // กรณีแต้มเท่ากันคือ เสมอ (ยก) ผลได้เสียสุทธิเป็น 0 เท่าเดิม
                         }
                     });
-                });
 
                 // 🧮 อัปเดตกระเป๋าเงินจริง
                 user.balance = user.balance + totalHoldRefund + userTotalWinLoss;

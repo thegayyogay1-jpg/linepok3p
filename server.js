@@ -59,7 +59,8 @@ if (command === "เติม" || command === "ลบ") {
             }
         }
     }
-} else if (userMsg === 'o' || userMsg === 'x') {
+} else if (userMsg === 'o' || userMsg === 'x') 
+{ //==================== โค้ดสเต็ป3 เปิด/ปิดรอบ ==================
     // 👑 1. ตั้งค่า LINE User ID ของแอดมินตรงนี้ (เอา ID ของคุณมาใส่เพื่อสิทธิ์สั่งการ)
     const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db"; 
 

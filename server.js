@@ -182,12 +182,11 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                     } else {
                         const user = usersWallets[userId];
 
-                        // 🔒 บล็อกไม่ให้แทงโพยหากบัญชีติดสถานะรออนุมัติยอดถอนเงิน
+                        // 🔒 [จุดแก้ไขสำคัญ] ดักจับทันทีถ้าสมาชิกคนนี้ติดสถานะรออนุมัติยอดถอนเงิน
                         if (user && user.isWithdrawLocked) {
-                            replyText = `❌ ไม่สามารถส่งโพยได้ครับ!\n👤 คุณ ${user.name} อยู่ในระหว่าง "รอแอดมินอนุมัติยอดถอนเงิน" จึงถูกล็อกบัญชีชั่วคราวชั่วคราวครับ`;
-                            return; 
+                            replyText = `❌ คุณไม่สามารถส่งโพยแทงได้ครับ!\n👤 คุณ ${user.name} (ID: ${user.memberNumber}) อยู่ในระหว่าง "รอแอดมินโอนเงินและอนุมัติยอดถอน" (${user.pendingWithdrawAmount} บาท) บัญชีของคุณจึงถูกล็อกชั่วคราวครับ`;
+                            return; // สั่งหยุดทำงานตรงนี้ทันที ไม่ให้บอทอ่านโพยต่อ
                         }
-
                         const lines = originalMsg.split(/\r?\n/);
                         
                         let totalActualBet = 0; 

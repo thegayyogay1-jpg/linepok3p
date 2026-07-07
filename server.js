@@ -102,6 +102,9 @@ else if (originalMsg.includes('-') && !originalMsg.startsWith('C/') && !original
             let hasError = false;
             let errorMsg = "";
 
+            // 🎯 กำหนดเลขขาที่อนุญาตในระบบ (ขา 1 ถึง ขา 6)
+            const allowedLegs = ['1', '2', '3', '4', '5','6'];
+
             for (let line of lines) {
                 let cleanLine = line.trim().toLowerCase();
                 if (cleanLine === "") continue;
@@ -135,9 +138,25 @@ else if (originalMsg.includes('-') && !originalMsg.startsWith('C/') && !original
                 } else if (targetStr.startsWith('จ')) {
                     const legs = targetStr.substring(1);
                     if (legs === "") { hasError = true; errorMsg = `⚠️ ไม่ระบุเลขขาเจ้ามือในบรรทัด: "${line}"`; break; }
+
+                    // 🔍 เช็กว่าขาเจ้ามือที่พิมพ์มา มีเลขเกิน 1-6 ไหม
+                    let isLegsValid = legs.split('').every(char => allowedLegs.includes(char));
+                    if (!isLegsValid) {
+                        hasError = true;
+                        errorMsg = `❌ บันทึกโพยล้มเหลว! ห้องนี้มีแค่ ขา 1 ถึง ขา 6 เท่านั้นครับ\n(พบข้อผิดพลาดที่ขาเจ้ามือ: "${line}")`;
+                        break;
+                    }
+                    
                     legsCount = legs.length;
                     betTypeDetail = `เจ้ามือสู้ขา [${legs.split('').join(', ')}] ขาละ ${price} บาท`;
                 } else {
+                     // 🔍 เช็กว่าขาผู้เล่นปกติที่พิมพ์มา มีเลขเกิน 1-6 ไหม
+                    let isLegsValid = targetStr.split('').every(char => allowedLegs.includes(char));
+                    if (!isLegsValid) {
+                        hasError = true;
+                        errorMsg = `❌ บันทึกโพยล้มเหลว! ห้องนี้มีแค่ ขา 1 ถึง ขา 6 เท่านั้นครับ\n(พบข้อผิดพลาดที่ขาผู้เล่น: "${line}")`;
+                        break;
+                    }
                     legsCount = targetStr.length;
                     betTypeDetail = `แทงขา [${targetStr.split('').join(', ')}] ขาละ ${price} บาท`;
                 }

@@ -12,6 +12,7 @@ let nextMemberId = 1;
 let isRoundOpen = false; // ตัวแปรจำสถานะ เปิด/ปิด รอบ
 let roundBets = {};      // ตัวแปรสำหรับจำโพยแทงในแต่ละรอบ
 let currentRound = 0;    // บรรทัดนี้เพื่อจำลำดับรอบปัจจุบัน
+let isDrawOpen = false;  // บรรทัดนี้เพื่อเช็กสถานะรอบจั่วไพ่
 
 app.post('/callback', async (req, res) => {
     const events = req.body.events;
@@ -101,6 +102,35 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
         }
     }
 }
+    // ==================== [ END: โค้ดสเต็ปที่ 3 เปิดรอบ/ปิดรอบแทง ] =============
+    // ==================== [ สเต็ป5 START: แอดมินเปิด/ปิดรอบจั่วไพ่ ] ====================
+else if (userMsg === 'oo' || userMsg === 'xx') {
+    const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db"; 
+
+    if (userId !== ADMIN_ID) {
+        replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งควบคุมระบบจั่วครับ";
+    } else {
+        if (userMsg === 'oo') {
+            if (isRoundOpen) {
+                replyText = "⚠️ ต้องพิมพ์ปิดรอบแทง (X) ก่อน จึงจะเปิดรอบจั่วได้ครับ";
+            } else if (isDrawOpen) {
+                replyText = "⚠️ ระบบกำลังเปิดให้สมาชิกจั่วไพ่อยู่แล้วครับ ไม่ต้องเปิดซ้ำ";
+            } else {
+                isDrawOpen = true;
+                replyText = `🃏 [แอดมิน] เปิดรอบขอจั่วไพ่ใบที่ 3 (รอบที่ ${currentRound}) แล้วครับ!\n\n📣 สมาชิกขาไหนต้องการจั่วเพิ่ม ให้พิมพ์เลขขาตามด้วยเครื่องหมาย + เช่น พิมพ์ "12+" (ขอจั่วขา 1 และ 2)\n*หากขาไหนต้องการอยู่ (ไม่จั่ว) ไม่ต้องพิมพ์อะไรส่งมาครับ*`;
+            }
+        } else if (userMsg === 'xx') {
+            if (!isDrawOpen) {
+                replyText = "⚠️ ระบบไม่ได้เปิดรอบจั่วอยู่ครับ";
+            } else {
+                isDrawOpen = false;
+                replyText = `🔒 [แอดมิน] ปิดรอบขอจั่วไพ่เรียบร้อยแล้วครับ!\n🎰 ล็อกสถานะไพ่ 2 ใบ / 3 ใบของทุกขาแล้ว รอแอดมินสรุปผลและคิดเงินสักครู่ครับ`;
+            }
+        }
+    }
+}
+// ==================== [ END: แอดมินเปิด/ปิดรอบจั่วไพ่ ] ====================
+    
     // ==================== [ START: โค้ดสเต็ปที่ 4 ระบบรับโพยป๊อกเด้ง + หักค้ำประกัน 3 เด้ง ] ====================
 else if (originalMsg.includes('-') && !originalMsg.startsWith('C/') && !originalMsg.startsWith('c/')) {
     if (!isRoundOpen) {
@@ -275,9 +305,65 @@ else if (userMsg === "r") {
     }
 }
 // ==================== [ END: โค้ดระบบคืนโพย / ยกเลิกโพยในรอบ ] ====================
+    // ==================== [ START: ระบบสมาชิกพิมพ์ขอจั่วไพ่ เช่น 12+ ] ====================
+else if (originalMsg.endsWith('+')) {
+    if (!isDrawOpen) {
+        replyText = "🚫 ตอนนี้ระบบไม่ได้เปิดให้ขอจั่วไพ่ครับ หรืออาจจะยังไม่ถึงเวลาจั่ว";
+    } else {
+        const isRegistered = usersWallets[userId] ? true : false;
+        if (!isRegistered) {
+            replyText = "📢 คุณยังไม่ได้ลงทะเบียนสมาชิกในระบบครับ";
+        } else {
+            const user = usersWallets[userId];
+            const myBets = roundBets[userId];
+
+            if (!myBets || myBets.length === 0) {
+                replyText = `❌ คุณ ${user.name} ไม่มีรายการโพยแทงในรอบนี้ จึงไม่สามารถจั่วไพ่ได้ครับ`;
+            } else {
+                // ดึงเฉพาะตัวเลขขาออกมาก่อนเครื่องหมาย +
+                const drawLegsInput = originalMsg.replace('+', '').trim();
+                const allowedLegs = ['1', '2', '3', '4', '5','6'];
+                
+                // เช็กความถูกต้องของเลขขา
+                let isLegsValid = drawLegsInput.split('').every(char => allowedLegs.includes(char));
+                
+                if (drawLegsInput === "" || !isLegsValid) {
+                    replyText = "⚠️ รูปแบบการจั่วไม่ถูกต้อง กรุณาพิมพ์เลขขา 1-5 ตามด้วยเครื่องหมาย + เช่น 12+";
+                } else {
+                    const drawLegsArray = drawLegsInput.split('');
+                    let successCount = 0;
+
+                    // วนลูปเข้าไปติด Tag ในโพยของสมาชิกคนนั้น
+                    myBets.forEach((bet) => {
+                        // สร้าง Object เก็บสถานะจั่วของแต่ละขาในโพยใบนี้ (ถ้าไม่มีให้สร้างใหม่)
+                        if (!bet.drawStatus) {
+                            bet.drawStatus = {}; // เก็บค่า เช่น { "1": "จั่ว", "2": "อยู่" }
+                        }
+
+                        // ไล่เช็กทีละขาในโพยใบนั้น
+                        // ถ้าประเภทเป็น "มข" หรือ "ผู้เล่นปกติ" ที่มีตัวเลขขา
+                        drawLegsArray.forEach((leg) => {
+                            if (bet.type === "มข" || bet.type.includes(leg)) {
+                                bet.drawStatus[leg] = "จั่ว";
+                                successCount++;
+                            }
+                        });
+                    });
+
+                    if (successCount === 0) {
+                        replyText = `⚠️ คุณพิมพ์จั่วขา [${drawLegsArray.join(', ')}] แต่ในโพยรอบนี้ของคุณไม่ได้แทงขานี้ไว้ครับ เช็กโพยพิมพ์ c`;
+                    } else {
+                        replyText = `✅ บันทึกสถานะจั่วไพ่ใบที่ 3 สำเร็จ!\n👤 คุณ: ${user.name}\n🃏 ขาที่ขอจั่วเพิ่ม: ขา [${drawLegsArray.join(', ')}]\n*ขาอื่น ๆ ที่คุณแทงไว้แต่นอกเหนือจากนี้ จะถือว่า "อยู่" (2 ใบ) โดยอัตโนมัติครับ*`;
+                    }
+                }
+            }
+        }
+    }
+}
+// ==================== [ END: ระบบสมาชิกพิมพ์ขอจั่วไพ่ ] ====================
             else {
 // ==================== [ END: โค้ดสเต็ปที่ 4 ระบบรับโพย ] ==================== 
-// ==================== [ END: โค้ดสเต็ปที่ 3 เปิดรอบ/ปิดรอบแทง จบบรรทัด85 ] ===================={ 
+{ 
             // ==================== [ START: โค้ดสเต็ปที่ 1 เช็กก่อนว่าคนนี้เคยลงทะเบียนในระบบหรือยัง ] ====================
 const isRegistered = usersWallets[userId] ? true : false;
 

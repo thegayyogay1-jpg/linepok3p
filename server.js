@@ -586,20 +586,6 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                     });
                 }); // ปิด userBetsArray.forEach
 
-                // 👑 [ระบบหักกำไร 10% เฉพาะฝั่งเจ้ามือที่ชนะ]
-                // ตรวจสอบโพยใบสุดท้ายของยูสเซอร์คนนี้ว่าเป็นโพยฝั่งเจ้ามือหรือไม่
-                let isLastBetOnDealer = false;
-                if (userBetsArray.length > 0) {
-                    let lastBet = userBetsArray[userBetsArray.length - 1];
-                    isLastBetOnDealer = (lastBet.betType === "มจ" || lastBet.betType.startsWith('จ'));
-                }
-
-                // ถ้าแทงฝั่งเจ้ามือ และผลลัพธ์รวมรอบนี้ได้กำไร (ยอด win/loss มากกว่า 0)
-                if (isLastBetOnDealer && userTotalWinLoss > 0) {
-                    // หักกำไรออก 10% (เหลือ 90%) เช่น ได้กำไร 100 บาท จะเหลือได้จริง 90 บาท
-                    userTotalWinLoss = Math.floor(userTotalWinLoss * 0.9);
-                }
-
                 // 🧮 อัปเดตกระเป๋าเงินจริงหลังคิดค่าต๋งเรียบร้อย
                 user.balance = user.balance + totalHoldRefund + userTotalWinLoss;
 

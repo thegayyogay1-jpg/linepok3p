@@ -100,13 +100,44 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                             replyText = `📢 [แอดมิน] เริ่มเปิดรอบแทงแล้วครับ!\n🎰 รอบที่: ${currentRound}${historyText}\n✨ สมาชิกทุกท่านสามารถส่งโพยเข้ามาได้เลยครับครับ 🎰`;
                         }
         } else if (userMsg === 'x') {
-            if (!isRoundOpen) {
-                replyText = `⚠️ [แจ้งเตือน] ระบบปิดรอบแทงอยู่แล้วครับ ไม่สามารถปิดซ้ำได้`;
-            } else {
-                isRoundOpen = false;
-                replyText = `🚫 [แอดมิน] ปิดรอบแทงเรียบร้อยแล้วครับ!\n🏁 จบรอบที่: ${currentRound}\n\n🔒 หยุดรับโพยทุกกรณี รอแอดมินสรุปผลสักครู่ครับ`;
-            }
-        } else if (userMsg === 'rst') {
+                        if (!isRoundOpen) {
+                            replyText = `⚠️ [แจ้งเตือน] ระบบปิดรอบแทงอยู่แล้วครับ ไม่สามารถปิดซ้ำได้`;
+                        } else {
+                            isRoundOpen = false;
+                            
+                            // --- 📊 [เพิ่มระบบสรุปยอดแทงรายบุคคลตอนปิดรอบ] ---
+                            let betSummaryText = "";
+                            let hasAnyBet = false;
+
+                            // วนลูปเช็กข้อมูลการแทงของสมาชิกทุกคนในรอบนี้
+                            for (let uId in roundBets) {
+                                const userBetsArray = roundBets[uId];
+                                if (!userBetsArray || userBetsArray.length === 0) continue;
+
+                                hasAnyBet = true;
+                                const user = usersWallets[uId];
+                                let userTotalBetAmt = 0; // ยอดแทงรวมดิบ (ไม่รวมค้ำ) ของคนนี้ในรอบนี้
+
+                                // บวกรวมยอดแทงทุกโพยที่คนนี้ส่งเข้ามาในรอบนี้
+                                userBetsArray.forEach((bet) => {
+                                    userTotalBetAmt += bet.totalBetAmount;
+                                });
+
+                                // ประกอบร่างข้อความ: (เลขลำดับ) (ชื่อสมาชิก) (ยอดแทงทั้งหมด)
+                                betSummaryText += `• (${user.memberNumber}) ${user.name} ➡️ ยอดแทง: ${userTotalBetAmt} บาท\n`;
+                            }
+
+                            // จัดหน้าตาข้อความสรุปยอดแทงพ่วงท้าย
+                            let closingBetSection = "";
+                            if (hasAnyBet) {
+                                closingBetSection = `\n\n📝 **สรุปยอดแทงประจำรอบ:**\n${betSummaryText}`;
+                            } else {
+                                closingBetSection = `\n\n📝 **สรุปยอดแทงประจำรอบ:**\n• ไม่มีสมาชิกส่งโพยเดิมพันในรอบนี้`;
+                            }
+
+                            replyText = `🚫 [แอดมิน] ปิดรอบแทงเรียบร้อยแล้วครับ!\n🏁 จบรอบที่: ${currentRound}${closingBetSection}\n\n🔒 หยุดรับโพยทุกกรณี รอแอดมินสรุปผลสักครู่ครับ`;
+                        }
+                    } else if (userMsg === 'rst') {
             currentRound = 0;
             isRoundOpen = false;
             isDrawOpen = false; // ล้างสถานะจั่วไปด้วยเลยตอนเซ็ตศูนย์
@@ -544,13 +575,13 @@ else if (userMsg === 'ok' || userMsg === 'no') {
             let dealerDisplay = ""; // ข้อความแสดงหน้าไพ่เจ้ามือสั้นๆ
             
             // แปลงชื่อแต้มเจ้ามือให้กระชับ เช่น ป๊อก 9 -> 9ป, ตอง -> ตอง
-            if (tempDealerResult.name.includes("ป๊อก 9")) dealerDisplay = "👑9ป";
-            else if (tempDealerResult.name.includes("ป๊อก 8")) dealerDisplay = "👑8ป";
-            else if (tempDealerResult.name.includes("ตอง")) dealerDisplay = "👑ตอง";
-            else if (tempDealerResult.name.includes("สเตฟฟลัช")) dealerDisplay = "👑สเตฟ";
-            else if (tempDealerResult.name.includes("เซียน")) dealerDisplay = "👑เซียน";
-            else if (tempDealerResult.name.includes("เรียง")) dealerDisplay = "👑เรียง";
-            else dealerDisplay = `${tempDealerResult.score}👑แต้ม`;
+            if (tempDealerResult.name.includes("ป๊อก 9")) dealerDisplay = "9ป";
+            else if (tempDealerResult.name.includes("ป๊อก 8")) dealerDisplay = "8ป";
+            else if (tempDealerResult.name.includes("ตอง")) dealerDisplay = "ตอง";
+            else if (tempDealerResult.name.includes("สเตฟฟลัช")) dealerDisplay = "สเตฟ";
+            else if (tempDealerResult.name.includes("เซียน")) dealerDisplay = "เซียน";
+            else if (tempDealerResult.name.includes("เรียง")) dealerDisplay = "เรียง";
+            else dealerDisplay = `${tempDealerResult.score}แต้ม`;
 
             let legsStatusStr = ""; // ข้อความเก็บสถานะขา 1-6 เช่น [1🔴][2🟢]
 
@@ -572,7 +603,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
             }
 
             // ประกอบร่างเป็นข้อความสถิติตามดีไซน์ของคุณ
-            let historySummary = `รอบที่ ${currentRound}: [${dealerDisplay}] ⚔️${legsStatusStr}`;
+            let historySummary = `รอบที่ ${currentRound}: [👑${dealerDisplay}] ⚔️${legsStatusStr}`;
 
             // บันทึกเข้าอาร์เรย์ประวัติ
             matchHistory.push(historySummary);

@@ -105,35 +105,27 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                         } else {
                             isRoundOpen = false;
                             
-// --- 📊 [สรุปยอดแทงรายบุคคล ย้อนศรจากเงินที่โดนหักจริงในกระเป๋า] ---
-let betSummaryText = "";
-let hasAnyBet = false;
+// --- 📊 [สรุปยอดแทงรายบุคคล ดึงจากยอด actualBet ที่บันทึกไว้จริง] ---
+                            let betSummaryText = "";
+                            let hasAnyBet = false;
 
-for (let uId in roundBets) {
-    const userBetsArray = roundBets[uId];
-    if (!userBetsArray || userBetsArray.length === 0) continue;
+                            for (let uId in roundBets) {
+                                const userBetsArray = roundBets[uId];
+                                if (!userBetsArray || userBetsArray.length === 0) continue;
 
-    hasAnyBet = true;
-    const user = usersWallets[uId];
-    
-    // คำนวณหายอดเงินที่โดนล็อกค้ำประกันไว้ในรอบนี้ (เงินก่อนแทง ลบ เงินปัจจุบัน)
-    let lockedAmount = (user.beforeBetBalance || 0) - (user.wallet || 0);
-    
-    // หาร 3 ย้อนกลับ เพื่อให้ได้ยอดแทงดิบที่แท้จริง
-    let userTotalBetAmt = Math.floor(lockedAmount / 3);
+                                hasAnyBet = true;
+                                const user = usersWallets[uId];
+                                let userTotalBetAmt = 0;
 
-    // ถ้าระบบคำนวณย้อนศรแล้วติดลบหรือผิดพลาด ให้ดึงยอดแทงเริ่มต้นมาใส่แทนเพื่อความปลอดภัย
-    if (userTotalBetAmt <= 0) {
-        userTotalBetAmt = 0;
-        // เผื่อมีกรณีพิเศษ ลองดึงค่าวนหาอีกรอบ
-        userBetsArray.forEach(b => {
-            userTotalBetAmt += (b.betAmount || b.amount || 0);
-        });
-    }
+                                // วนลูปดึงค่า actualBet ของทุกโพยที่คนนี้แทงในรอบนี้มาบวกรวมกัน
+                                userBetsArray.forEach((b) => {
+                                    if (b.actualBet) {
+                                        userTotalBetAmt += b.actualBet;
+                                    }
+                                });
 
-    betSummaryText += `• [ ${user.memberNumber} ] ${user.name} ➡️ ยอดแทง: ${userTotalBetAmt} บาท\n`;
-}
-
+                                betSummaryText += `• [ ${user.memberNumber} ] ${user.name} ➡️ ยอดแทง: ${userTotalBetAmt} บาท\n`;
+                            }
                             let closingBetSection = "";
                             if (hasAnyBet) {
                                 closingBetSection = `\n\n📝 **สรุปยอดแทงประจำรอบ:**\n${betSummaryText}`;

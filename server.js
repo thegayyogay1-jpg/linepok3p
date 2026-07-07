@@ -68,8 +68,8 @@ if (command === "เติม" || command === "ลบ") {
         } //<-- ปีกกาปิดแอดมิน
 } 
 //==================== โค้ดสเต็ป3 เปิด/ปิดรอบ ==================
-else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
-    // 👑 1. ตั้งค่า LINE User ID ของแอดมินตรงนี้
+/else if (userMsg === 'o' || userMsg === 'x'|| userMsg === 'rst') {
+// 👑 1. ตั้งค่า LINE User ID ของแอดมินตรงนี้ (เอา ID ของคุณมาใส่เพื่อสิทธิ์สั่งการ)
     const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db"; 
 
     if (userId !== ADMIN_ID) {
@@ -80,26 +80,27 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
             if (isRoundOpen) {
                 replyText = `⚠️ [แจ้งเตือน] ตอนนี้ระบบกำลังเปิด "รอบที่ ${currentRound}" อยู่แล้วครับ ไม่จำเป็นต้องเปิดซ้ำ ข้อมูลโพยเดิมยังอยู่ครบถ้วนครับ`;
             } else {
-                currentRound++; 
-                isRoundOpen = true;
-                roundBets = {}; 
-                replyText = `📢 [แอดมิน] เริ่มเปิดรอบแทงแล้วครับ!\n🎰 รอบที่: ${currentRound}\n\n✨ สมาชิกทุกท่านสามารถส่งโพยเข้ามาได้เลยครับครับ 🎰`;
+            currentRound++; // ➕ เพิ่มรอบไปอีก 1 ทุกครั้งที่พิมพ์ o
+            isRoundOpen = true;
+            roundBets = {}; // ล้างข้อมูลโพยเก่าของรอบที่แล้วทิ้งทันทีเพื่อเริ่มรอบใหม่
+            replyText = "📢 [แอดมิน] เริ่มเปิดรอบแทงแล้วครับ!\n🎰 รอบที่: ${currentRound}\n\n✨ สมาชิกทุกท่านสามารถส่งโพยเข้ามาได้เลยครับครับ 🎰`;
             }
         } else if (userMsg === 'x') {
             // 🔍 เช็กว่าถ้าระบบปิดอยู่แล้ว ห้ามกดซ้ำ
             if (!isRoundOpen) {
                 replyText = `⚠️ [แจ้งเตือน] ระบบปิดรอบแทงอยู่แล้วครับ ไม่สามารถปิดซ้ำได้`;
             } else {
-                isRoundOpen = false;
-                replyText = `🚫 [แอดมิน] ปิดรอบแทงเรียบร้อยแล้วครับ!\n🏁 จบรอบที่: ${currentRound}\n\n🔒 หยุดรับโพยทุกกรณี รอแอดมินสรุปผลสักครู่ครับ`;
+            isRoundOpen = false;
+            replyText = "🚫 [แอดมิน] ปิดรอบแทงเรียบร้อยแล้วครับ!\n🏁 จบรอบที่: ${currentRound}\n\n🔒 หยุดรับโพยทุกกรณี รอแอดมินสรุปผลสักครู่ครับ`;
             }
         } else if (userMsg === 'rst') {
+            // 🔄 ระบบล้างลำดับรอบ (Reset)
             currentRound = 0; 
             isRoundOpen = false;
             roundBets = {};
             replyText = "🔄 [ระบบ] ทำการล้างลำดับรอบเรียบร้อยแล้ว! รอบต่อไปจะเริ่มต้นที่ รอบที่ 1 ครับ ⚙️";
         }
-    }
+    }         
 }
     // ==================== [ START: โค้ดสเต็ปที่ 4 ระบบรับโพยป๊อกเด้ง + หักค้ำประกัน 3 เด้ง ] ====================
 else if (originalMsg.includes('-') && !originalMsg.startsWith('C/') && !originalMsg.startsWith('c/')) {

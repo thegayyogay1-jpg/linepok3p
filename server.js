@@ -336,7 +336,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                     }
                 }
             }
-                /// ==================== [ 8. ระบบแอดมินส่งผลสรุปคำนวณแต้ม - เวอร์ชันใช้ขีดคั่น + แก้บั๊ก 3 ใบป๊อก + แสดง 🟢🔴 ] ====================
+                // ==================== [ 8. ระบบแอดมินส่งผลสรุปคำนวณแต้ม - เวอร์ชันใช้เครื่องหมาย = คั่นแยกขา ] ====================
 else if (originalMsg.startsWith('>')) {
     const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
     if (userId !== ADMIN_ID) {
@@ -344,8 +344,8 @@ else if (originalMsg.startsWith('>')) {
     } else if (isRoundOpen) {
         replyText = "⚠️ ต้องพิมพ์ปิดรอบแทง (X) และทำขั้นตอนจั่วไพ่ให้เสร็จก่อน จึงจะสรุปผลได้ครับ";
     } else {
-        // เปลี่ยนเครื่องหมายขีดกลาง (-) ให้กลายเป็นเว้นวรรค เพื่อแยกคำตามตำแหน่งขา
-        let cleanMsg = originalMsg.replace(/-/g, ' ');
+        // เปลี่ยนเครื่องหมายเท่ากับ (=) ให้กลายเป็นเว้นวรรค เพื่อแยกคำตามตำแหน่งขาอย่างแม่นยำ
+        let cleanMsg = originalMsg.replace(/=/g, ' ');
         const parts = cleanMsg.split(/\s+/);
         
         // ฟังก์ชันสำหรับแกะรหัสไพ่ (isThreeCards = true คือล็อกว่าห้ามติดป๊อกเด็ดขาด)
@@ -417,7 +417,7 @@ else if (originalMsg.startsWith('>')) {
         tempRoomResults = roomResults;
         tempDealerResult = dealerResult;
 
-        // --- พ่นรายงานสรุปผลกระดานให้ตรวจสอบ ---
+        // --- พ่นรายงานสรุปผลกระดานให้ตรวจสอบพร้อมสถานะ 🟢🔴 ---
         let checkText = `📊 [ตรวจสอบผลการเล่น] รอบที่: ${currentRound}\n`;
         checkText += `👑 เจ้ามือ: ${dealerResult.name} (${dealerResult.mult} เด้ง)\n\n`;
         checkText += `📝 ลำดับหน้าไพ่และการประเมินผล:\n`;
@@ -468,8 +468,8 @@ else if (userMsg === 'ok' || userMsg === 'no') {
 
                 hasAnyBet = true;
                 const user = usersWallets[uId];
-                let userTotalWinLoss = 0; // ยอดรวมได้เสียของสมาชิกคนนี้ในตานี้
-                let totalHoldRefund = 0;   // ยอดค้ำประกันรวมที่จะได้คืนเบื้องต้น
+                let userTotalWinLoss = 0; 
+                let totalHoldRefund = 0;   
 
                 userBetsArray.forEach((bet) => {
                     totalHoldRefund += bet.holdCost; // ดึงเงินค้ำประกัน 3 เท่ากลับมาคำนวณก่อน
@@ -493,19 +493,16 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                         const isUserDrawn = (bet.drawStatus && bet.drawStatus[leg] === "จั่ว");
                         const finalCard = isUserDrawn ? matchResult.threeCards : matchResult.twoCards;
 
-                        const betPrice = bet.pricePerLeg; // ยอดแทงต่อ 1 ขา
+                        const betPrice = bet.pricePerLeg; 
 
                         if (finalCard.score > tempDealerResult.score) {
                             // 🟢 ผู้เล่นชนะเจ้ามือ! -> คืนเงินค้ำประกันเต็มจำนวน + จ่ายรางวัลตามจำนวนเด้งผู้เล่น
-                            // *ข้อยกเว้น ตอง/สเตฟฟลัช ชนะได้ 5 เท่าเต็มตามโครงสร้างกติกา*
                             let winMultiplier = finalCard.mult;
-                            
                             let netWin = betPrice * winMultiplier;
                             userTotalWinLoss += netWin;
                         } 
                         else if (finalCard.score < tempDealerResult.score) {
-                            // 🔴 ผู้เล่นแพ้เจ้ามือ! -> ยึดเงินตามยอดแทง x จำนวนเด้งของเจ้ามือ 
-                            // *ข้อยกเว้น ถ้าผู้เล่นจั่วได้ ตอง/สเตฟฟลัช/เรียง/เซียน แล้วเกิดแพ้แต้มป๊อกเจ้ามือ จะเสียแค่ 3 เท่าตามที่กำหนด*
+                            // 🔴 ผู้เล่นแพ้เจ้ามือ! -> ยึดเงินตามยอดแทง x จำนวนเด้งของเจ้ามือ
                             let loseMultiplier = tempDealerResult.mult;
                             if (isUserDrawn && (finalCard.v === 't' || finalCard.v === 'sf' || finalCard.v === 's' || finalCard.v === 'h')) {
                                 loseMultiplier = 3;
@@ -514,14 +511,12 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                             let netLose = betPrice * loseMultiplier;
                             userTotalWinLoss -= netLose;
                         }
-                        // 🟡 กรณีแต้มเท่ากันคือ เสมอ (ยก) ไม่เกิดการบวกลบเงิน ยอดเงินได้เสียเป็น 0 
                     });
                 });
 
-                // 🧮 อัปเดตกระเป๋าเงินจริง: เงินในกระเป๋า = เงินเดิม + เงินค้ำประกันทั้งหมด + ผลได้เสียสุทธิ
+                // 🧮 อัปเดตกระเป๋าเงินจริง
                 user.balance = user.balance + totalHoldRefund + userTotalWinLoss;
 
-                // ตกแต่งข้อความแสดงผลบวก-ลบเงินของแต่ละคน
                 let sign = userTotalWinLoss > 0 ? "🟢 +" : (userTotalWinLoss < 0 ? "🔴 " : "🟡 ");
                 summaryPayoutText += `👤 ${user.name} (ID: ${user.memberNumber})\n   ยอดสุทธิ: ${sign}${userTotalWinLoss} บาท (เครดิต: ${user.balance} บ.)\n`;
             }
@@ -533,7 +528,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
             summaryPayoutText += `\n✨ ระบบได้ทำการคำนวณเงินและอัปเดตกระเป๋าเงินให้ทุกคนเรียบร้อยแล้วครับ! 🏁`;
             replyText = summaryPayoutText;
 
-            // ล้างสมองบอทหลังคิดเงินเสร็จและเคลียร์โพยเพื่อเริ่มตาใหม่
+            // ล้างสมองบอทหลังคิดเงินเสร็จเพื่อเริ่มตาใหม่
             tempRoomResults = null;
             tempDealerResult = null;
             roundBets = {}; 

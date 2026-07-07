@@ -82,8 +82,131 @@ if (command === "เติม" || command === "ลบ") {
             replyText = "🚫 [แอดมิน] ปิดรอบแทงเรียบร้อยแล้วครับ! หยุดรับโพยทุกกรณี รอแอดมินสรุปผลสักครู่ครับ";
         }
     }
-} else {
-// ==================== [ END: โค้ดสเต็ปที่ 3 เปิดรอบ/ปิดรอบแทง ] ===================={ 
+} // ==================== [ START: โค้ดสเต็ปที่ 4 ระบบรับโพยป๊อกเด้ง + หักเครดิต ] ====================
+else if (originalMsg.includes('-') && !originalMsg.startsWith('C/') && !originalMsg.startsWith('c/')) {
+    // 🔍 1. เช็กก่อนว่าแอดมินเปิดรอบอยู่ไหม
+    if (!isRoundOpen) {
+        replyText = "🚫 ตอนนี้ระบบปิดรับโพยชั่วคราวครับ กรุณารอแอดมินเปิดรอบใหม่นะรับ";
+    } else {
+        // 🔍 2. เช็กสถานะการลงทะเบียน
+        const isRegistered = usersWallets[userId] ? true : false;
+        
+        if (!isRegistered) {
+            replyText = `📢 ยินดีต้อนรับครับสมาชิกใหม่!\n\n⚠️ คุณยังไม่ได้ลงทะเบียนชื่อจริงในระบบ\nกรุณาพิมพ์: C/ชื่อ-นามสกุล ของท่านเพื่อสมัครสมาชิกก่อนแทงครับ`;
+        } else {
+            const user = usersWallets[userId];
+            
+            // ✂️ รองรับการกดเว้นบรรทัด (Split ด้วยขึ้นบรรทัดใหม่)
+            const lines = originalMsg.split(/\r?\n/);
+            let totalActualBet = 0; // ยอดแทงหน้าโพยปกติ
+            let totalHoldCost = 0;  // ยอดเงินที่ต้องหักจริง (ยอดแทง x 3 เด้ง)
+            let processedBets = [];
+            let hasError = false;
+            let errorMsg = "";
+
+            // 🔄 วนลูปอ่านโพยทีละบรรทัดเพื่อคิดเงินรวมก่อน
+            for (let line of lines) {
+                let cleanLine = line.trim().toLowerCase();
+                if (cleanLine === "") continue;
+
+                const parts = cleanLine.split('-');
+                if (parts.length !== 2) {
+                    hasError = true;
+                    errorMsg = `⚠️ รูปแบบโพยไม่ถูกต้องในบรรทัด: "${line}"\n(ตัวอย่าง: 1-100 หรือ 123-100)`;
+                    break;
+                }
+
+                const targetStr = parts[0].trim();
+                const price = parseFloat(parts[1].trim());
+
+                if (isNaN(price) || price <= 0) {
+                    hasError = true;
+                    errorMsg = `⚠️ จำนวนเงินไม่ถูกต้องในบรรทัด: "${line}"`;
+                    break;
+                }
+
+                let legsCount = 0;
+                let betTypeDetail = "";
+
+                // 🧮 ตรรกะแยกประเภทการแทง
+                if (targetStr === "มข") {
+                    // มข-100 (สมมติมาตรฐานห้องมี 6 ขาผู้เล่น)
+                    const legsCount = 6; 
+                    totalCost += (price * legsCount);
+                    processedBets.push({ type: "มข", detail: `เหมาขาผู้เล่นสู้เจ้ามือ (6 ขา) ขาละ ${price} บาท`, cost: price * legsCount });
+                } else if (targetStr === "มจ") {
+                    // มจ-100 (เจ้ามือสู้ผู้เล่นทุกขา สมมติ 6 ขา)
+                    const legsCount = 6;
+                    totalCost += (price * legsCount);
+                    processedBets.push({ type: "มจ", detail: `แทงเจ้ามือสู้ทุกขา (6 ขา) ขาละ ${price} บาท`, cost: price * legsCount });
+                } else if (targetStr.startsWith('จ')) {
+                    // จ1-100 หรือ จ123-100 (เจ้ามือสู้ขานั้นๆ)
+                    const legs = targetStr.substring(1); // ตัด 'จ' ออก เหลือแต่เลขขา
+                    if (legs === "") { hasError = true; errorMsg = `⚠️ ไม่ระบุเลขขาเจ้ามือในบรรทัด: "${line}"`; break; }
+                    totalCost += (price * legs.length);
+                    processedBets.push({ type: "เจ้ามือ", detail: `เจ้ามือสู้ขา [${legs.split('').join(', ')}] ขาละ ${price} บาท`, cost: price * legs.length });
+                } else {
+                    // 1-100 หรือ 123-100 (ผู้เล่นปกติ)
+                    totalCost += (price * targetStr.length);
+                    processedBets.push({ type: "ผู้เล่น", detail: `แทงขา [${targetStr.split('').join(', ')}] ขาละ ${price} บาท`, cost: price * targetStr.length });
+                }
+                let currentLineBet = price * legsCount;     // ยอดแทงรวมของบรรทัดนี้
+                let currentLineHold = currentLineBet * 3;  // ยอดหักค้ำประกัน 3 เด้งของบรรทัดนี้
+
+                totalActualBet += currentLineBet;
+                totalHoldCost += currentLineHold;
+
+                processedBets.push({
+                    type: targetStr,
+                    detail: betTypeDetail,
+                    actualBet: currentLineBet,
+                    holdCost: currentLineHold,
+                    pricePerLeg: price
+                });
+            }
+
+            // ❌ ถ้ามีบรรทัดไหนพิมพ์ผิดกติกา ส่งสัญญานเตือนทันที
+            if (hasError) {
+                replyText = errorMsg;
+            } else if (totalCost === 0) {
+                replyText = "⚠️ ไม่พบรายการแทงในข้อความของคุณครับ";
+            } else if (user.balance < totalCost) {
+                // 💸 3. เช็กเงินเครดิตว่าพอไหม
+                replyText = `❌ เครดิตของคุณไม่พอครับ!\n💸 ยอดโพยนี้รวมทั้งหมด: ${totalCost} บาท\n💰 เครดิตปัจจุบันของคุณมี: ${user.balance} บาท\n*(กรุณาติดต่อแอดมินเพื่อเติมเงิน)*`;
+            } else {
+                // 💾 4. ผ่านฉลุย! หักเงินและจดบันทึกโพย
+                user.balance -= totalCost; // หักเงินออกจากระบบทันที
+
+                if (!roundBets[userId]) {
+                    roundBets[userId] = [];
+                }
+
+                // สรุปข้อความเพื่อตอบกลับผู้ใช้
+                let summaryText = `✅ จดบันทึกโพยสำเร็จ & หักเครดิตแล้ว! 🎉\n👤 คุณ: ${user.name} (ID: ${user.memberNumber})\n\n📝 รายการที่บันทึก:\n`;
+                
+                processedBets.forEach((bet) => {
+                    summaryText += `• ${bet.detail}\n`;
+                    // เซฟลงฐานข้อมูลรอบ
+                    roundBets[userId].push({
+                        name: user.name,
+                        memberNumber: user.memberNumber,
+                        betType: bet.type,
+                        detail: bet.detail,
+                        cost: bet.cost,
+                        time: new Date().toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok' })
+                    });
+                });
+
+                summaryText += `\n💸 ยอดเดิมพันรวมรอบนี้: ${totalCost} บาท\n💰 เครดิตคงเหลือ: ${user.balance} บาท\n*รอแอดมินประกาศผลรอบนี้ครับ*`;
+                replyText = summaryText;
+            }
+        }
+    }
+}
+// ==================== [ END: โค้ดสเต็ปที่ 4 ระบบรับโพยป๊อกเด้ง + หักเครดิต ] ====================
+            else {
+// ==================== [ END: โค้ดสเต็ปที่ 4 ระบบรับโพย ] ==================== 
+// ==================== [ END: โค้ดสเต็ปที่ 3 เปิดรอบ/ปิดรอบแทง จบบรรทัด85 ] ===================={ 
             // ==================== [ START: โค้ดสเต็ปที่ 1 เช็กก่อนว่าคนนี้เคยลงทะเบียนในระบบหรือยัง ] ====================
 const isRegistered = usersWallets[userId] ? true : false;
 

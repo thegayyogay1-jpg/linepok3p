@@ -128,7 +128,7 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                                     }
                                 });
 
-                                betSummaryText += `• (${user.memberNumber}) ${user.name} ➡️ ยอดแทง: ${userTotalBetAmt} บาท\n`;
+                                betSummaryText += `• [${user.memberNumber}] ${user.name} ➡️ ยอดแทง: ${userTotalBetAmt} บาท\n`;
                             }
 
                             let closingBetSection = "";

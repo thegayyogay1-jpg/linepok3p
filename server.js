@@ -13,6 +13,8 @@ let isRoundOpen = false; // ตัวแปรจำสถานะ เปิด
 let roundBets = {};      // ตัวแปรสำหรับจำโพยแทงในแต่ละรอบ
 let currentRound = 0;    // บรรทัดนี้เพื่อจำลำดับรอบปัจจุบัน
 let isDrawOpen = false;  // บรรทัดนี้เพื่อเช็กสถานะรอบจั่วไพ่
+let tempRoomResults = null; // ใช้พักข้อมูลผลแต้มชั่วคราวที่แอดมินพึ่งพิมพ์ส่งมา
+let tempDealerResult = null; // ใช้พักข้อมูลผลแต้มของเจ้ามือชั่วคราว
 
 app.post('/callback', async (req, res) => {
     const events = req.body.events;
@@ -66,66 +68,68 @@ app.post('/callback', async (req, res) => {
                 }
             } 
             // ==================== [ 2. แอดมิน เปิด/ปิดรอบแทง - เวอร์ชันป้องกันมือลั่น ] ====================
-            else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
-                const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
-                if (userId !== ADMIN_ID) {
-                    replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งควบคุมระบบครับ";
-                } else {
-                    if (userMsg === 'o') {
-                        if (isRoundOpen) {
-                            replyText = `⚠️ [แจ้งเตือน] ตอนนี้ระบบกำลังเปิด "รอบที่ ${currentRound}" อยู่แล้วครับ ไม่จำเป็นต้องเปิดซ้ำ ข้อมูลโพยเดิมยังอยู่ครบถ้วนครับ`;
-                        } 
-                        // 🚨 [จุดเพิ่มใหม่: บล็อกมือลั่น] ถ้าแอดมินเปิดรอบจั่วค้างอยู่ หรือพึ่งปิดแทงไปแต่ยังไม่ปิดรอบจั่ว ห้ามเปิดรอบใหม่เด็ดขาด!
-                        else if (isDrawOpen || (!isRoundOpen && currentRound > 0 && replyText === "")) { 
-                            // เช็กว่าถ้ารอบจั่วกำลังทำงานอยู่ หรือจั่วยังไม่เสร็จ ห้ามเปิดรอบใหม่สุ่มสี่สุ่มห้า
-                            replyText = `❌ [ระงับคำสั่ง] ไม่สามารถเปิดรอบใหม่ได้ครับ! เนื่องจาก "รอบที่ ${currentRound}" ยังดำเนินรายการจั่วไพ่ไม่เสร็จสิ้น\n\n💡 หากต้องการเปิดรอบจั่ว ให้พิมพ์ oo\n💡 หากต้องการจบขั้นตอนจั่ว ให้พิมพ์ xx ก่อนครับ`;
-                        } else {
-                            currentRound++;
-                            isRoundOpen = true;
-                            roundBets = {}; 
-                            replyText = `📢 [แอดมิน] เริ่มเปิดรอบแทงแล้วครับ!\n🎰 รอบที่: ${currentRound}\n\n✨ สมาชิกทุกท่านสามารถส่งโพยเข้ามาได้เลยครับครับ 🎰`;
-                        }
-                    } else if (userMsg === 'x') {
-                        if (!isRoundOpen) {
-                            replyText = `⚠️ [แจ้งเตือน] ระบบปิดรอบแทงอยู่แล้วครับ ไม่สามารถปิดซ้ำได้`;
-                        } else {
-                            isRoundOpen = false;
-                            replyText = `🚫 [แอดมิน] ปิดรอบแทงเรียบร้อยแล้วครับ!\n🏁 จบรอบที่: ${currentRound}\n\n🔒 หยุดรับโพยทุกกรณี รอแอดมินสรุปผลสักครู่ครับ`;
-                        }
-                    } else if (userMsg === 'rst') {
-                        currentRound = 0;
-                        isRoundOpen = false;
-                        isDrawOpen = false; // ล้างสถานะจั่วไปด้วยเลยตอนเซ็ตศูนย์
-                        roundBets = {};
-                        replyText = "🔄 [ระบบ] ทำการล้างลำดับรอบเรียบร้อยแล้ว! รอบต่อไปจะเริ่มต้นที่ รอบที่ 1 ครับ ⚙️";
-                    }
-                }
+else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
+    const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
+    if (userId !== ADMIN_ID) {
+        replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งควบคุมระบบครับ";
+    } else {
+        if (userMsg === 'o') {
+            if (isRoundOpen) {
+                replyText = `⚠️ [แจ้งเตือน] ตอนนี้ระบบกำลังเปิด "รอบที่ ${currentRound}" อยู่แล้วครับ ไม่จำเป็นต้องเปิดซ้ำ ข้อมูลโพยเดิมยังอยู่ครบถ้วนครับ`;
+            } 
+            // 🚨 [จุดเพิ่มใหม่: บล็อกมือลั่น] ถ้าแอดมินเปิดรอบจั่วค้างอยู่ หรือพึ่งปิดแทงไปแต่ยังไม่ปิดรอบจั่ว ห้ามเปิดรอบใหม่เด็ดขาด!
+            else if (isDrawOpen || (!isRoundOpen && currentRound > 0 && replyText === "")) { 
+                // เช็กว่าถ้ารอบจั่วกำลังทำงานอยู่ หรือจั่วยังไม่เสร็จ ห้ามเปิดรอบใหม่สุ่มสี่สุ่มห้า
+                replyText = `❌ [ระงับคำสั่ง] ไม่สามารถเปิดรอบใหม่ได้ครับ! เนื่องจาก "รอบที่ ${currentRound}" ยังดำเนินรายการจั่วไพ่ไม่เสร็จสิ้น\n\n💡 หากต้องการเปิดรอบจั่ว ให้พิมพ์ oo\n💡 หากต้องการจบขั้นตอนจั่ว ให้พิมพ์ xx ก่อนครับ`;
+            } else {
+                currentRound++;
+                isRoundOpen = true;
+                roundBets = {}; 
+                replyText = `📢 [แอดมิน] เริ่มเปิดรอบแทงแล้วครับ!\n🎰 รอบที่: ${currentRound}\n\n✨ สมาชิกทุกท่านสามารถส่งโพยเข้ามาได้เลยครับครับ 🎰`;
             }
-            // ==================== [ 3. แอดมิน เปิด/ปิดรอบจั่วไพ่ ] ====================
-            else if (userMsg === 'oo' || userMsg === 'xx') {
-                const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
-                if (userId !== ADMIN_ID) {
-                    replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งควบคุมระบบจั่วครับ";
-                } else {
-                    if (userMsg === 'oo') {
-                        if (isRoundOpen) {
-                            replyText = "⚠️ ต้องพิมพ์ปิดรอบแทง (X) ก่อน จึงจะเปิดรอบจั่วได้ครับ";
-                        } else if (isDrawOpen) {
-                            replyText = "⚠️ ระบบกำลังเปิดให้สมาชิกจั่วไพ่อยู่แล้วครับ ไม่ต้องเปิดซ้ำ";
-                        } else {
-                            isDrawOpen = true;
-                            replyText = `🃏 [แอดมิน] เปิดรอบขอจั่วไพ่ใบที่ 3 (รอบที่ ${currentRound}) แล้วครับ!\n\n📣 สมาชิกขาไหนต้องการจั่วเพิ่ม ให้พิมพ์เลขขาตามด้วยเครื่องหมาย + เช่น พิมพ์ "12+" (ขอจั่วขา 1 และ 2)\n*หากขาไหนต้องการอยู่ (ไม่จั่ว) ไม่ต้องพิมพ์อะไรส่งมาครับ*`;
-                        }
-                    } else if (userMsg === 'xx') {
-                        if (!isDrawOpen) {
-                            replyText = "⚠️ ระบบไม่ได้เปิดรอบจั่วอยู่ครับ";
-                        } else {
-                            isDrawOpen = false;
-                            replyText = `🔒 [แอดมิน] ปิดรอบขอจั่วไพ่เรียบร้อยแล้วครับ!\n🎰 ล็อกสถานะไพ่ 2 ใบ / 3 ใบของทุกขาแล้ว รอแอดมินสรุปผลและคิดเงินสักครู่ครับ`;
-                        }
-                    }
-                }
+        } else if (userMsg === 'x') {
+            if (!isRoundOpen) {
+                replyText = `⚠️ [แจ้งเตือน] ระบบปิดรอบแทงอยู่แล้วครับ ไม่สามารถปิดซ้ำได้`;
+            } else {
+                isRoundOpen = false;
+                replyText = `🚫 [แอดมิน] ปิดรอบแทงเรียบร้อยแล้วครับ!\n🏁 จบรอบที่: ${currentRound}\n\n🔒 หยุดรับโพยทุกกรณี รอแอดมินสรุปผลสักครู่ครับ`;
             }
+        } else if (userMsg === 'rst') {
+            currentRound = 0;
+            isRoundOpen = false;
+            isDrawOpen = false; // ล้างสถานะจั่วไปด้วยเลยตอนเซ็ตศูนย์
+            roundBets = {};
+            replyText = "🔄 [ระบบ] ทำการล้างลำดับรอบเรียบร้อยแล้ว! รอบต่อไปจะเริ่มต้นที่ รอบที่ 1 ครับ ⚙️";
+        }
+    }
+}
+            // ==================== [ 3. แอดมิน เปิด/ปิดรอบจั่วไพ่ - เวอร์ชันบล็อกพิมพ์ซ้ำ ] ====================
+else if (userMsg === 'oo' || userMsg === 'xx') {
+    const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
+    if (userId !== ADMIN_ID) {
+        replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งควบคุมระบบจั่วครับ";
+    } else {
+        if (userMsg === 'oo') {
+            if (isRoundOpen) {
+                replyText = "⚠️ ต้องพิมพ์ปิดรอบแทง (X) ก่อน จึงจะเปิดรอบจั่วได้ครับ";
+            } else if (isDrawOpen) {
+                // 🔍 [เช็กบล็อกซ้ำ] ถ้าระบบเปิดรอบจั่วอยู่แล้ว ห้ามกดซ้ำ
+                replyText = `⚠️ [แจ้งเตือน] ตอนนี้ระบบกำลังเปิด "รอบขอจั่วไพ่ใบที่ 3" อยู่แล้วครับ ไม่จำเป็นต้องเปิดซ้ำ ข้อมูลการจั่วเดิมยังอยู่ครบถ้วนครับ`;
+            } else {
+                isDrawOpen = true;
+                replyText = `🃏 [แอดมิน] เปิดรอบขอจั่วไพ่ใบที่ 3 (รอบที่ ${currentRound}) แล้วครับ!\n\n📣 สมาชิกขาไหนต้องการจั่วเพิ่ม ให้พิมพ์เลขขาตามด้วยเครื่องหมาย + เช่น พิมพ์ "12+" (ขอจั่วขา 1 และ 2)\n*หากขาไหนต้องการอยู่ (ไม่จั่ว) ไม่ต้องพิมพ์อะไรส่งมาครับ*`;
+            }
+        } else if (userMsg === 'xx') {
+            if (!isDrawOpen) {
+                // 🔍 [เช็กบล็อกซ้ำ] ถ้าระบบปิดรอบจั่วอยู่แล้ว ห้ามกดซ้ำ
+                replyText = "⚠️ [แจ้งเตือน] ระบบปิดรอบจั่วไพ่อยู่แล้วครับ ไม่สามารถปิดซ้ำได้";
+            } else {
+                isDrawOpen = false;
+                replyText = `🔒 [แอดมิน] ปิดรอบขอจั่วไพ่เรียบร้อยแล้วครับ!\n🎰 ล็อกสถานะไพ่ 2 ใบ / 3 ใบของทุกขาแล้ว รอแอดมินสรุปผลและคิดเงินสักครู่ครับ`;
+            }
+        }
+    }
+}
             // ==================== [ 4. ระบบรับโพยป๊อกเด้ง + หักค้ำประกัน 3 เด้ง ] ====================
             else if (originalMsg.includes('-') && !originalMsg.startsWith('C/') && !originalMsg.startsWith('c/')) {
                 if (!isRoundOpen) {
@@ -332,6 +336,130 @@ app.post('/callback', async (req, res) => {
                     }
                 }
             }
+                // ==================== [ 8. ระบบแอดมินส่งผลสรุปคำนวณแต้ม - เวอร์ชันล็อกรอการยืนยัน ] ====================
+else if (originalMsg.startsWith('>')) {
+    const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
+    if (userId !== ADMIN_ID) {
+        replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งสรุปผลคะแนนครับ";
+    } else if (isRoundOpen) {
+        replyText = "⚠️ ต้องพิมพ์ปิดรอบแทง (X) และทำขั้นตอนจั่วไพ่ให้เสร็จก่อน จึงจะสรุปผลได้ครับ";
+    } else {
+        let cleanMsg = originalMsg.replace(/,/g, ' ');
+        const parts = cleanMsg.split(/\s+/);
+        
+        const parseCardStr = (str, isDealer = false) => {
+            let clean = str.trim().toLowerCase();
+            let isPok = false;
+            let multiplier = 1; 
+            let typeName = "แต้มปกติ";
+            let rawScore = 0;
+
+            if (clean.includes('**')) { multiplier = 3; clean = clean.replace('**', ''); } 
+            else if (clean.includes('*')) { multiplier = 2; clean = clean.replace('*', ''); }
+
+            if (isDealer && clean.includes('#')) { isPok = true; clean = clean.replace('#', ''); }
+
+            if (clean === 't') { rawScore = 700; multiplier = 5; typeName = "ตอง (5 เท่า)"; } 
+            else if (clean === 'sf') { rawScore = 600; multiplier = 5; typeName = "สเตฟฟลัช (5 เท่า)"; } 
+            else if (clean === 'h') { rawScore = 500; multiplier = 3; typeName = "เซียน/สามเหลือง (3 เท่า)"; } 
+            else if (clean === 's') { rawScore = 400; multiplier = 3; typeName = "เรียง (3 เท่า)"; } 
+            else {
+                let pts = parseInt(clean);
+                if (isNaN(pts)) pts = 0;
+                
+                if (isPok || (!isDealer && !str.includes('/'))) {
+                    if (pts === 9) { rawScore = 900; typeName = "ป๊อก 9"; }
+                    else if (pts === 8) { rawScore = 800; typeName = "ป๊อก 8"; }
+                    else { rawScore = pts; typeName = `${pts} แต้ม`; }
+                } else {
+                    rawScore = pts; typeName = `${pts} แต้ม`;
+                }
+            }
+            return { score: rawScore, v: clean, mult: multiplier, name: typeName };
+        };
+
+        const dealerRawStr = parts[1] ? parts[1].replace('จ', '') : '0';
+        const dealerResult = parseCardStr(dealerRawStr, true);
+
+        let roomResults = {}; 
+        let currentLeg = 1; 
+
+        for (let i = 2; i < parts.length; i++) {
+            let innerContent = parts[i].trim();
+            if (innerContent === "") continue;
+            if (currentLeg > 6) break; 
+
+            let result2Cards = null;
+            let result3Cards = null;
+
+            if (innerContent.includes('/')) {
+                const subParts = innerContent.split('/');
+                result2Cards = parseCardStr(subParts[0], false);
+                result3Cards = parseCardStr(subParts[1], false);
+            } else {
+                result2Cards = parseCardStr(innerContent, false);
+                result3Cards = parseCardStr(innerContent, false);
+            }
+
+            roomResults[currentLeg] = {
+                leg: currentLeg,
+                twoCards: result2Cards,
+                threeCards: result3Cards
+            };
+
+            currentLeg++; 
+        }
+
+        // 💾 [จุดสำคัญ] พักข้อมูลดิบเอาไว้ในตัวแปรสำรองก่อน ยังไม่บันทึกจริงลงฐานข้อมูลเงิน
+        tempRoomResults = roomResults;
+        tempDealerResult = dealerResult;
+
+        // --- พ่นข้อความรายงานเพื่อให้แอดมินกดยืนยัน ---
+        let checkText = `📊 [ตรวจสอบผลการเล่น] รอบที่: ${currentRound}\n`;
+        checkText += `👑 เจ้ามือ: ${dealerResult.name} (${dealerResult.mult} เด้ง)\n\n`;
+        checkText += `📝 ลำดับหน้าไพ่แต่ละขา:\n`;
+
+        for (let leg = 1; leg <= 6; leg++) {
+            if (roomResults[leg]) {
+                const res = roomResults[leg];
+                checkText += `• ขา ${leg} -> 2ใบ: ${res.twoCards.name} (${res.twoCards.mult}เด้ง) / 3ใบ: ${res.threeCards.name} (${res.threeCards.mult}เด้ง)\n`;
+            } else {
+                checkText += `• ขา ${leg} -> ⚠️ ไม่มีข้อมูลผล (ตีเป็นบอด)\n`;
+            }
+        }
+        
+        checkText += `\n🚨 [ระบบล็อกเพื่อความปลอดภัย]\n หากข้อมูลถูกต้อง ให้พิมพ์: ok\nหากพิมพ์ผิด/ต้องการใส่ใหม่ ให้พิมพ์: no`;
+        replyText = checkText;
+    }
+}
+    // ==================== [ 8.5 ระบบแอดมินยืนยันผล OK / NO ] ====================
+else if (userMsg === 'ok' || userMsg === 'no') {
+    const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
+    if (userId !== ADMIN_ID) {
+        return; // ไม่ตอบโต้ถ้าไม่ใช่แอดมินพิมพ์มา
+    }
+
+    if (!tempRoomResults || !tempDealerResult) {
+        replyText = "⚠️ ไม่มีข้อมูลผลแต้มค้างอยู่ในระบบครับ กรุณาส่งผลแต้มใหม่ขึ้นต้นด้วยเครื่องหมาย > ก่อนครับ";
+    } else {
+        if (userMsg === 'ok') {
+            // 🟢 แอดมินยืนยันว่าถูกต้อง!
+            replyText = `✅ ยืนยันผลสำเร็จ! กำลังเข้าสู่กระบวนการคำนวณเงินรางวัลและคืนเครดิตค้ำประกันรอบที่ ${currentRound} ให้สมาชิกทุกคนอัตโนมัติ...`;
+            
+            // TODO: สเต็ปถัดไป เราจะเอาโค้ด "คำนวณเงินและอัปเดต balance" มาเสียบทำงานตรงนี้เลยครับ!
+            
+            // หลังจากคิดเงินเสร็จเรียบร้อย จะทำการล้างค่า temp เพื่อเตรียมรับตาถัดไป
+            // tempRoomResults = null;
+            // tempDealerResult = null;
+
+        } else if (userMsg === 'no') {
+            // 🔴 แอดมินบอกว่าพิมพ์ผิด ขอยกเลิก
+            tempRoomResults = null; // ล้างไพ่ในสมองบอททิ้งทันที
+            tempDealerResult = null;
+            replyText = "❌ ยกเลิกผลการเล่นเมื่อสักครู่เรียบร้อยแล้วครับ! แอดมินสามารถส่งผลใหม่อีกครั้งด้วยเครื่องหมาย > ได้ทันทีครับ 🔄";
+        }
+    }
+}
             // ==================== [ 7. ระบบลงทะเบียน / เช็กบัตรสมาชิก (กรณีทั่วไป) ] ====================
             else {
                 const isRegistered = usersWallets[userId] ? true : false;

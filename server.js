@@ -546,11 +546,11 @@ else if (userMsg === 'ok' || userMsg === 'no') {
             // แปลงชื่อแต้มเจ้ามือให้กระชับ เช่น ป๊อก 9 -> 9ป, ตอง -> ตอง
             if (tempDealerResult.name.includes("ป๊อก 9")) dealerDisplay = "👑9ป";
             else if (tempDealerResult.name.includes("ป๊อก 8")) dealerDisplay = "👑8ป";
-            else if (tempDealerResult.name.includes("ตอง")) dealerDisplay = "ตอง";
-            else if (tempDealerResult.name.includes("สเตฟฟลัช")) dealerDisplay = "สเตฟ";
-            else if (tempDealerResult.name.includes("เซียน")) dealerDisplay = "เซียน";
-            else if (tempDealerResult.name.includes("เรียง")) dealerDisplay = "เรียง";
-            else dealerDisplay = `${tempDealerResult.score}แต้ม`;
+            else if (tempDealerResult.name.includes("ตอง")) dealerDisplay = "👑ตอง";
+            else if (tempDealerResult.name.includes("สเตฟฟลัช")) dealerDisplay = "👑สเตฟ";
+            else if (tempDealerResult.name.includes("เซียน")) dealerDisplay = "👑เซียน";
+            else if (tempDealerResult.name.includes("เรียง")) dealerDisplay = "👑เรียง";
+            else dealerDisplay = `${tempDealerResult.score}👑แต้ม`;
 
             let legsStatusStr = ""; // ข้อความเก็บสถานะขา 1-6 เช่น [1🔴][2🟢]
 

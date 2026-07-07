@@ -61,7 +61,7 @@ if (command === "เติม" || command === "ลบ") {
     }
 } else if (userMsg === 'o' || userMsg === 'x') {
     // 👑 1. ตั้งค่า LINE User ID ของแอดมินตรงนี้ (เอา ID ของคุณมาใส่เพื่อสิทธิ์สั่งการ)
-    const ADMIN_ID = "U0d1e353091d90af57b37ff38d36e29bc"; 
+    const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db"; 
 
     if (userId !== ADMIN_ID) {
         replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งควบคุมระบบครับ";
@@ -113,7 +113,7 @@ if (!isRegistered) {
         replyText = `ℹ️ คุณ ${user.name} ได้ลงทะเบียนในระบบเรียบร้อยแล้วครับ\n🆔 สมาชิกคนที่: ${user.memberNumber}`;
     } else {
         // ถ้าพิมพ์ข้อความอื่น ๆ เข้ามา บอทจะเงียบ (ไม่เซ็ต replyText) เพื่อส่งต่อให้ระบบอื่นทำงาน
-        replyText = `รหัส ID ของคุณคือ: ${userId}`; 
+        replyText = ""; 
     }
 }
     }

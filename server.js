@@ -330,49 +330,51 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                 }
             }
             // ==================== [ 6. ระบบสมาชิกพิมพ์ขอจั่วไพ่ เช่น 12+ ] ====================
-            else if (originalMsg.endsWith('+')) {
+           else if (userMsg.endsWith('+')) {
                 if (!isDrawOpen) {
-                    replyText = "🚫 ตอนนี้ระบบไม่ได้เปิดให้ขอจั่วไพ่ครับ หรืออาจจะยังไม่ถึงเวลาจั่ว";
+                    replyText = "⚠️ [แจ้งเตือน] ระบบยังไม่ได้เปิดรอบจั่วไพ่ใบที่ 3 หรือ แอดมินปิดรอบจั่วไปแล้วครับ";
                 } else {
-                    const isRegistered = usersWallets[userId] ? true : false;
-                    if (!isRegistered) {
-                        replyText = "📢 คุณยังไม่ได้ลงทะเบียนสมาชิกในระบบครับ";
+                    const userBetsArray = roundBets[userId];
+                    if (!userBetsArray || userBetsArray.length === 0) {
+                        replyText = "⚠️ คุณยังไม่ได้ส่งโพยเดิมพันในรอบนี้ จึงไม่สามารถขอจั่วไพ่ได้ครับ";
                     } else {
-                        const user = usersWallets[userId];
-                        const myBets = roundBets[userId];
+                        const legsToDraw = userMsg.replace('+', '').split('');
+                        let drawSuccessLegs = [];
 
-                        if (!myBets || myBets.length === 0) {
-                            replyText = `❌ คุณ ${user.name} ไม่มีรายการโพยแทงในรอบนี้ จึงไม่สามารถจั่วไพ่ได้ครับ`;
-                        } else {
-                            const drawLegsInput = originalMsg.replace('+', '').trim();
-                            const allowedLegs = ['1', '2', '3', '4', '5', '6'];
+                        userBetsArray.forEach((bet) => {
+                            // 👑 [จุดแก้ไขบั๊ก] เช็กว่าโพยใบนี้เป็นโพยแทงฝั่งเจ้ามือสู้ขา (จ) หรือเหมาเจ้า (มจ) หรือไม่
+                            const isBettingOnDealer = (bet.betType === "มจ" || bet.betType.startsWith('จ'));
                             
-                            let isLegsValid = drawLegsInput.split('').every(char => allowedLegs.includes(char));
-                            if (drawLegsInput === "" || !isLegsValid) {
-                                replyText = "⚠️ รูปแบบการจั่วไม่ถูกต้อง กรุณาพิมพ์เลขขา 1-6 ตามด้วยเครื่องหมาย + เช่น 12+";
-                            } else {
-                                const drawLegsArray = drawLegsInput.split('');
-                                let successCount = 0;
+                            // 🛑 ถ้าเป็นโพยแทงฝั่งเจ้ามือ ให้ข้ามไปเลย ไม่ทำการเปิดสิทธิ์จั่วเด็ดขาด
+                            if (isBettingOnDealer) return;
 
-                                myBets.forEach((bet) => {
-                                    if (!bet.drawStatus) {
-                                        bet.drawStatus = {}; 
-                                    }
+                            // 👤 ปรับสถานะเฉพาะโพยฝั่งผู้เล่นปกติเท่านั้น
+                            if (!bet.drawStatus) bet.drawStatus = {};
 
-                                    drawLegsArray.forEach((leg) => {
-                                        if (bet.betType === "มข" || bet.betType.includes(leg)) {
-                                            bet.drawStatus[leg] = "จั่ว";
-                                            successCount++;
-                                        }
-                                    });
-                                });
-
-                                if (successCount === 0) {
-                                    replyText = `⚠️ คุณพิมพ์จั่วขา [${drawLegsArray.join(', ')}] แต่ในโพยรอบนี้ของคุณไม่ได้แทงขานี้ไว้ครับ เช็กโพยพิมพ์ c`;
+                            legsToDraw.forEach((leg) => {
+                                let hasThisLeg = false;
+                                if (bet.betType === "มข") {
+                                    hasThisLeg = ['1', '2', '3', '4', '5', '6'].includes(leg);
                                 } else {
-                                    replyText = `✅ บันทึกสถานะจั่วไพ่ใบที่ 3 สำเร็จ!\n👤 คุณ: ${user.name}\n🃏 ขาที่ขอจั่วเพิ่ม: ขา [${drawLegsArray.join(', ')}]\n*ขาอื่น ๆ ที่คุณแทงไว้แต่นอกเหนือจากนี้ จะถือว่า "อยู่" (2 ใบ) โดยอัตโนมัติครับ*`;
+                                    hasThisLeg = bet.betType.includes(leg);
                                 }
-                            }
+
+                                if (hasThisLeg) {
+                                    bet.drawStatus[leg] = "จั่ว";
+                                    if (!drawSuccessLegs.includes(leg)) {
+                                        drawSuccessLegs.push(leg);
+                                    }
+                                }
+                            });
+                        });
+
+                        if (drawSuccessLegs.length > 0) {
+                            const sortedLegs = drawSuccessLegs.sort((a, b) => a - b).join(', ');
+                            const user = usersWallets[userId];
+                            replyText = `🃏 [ระบบจั่วไพ่] สมาชิกคุณ ${user.name} (ID: ${user.memberNumber}) ขอจั่วไพ่เพิ่มที่ ➡️ ขา: ${sortedLegs} ครับ ➕`;
+                        } else {
+                            // ถ้าคนนั้นมีแต่โพยฝั่งเจ้ามืออย่างเดียว บอทจะแจ้งเตือนตัดสิทธิ์ทันที
+                            replyText = "⚠️ คำสั่งไม่ทำงาน: เนื่องจากคุณแทงฝั่งเจ้ามือไว้ โพยฝั่งเจ้ามือไม่สามารถขอจั่วไพ่ได้ครับ (ระบบจะรันกฎอัตโนมัติตอนคิดเงิน)";
                         }
                     }
                 }

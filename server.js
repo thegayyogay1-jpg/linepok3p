@@ -181,6 +181,13 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                         replyText = `📢 ยินดีต้อนรับครับสมาชิกใหม่!\n\n⚠️ คุณยังไม่ได้ลงทะเบียนชื่อจริงในระบบ\nกรุณาพิมพ์: C/ชื่อ-นามสกุล ของท่านเพื่อสมัครสมาชิกก่อนแทงครับ`;
                     } else {
                         const user = usersWallets[userId];
+
+                        // 🔒 [แก้ไขเพิ่ม] บล็อกไม่ให้แทงโพยหากบัญชีติดสถานะรอถอนเงิน
+                        if (user.isWithdrawLocked) {
+                            replyText = `❌ ไม่สามารถส่งโพยได้ครับ!\n👤 คุณ ${user.name} อยู่ในระหว่าง "รอแอดมินอนุมัติยอดถอนเงิน" จึงถูกล็อกบัญชีชั่วคราวชั่วคราวครับ`;
+                            return; 
+                        }
+
                         const lines = originalMsg.split(/\r?\n/);
                         
                         let totalActualBet = 0; 
@@ -680,6 +687,84 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                                 `🔹 **ชื่อบัญชี:** นายสมชาย รวยเด้งดี\n\n` +
                                 `⚠️ **ข้อควรระวัง:**\n` +
                                 `เมื่อโอนเงินเสร็จแล้ว กรุณาส่งสลิปหลักฐานเข้ามาในแชทนี้ เพื่อให้แอดมินทำการตรวจสอบและเติมยอดเครดิตในระบบให้ครับ 🎉`;
+                }
+            }
+                // ==================== [ ระบบสมาชิกแจ้งถอนเงิน - ล็อกบัญชีรออนุมัติ ] ====================
+            else if (userMsg.startsWith('ถอน-')) {
+                const user = usersWallets[userId];
+                
+                // ถ้ายูสเซอร์ยังไม่ได้ลงทะเบียนสมาชิก
+                if (!user) {
+                    replyText = "⚠️ คุณยังไม่ได้ลงทะเบียนสมาชิกในระบบครับ";
+                } 
+                // ถ้าบัญชีถูกล็อกอยู่แล้ว ห้ามกดถอนซ้ำ
+                else if (user.isWithdrawLocked) {
+                    replyText = `❌ ไม่สามารถทำรายการซ้ำได้ครับ!\n👤 คุณ ${user.name} มีรายการแจ้งถอนค้างอยู่จำนวน ${user.pendingWithdrawAmount} บาท อยู่ในระหว่างรอแอดมินอนุมัติครับ`;
+                } else {
+                    const withdrawAmount = parseInt(userMsg.replace('ถอน-', ''));
+
+                    if (isNaN(withdrawAmount) || withdrawAmount <= 0) {
+                        replyText = "⚠️ รูปแบบคำสั่งไม่ถูกต้องครับ กรุณาพิมพ์ระบุจำนวนเงิน เช่น ถอน-500";
+                    } else if (user.balance < withdrawAmount) {
+                        replyText = `❌ แจ้งถอนล้มเหลว: ยอดเครดิตของคุณมีไม่เพียงพอครับ (เครดิตปัจจุบัน: ${user.balance} บาท)`;
+                    } else {
+                        // 🔒 สั่งล็อกสถานะบัญชี และจำยอดเงินที่ต้องการถอนไว้ (ยังไม่หักเครดิตจริง)
+                        user.isWithdrawLocked = true;
+                        user.pendingWithdrawAmount = withdrawAmount;
+                        
+                        replyText = `⏳ [ระบบรับเรื่องแจ้งถอน] ⏳\n` +
+                                    `👤 คุณ: ${user.name} (ID: ${user.memberNumber})\n` +
+                                    `💰 ยอดที่แจ้งถอน: ${withdrawAmount} บาท\n` +
+                                    `──────────────────\n` +
+                                    `⚠️ **สถานะบัญชี:** บัญชีของคุณถูกล็อกชั่วคราว! ระหว่างนี้จะไม่สามารถส่งโพยแทง หรือแจ้งถอนซ้ำได้ จนกว่าแอดมินจะกดยืนยันยอดโอนสำเร็จครับ\n\n` +
+                                    `📢 @Admin มีรายการแจ้งถอนเงินจาก ID: ${user.memberNumber} กรุณาตรวจสอบและอนุมัติพิมพ์: y ${user.memberNumber}`;
+                    }
+                }
+            }
+                // ==================== [ ระบบแอดมินอนุมัติการถอนเงิน (y เลขสมาชิก) ] ====================
+            else if (command === "y") {
+                const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
+                if (userId !== ADMIN_ID) {
+                    replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งอนุมัติยอดถอนเงินครับ";
+                } else {
+                    const targetMemberId = parseInt(args[1]);
+
+                    if (!targetMemberId || isNaN(targetMemberId)) {
+                        replyText = "⚠️ รูปแบบคำสั่งไม่ถูกต้อง กรุณาพิมพ์: y [เลขสมาชิก] (ตัวอย่างเช่น: y 1)";
+                    } else {
+                        let foundUserKey = null;
+                        for (let key in usersWallets) {
+                            if (usersWallets[key].memberNumber === targetMemberId) {
+                                foundUserKey = key;
+                                break;
+                            }
+                        }
+
+                        if (!foundUserKey) {
+                            replyText = `❌ ไม่พบเลขสมาชิกที่ ${targetMemberId} ในระบบครับ`;
+                        } else {
+                            const user = usersWallets[foundUserKey];
+                            
+                            if (!user.isWithdrawLocked) {
+                                replyText = `⚠️ สมาชิก ID: ${targetMemberId} คุณ ${user.name} ไม่ได้มียอดแจ้งถอนค้างไว้ในระบบครับ`;
+                            } else {
+                                const finalAmount = user.pendingWithdrawAmount;
+                                
+                                // ✅ 1. ทำการหักเงินเครดิตจริงออกจากกระเป๋า
+                                user.balance -= finalAmount;
+                                
+                                // 🔓 2. ทำการปลดล็อกบัญชีให้ส่งโพยใหม่ได้ตามปกติ
+                                user.isWithdrawLocked = false;
+                                user.pendingWithdrawAmount = 0;
+
+                                replyText = `✅ [อนุมัติถอนเงินสำเร็จ] 🎉\n` +
+                                            `👤 สมาชิก: ${user.name} (ID: ${user.memberNumber})\n` +
+                                            `💸 หักเครดิตเรียบร้อย: -${finalAmount} บาท\n` +
+                                            `💰 ยอดเครดิตคงเหลือ: ${user.balance} บาท\n` +
+                                            `🔓 **สถานะบัญชี:** ปลดล็อกเรียบร้อย สามารถทำรายการส่งโพยรอบถัดไปได้ปกติครับ 🏁`;
+                            }
+                        }
+                    }
                 }
             }
             // ==================== [ 7. ระบบลงทะเบียน / เช็กบัตรสมาชิก (กรณีทั่วไป) ] ====================

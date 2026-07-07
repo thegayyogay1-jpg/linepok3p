@@ -182,10 +182,24 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                     } else {
                         const user = usersWallets[userId];
 
-                        // 🔒 [จุดแก้ไขสำคัญ] ดักจับทันทีถ้าสมาชิกคนนี้ติดสถานะรออนุมัติยอดถอนเงิน
+                        // 🔒 [แก้ไขจุดบกพร่อง] ดักจับสถานะล็อกถอนเงิน และสั่งให้บอทยิงข้อความเตือนทันที!
                         if (user && user.isWithdrawLocked) {
-                            replyText = `❌ คุณไม่สามารถส่งโพยแทงได้ครับ!\n👤 คุณ ${user.name} (ID: ${user.memberNumber}) อยู่ในระหว่าง "รอแอดมินโอนเงินและอนุมัติยอดถอน" (${user.pendingWithdrawAmount} บาท) บัญชีของคุณจึงถูกล็อกชั่วคราวครับ`;
-                            return; // สั่งหยุดทำงานตรงนี้ทันที ไม่ให้บอทอ่านโพยต่อ
+                            const lockMsg = `❌ คุณไม่สามารถส่งโพยแทงได้ครับ!\n👤 คุณ ${user.name} (ID: ${user.memberNumber}) อยู่ในระหว่าง "รอแอดมินโอนเงินและอนุมัติยอดถอน" (${user.pendingWithdrawAmount} บาท) บัญชีของคุณจึงถูกล็อกชั่วคราวครับ`;
+                            
+                            try {
+                                await axios.post('https://api.line.me/v2/bot/message/reply', {
+                                    replyToken: replyToken,
+                                    messages: [{ type: 'text', text: lockMsg }]
+                                }, {
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Authorization': `Bearer ${TOKEN}`
+                                    }
+                                });
+                            } catch (error) {
+                                console.error("❌ ส่งข้อความแจ้งเตือนล็อกถอนล้มเหลว:", error.response ? error.response.data : error.message);
+                            }
+                            return; // ส่งข้อความเสร็จแล้วค่อยตัดจบระบบรับโพย
                         }
                         const lines = originalMsg.split(/\r?\n/);
                         

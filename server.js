@@ -513,7 +513,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                 let totalHoldRefund = 0;   
 
                 userBetsArray.forEach((bet) => {
-                    totalHoldRefund += bet.holdCost; // ดึงเงินค้ำประกัน 3 เท่ากลับมาคำนวณก่อน
+                    totalHoldRefund += bet.holdCost; // ดึงเงินค้ำประกัน 3 เท่ากลับมาคืนก่อน
 
                     // แกะข้อมูลตามประเภทโพย (เช่น "1", "มข", "จ12")
                     let legsToCalculate = [];
@@ -529,15 +529,16 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                     legsToCalculate.forEach((leg) => {
                         const legNum = parseInt(leg);
                         const matchResult = tempRoomResults[legNum];
+                        if (!matchResult) return; // ป้องกันกรณีขาไม่มีข้อมูลผล
                         
-                        // 🔍 ตรวจสอบประเภทโพย: เป็นการแทงฝั่งเจ้ามือสู้ขาผู้เล่นใช่หรือไม่ (เช่น มจ หรือ จ1)
+                        // 🔍 ตรวจสอบประเภทโพย: เป็นการแทงฝั่งเจ้ามือสู้ขาผู้เล่นใช่หรือไม่
                         const isBettingOnDealer = (bet.betType === "มจ" || bet.betType.startsWith('จ'));
 
                         let finalCard;
                         const betPrice = bet.pricePerLeg; // ยอดแทงต่อ 1 ขา
 
                         if (!isBettingOnDealer) {
-                            // 👤 [ฝั่งคนแทงผู้เล่นปกติ] -> รันระบบเดิมของคุณที่สมบูรณ์แบบอยู่แล้ว 100% ไม่เปลี่ยนแปลง
+                            // 👤 [ฝั่งคนแทงผู้เล่นปกติ] -> รันระบบเดิมของคุณที่สมบูรณ์แบบอยู่แล้ว 100%
                             const isUserDrawn = (bet.drawStatus && bet.drawStatus[leg] === "จั่ว");
                             finalCard = isUserDrawn ? matchResult.threeCards : matchResult.twoCards;
 
@@ -566,34 +567,34 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                                 finalCard = matchResult.twoCards;   // ชนกับผลไพ่ 2 ใบ (5 แต้มขึ้นไป หรือ 4 แต้มเด้ง)
                             }
 
-                            // 🧮 ตรรกะคิดเงินของฝั่งคนแทงเจ้ามือ (หักต๋ง 10% รายขาที่มีกำไร)
+                            // 🧮 ตรรกะคิดเงินของฝั่งคนแทงเจ้ามือ (หักต๋ง 10% เฉพาะขาที่ได้กำไร)
                             if (tempDealerResult.score > finalCard.score) {
-                                // เจ้ามือชนะขาผู้เล่นคนนั้น = คนแทงฝั่งเจ้าได้เงินรางวัล! (บวกเงินตามเด้งเจ้ามือ)
+                                // เจ้ามือชนะขาผู้เล่นคนนั้น = คนแทงฝั่งเจ้าได้กำไร!
                                 let winMultiplier = tempDealerResult.mult;
-                                let grossWin = betPrice * winMultiplier; // กำไรก่อนหักต๋ง
+                                let grossWin = betPrice * winMultiplier; // กำไรเต็มก่อนหัก
                                 
-                                // 🔥 [หักต๋งรายขา] ได้กำไรขาไหน หักขาเซินออก 10% ทันที
+                                // 🔥 หักต๋งรายขาทันที 10% (เหลือจ่ายจริง 90%)
                                 let netWin = Math.floor(grossWin * 0.9);
                                 userTotalWinLoss += netWin;
                             } 
                             else if (tempDealerResult.score < finalCard.score) {
-                                // เจ้ามือแพ้ขาผู้เล่นคนนั้น = คนแทงฝั่งเจ้าเสียเงิน! (หักเงินเต็มจำนวนตามเด้งของขานั้นๆ)
+                                // เจ้ามือแพ้ขาผู้เล่นคนนั้น = คนแทงฝั่งเจ้าเสียเต็มจำนวนตามจำนวนเด้งของขานั้นๆ
                                 let loseMultiplier = finalCard.mult;
                                 userTotalWinLoss -= (betPrice * loseMultiplier);
                             }
-                            // กรณีแต้มเท่ากันคือ เสมอ (ยก) ผลได้เสียสุทธิเป็น 0 เท่าเดิม
                         }
                     });
                 }); // ปิด userBetsArray.forEach
 
-                // 🧮 อัปเดตกระเป๋าเงินจริงหลังคิดค่าต๋งเรียบร้อย
+                // 🧮 อัปเดตกระเป๋าเงินจริงหลังคิดยอดสุทธิสุทธิ
                 user.balance = user.balance + totalHoldRefund + userTotalWinLoss;
 
                 let sign = userTotalWinLoss > 0 ? "🟢 +" : (userTotalWinLoss < 0 ? "🔴 " : "🟡 ");
                 
-                // หากแทงเจ้ามือแล้วชนะ จะมีคำว่า (หัก 10%) แปะท้ายให้เห็นชัดเจนเพื่อความโปร่งใส
-                let feeNote = (isLastBetOnDealer && userTotalWinLoss > 0) ? " (หักต๋ง 10%)" : "";
-                
+                // ตรวจสอบว่าในรอบนี้ยูสเซอร์แทงฝั่งเจ้ามือหรือไม่ เพื่อความสวยงามในการแสดงข้อความท้ายรายงาน
+                let isUserBettingOnDealer = userBetsArray.some(b => b.betType === "มจ" || b.betType.startsWith('จ'));
+                let feeNote = (isUserBettingOnDealer && userTotalWinLoss !== 0) ? " (คิดต๋งขาชนะ 10% แล้ว)" : "";
+
                 summaryPayoutText += `👤 ${user.name} (ID: ${user.memberNumber})\n   ยอดสุทธิ: ${sign}${userTotalWinLoss} บาท${feeNote} (เครดิต: ${user.balance} บ.)\n`;
             } // ปิดลูป for (let uId in roundBets)
 
@@ -605,9 +606,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
             replyText = summaryPayoutText;
 
             // 📊 [ระบบบันทึกสถิติแบบละเอียดแยกขา] 
-            let dealerDisplay = ""; // ข้อความแสดงหน้าไพ่เจ้ามือสั้นๆ
-            
-            // แปลงชื่อแต้มเจ้ามือให้กระชับ เช่น ป๊อก 9 -> 9ป, ตอง -> ตอง
+            let dealerDisplay = ""; 
             if (tempDealerResult.name.includes("ป๊อก 9")) dealerDisplay = "9ป";
             else if (tempDealerResult.name.includes("ป๊อก 8")) dealerDisplay = "8ป";
             else if (tempDealerResult.name.includes("ตอง")) dealerDisplay = "ตอง";
@@ -616,32 +615,26 @@ else if (userMsg === 'ok' || userMsg === 'no') {
             else if (tempDealerResult.name.includes("เรียง")) dealerDisplay = "เรียง";
             else dealerDisplay = `${tempDealerResult.score}แต้ม`;
 
-            let legsStatusStr = ""; // ข้อความเก็บสถานะขา 1-6 เช่น [1🔴][2🟢]
-
+            let legsStatusStr = ""; 
             for (let leg = 1; leg <= 6; leg++) {
                 if (tempRoomResults[leg]) {
                     const legRes = tempRoomResults[leg];
-                    // อิงตามผลสองใบเป็นหลักในการโชว์สถิติดิบกระดาน
                     if (tempDealerResult.score > legRes.twoCards.score) {
-                        legsStatusStr += `[${leg}🔴]`; // เจ้าชนะ = ผู้เล่นแพ้ (🔴)
+                        legsStatusStr += `[${leg}🔴]`; 
                     } else if (tempDealerResult.score < legRes.twoCards.score) {
-                        legsStatusStr += `[${leg}🟢]`; // เจ้าแพ้ = ผู้เล่นชนะ (🟢)
+                        legsStatusStr += `[${leg}🟢]`; 
                     } else {
-                        legsStatusStr += `[${leg}🟡]`; // เสมอ (🟡)
+                        legsStatusStr += `[${leg}🟡]`; 
                     }
                 } else {
-                    // ขาว่าง ไม่มีคนเล่น ถือว่าเจ้ากิน (🔴)
                     legsStatusStr += `[${leg}🔴]`;
                 }
             }
 
-            // ประกอบร่างเป็นข้อความสถิติตามดีไซน์ของคุณ
             let historySummary = `รอบที่ ${currentRound}: [👑${dealerDisplay}] ⚔️${legsStatusStr}`;
-
-            // บันทึกเข้าอาร์เรย์ประวัติ
             matchHistory.push(historySummary);
             if (matchHistory.length > 5) {
-                matchHistory.shift(); // ควบคุมให้จำแค่ 5 รอบล่าสุด
+                matchHistory.shift(); 
             }
 
             // ล้างสมองบอทหลังคิดเงินเสร็จเพื่อเริ่มตาใหม่

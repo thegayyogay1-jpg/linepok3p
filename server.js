@@ -182,8 +182,8 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                     } else {
                         const user = usersWallets[userId];
 
-                        // 🔒 [แก้ไขเพิ่ม] บล็อกไม่ให้แทงโพยหากบัญชีติดสถานะรอถอนเงิน
-                        if (user.isWithdrawLocked) {
+                        // 🔒 บล็อกไม่ให้แทงโพยหากบัญชีติดสถานะรออนุมัติยอดถอนเงิน
+                        if (user && user.isWithdrawLocked) {
                             replyText = `❌ ไม่สามารถส่งโพยได้ครับ!\n👤 คุณ ${user.name} อยู่ในระหว่าง "รอแอดมินอนุมัติยอดถอนเงิน" จึงถูกล็อกบัญชีชั่วคราวชั่วคราวครับ`;
                             return; 
                         }
@@ -689,22 +689,22 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                                 `เมื่อโอนเงินเสร็จแล้ว กรุณาส่งสลิปหลักฐานเข้ามาในแชทนี้ เพื่อให้แอดมินทำการตรวจสอบและเติมยอดเครดิตในระบบให้ครับ 🎉`;
                 }
             }
-                // ==================== [ ระบบสมาชิกแจ้งถอนเงิน - ล็อกบัญชีรออนุมัติ ] ====================
-            else if (userMsg.startsWith('ถอน-')) {
+                // ==================== [ ระบบสมาชิกแจ้งถอนเงิน - รูปแบบเว้นวรรค (ถอน 500) ] ====================
+            else if (userMsg.startsWith('ถอน ') || userMsg.startsWith('ถอน')) {
                 const user = usersWallets[userId];
                 
-                // ถ้ายูสเซอร์ยังไม่ได้ลงทะเบียนสมาชิก
                 if (!user) {
                     replyText = "⚠️ คุณยังไม่ได้ลงทะเบียนสมาชิกในระบบครับ";
                 } 
-                // ถ้าบัญชีถูกล็อกอยู่แล้ว ห้ามกดถอนซ้ำ
                 else if (user.isWithdrawLocked) {
                     replyText = `❌ ไม่สามารถทำรายการซ้ำได้ครับ!\n👤 คุณ ${user.name} มีรายการแจ้งถอนค้างอยู่จำนวน ${user.pendingWithdrawAmount} บาท อยู่ในระหว่างรอแอดมินอนุมัติครับ`;
                 } else {
-                    const withdrawAmount = parseInt(userMsg.replace('ถอน-', ''));
+                    // ตัดคำด้วยช่องว่างเพื่อดึงตัวเลขเงินออกมา (เช่น "ถอน 500" จะได้ตัวเลข 500)
+                    const parts = userMsg.trim().split(/\s+/);
+                    const withdrawAmount = parseInt(parts[1]);
 
                     if (isNaN(withdrawAmount) || withdrawAmount <= 0) {
-                        replyText = "⚠️ รูปแบบคำสั่งไม่ถูกต้องครับ กรุณาพิมพ์ระบุจำนวนเงิน เช่น ถอน-500";
+                        replyText = "⚠️ รูปแบบคำสั่งไม่ถูกต้องครับ กรุณาพิมพ์เว้นวรรคระบุจำนวนเงิน เช่น ถอน 500";
                     } else if (user.balance < withdrawAmount) {
                         replyText = `❌ แจ้งถอนล้มเหลว: ยอดเครดิตของคุณมีไม่เพียงพอครับ (เครดิตปัจจุบัน: ${user.balance} บาท)`;
                     } else {

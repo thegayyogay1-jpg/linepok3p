@@ -227,9 +227,26 @@ if (!isRegistered) {
     const user = usersWallets[userId];
 
     if (userMsg === 'c') {
-        // กด C ตัวเดียวเพื่อดูสถานะตัวเอง
-        replyText = `👤 สมาชิกคนที่: ${user.memberNumber}\n👤 ชื่อ-นามสกุล: ${user.name}\n💰 ยอดเครดิตของคุณ: ${user.balance} บาท`;
-    } else if (originalMsg.startsWith('C/') || originalMsg.startsWith('c/')) {
+    // 1. ดึงข้อมูลพื้นฐานของสมาชิก
+    let memberInfo = `👤 สมาชิกคนที่: ${user.memberNumber}\n👤 ชื่อ-นามสกุล: ${user.name}\n💰 ยอดเครดิตของคุณ: ${user.balance} บาท`;
+    
+    // 🔍 2. เช็กว่าในรอบปัจจุบัน คนนี้มีโพยที่แทงค้างไว้ไหม
+    const myBets = roundBets[userId];
+    
+    if (myBets && myBets.length > 0) {
+        memberInfo += `\n\n📝 รายการโพยค้างในรอบนี้:`;
+        myBets.forEach((bet, index) => {
+            memberInfo += `\n  ${index + 1}. ${bet.detail}`;
+        });
+        // คำนวณยอดเงินรวมที่โดนล็อคค้ำประกันไว้ดูเล่น ๆ ได้ด้วย
+        const totalHold = myBets.reduce((sum, bet) => sum + bet.holdCost, 0);
+        memberInfo += `\n🔒 ยอดค้ำประกันเด้งที่ล็อกไว้: ${totalHold} บาท`;
+    } else {
+        memberInfo += `\n\n📝 รายการโพยค้างในรอบนี้: ไม่มีโพยค้าง`;
+    }
+
+    replyText = memberInfo;
+} else if (originalMsg.startsWith('C/') || originalMsg.startsWith('c/')) {
         // ถ้าสมาชิกเก่าเผลอพิมพ์สมัครซ้ำเข้ามา
         replyText = `ℹ️ คุณ ${user.name} ได้ลงทะเบียนในระบบเรียบร้อยแล้วครับ\n🆔 สมาชิกคนที่: ${user.memberNumber}`;
     } else {

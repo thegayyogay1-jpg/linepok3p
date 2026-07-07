@@ -400,8 +400,20 @@ if (!isRegistered) {
     if (myBets && myBets.length > 0) {
         memberInfo += `\n\n📝 รายการโพยค้างในรอบนี้:`;
         myBets.forEach((bet, index) => {
-            memberInfo += `\n  ${index + 1}. ${bet.detail}`;
-        });
+            if (bet.drawStatus) {
+        let drawLegs = [];
+        // วนลูปเช็กทีละขา (1-6) ว่าขาไหนมี Tag "จั่ว" ติดอยู่บ้าง
+        for (let leg in bet.drawStatus) {
+            if (bet.drawStatus[leg] === "จั่ว") {
+                drawLegs.push(leg);
+            }
+        }
+        // ถ้ามีขาที่จั่ว ให้เอาตัวเลขขามาเรียงต่อท้าย เช่น -> (ขอจั่วเพิ่มขา: 1, 2)
+        if (drawLegs.length > 0) {
+            memberInfo += ` 🃏 (ขอจั่วเพิ่มขา: ${drawLegs.join(', ')})`;
+        }
+    }
+});
         // คำนวณยอดเงินรวมที่โดนล็อคค้ำประกันไว้ดูเล่น ๆ ได้ด้วย
         const totalHold = myBets.reduce((sum, bet) => sum + bet.holdCost, 0);
         memberInfo += `\n🔒 ยอดค้ำประกันเด้งที่ล็อกไว้: ${totalHold} บาท`;

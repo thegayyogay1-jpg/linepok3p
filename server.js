@@ -82,21 +82,23 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
             else if (isDrawOpen) { 
             replyText = `❌ [ระงับคำสั่ง] ไม่สามารถเปิดรอบใหม่ได้ครับ!\nเนื่องจาก "รอบที่ ${currentRound}" ยังดำเนินรายการจั่วไพ่ไม่เสร็จสิ้น\n\n💡 หากต้องการเปิดรอบจั่ว ให้พิมพ์ oo\n💡 หากต้องการจบขั้นตอนจั่ว ให้พิมพ์ xx ก่อนครับ`;
             } else {
-                currentRound++;
-                isRoundOpen = true;
-                roundBets = {}; 
-            // --- สร้างข้อความสถิติย้อนหลังแบบแยกขา ---
-            let historyText = "";
-            if (matchHistory.length > 0) {
-                historyText = `\n\n📈 **สถิติผลเจ้ามือ 5 รอบล่าสุด:**\n`;
-                matchHistory.forEach((h) => {
-                    historyText += `• ${h}\n`;
-                    });
-            } else {
-                historyText = `\n\n📈 **สถิติย้อนหลัง:** ยังไม่มีข้อมูลในเซสชันนี้`;
-            }
-                replyText = `📢 [แอดมิน] เริ่มเปิดรอบแทงแล้วครับ!\n🎰 รอบที่: ${currentRound}\n\n✨ สมาชิกทุกท่านสามารถส่งโพยเข้ามาได้เลยครับครับ 🎰`;
-            }
+                            currentRound++;
+                            isRoundOpen = true;
+                            roundBets = {}; // ล้างข้อมูลโพยเก่าออกเพื่อเริ่มรอบใหม่
+                            
+                            // --- สร้างข้อความสถิติย้อนหลังแบบแยกขา ---
+                            let historyText = "";
+                            if (matchHistory.length > 0) {
+                                historyText = `\n\n📈 **สถิติผลเจ้ามือ 5 รอบล่าสุด:**\n`;
+                                matchHistory.forEach((h) => {
+                                    historyText += `• ${h}\n`;
+                                });
+                            } else {
+                                historyText = `\n\n📈 **สถิติย้อนหลัง:** ยังไม่มีข้อมูลในเซสชันนี้`;
+                            }
+
+                            replyText = `📢 [แอดมิน] เริ่มเปิดรอบแทงแล้วครับ!\n🎰 รอบที่: ${currentRound}${historyText}\n✨ สมาชิกทุกท่านสามารถส่งโพยเข้ามาได้เลยครับครับ 🎰`;
+                        }
         } else if (userMsg === 'x') {
             if (!isRoundOpen) {
                 replyText = `⚠️ [แจ้งเตือน] ระบบปิดรอบแทงอยู่แล้วครับ ไม่สามารถปิดซ้ำได้`;

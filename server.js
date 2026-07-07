@@ -59,18 +59,18 @@ if (command === "เติม" || command === "ลบ") {
             }
         }
     }
-} else if (userMsg === 'O' || userMsg === 'X') {
+} else if (userMsg === 'o' || userMsg === 'x') {
     // 👑 1. ตั้งค่า LINE User ID ของแอดมินตรงนี้ (เอา ID ของคุณมาใส่เพื่อสิทธิ์สั่งการ)
     const ADMIN_ID = "U0d1e353091d90af57b37ff38d36e29bc"; 
 
     if (userId !== ADMIN_ID) {
         replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งควบคุมระบบครับ";
     } else {
-        if (userMsg === 'O') {
+        if (userMsg === 'o') {
             isRoundOpen = true;
             roundBets = {}; // ล้างข้อมูลโพยเก่าของรอบที่แล้วทิ้งทันทีเพื่อเริ่มรอบใหม่
             replyText = "📢 [แอดมิน] เริ่มเปิดรอบแทงแล้วครับ! สมาชิกทุกท่านสามารถส่งโพยเข้ามาได้เลยครับ 🎰";
-        } else if (userMsg === 'X') {
+        } else if (userMsg === 'x') {
             isRoundOpen = false;
             replyText = "🚫 [แอดมิน] ปิดรอบแทงเรียบร้อยแล้วครับ! หยุดรับโพยทุกกรณี รอแอดมินสรุปผลสักครู่ครับ";
         }

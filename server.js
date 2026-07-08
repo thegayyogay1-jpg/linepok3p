@@ -1241,11 +1241,11 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                     }
                     // 7. ดักเช็ก: ถ้าแอดมินพิมพ์ปิดรอบจั่ว 'คส' ให้ใส่รูปปิดรอบเข้าไปข้างหน้าข้อความ
                     else if (userMsg === 'คส') {
-                        sendMessages=({
+                        sendMessages=[{
                             type: 'image',
                             originalContentUrl: 'https://img1.pic.in.th/images/546565.png', // 🔗 ใส่ลิงก์รูปปิดรอบของคุณตรงนี้
                             previewImageUrl: 'https://img1.pic.in.th/images/546565.png'     // 🔗 ใส่ลิงก์รูปเดียวกัน
-                        });
+                        }];
                     }
                     // ส่งข้อความทั้งหมดออกไปหาผู้ใช้
                     await axios.post('https://api.line.me/v2/bot/message/reply', {

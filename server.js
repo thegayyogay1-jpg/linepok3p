@@ -1230,13 +1230,13 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                     else if (userMsg === 'กต') {
                         sendMessages=[{
                             type: 'image',
-                            originalContentUrl: 'https://img2.pic.in.th/Abstract-Playful-Classroom-Rules.jpg', // 🔗 ใส่ลิงก์รูปปิดรอบของคุณตรงนี้
-                            previewImageUrl: 'https://img2.pic.in.th/Abstract-Playful-Classroom-Rules.jpg'     // 🔗 ใส่ลิงก์รูปเดียวกัน
+                            originalContentUrl: 'https://img2.pic.in.th/Modern-Game-Rules-Poster-for-Pokdeng.jpg', // 🔗 ใส่ลิงก์รูปปิดรอบของคุณตรงนี้
+                            previewImageUrl: 'https://img2.pic.in.th/Modern-Game-Rules-Poster-for-Pokdeng.jpg'     // 🔗 ใส่ลิงก์รูปเดียวกัน
                         },
                                       {
                             type: 'image',
-                            originalContentUrl: 'https://img2.pic.in.th/Modern-Game-Rules-Poster-for-Pokdeng.jpg', // 🔗 ใส่ลิงก์รูปปิดรอบของคุณตรงนี้
-                            previewImageUrl: 'https://img2.pic.in.th/Modern-Game-Rules-Poster-for-Pokdeng.jpg'     // 🔗 ใส่ลิงก์รูปเดียวกัน
+                            originalContentUrl: 'https://img2.pic.in.th/Abstract-Playful-Classroom-Rules.jpg', // 🔗 ใส่ลิงก์รูปปิดรอบของคุณตรงนี้
+                            previewImageUrl: 'https://img2.pic.in.th/Abstract-Playful-Classroom-Rules.jpg'     // 🔗 ใส่ลิงก์รูปเดียวกัน
                         }];
                     }
                     // ส่งข้อความทั้งหมดออกไปหาผู้ใช้

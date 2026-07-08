@@ -66,31 +66,6 @@ app.post('/callback', async (req, res) => {
                                 const user = usersWallets[foundUserKey];
                                 replyText = `🚨 ลบยอดเครดิตของ ${user.memberNumber} คุณ ${user.name} -${amount}!\nยอดปัจจุบัน: ${user.balance} บาท`;
                             }
-                            // 🔥 [เปลี่ยนใหม่] คำสั่งแอดมินลบเทิร์นแบบด่วน: พิมพ์ bbตามด้วยเลขสมาชิก (เช่น bb1)
-                    if (userMsg.startsWith('bb')) {
-                        const targetMemberId = parseInt(userMsg.replace('bb', '').trim());
-                        
-                        if (!isNaN(targetMemberId)) {
-                            // ค้นหาผู้ใช้งานจาก memberNumber
-                            let targetUserId = null;
-                            for (let id in usersWallets) {
-                                if (usersWallets[id].memberNumber === targetMemberId) {
-                                    targetUserId = id;
-                                    break;
-                                }
-                            }
-
-                            if (targetUserId) {
-                                // 🔓 รีเซ็ตยอดเทิร์นเป้าหมายและจำนวนเทิร์นให้เป็น 0
-                                usersWallets[targetUserId].turnoverTarget = 0;
-                                usersWallets[targetUserId].turnoverCount = 0;
-                                
-                                replyText = `🔓 [ระบบเทิร์น] ล้างยอดเทิร์นสำเร็จ!\n👤 สมาชิกคนที่: ${targetMemberId}\n👤 ชื่อ: ${usersWallets[targetUserId].name}\n\n✨ สถานะปัจจุบัน: ปกติ (ถอนเงินได้เลยไม่ติดโปร)`;
-                            } else {
-                                replyText = `❌ ไม่พบข้อมูลสมาชิกคนที่ ${targetMemberId} ในระบบครับ`;
-                            }
-                        }
-                    }
                         }
                     }
                 }
@@ -127,6 +102,38 @@ app.post('/callback', async (req, res) => {
                             replyText = `🎁 เติมเครดิตโปรโบนัสให้ [ ${user.memberNumber} ] คุณ ${user.name} สำเร็จ!\n` +
                                         `💰 ยอดสุทธิ: +${amount} บาท\n` +
                                         `🔒 [เปิดระบบล็อกถอน] ต้องทำยอดเทิร์นสะสม (ได้/เสีย) ให้ครบ: ${user.turnoverTarget} บาท`;
+                        }
+                    }
+                }
+            }
+                else if (userMsg.startsWith('bb')) {
+                const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
+                if (userId !== ADMIN_ID) {
+                    replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งนี้ครับ";
+                } else {
+                    // แกะเอาเฉพาะตัวเลขสมาชิกออกมา (ตัดคำว่า bb และลบช่องว่างออก)
+                    const targetMemberId = parseInt(userMsg.replace('bb', '').trim());
+                    
+                    if (isNaN(targetMemberId)) {
+                        replyText = `⚠️ รูปแบบคำสั่งไม่ถูกต้อง\nกรุณาพิมพ์: bbตามด้วยเลขสมาชิก\n(ตัวอย่างเช่น: bb1)`;
+                    } else {
+                        let targetUserId = null;
+                        // ค้นหา ID ผู้ใช้งานในระบบผ่าน memberNumber
+                        for (let id in usersWallets) {
+                            if (usersWallets[id].memberNumber === targetMemberId) {
+                                targetUserId = id;
+                                break;
+                            }
+                        }
+
+                        if (targetUserId) {
+                            // 🔓 ทำการรีเซ็ตยอดเทิร์นเป้าหมายและจำนวนเทิร์นที่นับได้ให้กลายเป็น 0 ทันที
+                            usersWallets[targetUserId].turnoverTarget = 0;
+                            usersWallets[targetUserId].turnoverCount = 0;
+                            
+                            replyText = `🔓 [ระบบเทิร์น] ล้างยอดเทิร์นสำเร็จ!\n👤 สมาชิกคนที่: ${targetMemberId}\n👤 ชื่อ: ${usersWallets[targetUserId].name}\n\n✨ สถานะปัจจุบัน: ปกติ (ถอนเงินได้เลยไม่ติดโปร)`;
+                        } else {
+                            replyText = `❌ ไม่พบข้อมูลสมาชิกคนที่ ${targetMemberId} ในระบบครับ`;
                         }
                     }
                 }

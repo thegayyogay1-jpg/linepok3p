@@ -1132,7 +1132,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                                 turnoverTarget: 0,
                                 turnoverCount: 0     
                         };
-                            replyText = `🎉 ลงทะเบียนสมาชิกใหม่สำเร็จ! 🎉\n🆔 คุณคือสมาชิกคนที่: ${nextMemberId}\n👤 ชื่อ-นามสกุล: ${fullName}\n\n💰 ยอดเครดิตเริ่มต้น: 0 บาท\n*ตอนนี้คุณสามารถส่งโพยและพิมพ์ C เพื่อเช็คการ์ดสมาชิกได้แล้วครับ`;
+                            replyText = `🎉 ลงทะเบียนสมาชิกใหม่สำเร็จ! 🎉\n🆔 คุณคือสมาชิกคนที่: ${nextMemberId}\n👤 ชื่อ-นามสกุล: ${fullName}\n\n💰 ยอดคงเหลือ: 0 บาท\n*ตอนนี้คุณสามารถส่งโพยและพิมพ์ C เพื่อเช็คการ์ดสมาชิกได้แล้วครับ`;
                             nextMemberId++;
                         }
                     } else {
@@ -1141,7 +1141,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                 } else {
                     const user = usersWallets[userId];
                     if (userMsg === 'c') {
-                        let memberInfo = `👤 สมาชิกคนที่: ${user.memberNumber}\n👤 ชื่อ-นามสกุล: ${user.name}\n💰 ยอดเครดิตของคุณ: ${user.balance} บาท`;
+                        let memberInfo = `👤 สมาชิกคนที่: ${user.memberNumber}\n👤 ชื่อ-นามสกุล: ${user.name}\n💰 ยอดเงิน: ${user.balance} บาท`;
                         if (user.turnoverTarget > 0) {
                             memberInfo += `\n🔒 ยอดเทิร์นคงค้าง: ${user.turnoverTarget} บาท (ติดโปรโบนัส)`;
                         } else {

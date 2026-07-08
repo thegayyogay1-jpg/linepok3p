@@ -1198,16 +1198,32 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                     if (userMsg === 'o') {
                         sendMessages.unshift({
                             type: 'image',
-                            originalContentUrl: 'https://img2.pic.in.th/128235_0.jpg', // 🔗 ใส่ลิงก์รูปเปิดรอบของคุณตรงนี้
-                            previewImageUrl: 'https://img2.pic.in.th/128235_0.jpg'     // 🔗 ใส่ลิงก์รูปเดียวกัน
+                            originalContentUrl: 'https://img2.pic.in.th/-__-----4b1c38e0628ea626.jpg', // 🔗 ใส่ลิงก์รูปเปิดรอบของคุณตรงนี้
+                            previewImageUrl: 'https://img2.pic.in.th/-__-----4b1c38e0628ea626.jpg'     // 🔗 ใส่ลิงก์รูปเดียวกัน
                         });
                     }
                     // 3. ดักเช็ก: ถ้าแอดมินพิมพ์ปิดรอบ 'x' ให้ใส่รูปปิดรอบเข้าไปข้างหน้าข้อความ
                     else if (userMsg === 'x') {
                         sendMessages.unshift({
                             type: 'image',
-                            originalContentUrl: 'https://img1.pic.in.th/images/128234_0.jpg', // 🔗 ใส่ลิงก์รูปปิดรอบของคุณตรงนี้
-                            previewImageUrl: 'https://img1.pic.in.th/images/128234_0.jpg'     // 🔗 ใส่ลิงก์รูปเดียวกัน
+                            originalContentUrl: 'https://img2.pic.in.th/-__-----2cccaadd8f93c70b.jpg', // 🔗 ใส่ลิงก์รูปปิดรอบของคุณตรงนี้
+                            previewImageUrl: 'https://img2.pic.in.th/-__-----2cccaadd8f93c70b.jpg'     // 🔗 ใส่ลิงก์รูปเดียวกัน
+                        });
+                    }
+                    // 4. ดักเช็ก: ถ้าแอดมินพิมพ์ปิดรอบจั่ว 'oo' ให้ใส่รูปปิดรอบเข้าไปข้างหน้าข้อความ
+                    else if (userMsg === 'oo') {
+                        sendMessages.unshift({
+                            type: 'image',
+                            originalContentUrl: 'https://img2.pic.in.th/-__-----7fcbb7b1eadadfe1.jpg', // 🔗 ใส่ลิงก์รูปปิดรอบของคุณตรงนี้
+                            previewImageUrl: 'https://img2.pic.in.th/-__-----7fcbb7b1eadadfe1.jpg'     // 🔗 ใส่ลิงก์รูปเดียวกัน
+                        });
+                    }
+                    // 5. ดักเช็ก: ถ้าแอดมินพิมพ์ปิดรอบจั่ว 'xx' ให้ใส่รูปปิดรอบเข้าไปข้างหน้าข้อความ
+                    else if (userMsg === 'xx') {
+                        sendMessages.unshift({
+                            type: 'image',
+                            originalContentUrl: 'https://img2.pic.in.th/-__-----17ded3ef1c297156.jpg', // 🔗 ใส่ลิงก์รูปปิดรอบของคุณตรงนี้
+                            previewImageUrl: 'https://img2.pic.in.th/-__-----17ded3ef1c297156.jpg'     // 🔗 ใส่ลิงก์รูปเดียวกัน
                         });
                     }
                     // ส่งข้อความทั้งหมดออกไปหาผู้ใช้

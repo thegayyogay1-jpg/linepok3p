@@ -1113,7 +1113,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                             myBets.forEach((bet, index) => {[cite: 2]
                                 memberInfo += `\n  ${index + 1}. ${bet.detail}`;[cite: 2]
                                 
-                                // 🔥 [เพิ่มใหม่] ตรวจสอบสถานะการจั่วไพ่เพื่อนำมาแสดงผลตอนกด c
+                                // 🔥 ตรวจสอบสถานะการจั่วไพ่เพื่อนำมาแสดงผลตอนกด c
                                 if (bet.drawStatus) {[cite: 2]
                                     let drawLegs = [];[cite: 2]
                                     for (let leg in bet.drawStatus) {[cite: 2]
@@ -1132,7 +1132,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                             memberInfo += `\n\n📝 รายการโพยค้างในรอบนี้: ไม่มีโพยค้าง`;[cite: 2]
                         }
 
-                        // 🎯 [วางต่อท้ายตรงนี้เลยครับน้า] แสดงยอดเทิร์นคงเหลือสะสมให้สมาชิกเห็นชัด ๆ ไปเลย
+                        // 🎯 [ต่อท้ายตรงนี้] แสดงยอดเทิร์นคงเหลือสะสมให้สมาชิกเห็นชัด ๆ
                         if (user.turnoverTarget > 0) {
                             memberInfo += `\n\n🚨 **ยอดเทิร์นโบนัสคงเหลือ:** ${user.turnoverTarget} บาท\n*(ต้องทำยอดให้ครบ 0 บ. จึงจะถอนเงินได้)*`;
                         } else {
@@ -1149,7 +1149,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                         replyText = memberInfo;[cite: 2]
                     }
                 }
-            } // ปิดระบบลงทะเบียน
+            } // ปิดระบบลงทะเบียนสำเร็จ
 
             // 🚀 ยิงข้อความตอบกลับไปที่ LINE
             if (replyText) {

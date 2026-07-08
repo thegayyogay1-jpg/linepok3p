@@ -66,6 +66,33 @@ app.post('/callback', async (req, res) => {
                                 const user = usersWallets[foundUserKey];
                                 replyText = `🚨 ลบยอดเครดิตของ ${user.memberNumber} คุณ ${user.name} -${amount}!\nยอดปัจจุบัน: ${user.balance} บาท`;
                             }
+                            // 🔥 [เพิ่มใหม่] คำสั่งแอดมิน: ล้างยอดเทิร์นให้สมาชิก (เช่น ลบเทิร์น/1)
+                    if (userMsg.startsWith('ลบเทิร์น/')) {
+                        const targetMemberId = parseInt(userMsg.replace('ลบเทิร์น/', '').trim());
+                        
+                        if (isNaN(targetMemberId)) {
+                            replyText = `⚠️ รูปแบบคำสั่งไม่ถูกต้อง\nกรุณาพิมพ์: ลบเทิร์น/เลขสมาชิก\n(ตัวอย่าง: ลบเทิร์น/1)`;
+                        } else {
+                            // ค้นหาผู้ใช้งานจาก memberNumber
+                            let targetUserId = null;
+                            for (let id in usersWallets) {
+                                if (usersWallets[id].memberNumber === targetMemberId) {
+                                    targetUserId = id;
+                                    break;
+                                }
+                            }
+
+                            if (targetUserId) {
+                                // 🔓 ทำการรีเซ็ตยอดเทิร์นเป้าหมายและจำนวนเทิร์นที่นับได้ให้เป็น 0
+                                usersWallets[targetUserId].turnoverTarget = 0;
+                                usersWallets[targetUserId].turnoverCount = 0;
+                                
+                                replyText = `🔓 [ระบบเทิร์น] ล้างยอดเทิร์นสำเร็จ!\n👤 สมาชิกคนที่: ${targetMemberId}\n👤 ชื่อ: ${usersWallets[targetUserId].name}\n\n✨ สถานะปัจจุบัน: ปกติ (ถอนเงินได้เลยไม่ติดโปร)`;
+                            } else {
+                                replyText = `❌ ไม่พบข้อมูลสมาชิกคนที่ ${targetMemberId} ในระบบครับ`;
+                            }
+                        }
+                    }
                         }
                     }
                 }

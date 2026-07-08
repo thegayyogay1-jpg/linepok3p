@@ -1228,16 +1228,16 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                     }
                     // 6. ดักเช็ก: ถ้าพิมพ์กติกา 'กต' ให้ใส่รูปปิดรอบเข้าไปข้างหน้าข้อความ
                     else if (userMsg === 'กต') {
-                        sendMessages.unshift({
+                        sendMessages=[{
+                            type: 'image',
+                            originalContentUrl: 'https://img2.pic.in.th/Abstract-Playful-Classroom-Rules.jpg', // 🔗 ใส่ลิงก์รูปปิดรอบของคุณตรงนี้
+                            previewImageUrl: 'https://img2.pic.in.th/Abstract-Playful-Classroom-Rules.jpg'     // 🔗 ใส่ลิงก์รูปเดียวกัน
+                        },
+                                      {
                             type: 'image',
                             originalContentUrl: 'https://img2.pic.in.th/Modern-Game-Rules-Poster-for-Pokdeng.jpg', // 🔗 ใส่ลิงก์รูปปิดรอบของคุณตรงนี้
                             previewImageUrl: 'https://img2.pic.in.th/Modern-Game-Rules-Poster-for-Pokdeng.jpg'     // 🔗 ใส่ลิงก์รูปเดียวกัน
-                        });
-                        sendMessages.unshift({
-                            type: 'image',
-                            originalContentUrl: 'https://img1.pic.in.th/images/Gemini_Generated_Image_leebu9leebu9leeb.png', // 🔗 ใส่ลิงก์รูปปิดรอบของคุณตรงนี้
-                            previewImageUrl: 'https://img1.pic.in.th/images/Gemini_Generated_Image_leebu9leebu9leeb.png'     // 🔗 ใส่ลิงก์รูปเดียวกัน
-                        });
+                        }];
                     }
                     // ส่งข้อความทั้งหมดออกไปหาผู้ใช้
                     await axios.post('https://api.line.me/v2/bot/message/reply', {

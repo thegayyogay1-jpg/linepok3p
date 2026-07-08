@@ -1096,10 +1096,13 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                             usersWallets[userId] = {
                                 memberNumber: nextMemberId,
                                 name: fullName,
-                                balance: 0                              
-                            };
+                                balance: 0, 
+                                turnoverTarget: 0,
+                                turnoverCount: 0     
+                        };
                             replyText = `🎉 ลงทะเบียนสมาชิกใหม่สำเร็จ! 🎉\n🆔 คุณคือสมาชิกคนที่: ${nextMemberId}\n👤 ชื่อ-นามสกุล: ${fullName}\n\n💰 ยอดเครดิตเริ่มต้น: 0 บาท\n*ตอนนี้คุณสามารถส่งโพยและพิมพ์ C เพื่อเช็คการ์ดสมาชิกได้แล้วครับ`;
-                            nextMemberId++;                        
+                            nextMemberId++;
+                        }
                     } else {
                         replyText = `📢 ยินดีต้อนรับครับสมาชิกใหม่!\n\n⚠️ คุณยังไม่ได้ลงทะเบียนชื่อจริงในระบบ\nกรุณาพิมพ์: C/ชื่อ-นามสกุล ของท่านเพื่อเปิดการใช้งานบอทครับ\n(ตัวอย่าง: C/นายแจ๊ค เด้งดี)`;
                     }

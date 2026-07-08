@@ -70,6 +70,42 @@ app.post('/callback', async (req, res) => {
                     }
                 }
             } 
+            // ==================== [ ระบบเติมเงินแบบติดโปรโบนัสคูณ (B เลขสมาชิก จำนวนเงิน) ] ====================
+            else if (command === "B" || command === "b") {
+                const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
+                if (userId !== ADMIN_ID) {
+                    replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งนี้ครับ";
+                } else {
+                    const targetMemberId = parseInt(args[1]); 
+                    const amount = parseFloat(args[2]); // ยอดรวมที่แอดมินพิมพ์มา เช่น 200
+
+                    if (!targetMemberId || isNaN(amount) || amount <= 0) {
+                        replyText = `⚠️ รูปแบบโปรโบนัสไม่ถูกต้อง\nกรุณาพิมพ์: B [เลขสมาชิก] [ยอดรวมรวมโบนัส]\n(ตัวอย่าง: B 1 200)`;
+                    } else {
+                        let foundUserKey = null;
+                        for (let key in usersWallets) {
+                            if (usersWallets[key].memberNumber === targetMemberId) {
+                                foundUserKey = key;
+                                break;
+                            }
+                        }
+
+                        if (!foundUserKey) {
+                            replyText = `❌ ไม่พบเลขสมาชิกที่ ${targetMemberId} ในระบบครับ`;
+                        } else {
+                            const user = usersWallets[foundUserKey];
+                            
+                            // 🧮 เติมเงินให้จริง + คำนวณเทิร์น 10 เท่าจากยอดรวมทันที
+                            user.balance += amount;
+                            user.turnoverTarget = amount * 10; // 200 x 10 = 2000 บาท
+
+                            replyText = `🎁 เติมเครดิตโปรโบนัสให้ [ ${user.memberNumber} ] คุณ ${user.name} สำเร็จ!\n` +
+                                        `💰 ยอดสุทธิ: +${amount} บาท\n` +
+                                        `🔒 [เปิดระบบล็อกถอน] ต้องทำยอดเทิร์นสะสม (ได้/เสีย) ให้ครบ: ${user.turnoverTarget} บาท`;
+                        }
+                    }
+                }
+            }
             // ==================== [ 2. แอดมิน เปิด/ปิดรอบแทง - เวอร์ชันป้องกันมือลั่น ] ====================
 else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
     const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
@@ -678,13 +714,21 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                 // 🧮 อัปเดตกระเป๋าเงินจริงหลังคิดยอดสุทธิสุทธิ
                 user.balance = user.balance + totalHoldRefund + userTotalWinLoss;
 
+                // 📊 [ระบบคำนวณและหักยอดเทิร์นอัตโนมัติ] 
+                if (user.turnoverTarget > 0 && userTotalWinLoss !== 0) {
+                    let currentTurnoverMade = Math.abs(userTotalWinLoss); 
+                    user.turnoverTarget -= currentTurnoverMade;
+                    if (user.turnoverTarget < 0) user.turnoverTarget = 0;
+                }
+
                 let sign = userTotalWinLoss > 0 ? "🟢 +" : (userTotalWinLoss < 0 ? "🔴 " : "🟡 ");
                 
                 // ตรวจสอบว่าในรอบนี้ยูสเซอร์แทงฝั่งเจ้ามือหรือไม่ เพื่อความสวยงามในการแสดงข้อความท้ายรายงาน
                 let isUserBettingOnDealer = userBetsArray.some(b => b.betType === "มจ" || b.betType.startsWith('จ'));
                 let feeNote = (isUserBettingOnDealer && userTotalWinLoss !== 0) ? " (คิดต๋งขาชนะ 10% แล้ว)" : "";
 
-                summaryPayoutText += `👤 ${user.name} (ID: ${user.memberNumber})\n   ยอดสุทธิ: ${sign}${userTotalWinLoss} บาท${feeNote} (เครดิต: ${user.balance} บ.)\n`;
+                let turnNote = user.turnoverTarget > 0 ? ` ⚠️ (เหลือเทิร์น: ${user.turnoverTarget} บ.)` : " 🟢 (เทิร์นครบแล้ว)";
+                summaryPayoutText += `👤 ${user.name} (ID: ${user.memberNumber})\n   ยอดสุทธิ: ${sign}${userTotalWinLoss} บาท${feeNote} (เครดิต: ${user.balance} บ.)${turnNote}\n`;
             } // ปิดลูป for (let uId in roundBets)
 
             if (!hasAnyBet) {
@@ -937,7 +981,12 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                 } 
                 else if (user.isWithdrawLocked) {
                     replyText = `❌ ไม่สามารถทำรายการซ้ำได้ครับ!\n👤 คุณ ${user.name} มีรายการแจ้งถอนค้างอยู่จำนวน ${user.pendingWithdrawAmount} บาท อยู่ในระหว่างรอแอดมินอนุมัติครับ`;
-                } else {
+                } 
+                // 🛑 [เพิ่มจุดนี้] เช็กยอดเทิร์นค้างก่อน ถ้ายังมีเทิร์นเหลือ บล็อกทันทีและไม่ล็อกบัญชีซ้ำ
+                else if (user.turnoverTarget > 0) {
+                    replyText = `❌ ไม่สามารถแจ้งถอนเงินได้ครับ!\n👤 คุณ: ${user.name} (ID: ${user.memberNumber})\n\n🚨 เนื่องจากคุณเลือกรับโบนัสและยังทำยอดเทิร์นไม่ครบ\n📉 ยอดเทิร์นคงค้างที่ต้องเล่นเพิ่มอีก: ${user.turnoverTarget} บาท จึงจะถอนเงินได้ครับ`;
+                } 
+                else {
                     // 🔍 ดึงตัวเลขทั้งหมดที่ต่อท้ายคำว่า "ถอน" ออกมาโดยตรง (พิมพ์ ถอน500 หรือ ถอน 500 ก็ดึงได้หมด)
                     const withdrawAmount = parseInt(userMsg.replace('ถอน', '').trim());
 
@@ -950,6 +999,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                         user.isWithdrawLocked = true;
                         user.pendingWithdrawAmount = withdrawAmount;
                         
+                        // 💬 ใช้ข้อความเดิมอันสวยงามของน้าได้ 100% เลยครับ
                         replyText = `⏳ [ระบบรับเรื่องแจ้งถอน] ⏳\n` +
                                     `👤 คุณ: ${user.name} (ID: ${user.memberNumber})\n` +
                                     `💰 ยอดที่แจ้งถอน: ${withdrawAmount} บาท\n` +
@@ -1044,7 +1094,9 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                             usersWallets[userId] = {
                                 memberNumber: nextMemberId,
                                 name: fullName,
-                                balance: 0
+                                balance: 0,
+                                turnoverTarget: 0 // ยอดเทิร์นที่ต้องเล่นให้ครบ (ถ้าเป็น 0 แปลว่าถอนได้ปกติ)
+                                };
                             };
                             replyText = `🎉 ลงทะเบียนสมาชิกใหม่สำเร็จ! 🎉\n🆔 คุณคือสมาชิกคนที่: ${nextMemberId}\n👤 ชื่อ-นามสกุล: ${fullName}\n\n💰 ยอดเครดิตเริ่มต้น: 0 บาท\n*ตอนนี้คุณสามารถส่งโพยและพิมพ์ C เพื่อเช็คการ์ดสมาชิกได้แล้วครับ`;
                             nextMemberId++;
@@ -1055,44 +1107,47 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                 } else {
                     const user = usersWallets[userId];
                     if (userMsg === 'c') {
-                        let memberInfo = `👤 สมาชิกคนที่: ${user.memberNumber}\n👤 ชื่อ-นามสกุล: ${user.name}\n💰 ยอดเครดิตของคุณ: ${user.balance} บาท`;
-                        const myBets = roundBets[userId];
-                        if (myBets && myBets.length > 0) {
-                            memberInfo += `\n\n📝 รายการโพยค้างในรอบนี้:`;
-                            myBets.forEach((bet, index) => {
-                                memberInfo += `\n  ${index + 1}. ${bet.detail}`;
+                        let memberInfo = `👤 สมาชิกคนที่: ${user.memberNumber}\n👤 ชื่อ-นามสกุล: ${user.name}\n💰 ยอดเครดิตของคุณ: ${user.balance} บาท`;[cite: 2]
+                        const myBets = roundBets[userId];[cite: 2]
+                        if (myBets && myBets.length > 0) {[cite: 2]
+                            memberInfo += `\n\n📝 รายการโพยค้างในรอบนี้:`;[cite: 2]
+                            myBets.forEach((bet, index) => {[cite: 2]
+                                memberInfo += `\n  ${index + 1}. ${bet.detail}`;[cite: 2]
                                 
                                 // 🔥 [เพิ่มใหม่] ตรวจสอบสถานะการจั่วไพ่เพื่อนำมาแสดงผลตอนกด c
-                                if (bet.drawStatus) {
-                                    let drawLegs = [];
-                                    for (let leg in bet.drawStatus) {
-                                        if (bet.drawStatus[leg] === "จั่ว") {
-                                            drawLegs.push(leg);
+                                if (bet.drawStatus) {[cite: 2]
+                                    let drawLegs = [];[cite: 2]
+                                    for (let leg in bet.drawStatus) {[cite: 2]
+                                        if (bet.drawStatus[leg] === "จั่ว") {[cite: 2]
+                                            drawLegs.push(leg);[cite: 2]
                                         }
                                     }
-                                    if (drawLegs.length > 0) {
-                                        memberInfo += ` 🃏 (ขอจั่วเพิ่มขา: ${drawLegs.sort().join(', ')})`;
+                                    if (drawLegs.length > 0) {[cite: 2]
+                                        memberInfo += ` 🃏 (ขอจั่วเพิ่มขา: ${drawLegs.sort().join(', ')})`;[cite: 2]
                                     }
                                 }
                             });
-                            const totalHold = myBets.reduce((sum, bet) => sum + bet.holdCost, 0);
-                        memberInfo += `\n🔒 ยอดค้ำประกันเด้งที่ล็อกไว้: ${totalHold} บาท`;
-                    } else {
-                        memberInfo += `\n\n📝 รายการโพยค้างในรอบนี้: ไม่มีโพยค้าง`;
-                    }
+                            const totalHold = myBets.reduce((sum, bet) => sum + bet.holdCost, 0);[cite: 2]
+                            memberInfo += `\n🔒 ยอดค้ำประกันเด้งที่ล็อกไว้: ${totalHold} บาท`;[cite: 2]
+                        } else {
+                            memberInfo += `\n\n📝 รายการโพยค้างในรอบนี้: ไม่มีโพยค้าง`;[cite: 2]
+                        }
 
-                    // 💡 [เพิ่มป้ายแนะนำคำสั่งและกติกาพ่วงท้ายกล่องข้อความตอนกด c]
-                    memberInfo += `\n\n──────────────────\n` +
-                                  `📖 *คู่มือช่วยเหลือสมาชิก:*\n` +
-                                  `👉 พิมพ์ **คส** เพื่อดูคำสั่งทั้งหมด\n` +
-                                  `👉 พิมพ์ **บช** หรือ **/บช** เพื่อดูเลขบัญชี\n` +
-                                  `👉 พิมพ์ **กต** เพื่ออ่านกติกาห้อง`;
+                        // 🎯 [วางต่อท้ายตรงนี้เลยครับน้า] แสดงยอดเทิร์นคงเหลือสะสมให้สมาชิกเห็นชัด ๆ ไปเลย
+                        if (user.turnoverTarget > 0) {
+                            memberInfo += `\n\n🚨 **ยอดเทิร์นโบนัสคงเหลือ:** ${user.turnoverTarget} บาท\n*(ต้องทำยอดให้ครบ 0 บ. จึงจะถอนเงินได้)*`;
+                        } else {
+                            memberInfo += `\n\n🟢 **สถานะการถอน:** ปลดล็อกเทิร์นแล้ว ถอนเงินได้ปกติ`;
+                        }
 
-                    replyText = memberInfo;
-                    } else if (originalMsg.startsWith('C/') || originalMsg.startsWith('c/')) {
-                        replyText = `ℹ️ คุณ ${user.name} ได้ลงทะเบียนในระบบเรียบร้อยแล้วครับ\n🆔 สมาชิกคนที่: ${user.memberNumber}`;
-                    } else {
-                        replyText = "";
+                        // 💡 [ป้ายแนะนำคู่มือเดิมของน้า]
+                        memberInfo += `\n\n──────────────────\n` +[cite: 2]
+                                      `📖 *คู่มือช่วยเหลือสมาชิก:*\n` +[cite: 2]
+                                      `👉 พิมพ์ **คส** เพื่อดูคำสั่งทั้งหมด\n` +[cite: 2]
+                                      `👉 พิมพ์ **บช** หรือ **/บช** เพื่อดูเลขบัญชี\n` +[cite: 2]
+                                      `👉 พิมพ์ **กต** เพื่ออ่านกติกาห้อง`;[cite: 2]
+
+                        replyText = memberInfo;[cite: 2]
                     }
                 }
             } // ปิดระบบลงทะเบียน

@@ -66,13 +66,11 @@ app.post('/callback', async (req, res) => {
                                 const user = usersWallets[foundUserKey];
                                 replyText = `🚨 ลบยอดเครดิตของ ${user.memberNumber} คุณ ${user.name} -${amount}!\nยอดปัจจุบัน: ${user.balance} บาท`;
                             }
-                            // 🔥 [แก้ไขแล้ว] คำสั่งแอดมิน: ล้างยอดเทิร์นให้สมาชิก (เช่น ลบเทิร์น/1)
-                    if (userMsg.startsWith('ลบเทิร์น/')) {
-                        const targetMemberId = parseInt(userMsg.replace('ลบเทิร์น/', '').trim());
+                            // 🔥 [เปลี่ยนใหม่] คำสั่งแอดมินลบเทิร์นแบบด่วน: พิมพ์ bbตามด้วยเลขสมาชิก (เช่น bb1)
+                    if (userMsg.startsWith('bb')) {
+                        const targetMemberId = parseInt(userMsg.replace('bb', '').trim());
                         
-                        if (isNaN(targetMemberId)) {
-                            replyText = `⚠️ รูปแบบคำสั่งไม่ถูกต้อง\nกรุณาพิมพ์: ลบเทิร์น/เลขสมาชิก\n(ตัวอย่าง: ลบเทิร์น/1)`;
-                        } else {
+                        if (!isNaN(targetMemberId)) {
                             // ค้นหาผู้ใช้งานจาก memberNumber
                             let targetUserId = null;
                             for (let id in usersWallets) {
@@ -83,7 +81,7 @@ app.post('/callback', async (req, res) => {
                             }
 
                             if (targetUserId) {
-                                // 🔓 ทำการรีเซ็ตยอดเทิร์นเป้าหมายและจำนวนเทิร์นที่นับได้ให้เป็น 0
+                                // 🔓 รีเซ็ตยอดเทิร์นเป้าหมายและจำนวนเทิร์นให้เป็น 0
                                 usersWallets[targetUserId].turnoverTarget = 0;
                                 usersWallets[targetUserId].turnoverCount = 0;
                                 

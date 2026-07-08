@@ -1191,9 +1191,29 @@ else if (userMsg === 'ok' || userMsg === 'no') {
             // 🚀 ยิงข้อความตอบกลับไปที่ LINE
             if (replyText) {
                 try {
+                    // 1. สร้างถังเก็บข้อความเริ่มต้น (ใส่ข้อความตัวหนังสือเดิมไว้ก่อน)
+                    let sendMessages = [{ type: 'text', text: replyText }];
+
+                    // 2. ดักเช็ก: ถ้าแอดมินพิมพ์เปิดรอบ 'o' ให้ใส่รูปเปิดรอบเข้าไปข้างหน้าข้อความ
+                    if (userMsg === 'o') {
+                        sendMessages.unshift({
+                            type: 'image',
+                            originalContentUrl: 'https://img2.pic.in.th/128235_0.jpg', // 🔗 ใส่ลิงก์รูปเปิดรอบของคุณตรงนี้
+                            previewImageUrl: 'https://img2.pic.in.th/128235_0.jpg'     // 🔗 ใส่ลิงก์รูปเดียวกัน
+                        });
+                    }
+                    // 3. ดักเช็ก: ถ้าแอดมินพิมพ์ปิดรอบ 'x' ให้ใส่รูปปิดรอบเข้าไปข้างหน้าข้อความ
+                    else if (userMsg === 'x') {
+                        sendMessages.unshift({
+                            type: 'image',
+                            originalContentUrl: 'https://img1.pic.in.th/images/128234_0.jpg', // 🔗 ใส่ลิงก์รูปปิดรอบของคุณตรงนี้
+                            previewImageUrl: 'https://img1.pic.in.th/images/128234_0.jpg'     // 🔗 ใส่ลิงก์รูปเดียวกัน
+                        });
+                    }
+                    // ส่งข้อความทั้งหมดออกไปหาผู้ใช้
                     await axios.post('https://api.line.me/v2/bot/message/reply', {
                         replyToken: replyToken,
-                        messages: [{ type: 'text', text: replyText }]
+                        messages: sendMessages // 📦 ส่งทั้งรูปและข้อความไปพร้อมกันในชุดเดียว
                     }, {
                         headers: {
                             'Content-Type': 'application/json',

@@ -66,7 +66,7 @@ app.post('/callback', async (req, res) => {
                                 const user = usersWallets[foundUserKey];
                                 replyText = `🚨 ลบยอดเครดิตของ ${user.memberNumber} คุณ ${user.name} -${amount}!\nยอดปัจจุบัน: ${user.balance} บาท`;
                             }
-                            // 🔥 [เพิ่มใหม่] คำสั่งแอดมิน: ล้างยอดเทิร์นให้สมาชิก (เช่น ลบเทิร์น/1)
+                            // 🔥 [แก้ไขแล้ว] คำสั่งแอดมิน: ล้างยอดเทิร์นให้สมาชิก (เช่น ลบเทิร์น/1)
                     if (userMsg.startsWith('ลบเทิร์น/')) {
                         const targetMemberId = parseInt(userMsg.replace('ลบเทิร์น/', '').trim());
                         

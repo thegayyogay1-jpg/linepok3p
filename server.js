@@ -983,9 +983,9 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                                         detailRows += `ขาที่ ${legStr} ${statusAction} ชนะ +${profit}\n`;
                                     } else if (finalCard.score < historicalDealer.score) {
                                         let loseMultiplier = historicalDealer.mult;
-                                        if (isUserDrawn && (finalCard.v === 't' || finalCard.v === 'sf' || finalCard.v === 's' || finalCard.v === 'h')) {
+                                        if (loseMultiplier > 3) {
                                             loseMultiplier = 3;
-                                        }
+                                        }        
                                         let loss = bet.pricePerLeg * loseMultiplier;
                                         totalWinLoss -= loss;
                                         detailRows += `ขาที่ ${legStr} ${statusAction} แพ้ -${loss}\n`;

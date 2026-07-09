@@ -161,13 +161,13 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                             if (matchHistory.length > 0) {
                                 historyText = `📈 สถิติผลเจ้ามือ 5 รอบล่าสุด:\n──────────────────\n`;
                                 matchHistory.forEach((h) => {
-                                    historyText += ` ${h}\n──────────────────\n`;
+                                    historyText += `${h}\n──────────────────\n`;
                                 });
                             } else {
                                 historyText = `📈 สถิติย้อนหลัง: ยังไม่มีข้อมูล`;
                             }
 
-                            replyText = `📢 เริ่มเปิดรอบแทงแล้วครับ!\n🎰 รอบที่: ${currentRound}\n──────────────────\n${historyText}\n──────────────────\n✨ สมาชิกสามารถส่งโพยเข้ามาได้เลยครับครับ 🎰`;
+                            replyText = `📢 เริ่มเปิดรอบแทงแล้วครับ!\n🎰 รอบที่: ${currentRound}\n──────────────────\n${historyText}✨ สมาชิกสามารถส่งโพยเข้ามาได้เลยครับครับ 🎰`;
                         }
         } else if (userMsg === 'x') {
                         if (!isRoundOpen) {
@@ -198,12 +198,12 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                             }
                             let closingBetSection = "";
                             if (hasAnyBet) {
-                                closingBetSection = `📝 สรุปยอดแทงประจำรอบ\n──────────────────\n${betSummaryText}\n──────────────────\n`;
+                                closingBetSection = `📝 สรุปยอดแทงประจำรอบ\n──────────────────\n${betSummaryText}\n──────────────────`;
                             } else {
                                 closingBetSection = `📝 สรุปยอดแทงประจำรอบ\n──────────────────\n• ไม่มีสมาชิกส่งโพยเดิมพันในรอบนี้`;
                             }
 
-                            replyText = `🚫ปิดรอบแทงเรียบร้อยแล้วครับ\n🏁 จบรอบที่: ${currentRound}\n──────────────────${closingBetSection}🔒 หยุดรับโพยทุกกรณี รอแอดมินสรุปผลสักครู่ครับ`;
+                            replyText = `🚫ปิดรอบแทงเรียบร้อยแล้วครับ\n🏁 จบรอบที่: ${currentRound}\n──────────────────\n${closingBetSection}🔒 หยุดรับโพยทุกกรณี รอแอดมินสรุปผลสักครู่ครับ`;
                         }
                     } else if (userMsg === 'rst') {
             currentRound = 0;
@@ -761,7 +761,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                 
                 // ตรวจสอบว่าในรอบนี้ยูสเซอร์แทงฝั่งเจ้ามือหรือไม่ เพื่อความสวยงามในการแสดงข้อความท้ายรายงาน
                 let isUserBettingOnDealer = userBetsArray.some(b => b.betType === "มจ" || b.betType.startsWith('จ'));
-                let feeNote = (isUserBettingOnDealer && userTotalWinLoss !== 0) ? " (หักต๋งขาเจ้ามือที่ชนะแล้ว)" : "";
+                let feeNote = (isUserBettingOnDealer && userTotalWinLoss !== 0) ? " \n(หักต๋งขาเจ้ามือที่ชนะแล้ว)" : "";
                 
                 let turnNote = user.turnoverTarget > 0 ? ` ⚠️ (เหลือเทิร์น: ${user.turnoverTarget} บ.)` : " 🟢 (เทิร์นครบแล้ว)";
                 summaryPayoutText += `👤 ${user.name} (ID: ${user.memberNumber})\n  ยอดสุทธิ: ${sign}${userTotalWinLoss} บาท${feeNote}\n(เครดิตคงเหลือ: ${user.balance} บ.)\n──────────────────\n`;

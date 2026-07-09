@@ -148,16 +148,16 @@ app.post('/callback', async (req, res) => {
                     if (withdrawQueue.length === 0) {
                         replyText = "🎉 [ระบบคิวถอน] ไม่มีรายการค้างถอนในขณะนี้ครับ! สบายใจได้";
                     } else {
-                        let queueText = "📋 [รายการรอถอนเงินทั้งหมด] 📋\n(เรียงตามลำดับก่อน-หลัง)\n\n";
+                        let queueText = "📋 [รายการรอถอนเงินทั้งหมด] 📋\n(เรียงตามลำดับก่อน-หลัง)\n────────────────\n";
                         
                         withdrawQueue.forEach((item, index) => {
                             queueText += `${index + 1}. 👤 สมาชิกคนที่: ${item.memberNumber}\n`;
                             queueText += `   📛 ชื่อ: คุณ ${item.name}\n`;
                             queueText += `   💰 ยอดถอน: ${item.amount} บาท\n`;
-                            queueText += `   🕒 เวลา: ${item.time} น.\n\n`;
+                            queueText += `   🕒 เวลา: ${item.time} น.\n────────────────\n`;
                         });
                         
-                        queueText += `────────────────\n📌 รวมทั้งหมด: ${withdrawQueue.length} รายการค้างถอน\n💡 วิธีเคลียร์คิว: พิมพ์ "y เลขสมาชิก" (เช่น: y 1 หรือโอนพร้อมกันหลายคนพิมพ์: y 1 3 5)`;
+                        queueText += `📌 รวมทั้งหมด: ${withdrawQueue.length} รายการค้างถอน\n💡 วิธีเคลียร์คิว: พิมพ์ "y เลขสมาชิก" (เช่น: y 1 หรือโอนพร้อมกันหลายคนพิมพ์: y 1 3 5)`;
                         replyText = queueText;
                     }
                 }

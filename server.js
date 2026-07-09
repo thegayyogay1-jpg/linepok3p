@@ -1071,13 +1071,19 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                 }
             }
                 // ==================== [ ระบบแอดมินอนุมัติการถอนเงิน (y เลขสมาชิก แบบคนเดียว หรือ หลายคนพร้อมกัน) ] ====================
-else if (userMsg.startsWith('y ') || userMsg.startsWith('Y ') || userMsg.trim() === 'y' || userMsg.trim() === 'Y') {
+else if (command.toLowerCase() === "y") {
     const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
     if (userId !== ADMIN_ID) {
         replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งอนุมัติยอดถอนเงินครับ";
     } else {
-        // 🎯 แกะแยกเลขสมาชิกทุกคนที่พิมพ์เข้ามาด้วยช่องว่าง เช่น "y 1 3 5" -> [1, 3, 5]
-        const targetMemberIds = userMsg.replace(/y|Y/, '').trim().split(/\s+/).map(id => parseInt(id)).filter(id => !isNaN(id));
+        // 🎯 ดึงเลขสมาชิกทั้งหมดจากตัวแปร args (เช่น พิมพ์ "y 1 2" -> args จะได้ ['1', '2'])
+        // แต่ถ้าแอดมินพิมพ์แค่ "y" ลอยๆ args ตัวแรกสุด (args[0]) อาจจะเป็นคำว่า y ให้ข้ามไปเอาตัวถัดไป
+        let targetMemberIds = args.map(id => parseInt(id)).filter(id => !isNaN(id));
+        
+        // ถ้าพิมพ์ y 1 แล้ว args ดึงมาได้เลขเลย ให้ใช้ได้เลย แต่ถ้าไม่มีเลข ลองแกะจากข้อความเต็ม (userMsg) เผื่อไว้
+        if (targetMemberIds.length === 0) {
+            targetMemberIds = userMsg.replace(/y|Y/, '').trim().split(/\s+/).map(id => parseInt(id)).filter(id => !isNaN(id));
+        }
 
         if (targetMemberIds.length === 0) {
             replyText = "⚠️ รูปแบบคำสั่งไม่ถูกต้อง กรุณาพิมพ์: y ตามด้วยเลขสมาชิก\n(ตัวอย่างเช่น: Y 1 หรือโอนพร้อมกันหลายคนพิมพ์: Y 1 2 3)";
@@ -1112,7 +1118,7 @@ else if (userMsg.startsWith('y ') || userMsg.startsWith('Y ') || userMsg.trim() 
                         user.isWithdrawLocked = false;
                         user.pendingWithdrawAmount = 0;
 
-                        // 🗑️ 3. ลบสมาชิกคนนี้ออกจากคิวรอถอน (withdrawQueue) ทันที
+                        // 🗑️ 3. ลบสมาชิกคนนี้ออกจากคิวรอถอน (withdrawQueue) ทันที ยอดใน "ชถ" จะหายไป
                         if (typeof withdrawQueue !== 'undefined') {
                             withdrawQueue = withdrawQueue.filter(item => item.memberNumber !== targetMemberId);
                         }
@@ -1128,7 +1134,7 @@ else if (userMsg.startsWith('y ') || userMsg.startsWith('Y ') || userMsg.trim() 
                 }
             }
 
-            // --- จัดรูปแบบข้อความแสดงผลลัพธ์ให้สวยงามสะดุดตา ---
+            // --- จัดรูปแบบข้อความแสดงผลลัพธ์ให้สวยงาม ---
             let finalReply = "";
             if (successReports.length > 0) {
                 finalReply += `✅ [อนุมัติถอนเงินสำเร็จ] 🎉\n──────────────────\n` + successReports.join('\n──────────────────\n');
@@ -1138,7 +1144,7 @@ else if (userMsg.startsWith('y ') || userMsg.startsWith('Y ') || userMsg.trim() 
                 finalReply += errorReports.join('\n');
             }
 
-            // แสดงยอดคงค้างในคิวปัจจุบันพ่วงท้ายให้แอดมินดูสบายใจ
+            // แสดงยอดคงค้างในคิวปัจจุบันพ่วงท้าย
             const queueCount = typeof withdrawQueue !== 'undefined' ? withdrawQueue.length : 0;
             finalReply += `\n\n📊 คงเหลือในคิวรอถอน: ${queueCount} รายการ (พิมพ์ "ชถ" เพื่อดูคิวปัจจุบัน)`;
 

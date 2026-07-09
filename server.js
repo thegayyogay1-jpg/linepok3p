@@ -1420,6 +1420,34 @@ else if (command.toLowerCase() === "y") {
                     }
                 }
             }
+            // ==================== [  คำสั่งแอดมินรีเซ็ตระบบล้างกระดานผ่านแชทส่วนตัว (resetall) ] ====================
+            else if (userMsg === 'ล้างระบบ') {
+                const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db"; // 👑 ไอดี LINE ของคุณน้า
+                
+                // 🚨 กรองขั้นสูงสุด: ถ้าไม่ใช่แอดมิน หรือ แอดมินไม่ได้สั่งในแชทส่วนตัว (1 ต่อ 1) ให้บอทเงียบกริบไม่ตอบ
+                if (userId !== ADMIN_ID || event.source.type !== 'user') {
+                    return res.sendStatus(200);
+                }
+
+                // 🔄 วนลูปเคลียร์ค่าสถานะการเงินและการเล่นของทุกคนในคลัง (แต่ยังคงเก็บข้อมูลบัญชีธนาคารและชื่อเอาไว้)
+                for (let id in usersWallets) {
+                    usersWallets[id].balance = 0;
+                    usersWallets[id].turnoverTarget = 0;
+                    usersWallets[id].turnoverCount = 0;
+                    usersWallets[id].isWithdrawLocked = false;
+                    usersWallets[id].pendingWithdrawAmount = 0;
+                }
+
+                // 🗑️ ล้างกระดานโพยเดิมที่ค้างอยู่ในรอบนั้นๆ ทั้งหมดให้โล่งสะอาด
+                for (let id in roundBets) {
+                    delete roundBets[id];
+                }
+
+                // บันทึกการล้างกระดานขึ้นไปบนคลัง Firebase หลังบ้านทันที
+                await saveDataToFirebase();
+
+                replyText = `♻️ รีเซ็ตระบบล้างกระดานสำเร็จเรียบร้อยครับน้า!\n──────────────────\n💰 เครดิตสมาชิกทุกคน: ปรับเป็น 0 บาท\n🔒 เคลียร์ค่าเทิร์นคงค้าง: ปกติทั้งหมด\n📝 ข้อมูลโพยเดิมในรอบ: ล้างกระดานโล่ง 100%\n──────────────────\n✨ พร้อมสำหรับเริ่มเปิดห้องรอบใหม่แล้วครับโผม!`;
+            }
 
             // ==================== [ จุดตรวจสอบคัดกรอง: ป้องกันไม่ให้บุคคลทั่วไปใช้งานบอทในแชทส่วนตัว ] ====================
             if (event.source.type === 'user') {

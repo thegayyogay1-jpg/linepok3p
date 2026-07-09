@@ -228,7 +228,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                             replyText = `⚠️ ตอนนี้ระบบกำลังเปิด "รอบขอจั่วไพ่ใบที่ 3" อยู่แล้วครับ ไม่จำเป็นต้องเปิดซ้ำครับ`;
                         } else {
                             isDrawOpen = true; // เปิดสิทธิ์ให้บอทรับคำสั่งเครื่องหมาย + จากสมาชิก
-                            replyText = `🃏 เปิดรอบขอจั่วไพ่ใบที่ 3 (รอบที่ ${currentRound}) แล้วครับ! \n\n📢 หากต้องการจั่วเพิ่ม ให้พิมพ์เลขขาตามด้วย + เช่น พิมพ์ "1+" หรือ "12+" \n*หากขาไหนต้องการอยู่ (ไม่จั่ว) ไม่ต้องพิมพ์อะไรส่งมาครับ*`;
+                            replyText = `🃏 เปิดรอบขอจั่วไพ่ใบที่ 3 (รอบที่ ${currentRound}) \n\n📢 หากต้องการจั่วเพิ่ม ให้พิมพ์เลขขาตามด้วย + เช่น พิมพ์ "1+" หรือ "12+" \n*หากขาไหนต้องการอยู่ (ไม่จั่ว) ไม่ต้องพิมพ์อะไรส่งมาครับ*`;
                         }
                     } 
                     // 🔴 [ฝั่งปิดรอบจั่ว xx + สรุปรายละเอียดรายบุคคล]
@@ -243,7 +243,8 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                             let summaryLegsText = `🔒 ปิดรอบขอจั่วไพ่เรียบร้อยแล้วครับ\n` +
                                                   `🎰 ล็อกสถานะไพ่ 2 ใบ/ 3 ใบของทุกขาแล้ว รอสรุปผลและคิดเงินสักครู่ครับ\n` +
                                                   `──────────────────\n` +
-                                                  `📋รายงานสรุปโพยและยอดแทงในรอบนี้\n\n`;
+                                                  `📋รายงานสรุปโพยและยอดแทงในรอบนี้\n`+
+                                                  `──────────────────\n`;
 
                             let hasBets = false;
 
@@ -616,9 +617,12 @@ else if (originalMsg.startsWith('>')) {
         tempDealerResult = dealerResult;
 
         // --- พ่นรายงานสรุปผลกระดานให้ตรวจสอบพร้อมสถานะ 🟢🔴 ---
-        let checkText = `📊 ตรวจสอบผลการเล่น รอบที่: ${currentRound}\n`;
-        checkText += `👑 เจ้ามือ: ${dealerResult.name} (${dealerResult.mult} เด้ง)\n\n`;
-        checkText += `📝 ลำดับหน้าไพ่และการประเมินผล:\n`;
+        let checkText = `📊 ตรวจสอบผลการเล่น รอบที่: ${currentRound}\n`+
+                        `──────────────────\n\n`;
+        checkText += `👑 เจ้ามือ: ${dealerResult.name} (${dealerResult.mult} เด้ง)\n`
+                     `──────────────────\n\n`;
+        checkText += `📝 ลำดับหน้าไพ่และผลแพ้ชนะ:\n`+
+                     `──────────────────\n\n`;
 
         for (let leg = 1; leg <= 6; leg++) {
             if (roomResults[leg]) {
@@ -634,13 +638,14 @@ else if (originalMsg.startsWith('>')) {
 
                 checkText += `• ขา ${leg}:\n`;
                 checkText += `   - [2ใบ]: ${res.twoCards.name} (${res.twoCards.mult}เด้ง) ${status2Str}\n`;
-                checkText += `   - [3ใบ]: ${res.threeCards.name} (${res.threeCards.mult}เด้ง) ${status3Str}\n\n`;
+                checkText += `   - [3ใบ]: ${res.threeCards.name} (${res.threeCards.mult}เด้ง) ${status3Str}\n`+
+                             `──────────────────\n`;
             } else {
                 checkText += `• ขา ${leg} -> ⚠️ ไม่มีผลไพ่ (ระบบตีเป็นบอด แพ้เจ้ามือ 🔴)\n`;
             }
         }
         
-        checkText += `\n🚨 กรุณาตรวจเช็คผลที่ส่ง\n หากข้อมูลถูกต้อง ให้พิมพ์: ok\nหากพิมพ์ผิดให้พิมพ์: no`;
+        checkText += `🚨 กรุณาตรวจเช็คผลที่ส่ง\n หากข้อมูลถูกต้อง ให้พิมพ์: ok\nหากพิมพ์ผิดให้พิมพ์: no`;
         replyText = checkText;
     }
 }

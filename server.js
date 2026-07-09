@@ -1245,23 +1245,35 @@ else if (command.toLowerCase() === "y") {
 
                 if (!isRegistered) {
                     if (originalMsg.startsWith('C/') || originalMsg.startsWith('c/')) {
-                        const fullName = originalMsg.substring(2).trim();
-                        if (fullName === "") {
-                            replyText = `⚠️ กรุณากรอกชื่อ-นามสกุลต่อท้ายให้ถูกต้องด้วยครับ\n(ตัวอย่าง: C/นายแจ๊ค เด้งดี)`;
+                        const registerData = originalMsg.substring(2).trim();
+                        
+                        // ตัดแบ่งข้อความด้วยเครื่องหมายจุลภาค ( , ) เพื่อแยก ชื่อ, ธนาคาร, เลขบัญชี
+                        const dataParts = registerData.split(',');
+                        const fullName = dataParts[0] ? dataParts[0].trim() : "";
+                        const bankName = dataParts[1] ? dataParts[1].trim() : "";
+                        const bankAccount = dataParts[2] ? dataParts[2].trim() : "";
+
+                        // 🚨 [เช็กความครบถ้วน] ถ้าขาดสิ่งใดสิ่งหนึ่งไป หรือลืมใส่เครื่องหมายจุลภาค บอทจะไม่ให้ผ่าน!
+                        if (fullName === "" || bankName === "" || bankAccount === "") {
+                            replyText = `❌ สมัครสมาชิกไม่สำเร็จครับน้า ข้อมูลไม่ครบ!\n──────────────────\n⚠️ กรุณาพิมพ์คั่นด้วยเครื่องหมายจุลภาค ( , ) ให้ครบทั้ง 3 ส่วน\n📌 รูปแบบ: C/ชื่อ-นามสกุล,ธนาคาร,เลขบัญชี\n👉 ตัวอย่าง: C/นายแจ๊ค เด้งดี,กสิกร,1234567890`;
                         } else {
                             usersWallets[userId] = {
                                 memberNumber: nextMemberId,
                                 name: fullName,
                                 balance: 0, 
                                 turnoverTarget: 0,
-                                turnoverCount: 0     
-                        };
-                            replyText = `🎉 ลงทะเบียนสมาชิกใหม่สำเร็จ! 🎉\n──────────────────\n🆔 คุณคือสมาชิกคนที่: ${nextMemberId}\n👤 ชื่อ-นามสกุล: ${fullName}\n💰 ยอดคงเหลือ: 0 บาท\n──────────────────\nตอนนี้คุณสามารถส่งโพยหรือพิมพ์ C เพื่อเช็คการ์ดสมาชิก`;
+                                turnoverCount: 0,
+                                isWithdrawLocked: false,     // เพิ่มไว้รองรับระบบถอน
+                                pendingWithdrawAmount: 0,    // เพิ่มไว้รองรับระบบถอน
+                                bankName: bankName,          // 🏦 เก็บข้อมูลธนาคารหลังบ้าน
+                                bankAccount: bankAccount     // 💳 เก็บเลขบัญชีหลังบ้าน
+                            };
+                            replyText = `🎉 ลงทะเบียนสมาชิกใหม่สำเร็จ! 🎉\n──────────────────\n🆔 คุณคือสมาชิกคนที่: ${nextMemberId}\n👤 ชื่อ-นามสกุล: ${fullName}\n🏦 ธนาคาร: ${bankName}\n💰 ยอดคงเหลือ: 0 บาท\n🔒 ข้อมูลบัญชีธนาคาร: บันทึกเข้าคลังหลังบ้านเรียบร้อยแล้ว ปลอดภัย ไม่แสดงหน้ากลุ่มค่ะ\n──────────────────\nตอนนี้คุณสามารถส่งโพยหรือพิมพ์ C เพื่อเช็คการ์ดสมาชิก`;
                             nextMemberId++;
-                            await saveDataToFirebase(); ///////////////////
+                            await saveDataToFirebase();
                         }
                     } else {
-                        replyText = `📢 ยินดีต้อนรับครับสมาชิกใหม่\n──────────────────\n⚠️ คุณยังไม่ได้ลงทะเบียนในระบบ\n──────────────────\nกรุณาพิมพ์: C/ชื่อ-นามสกุล เพื่อลงทะเบียนใช้งาน และ ใช้ในการถอนเครดิต\n(ตัวอย่าง: C/นายแจ๊ค เด้งดี)\n──────────────────\n⚠️กรุณาใช้ชื่อ-นามสกุลให้ตรงกันกับ บช. ที่ใช้ในการฝากของท่าน⚠️`;
+                        replyText = `📢 ยินดีต้อนรับครับสมาชิกใหม่\n──────────────────\n⚠️ คุณยังไม่ได้ลงทะเบียนในระบบ\n──────────────────\nกรุณาพิมพ์: C/ชื่อ-นามสกุล,ธนาคาร,เลขบัญชี เพื่อลงทะเบียนใช้งาน และ ใช้ในการถอนเครดิต\n(ตัวอย่าง: C/นายแจ๊ค เด้งดี,กสิกร,1234567890)\n──────────────────\n⚠️กรุณาใช้ชื่อ-นามสกุลให้ตรงกันกับ บช. ที่ใช้ในการฝากของท่าน⚠️`;
                     }
                 } else {
                     const user = usersWallets[userId];
@@ -1270,7 +1282,7 @@ else if (command.toLowerCase() === "y") {
                         if (user.turnoverTarget > 0) {
                             memberInfo += `\n🔒 เทิร์นคงค้าง: ${user.turnoverTarget} บาท \n──────────────────\n`;
                         } else {
-                        memberInfo += `\n🔓 สถานะเทิร์น: ปกติ\n──────────────────\n `;
+                            memberInfo += `\n🔓 สถานะเทิร์น: ปกติ\n──────────────────\n `;
                         }
                         const myBets = roundBets[userId];
                         if (myBets && myBets.length > 0) {
@@ -1278,7 +1290,6 @@ else if (command.toLowerCase() === "y") {
                             myBets.forEach((bet, index) => {
                                 memberInfo += `\n  ${index + 1}. ${bet.detail}`;
                                 
-                                // 🔥 [เพิ่มใหม่] ตรวจสอบสถานะการจั่วไพ่เพื่อนำมาแสดงผลตอนกด c
                                 if (bet.drawStatus) {
                                     let drawLegs = [];
                                     for (let leg in bet.drawStatus) {
@@ -1292,27 +1303,42 @@ else if (command.toLowerCase() === "y") {
                                 }
                             });
                             const totalHold = myBets.reduce((sum, bet) => sum + bet.holdCost, 0);
-                        memberInfo += `\n──────────────────\n🔒 ยอดประกันเด้งที่ล็อกไว้: ${totalHold} บาท`;
-                    } else {
-                        memberInfo += `📝 โพยในรอบนี้ ไม่มีโพยค้าง`;
-                    }
+                            memberInfo += `\n──────────────────\n🔒 ยอดประกันเด้งที่ล็อกไว้: ${totalHold} บาท`;
+                        } else {
+                            memberInfo += `📝 โพยในรอบนี้ ไม่มีโพยค้าง`;
+                        }
 
-                    // 💡 [เพิ่มป้ายแนะนำคำสั่งและกติกาพ่วงท้ายกล่องข้อความตอนกด c]
-                    memberInfo += `\n──────────────────\n` +
-                                  `📖 คู่มือช่วยเหลือสมาชิก\n` +
-                                  `👉 พิมพ์ คส เพื่อดูคำสั่งทั้งหมด\n` +
-                                  `👉 พิมพ์ บช หรือ /บช เพื่อดูเลขบัญชี\n` +
-                                  `👉 พิมพ์ กต เพื่ออ่านกติกาห้อง`;
+                        memberInfo += `\n──────────────────\n` +
+                                      `📖 คู่มือช่วยเหลือสมาชิก\n` +
+                                      `👉 พิมพ์ คส เพื่อดูคำสั่งทั้งหมด\n` +
+                                      `👉 พิมพ์ บช หรือ /บช เพื่อดูเลขบัญชี\n` +
+                                      `👉 พิมพ์ กต เพื่ออ่านกติกาห้อง`;
 
-                    replyText = memberInfo;
+                        replyText = memberInfo;
                     } else if (originalMsg.startsWith('C/') || originalMsg.startsWith('c/')) {
-                        replyText = `ℹ️ คุณ ${user.name} ได้ลงทะเบียนในระบบเรียบร้อยแล้วครับ\n🆔 สมาชิกคนที่: ${user.memberNumber}`;
+                        // 🔄 กรณีคนเก่าพิมพ์ C/ เข้ามาอีกรอบ เพื่อเปลี่ยนข้อมูลบัญชีหรือชื่อ
+                        const registerData = originalMsg.substring(2).trim();
+                        const dataParts = registerData.split(',');
+                        const fullName = dataParts[0] ? dataParts[0].trim() : "";
+                        const bankName = dataParts[1] ? dataParts[1].trim() : "";
+                        const bankAccount = dataParts[2] ? dataParts[2].trim() : "";
+
+                        // คนเก่าก็ต้องบังคับกรอกมาให้ครบ 3 ช่องเหมือนกันเวลาจะแก้ข้อมูล
+                        if (fullName === "" || bankName === "" || bankAccount === "") {
+                            replyText = `❌ อัปเดตข้อมูลไม่สำเร็จครับน้า!\nกรุณาพิมพ์ข้อมูลให้ครบถ้วนคั่นด้วยจุลภาค: C/ชื่อ,ธนาคาร,เลขบัญชี`;
+                        } else {
+                            user.name = fullName;
+                            user.bankName = bankName;
+                            user.bankAccount = bankAccount;
+                            
+                            await saveDataToFirebase();
+                            replyText = `✨ อัปเดตข้อมูลสมาชิกเรียบร้อยแล้วครับน้า!\n🆔 สมาชิกคนที่: ${user.memberNumber}\n👤 ชื่อ: คุณ ${fullName}\n🏦 ธนาคาร: ${bankName}\n🔒 ข้อมูลธนาคารได้รับการอัปเดตและเก็บเข้าคลังส่วนตัวเรียบร้อยแล้วครับ`;
+                        }
                     } else {
                         replyText = "";
                     }
                 }
             } // ปิดระบบลงทะเบียน
-
             // 🚀 ยิงข้อความตอบกลับไปที่ LINE
             if (replyText) {
                 try {

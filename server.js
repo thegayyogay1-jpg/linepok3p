@@ -1071,16 +1071,16 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                 }
             }
                 // ==================== [ ระบบแอดมินอนุมัติการถอนเงิน (y เลขสมาชิก แบบคนเดียว หรือ หลายคนพร้อมกัน) ] ====================
-else if (command.toLowerCase() === "y") {
+else if (userMsg.startsWith('y ') || userMsg.startsWith('Y ') || userMsg.trim() === 'y' || userMsg.trim() === 'Y') {
     const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
     if (userId !== ADMIN_ID) {
         replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งอนุมัติยอดถอนเงินครับ";
     } else {
-        // ดึงเลขสมาชิกทั้งหมดที่พิมพ์ต่อท้าย (ตัดคำว่า y ออก แล้วกรองเอาเฉพาะตัวเลขที่มีค่า)
-        const targetMemberIds = args.slice(1).map(id => parseInt(id)).filter(id => !isNaN(id));
+        // 🎯 แกะแยกเลขสมาชิกทุกคนที่พิมพ์เข้ามาด้วยช่องว่าง เช่น "y 1 3 5" -> [1, 3, 5]
+        const targetMemberIds = userMsg.replace(/y|Y/, '').trim().split(/\s+/).map(id => parseInt(id)).filter(id => !isNaN(id));
 
         if (targetMemberIds.length === 0) {
-            replyText = "⚠️ รูปแบบคำสั่งไม่ถูกต้อง กรุณาพิมพ์: y [เลขสมาชิก] หรือ y [เลขสมาชิก1] [เลขสมาชิก2] ...\n(ตัวอย่างเช่น: Y 1 หรือ Y 1 2 3)";
+            replyText = "⚠️ รูปแบบคำสั่งไม่ถูกต้อง กรุณาพิมพ์: y ตามด้วยเลขสมาชิก\n(ตัวอย่างเช่น: Y 1 หรือโอนพร้อมกันหลายคนพิมพ์: Y 1 2 3)";
         } else {
             let successReports = [];
             let errorReports = [];
@@ -1112,6 +1112,11 @@ else if (command.toLowerCase() === "y") {
                         user.isWithdrawLocked = false;
                         user.pendingWithdrawAmount = 0;
 
+                        // 🗑️ 3. ลบสมาชิกคนนี้ออกจากคิวรอถอน (withdrawQueue) ทันที
+                        if (typeof withdrawQueue !== 'undefined') {
+                            withdrawQueue = withdrawQueue.filter(item => item.memberNumber !== targetMemberId);
+                        }
+
                         // เก็บข้อความสำเร็จของแต่ละคนไว้ประกอบร่างตอนท้าย
                         successReports.push(
                             `👤 คุณ: ${user.name} (ID: ${user.memberNumber})\n` +
@@ -1132,6 +1137,10 @@ else if (command.toLowerCase() === "y") {
                 if (finalReply !== "") finalReply += `\n\n──────────────────\n🚨 รายงานข้อผิดพลาด:\n`;
                 finalReply += errorReports.join('\n');
             }
+
+            // แสดงยอดคงค้างในคิวปัจจุบันพ่วงท้ายให้แอดมินดูสบายใจ
+            const queueCount = typeof withdrawQueue !== 'undefined' ? withdrawQueue.length : 0;
+            finalReply += `\n\n📊 คงเหลือในคิวรอถอน: ${queueCount} รายการ (พิมพ์ "ชถ" เพื่อดูคิวปัจจุบัน)`;
 
             replyText = finalReply;
         }

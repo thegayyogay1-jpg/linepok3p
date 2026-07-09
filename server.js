@@ -764,7 +764,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                 let feeNote = (isUserBettingOnDealer && userTotalWinLoss !== 0) ? " \n(หักต๋งขาเจ้ามือที่ชนะแล้ว)" : "";
                 
                 let turnNote = user.turnoverTarget > 0 ? ` ⚠️ (เหลือเทิร์น: ${user.turnoverTarget} บ.)` : " 🟢 (เทิร์นครบแล้ว)";
-                summaryPayoutText += `👤 ${user.name} (ID: ${user.memberNumber})\n  ยอดสุทธิ: ${sign}${userTotalWinLoss} บาท${feeNote}\n(เครดิตคงเหลือ: ${user.balance} บ.)\n──────────────────\n`;
+                summaryPayoutText += `👤 ${user.name} (ID: ${user.memberNumber})\n  ยอดสุทธิ: ${sign}${userTotalWinLoss} บาท${feeNote}\n เครดิตคงเหลือ: ${user.balance} บ.\n──────────────────\n`;
             } // ปิดลูป for (let uId in roundBets)
 
             if (!hasAnyBet) {
@@ -997,7 +997,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                         // 4. ประกอบร่างข้อความสรุปท้ายกระดาษ
                         let signStr = totalWinLoss > 0 ? `กำไร +${totalWinLoss}` : (totalWinLoss < 0 ? `ขาดทุน ${totalWinLoss}` : `เสมอตัว +0`);
                         reportText += `──────────────────\n📊 สรุปดีเทลการเล่น \n──────────────────\n${detailRows}`;
-                        reportText += `\n──────────────────\n👉 ยอดกำไร/ขาดทุนในรอบนี้: ${signStr} บาท`;                   
+                        reportText += `──────────────────\n👉 ยอดกำไร/ขาดทุนในรอบนี้: ${signStr} บาท`;                   
 
                         replyText = reportText;
                     }

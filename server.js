@@ -6,7 +6,9 @@ app.use(express.json());
 // 💡 ไม่ต้องใส่ Token ในนี้แล้ว ระบบจะดึงจากตัวแปรบน Render อัตโนมัติ
 const TOKEN = process.env.CHANNEL_ACCESS_TOKEN;
 
-// 🗄️ ฐานข้อมูลจำลองสำหรับจำสมาชิก (จะรีเซ็ตเมื่อเซิร์ฟเวอร์ Restart)
+// 📡 ลิงก์เชื่อมโยงไปยังฐานข้อมูล Firebase ถาวร 
+const FIREBASE_URL = "https://my-pokdeng-bot-default-rtdb.asia-southeast1.firebasedatabase.app/"; 
+
 let usersWallets = {};
 let nextMemberId = 1;
 let isRoundOpen = false; // ตัวแปรจำสถานะ เปิด/ปิด รอบ
@@ -19,6 +21,50 @@ let matchHistory = []; // เก็บประวัติสถิติย้
 let detailedRoundHistory = {}; // ตัวแปรเก็บข้อมูลสำหรับแอดมินดึงย้อนหลัง
 let pastRoundsData = {}; //  ถังเก็บประวัติโพยและผลไพ่แยกรายรอบ (สำหรับดึง v,m)
 let withdrawQueue = []; // 📦 ถังสำหรับเก็บคิวสมาชิกที่แจ้งถอนเงิน
+
+// 🔄 ฟังก์ชันอัตโนมัติ: ดึงข้อมูลจาก Firebase มาอัปเดตลงในบอททันทีที่เปิดเครื่อง (แก้ไขดึงครบทุกกล่องแล้ว)
+async function loadDataFromFirebase() {
+    try {
+        const response = await axios.get(`${FIREBASE_URL}system_data.json`);
+        if (response.data) {
+            usersWallets = response.data.usersWallets || {};
+            nextMemberId = response.data.nextMemberId || 1;
+            isRoundOpen = response.data.isRoundOpen !== undefined ? response.data.isRoundOpen : false;
+            roundBets = response.data.roundBets || {};
+            currentRound = response.data.currentRound || 0;
+            isDrawOpen = response.data.isDrawOpen !== undefined ? response.data.isDrawOpen : false;
+            matchHistory = response.data.matchHistory || [];
+            detailedRoundHistory = response.data.detailedRoundHistory || {};
+            pastRoundsData = response.data.pastRoundsData || {};
+            withdrawQueue = response.data.withdrawQueue || [];
+            console.log("✅ ดึงข้อมูลระบบทั้งหมดจาก Firebase สำเร็จเรียบร้อย!");
+        }
+    } catch (error) {
+        console.error("❌ ไม่สามารถดึงข้อมูลจาก Firebase ได้:", error.message);
+    }
+}
+loadDataFromFirebase(); // สั่งให้ทำงานทันทีที่บอทรัน
+
+// 💾 ฟังก์ชันอัตโนมัติ: สั่งบันทึกข้อมูลปัจจุบันยิงกลับไปเก็บที่ตึก Firebase
+async function saveDataToFirebase() {
+    try {
+        await axios.put(`${FIREBASE_URL}system_data.json`, {
+            usersWallets: usersWallets,
+            nextMemberId: nextMemberId,
+            isRoundOpen: isRoundOpen,         // 💾 จำสถานะ เปิด/ปิด รอบ
+            roundBets: roundBets,             // 💾 จำโพยแทงในแต่ละรอบ
+            currentRound: currentRound,       // 💾 จำลำดับรอบปัจจุบัน
+            isDrawOpen: isDrawOpen,           // 💾 จำสถานะรอบจั่วไพ่
+            matchHistory: matchHistory,       // 💾 จำประวัติสถิติย้อนหลัง 5 รอบ
+            detailedRoundHistory: detailedRoundHistory, // 💾 จำข้อมูลแอดมินดึงย้อนหลัง
+            pastRoundsData: pastRoundsData,   // 💾 จำประวัติโพยและผลไพ่แยกรายรอบ (v,m)
+            withdrawQueue: withdrawQueue       // 💾 จำคิวสมาชิกที่แจ้งถอนเงิน
+        });
+        console.log("💾 บันทึกข้อมูลลง Firebase เรียบร้อย!");
+    } catch (error) {
+        console.error("❌ บันทึกข้อมูลลง Firebase ล้มเหลว:", error.message);
+    }
+}
 
 app.post('/callback', async (req, res) => {
     const events = req.body.events;
@@ -61,10 +107,12 @@ app.post('/callback', async (req, res) => {
                             if (command === "เติม") {
                                 usersWallets[foundUserKey].balance += amount;
                                 const user = usersWallets[foundUserKey];
+                                await saveDataToFirebase(); // 💾 เพิ่มจุดที่ 1
                                 replyText = `💰 เติมเครดิตสมาชิกที่ ${user.memberNumber} \n คุณ ${user.name} +${amount} สำเร็จ!\n──────────────────\nยอดสุทธิ: ${user.balance} บาท`;
                             } else if (command === "ลบ") {
                                 usersWallets[foundUserKey].balance -= amount;
                                 const user = usersWallets[foundUserKey];
+                                await saveDataToFirebase(); // 💾 เพิ่มจุดที่ 1
                                 replyText = `🚨 ลบยอดเครดิตสมาชิกที่ ${user.memberNumber} \n คุณ ${user.name} -${amount}!\n──────────────────\nยอดปัจจุบัน: ${user.balance} บาท`;
                             }
                         }
@@ -99,6 +147,7 @@ app.post('/callback', async (req, res) => {
                             // 🧮 เติมเงินให้จริง + คำนวณเทิร์น 10 เท่าจากยอดรวมทันที
                             user.balance += amount;
                             user.turnoverTarget = amount * 10; // 200 x 10 = 2000 บาท
+                            await saveDataToFirebase();
 
                             replyText = `🎁 เติมโบนัสให้สมาชิกที่ [ ${user.memberNumber} ] \n คุณ ${user.name} สำเร็จ!\n──────────────────\n` +
                                         `💰 ยอดสุทธิ: +${amount} บาท\n──────────────────\n` +
@@ -131,6 +180,7 @@ app.post('/callback', async (req, res) => {
                             // 🔓 ทำการรีเซ็ตยอดเทิร์นเป้าหมายและจำนวนเทิร์นที่นับได้ให้กลายเป็น 0 ทันที
                             usersWallets[targetUserId].turnoverTarget = 0;
                             usersWallets[targetUserId].turnoverCount = 0;
+                            await saveDataToFirebase(); // 💾 เซฟถาวร
                             
                             replyText = `🔓 ล้างยอดเทิร์นสำเร็จ!\n👤 สมาชิกคนที่: ${targetMemberId}\n👤 ชื่อ: ${usersWallets[targetUserId].name}\n\n✨ สถานะปัจจุบัน: ปกติ (ถอนเงินได้เลยไม่ติดโปร)`;
                         } else {
@@ -234,6 +284,9 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
             isRoundOpen = false;
             isDrawOpen = false; // ล้างสถานะจั่วไปด้วยเลยตอนเซ็ตศูนย์
             roundBets = {};
+
+            await saveDataToFirebase(); //💾เซฟถาวร
+            
             replyText = "🔄 ทำการล้างลำดับรอบเรียบร้อยแล้ว! รอบต่อไปจะเริ่มต้นที่ รอบที่ 1 ครับ ⚙️";
         }
     }
@@ -459,6 +512,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                             replyText = `❌ เครดิตของคุณไม่พอสหรับยอดค้ำประกันเด้ง (คิดสูงสุด 3 เด้ง) ครับ!\n💸 ยอดแทงปกติ: ${totalActualBet} บาท\n🔒 ต้องใช้ยอดค้ำประกันรวม: ${totalHoldCost} บาท\n💰 เครดิตปัจจุบันของคุณมี: ${user.balance} บาท`;
                         } else {
                             user.balance -= totalHoldCost;
+                            await saveDataToFirebase();
                             if (!roundBets[userId]) {
                                 roundBets[userId] = [];
                             }
@@ -502,6 +556,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                         } else {
                             const totalRefund = myBets.reduce((sum, bet) => sum + bet.holdCost, 0);
                             user.balance += totalRefund;
+                            await saveDataToFirebase(); //💾เซฟถาวร
                             roundBets[userId] = []; 
 
                             replyText = `🗑️ ยกเลิกโพยสำเร็จเรียบร้อยแล้วครับ!\n👤 คุณ: ${user.name} (ID: ${user.memberNumber})\n💰 ระบบได้ทำการคืนเครดิตค้ำประกันให้คุณ: +${totalRefund} บาท\n✨ ยอดเครดิตปัจจุบัน: ${user.balance} บาท\n*(ตอนนี้โพยรอบนี้ของคุณกลายเป็นว่างแล้ว สามารถส่งโพยใหม่ได้ครับ)*`;
@@ -781,6 +836,8 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                     if (user.turnoverTarget < 0) user.turnoverTarget = 0; // ถ้าเล่นเกินเป้าแล้วให้เซ็ตเป็น 0 (ปลดล็อก)
                 }
 
+                await saveDataToFirebase(); //เซฟถาวร
+
                 let sign = userTotalWinLoss > 0 ? "🟢 +" : (userTotalWinLoss < 0 ? "🔴 " : "🟡 ");
                 
                 // ตรวจสอบว่าในรอบนี้ยูสเซอร์แทงฝั่งเจ้ามือหรือไม่ เพื่อความสวยงามในการแสดงข้อความท้ายรายงาน
@@ -845,6 +902,8 @@ else if (userMsg === 'ok' || userMsg === 'no') {
             tempDealerResult = null;
             isDrawOpen = false;
             roundBets = {}; 
+
+            await saveDataToFirebase(); //เซฟถาวร
 
         } else if (userMsg === 'no') {
             tempRoomResults = null;
@@ -1060,6 +1119,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                 amount: withdrawAmount, // ดึงจากตัวแปร withdrawAmount ที่เช็กผ่านแล้ว
                 time: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) 
             });
+                        await saveDataToFirebase(); //เซฟถาวร
                         
                         replyText = `⏳ [ระบบรับเรื่องแจ้งถอน] ⏳\n` +
                                     `👤 คุณ: ${user.name} (ID: ${user.memberNumber})\n` +
@@ -1113,6 +1173,7 @@ else if (command.toLowerCase() === "y") {
                         
                         // ✅ 1. ทำการหักเงินเครดิตจริงออกจากกระเป๋า
                         user.balance -= finalAmount;
+                        await saveDataToFirebase();
                         
                         // 🔓 2. ทำการปลดล็อกบัญชีให้ส่งโพยใหม่ได้ตามปกติ
                         user.isWithdrawLocked = false;
@@ -1197,6 +1258,7 @@ else if (command.toLowerCase() === "y") {
                         };
                             replyText = `🎉 ลงทะเบียนสมาชิกใหม่สำเร็จ! 🎉\n──────────────────\n🆔 คุณคือสมาชิกคนที่: ${nextMemberId}\n👤 ชื่อ-นามสกุล: ${fullName}\n💰 ยอดคงเหลือ: 0 บาท\n──────────────────\nตอนนี้คุณสามารถส่งโพยหรือพิมพ์ C เพื่อเช็คการ์ดสมาชิก`;
                             nextMemberId++;
+                            await saveDataToFirebase(); ///////////////////
                         }
                     } else {
                         replyText = `📢 ยินดีต้อนรับครับสมาชิกใหม่\n──────────────────\n⚠️ คุณยังไม่ได้ลงทะเบียนในระบบ\n──────────────────\nกรุณาพิมพ์: C/ชื่อ-นามสกุล เพื่อลงทะเบียนใช้งาน และ ใช้ในการถอนเครดิต\n(ตัวอย่าง: C/นายแจ๊ค เด้งดี)\n──────────────────\n⚠️กรุณาใช้ชื่อ-นามสกุลให้ตรงกันกับ บช. ที่ใช้ในการฝากของท่าน⚠️`;

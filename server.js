@@ -1381,206 +1381,154 @@ else if (command.toLowerCase() === "y") {
                     replyText = totalReport;
                 }
             }
-                // ==========================================
-// [สเต็ปที่ 2] คำสั่งดักจับเมื่อสมาชิกพิมพ์ "ฝาก [จำนวนเงิน]" และส่งรูปสลิป
-// ==========================================
+               // ==========================================
+            // [สเต็ปที่ 2] คำสั่งดักจับเมื่อสมาชิกพิมพ์ "ฝาก [จำนวนเงิน]" และส่งรูปสลิป
+            // ==========================================
+            if (originalMsg && originalMsg.startsWith('ฝาก')) {
+                const args = originalMsg.split(' ');
+                const amount = parseInt(args[1]);
 
-if (text && text.startsWith('ฝาก')) {
-  const args = text.split(' ');
-  const amount = parseInt(args[1]);
-  const userId = event.source.userId; // ไอดี LINE ของคนพิมพ์
+                if (!amount || isNaN(amount) || amount <= 0) {
+                    replyText = '❌ พิมพ์รูปแบบผิดครับน้า! ต้องพิมพ์เช่น: ฝาก 500';
+                    await saveDataToFirebase(); // ใช้ระบบบันทึกเดิมถ้ามี หรือส่งตอบกลับตามระบบเดิม
+                } else {
+                    // เช็กข้อมูลสมาชิกจากระบบเดิมเพื่อเช็กเลข ID สมาชิก
+                    const userWalletRef = admin.database().ref(`system_data/usersWallets/${userId}`);
+                    const walletSnapshot = await userWalletRef.once('value');
+                    const walletData = walletSnapshot.val();
 
-  if (!amount || isNaN(amount) || amount <= 0) {
-    return replyMessage(event.replyToken, '❌ พิมพ์รูปแบบผิดครับน้า! ต้องพิมพ์เช่น: ฝาก 500');
-  }
+                    if (!walletData) {
+                        replyText = '❌ น้ายังไม่ได้สมัครสมาชิก พิมพ์สมัครก่อนนะครับ';
+                    } else {
+                        // รองรับทั้ง memberId หรือ memberNumber จากระบบของน้า
+                        const memberId = walletData.memberNumber || walletData.memberId; 
 
-  // ดึงข้อมูลสมาชิกจากระบบเดิมเพื่อเช็กเลข ID สมาชิก
-  const userWalletRef = admin.database().ref(`system_data/usersWallets/${userId}`);
-  const walletSnapshot = await userWalletRef.once('value');
-  const walletData = walletSnapshot.val();
+                        // เช็กคิวแจ้งฝากในระบบชั่วคราว
+                        const depositRef = admin.database().ref(`system_data/depositQueue/${userId}`);
+                        const snapshot = await depositRef.once('value');
+                        const currentQueue = snapshot.val();
+                        const currentTime = Date.now();
 
-  if (!walletData) {
-    return replyMessage(event.replyToken, '❌ น้ายังไม่ได้สมัครสมาชิก พิมพ์สมัครก่อนนะครับ');
-  }
-
-  const memberId = walletData.memberId; // ดึงเลขสมาชิกลำดับที่...
-
-  // เช็กคิวแจ้งฝากในระบบชั่วคราว
-  const depositRef = admin.database().ref(`system_data/depositQueue/${userId}`);
-  const snapshot = await depositRef.once('value');
-  const currentQueue = snapshot.val();
-
-  const currentTime = Date.now();
-
-  // ⏱️ ระบบตรวจสอบเวลา 1 นาที (ดักไม่ให้พิมพ์ฝากซ้ำ)
-  if (currentQueue) {
-    const timeDiff = currentTime - currentQueue.timestamp;
-    if (timeDiff < 60000) { // 60,000 มิลลิวินาที = 1 นาที
-      return replyMessage(event.replyToken, '⚠️ น้ามีรายการฝากค้างอยู่! โปรดส่งรูปสลิปภายใน 1 นาที หรือรอให้ครบกำหนดก่อนครับ');
-    }
-  }
-
-  // บันทึกคำขอฝากเงินลงคลังชั่วคราว เปิดเวลานับถอยหลัง 1 นาที
-  await depositRef.set({
-    userId: userId,
-    memberId: memberId,
-    name: walletData.name || 'ไม่ระบุชื่อ',
-    amount: amount,
-    timestamp: currentTime,
-    status: 'WAITING_FOR_SLIP'
-  });
-
-  return replyMessage(event.replyToken, `📥 รับยอดแจ้งฝาก ${amount} บาทเรียบร้อย! ภายใน 1 นาทีนี้ ขอความกรุณาน้ากดส่งรูปภาพสลิปหลักฐานต่อได้เลยครับ (ช่วงนี้ระบบจะล็อคไม่ให้พิมพ์ฝากซ้ำครับ)`);
-}
-
-// ------------------------------------------
-// ส่วนดักจับเมื่อสมาชิก "กดส่งรูปภาพสลิป" เข้ามาในไลน์
-// ------------------------------------------
-if (event.message.type === 'image') {
-  const userId = event.source.userId;
-  const depositRef = admin.database().ref(`system_data/depositQueue/${userId}`);
-  const snapshot = await depositRef.once('value');
-  const currentQueue = snapshot.val();
-  const currentTime = Date.now();
-
-  // เช็กว่าคนส่งรูป มีการกดพิมพ์คำว่า "ฝาก" ไว้ก่อนหน้านี้ไม่เกิน 1 นาทีไหม
-  if (currentQueue && currentQueue.status === 'WAITING_FOR_SLIP') {
-    const timeDiff = currentTime - currentQueue.timestamp;
-    
-    if (timeDiff <= 60000) { // ถ้ารูปมาไวภายใน 1 นาทีจริง
-      const messageId = event.message.id;
-      // 🔗 สร้างลิงก์รูปภาพของ LINE (ดึงมาตรวจหลังบ้าน)
-      const slipUrl = `https://api-data.line.me/v2/bot/message/${messageId}/content`;
-
-      // อัปเดตลิงก์รูปสลิปเข้าไปในคิว รอแอดมินตรวจ
-      await depositRef.update({
-        slipUrl: slipUrl,
-        status: 'PENDING_ADMIN'
-      });
-
-      // 📢 ยิงข้อความรายงานส่งตรงเข้าหา น้า (ADMIN_ID)
-      const adminNotifyMessage = `🔔 มีรายการแจ้งฝากใหม่!\nสมาชิกลำดับที่: ${currentQueue.memberId}\nชื่อ: ${currentQueue.name}\nยอดเงิน: ${currentQueue.amount} บาท\n🔗 ลิงก์รูปสลิป: ${slipUrl}\n\n👉 วิธีอนุมัติพิมพ์: yc ${currentQueue.memberId}\n👉 วิธีปฏิเสธพิมพ์: nc ${currentQueue.memberId}`;
-      
-      // ส่งข้อความไปแจ้งเตือนน้าหลังบ้าน
-      await lineClient.pushMessage(process.env.ADMIN_ID, { type: 'text', text: adminNotifyMessage });
-
-      return replyMessage(event.replyToken, '✅ บอทได้รับรูปภาพสลิปแล้วครับน้า! กำลังส่งต่อให้แอดมินตรวจสอบความถูกต้อง รอสักครู่นะครับ');
-    } else {
-      // เกิน 1 นาที ลบทิ้งทันที เคลียร์หลังบ้านให้สะอาด
-      await depositRef.remove();
-      return replyMessage(event.replyToken, '❌ ส่งรูปสลิปช้าเกิน 1 นาที ระบบตัดคิวแล้วครับน้า พิมพ์แจ้งฝากใหม่อีกรอบนะครับ');
-    }
-  }
-}
-// [สเต็ปที่ 3] คำสั่งแอดมินอนุมัติ (yc [เลขสมาชิก]) และ ปฏิเสธ (nc [เลขสมาชิก])
-const isAdmin = (userId === ADMIN_ID); 
-
-if (isAdmin && (text && (text.startsWith('yc') || text.startsWith('nc')))) {
-  const args = text.split(' ');
-  const action = args[0]; // 'yc' หรือ 'nc'
-  const targetMemberId = parseInt(args[1]); // เลขสมาชิกที่น้าพิมพ์มา เช่น 4
-
-  if (!targetMemberId || isNaN(targetMemberId)) {
-    return replyMessage(event.replyToken, '❌ พิมพ์รูปแบบผิดครับน้า! ต้องพิมพ์เช่น: yc 4 หรือ nc 4');
-  }
-
-  // วิ่งไปหาข้อมูลในคิวฝากเงินชั่วคราว (depositQueue)
-  const depositQueueRef = admin.database().ref('system_data/depositQueue');
-  const queueSnapshot = await depositQueueRef.once('value');
-  const queueData = queueSnapshot.val();
-
-  let foundQueueKey = null;
-  let foundRequest = null;
-
-  if (queueData) {
-    for (const key in queueData) {
-      // ตรวจสอบเช็กทั้งสองชื่อตัวแปรเผื่อไว้
-      if (queueData[key].memberId === targetMemberId) {
-        foundQueueKey = key; // ได้ LINE_USER_ID ของลูกค้าคนนั้น
-        foundRequest = queueData[key];
-        break;
-      }
-    }
-  }
-
-  // ถ้าน้าพิมพ์เลขมามั่วๆ หรือรายการนั้นหมดอายุ/โดนลบไปแล้ว
-  if (!foundRequest) {
-    return replyMessage(event.replyToken, `❌ ไม่พบรายการคิวแจ้งฝากของสมาชิกลำดับที่ ${targetMemberId} ในระบบครับน้า`);
-  }
-
-  // ------------------------------------------
-  // เคสที่ 3.1: น้าพิมพ์อนุมัติ ยอดเงินถูกต้อง ✅ (yc)
-  // ------------------------------------------
-  if (action === 'yc') {
-    const depositAmount = foundRequest.amount;
-    const userWalletRef = admin.database().ref(`system_data/usersWallets/${foundQueueKey}`);
-    
-    // ดึงกระเป๋าเงินเดิมของลูกค้ามาบวกเงินเพิ่มเข้าไป
-    await userWalletRef.transaction((currentData) => {
-      if (currentData) {
-        currentData.balance = (currentData.balance || 0) + depositAmount;
-      }
-      return currentData;
-    });
-
-    // 🧹 ลบข้อมูลออกจากคิวแจ้งฝากชั่วคราวทันที (เคลียร์พื้นที่เรียบร้อย ไม่รกคลัง!)
-    await admin.database().ref(`system_data/depositQueue/${foundQueueKey}`).remove();
-
-    // แจ้งเตือนสมาชิกลูกค้าในกลุ่มว่าเงินเข้าแล้ว
-    const memberNotifyText = `🎉 อนุมัติสำเร็จ! สมาชิกลำดับที่ ${targetMemberId} เติมเงินเข้ากระเป๋าจำนวน ${depositAmount} บาท เรียบร้อยแล้วครับน้า! ลุยต่อได้เลย 🃏`;
-    
-    return replyMessage(event.replyToken, memberNotifyText);
-  }
-
-  // ------------------------------------------
-  // เคสที่ 3.2: ยอดไม่ตรง/สลิปปลอม ปฏิเสธการฝาก ❌ (nc)
-  // ------------------------------------------
-  if (action === 'nc') {
-    // 🧹 ลบคิวฝากทิ้งทันที สลิปไม่ผ่าน
-    await admin.database().ref(`system_data/depositQueue/${foundQueueKey}`).remove();
-
-    // ส่งข้อความแจ้งเตือนสมาชิกตัวเกรียนคนนั้นให้ติดต่อแอดมิน
-    const rejectNotifyText = `❌ รายการแจ้งฝากของสมาชิกลำดับที่ ${targetMemberId} ไม่ผ่านการตรวจสอบ! กรุณาตรวจสอบยอดเงิน/รูปสลิป หรือติดต่อแอดมินโดยตรงครับ`;
-    
-    return replyMessage(event.replyToken, rejectNotifyText);
-  }
-}
-            // ==================== [ เพิ่มใหม่: คำสั่งแอดมินลบสมาชิกรายคนผ่านแชทส่วนตัว (del1, del2...) ] ====================
-            else if (userMsg.startsWith('d') && !userMsg.includes('-') && !userMsg.endsWith('+')) {
-                const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db"; // 👑 ไอดี LINE ของคุณน้า
-                
-                // 🚨 กรองขั้นสูงสุด: ถ้าไม่ใช่แอดมิน หรือ แอดมินไม่ได้สั่งในแชทส่วนตัว (1 ต่อ 1) ให้บอทเงียบกริบไม่ตอบ
-                if (userId !== ADMIN_ID || event.source.type !== 'user') {
-                    return res.sendStatus(200);
+                        // ⏱️ ระบบตรวจสอบเวลา 1 นาที (ดักไม่ให้พิมพ์ฝากซ้ำ)
+                        if (currentQueue && (currentTime - currentQueue.timestamp < 60000)) {
+                            replyText = '⚠️ น้ามีรายการฝากค้างอยู่! โปรดส่งรูปสลิปภายใน 1 นาที หรือรอให้ครบกำหนดก่อนครับ';
+                        } else {
+                            // บันทึกคำขอฝากเงินลงคลังชั่วคราว เปิดเวลานับถอยหลัง 1 นาที
+                            await depositRef.set({
+                                userId: userId,
+                                memberId: memberId,
+                                name: walletData.name || 'ไม่ระบุชื่อ',
+                                amount: amount,
+                                timestamp: currentTime,
+                                status: 'WAITING_FOR_SLIP'
+                            });
+                            replyText = `📥 รับยอดแจ้งฝาก ${amount} บาทเรียบร้อย! ภายใน 1 นาทีนี้ ขอความกรุณาน้ากดส่งรูปภาพสลิปหลักฐานต่อได้เลยครับ (ช่วงนี้ระบบจะล็อคไม่ให้พิมพ์ฝากซ้ำครับ)`;
+                        }
+                    }
                 }
+            }
 
-                // ตัดคำว่า del ออกเพื่อเอาตัวเลขสมาชิกที่น้าต้องการลบ
-                const targetIdStr = userMsg.replace('d', '').trim();
-                const targetMemberId = parseInt(targetIdStr);
+            // ------------------------------------------
+            // ส่วนดักจับเมื่อสมาชิก "กดส่งรูปภาพสลิป" เข้ามาในไลน์
+            // ------------------------------------------
+            if (event.message && event.message.type === 'image') {
+                const depositRef = admin.database().ref(`system_data/depositQueue/${userId}`);
+                const snapshot = await depositRef.once('value');
+                const currentQueue = snapshot.val();
+                const currentTime = Date.now();
 
-                if (!isNaN(targetMemberId)) {
-                    let targetUserIdInFirebase = null;
-                    let targetName = "";
+                // เช็กว่าคนส่งรูป มีการกดพิมพ์คำว่า "ฝาก" ไว้ก่อนหน้านี้ไม่เกิน 1 นาทีไหม
+                if (currentQueue && currentQueue.status === 'WAITING_FOR_SLIP') {
+                    const timeDiff = currentTime - currentQueue.timestamp;
+                    
+                    if (timeDiff <= 60000) { // ถ้ารูปมาไวภายใน 1 นาทีจริง
+                        const messageId = event.message.id;
+                        // 🔗 สร้างลิงก์รูปภาพของ LINE (ดึงมาตรวจหลังบ้าน)
+                        const slipUrl = `https://api-data.line.me/v2/bot/message/${messageId}/content`;
 
-                    // วนลูปค้นหาเพื่อถอดไอดี LINE ดิบของสมาชิกคนนั้นออกมาจากคลัง
-                    for (let id in usersWallets) {
-                        if (usersWallets[id].memberNumber === targetMemberId) {
-                            targetUserIdInFirebase = id;
-                            targetName = usersWallets[id].name;
-                            break;
+                        // อัปเดตลิงก์รูปสลิปเข้าไปในคิว รอแอดมินตรวจ
+                        await depositRef.update({
+                            slipUrl: slipUrl,
+                            status: 'PENDING_ADMIN'
+                        });
+
+                        // 📢 ยิงข้อความรายงานส่งตรงเข้าหลังบ้านของน้าตาม ADMIN_ID ด้านบน
+                        const adminNotifyMessage = `🔔 มีรายการแจ้งฝากใหม่!\nสมาชิกลำดับที่: ${currentQueue.memberId}\nชื่อ: ${currentQueue.name}\nยอดเงิน: ${currentQueue.amount} บาท\n🔗 ลิงก์รูปสลิป: ${slipUrl}\n\n👉 วิธีอนุมัติพิมพ์: yc ${currentQueue.memberId}\n👉 วิธีปฏิเสธพิมพ์: nc ${currentQueue.memberId}`;
+                        
+                        await lineClient.pushMessage(ADMIN_ID, { type: 'text', text: adminNotifyMessage });
+                        
+                        // ใช้ return เพื่อตัดจบระบบส่งข้อความรูปภาพ
+                        return replyMessage(event.replyToken, '✅ บอทได้รับรูปภาพสลิปแล้วครับน้า! กำลังส่งต่อให้แอดมินตรวจสอบความถูกต้อง รอสักครู่นะครับ');
+                    } else {
+                        // เกิน 1 นาที ลบทิ้งทันที เคลียร์หลังบ้านให้สะอาด
+                        await depositRef.remove();
+                        replyText = '❌ ส่งรูปสลิปช้าเกิน 1 นาที ระบบตัดคิวแล้วครับน้า พิมพ์แจ้งฝากใหม่อีกรอบนะครับ';
+                    }
+                }
+            }
+
+            // ==========================================
+            // [สเต็ปที่ 3] คำสั่งแอดมินอนุมัติ (yc [เลขสมาชิก]) และ ปฏิเสธ (nc [เลขสมาชิก])
+            // ==========================================
+            if (userId === ADMIN_ID && originalMsg && (originalMsg.startsWith('yc') || originalMsg.startsWith('nc'))) {
+                const args = originalMsg.split(' ');
+                const action = args[0]; // 'yc' หรือ 'nc'
+                const targetMemberId = parseInt(args[1]); // เลขสมาชิกที่น้าพิมพ์มา เช่น 4
+
+                if (!targetMemberId || isNaN(targetMemberId)) {
+                    replyText = '❌ พิมพ์รูปแบบผิดครับน้า! ต้องพิมพ์เช่น: yc 4 หรือ nc 4';
+                } else {
+                    // วิ่งไปหาข้อมูลในคิวฝากเงินชั่วคราว (depositQueue)
+                    const depositQueueRef = admin.database().ref('system_data/depositQueue');
+                    const queueSnapshot = await depositQueueRef.once('value');
+                    const queueData = queueSnapshot.val();
+
+                    let foundQueueKey = null;
+                    let foundRequest = null;
+
+                    if (queueData) {
+                        for (const key in queueData) {
+                            if (queueData[key].memberId === targetMemberId) {
+                                foundQueueKey = key; // ได้ LINE_USER_ID ของลูกค้าคนนั้น
+                                foundRequest = queueData[key];
+                                break;
+                            }
                         }
                     }
 
-                    if (!targetUserIdInFirebase) {
-                        replyText = `❌ ไม่พบข้อมูลสมาชิกหมายเลข ${targetMemberId} ในระบบครับน้า`;
+                    // ถ้าน้าพิมพ์เลขมามั่วๆ หรือรายการนั้นหมดอายุ/โดนลบไปแล้ว
+                    if (!foundRequest) {
+                        replyText = `❌ ไม่พบรายการคิวแจ้งฝากของสมาชิกลำดับที่ ${targetMemberId} ในระบบครับน้า`;
                     } else {
-                        // ❌ ทำการลบข้อมูลของสมาชิกคนนั้นออกจากออบเจกต์ระบบทันที
-                        delete usersWallets[targetUserIdInFirebase];
-                        
-                        // บันทึกการเปลี่ยนแปลงขึ้นไปบนคลัง Firebase หลังบ้าน
-                        await saveDataToFirebase();
+                        // ------------------------------------------
+                        // เคสที่ 3.1: น้าพิมพ์อนุมัติ ยอดเงินถูกต้อง ✅ (yc)
+                        // ------------------------------------------
+                        if (action === 'yc') {
+                            const depositAmount = foundRequest.amount;
+                            const userWalletRef = admin.database().ref(`system_data/usersWallets/${foundQueueKey}`);
+                            
+                            // ดึงกระเป๋าเงินเดิมของลูกค้ามาบวกเงินเพิ่มเข้าไป
+                            await userWalletRef.transaction((currentData) => {
+                                if (currentData) {
+                                    currentData.balance = (currentData.balance || 0) + depositAmount;
+                                }
+                                return currentData;
+                            });
 
-                        replyText = `🗑️ ลบข้อมูลสำเร็จเรียบร้อยครับน้า!\n──────────────────\n🆔 สมาชิกหมายเลข: [ ${targetMemberId} ]\n👤 ชื่อเดิม: คุณ ${targetName}\n──────────────────\n✨ ตอนนี้สถานะของเขาถูกเคลียร์เป็นศูนย์เรียบร้อย สามารถให้เขาพิมพ์สมัครสมาชิกผูกบัญชีใหม่ในกลุ่มหลักได้เลยครับ`;
+                            // 🧹 ลบข้อมูลออกจากคิวแจ้งฝากชั่วคราวทันที (เคลียร์พื้นที่เรียบร้อย ไม่รกคลัง!)
+                            await admin.database().ref(`system_data/depositQueue/${foundQueueKey}`).remove();
+
+                            replyText = `🎉 อนุมัติสำเร็จ! สมาชิกลำดับที่ ${targetMemberId} เติมเงินเข้ากระเป๋าจำนวน ${depositAmount} บาท เรียบร้อยแล้วครับน้า! ลุยต่อได้เลย 🃏`;
+                        }
+
+                        // ------------------------------------------
+                        // เคสที่ 3.2: ยอดไม่ตรง/สลิปปลอม ปฏิเสธการฝาก ❌ (nc)
+                        // ------------------------------------------
+                        if (action === 'nc') {
+                            // 🧹 ลบคิวฝากทิ้งทันที สลิปไม่ผ่าน
+                            await admin.database().ref(`system_data/depositQueue/${foundQueueKey}`).remove();
+                            replyText = `❌ รายการแจ้งฝากของสมาชิกลำดับที่ ${targetMemberId} ไม่ผ่านการตรวจสอบ! กรุณาตรวจสอบยอดเงิน/รูปสลิป หรือติดต่อแอดมินโดยตรงครับ`;
+                        }
                     }
                 }
             }

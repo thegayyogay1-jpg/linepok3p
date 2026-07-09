@@ -194,7 +194,7 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                                     }
                                 });
 
-                                betSummaryText += `• [ ${user.memberNumber} ] ${user.name} ➡️ ยอดแทง: ${userTotalBetAmt} บาท\n`;
+                                betSummaryText += `• [ ${user.memberNumber} ] ${user.name} ➡️ ยอดแทง: ${userTotalBetAmt} บาท`;
                             }
                             let closingBetSection = "";
                             if (hasAnyBet) {
@@ -203,7 +203,7 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                                 closingBetSection = `📝 สรุปยอดแทงประจำรอบ\n──────────────────\n• ไม่มีสมาชิกส่งโพยเดิมพันในรอบนี้`;
                             }
 
-                            replyText = `🚫ปิดรอบแทงเรียบร้อยแล้วครับ\n🏁 จบรอบที่: ${currentRound}\n──────────────────\n${closingBetSection}🔒 หยุดรับโพยทุกกรณี รอแอดมินสรุปผลสักครู่ครับ`;
+                            replyText = `🚫ปิดรอบแทงเรียบร้อยแล้วครับ\n🏁 จบรอบที่: ${currentRound}\n──────────────────\n${closingBetSection}\n🔒 หยุดรับโพยทุกกรณี รอแอดมินสรุปผลสักครู่ครับ`;
                         }
                     } else if (userMsg === 'rst') {
             currentRound = 0;

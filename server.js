@@ -1382,55 +1382,9 @@ else if (command.toLowerCase() === "y") {
                 }
             }
               // ==========================================
-            // [สเต็ปที่ 2] คำสั่งดักจับเมื่อสมาชิกพิมพ์ "ฝาก [จำนวนเงิน]" และส่งรูปสลิป
+            // [ย้ายมาคั่นตรงนี้] ส่วนดักจับเมื่อสมาชิก "กดส่งรูปภาพสลิป" เข้ามาในไลน์
             // ==========================================
-            if (originalMsg && originalMsg.startsWith('ฝาก')) {
-                const args = originalMsg.split(' ');
-                const amount = parseInt(args[1]);
-
-                if (!amount || isNaN(amount) || amount <= 0) {
-                    replyText = '❌ พิมพ์รูปแบบผิดครับน้า! ต้องพิมพ์เช่น: ฝาก 500';
-                } else {
-                    // 💡 เช็กข้อมูลสมาชิกจากตัวแปรดั้งเดิมของน้าโดยตรง ไม่ต้องผ่านคำว่า admin ให้เอ๋อ
-                    const walletData = usersWallets[userId];
-
-                    if (!walletData) {
-                        replyText = '❌ น้ายังไม่ได้สมัครสมาชิก พิมพ์สมัครก่อนนะครับ';
-                    } else {
-                        // ดึงเลขสมาชิกโดยใช้ memberNumber ตามมาตรฐานคำสั่ง m ของน้า
-                        const memberId = walletData.memberNumber; 
-
-                        // สร้างระบบเช็กคิวในตัวแปรชั่วคราวระดับ Global (ถ้าไม่มีให้สร้างขึ้นมา)
-                        if (!global.depositQueue) {
-                            global.depositQueue = {};
-                        }
-
-                        const currentQueue = global.depositQueue[userId];
-                        const currentTime = Date.now();
-
-                        // ⏱️ ระบบตรวจสอบเวลา 1 นาที (ดักไม่ให้พิมพ์ฝากซ้ำ)
-                        if (currentQueue && (currentTime - currentQueue.timestamp < 60000)) {
-                            replyText = '⚠️ น้ามีรายการฝากค้างอยู่! โปรดส่งรูปสลิปภายใน 1 นาที หรือรอให้ครบกำหนดก่อนครับ';
-                        } else {
-                            // บันทึกคำขอฝากเงินลงคิวชั่วคราวในหน่วยความจำ
-                            global.depositQueue[userId] = {
-                                userId: userId,
-                                memberId: memberId,
-                                name: walletData.name || 'ไม่ระบุชื่อ',
-                                amount: amount,
-                                timestamp: currentTime,
-                                status: 'WAITING_FOR_SLIP'
-                            };
-                            replyText = `📥 รับยอดแจ้งฝาก ${amount} บาทเรียบร้อย! ภายใน 1 นาทีนี้ ขอความกรุณาน้ากดส่งรูปภาพสลิปหลักฐานต่อได้เลยครับ (ช่วงนี้ระบบจะล็อคไม่ให้พิมพ์ฝากซ้ำครับ)`;
-                        }
-                    }
-                }
-            }
-
-            // ------------------------------------------
-            // ส่วนดักจับเมื่อสมาชิก "กดส่งรูปภาพสลิป" เข้ามาในไลน์
-            // ------------------------------------------
-            if (event.message && event.message.type === 'image') {
+            else if (event.message && event.message.type === 'image') {
                 if (global.depositQueue && global.depositQueue[userId]) {
                     const currentQueue = global.depositQueue[userId];
                     const currentTime = Date.now();
@@ -1448,12 +1402,13 @@ else if (command.toLowerCase() === "y") {
                             global.depositQueue[userId].slipUrl = slipUrl;
                             global.depositQueue[userId].status = 'PENDING_ADMIN';
 
-                            // 📢 ยิงข้อความรายงานส่งตรงเข้าไลน์ส่วนตัวของน้า (ADMIN_ID)
+                            // 📢 ยิงข้อความรายงานส่งตรงเข้าไลน์ส่วนตัวของน้า
                             const adminNotifyMessage = `🔔 มีรายการแจ้งฝากใหม่!\nสมาชิกลำดับที่: ${currentQueue.memberId}\nชื่อ: ${currentQueue.name}\nยอดเงิน: ${currentQueue.amount} บาท\n🔗 ลิงก์รูปสลิป: ${slipUrl}\n\n👉 วิธีอนุมัติพิมพ์: yc ${currentQueue.memberId}\n👉 วิธีปฏิเสธพิมพ์: nc ${currentQueue.memberId}`;
                             
-                            await lineClient.pushMessage("U2fb9233e5c539ae3970cbd698e2e18db", { type: 'text', text: adminNotifyMessage });
+                            const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
+                            await lineClient.pushMessage(ADMIN_ID, { type: 'text', text: adminNotifyMessage });
                             
-                            return replyMessage(event.replyToken, '✅ บอทได้รับรูปภาพสลิปแล้วครับน้า! กำลังส่งต่อให้แอดมินตรวจสอบความถูกต้อง รอสักครู่นะครับ');
+                            replyText = '✅ บอทได้รับรูปภาพสลิปแล้วครับน้า! กำลังส่งต่อให้แอดมินตรวจสอบความถูกต้อง รอสักครู่นะครับ';
                         } else {
                             // เกิน 1 นาที ลบทิ้งคิวเคลียร์หน่วยความจำ
                             delete global.depositQueue[userId];
@@ -1464,12 +1419,53 @@ else if (command.toLowerCase() === "y") {
             }
 
             // ==========================================
-            // [สเต็ปที่ 3] คำสั่งแอดมินอนุมัติ (yc [เลขสมาชิก]) และ ปฏิเสธ (nc [เลขสมาชิก])
+            // [ต่อท้าย] คำสั่งดักจับเมื่อสมาชิกพิมพ์ "ฝาก [จำนวนเงิน]"
             // ==========================================
-            if (userId === "U2fb9233e5c539ae3970cbd698e2e18db" && originalMsg && (originalMsg.startsWith('yc') || originalMsg.startsWith('nc'))) {
+            else if (originalMsg && originalMsg.startsWith('ฝาก')) {
                 const args = originalMsg.split(' ');
-                const action = args[0]; // 'yc' หรือ 'nc'
-                const targetMemberId = parseInt(args[1]); // เลขสมาชิกที่น้าพิมพ์มา เช่น 4
+                const amount = parseInt(args[1]);
+
+                if (!amount || isNaN(amount) || amount <= 0) {
+                    replyText = '❌ พิมพ์รูปแบบผิดครับน้า! ต้องพิมพ์เช่น: ฝาก 500';
+                } else {
+                    const walletData = usersWallets[userId];
+
+                    if (!walletData) {
+                        replyText = '❌ น้ายังไม่ได้สมัครสมาชิก พิมพ์สมัครก่อนนะครับ';
+                    } else {
+                        const memberId = walletData.memberNumber; 
+
+                        if (!global.depositQueue) {
+                            global.depositQueue = {};
+                        }
+
+                        const currentQueue = global.depositQueue[userId];
+                        const currentTime = Date.now();
+
+                        if (currentQueue && (currentTime - currentQueue.timestamp < 60000)) {
+                            replyText = '⚠️ น้ามีรายการฝากค้างอยู่! โปรดส่งรูปสลิปภายใน 1 นาที หรือรอให้ครบกำหนดก่อนครับ';
+                        } else {
+                            global.depositQueue[userId] = {
+                                userId: userId,
+                                memberId: memberId,
+                                name: walletData.name || 'ไม่ระบุชื่อ',
+                                amount: amount,
+                                timestamp: currentTime,
+                                status: 'WAITING_FOR_SLIP'
+                            };
+                            replyText = `📥 รับยอดแจ้งฝาก ${amount} บาทเรียบร้อย! ภายใน 1 นาทีนี้ ขอความกรุณาน้ากดส่งรูปภาพสลิปหลักฐานต่อได้เลยครับ (ช่วงนี้ระบบจะล็อคไม่ให้พิมพ์ฝากซ้ำครับ)`;
+                        }
+                    }
+                }
+            }
+
+            // ==========================================
+            // [ต่อท้าย] คำสั่งแอดมินอนุมัติ (yc [เลขสมาชิก]) และ ปฏิเสธ (nc [เลขสมาชิก])
+            // ==========================================
+            else if (userId === "U2fb9233e5c539ae3970cbd698e2e18db" && originalMsg && (originalMsg.startsWith('yc') || originalMsg.startsWith('nc'))) {
+                const args = originalMsg.split(' ');
+                const action = args[0]; 
+                const targetMemberId = parseInt(args[1]); 
 
                 if (!targetMemberId || isNaN(targetMemberId)) {
                     replyText = '❌ พิมพ์รูปแบบผิดครับน้า! ต้องพิมพ์เช่น: yc 4 หรือ nc 4';
@@ -1480,28 +1476,22 @@ else if (command.toLowerCase() === "y") {
                     if (global.depositQueue) {
                         for (const key in global.depositQueue) {
                             if (global.depositQueue[key].memberId === targetMemberId) {
-                                foundQueueKey = key; // ได้ LINE_USER_ID ของลูกค้าคนนั้น
+                                foundQueueKey = key; 
                                 foundRequest = global.depositQueue[key];
                                 break;
                             }
                         }
                     }
 
-                    // ถ้าน้าพิมพ์เลขมามั่วๆ หรือรายการนั้นหมดอายุ/โดนลบไปแล้ว
                     if (!foundRequest) {
                         replyText = `❌ ไม่พบรายการคิวแจ้งฝากของสมาชิกลำดับที่ ${targetMemberId} ในระบบครับน้า`;
                     } else {
-                        // ------------------------------------------
-                        // เคสที่ 3.1: น้าพิมพ์อนุมัติ ยอดเงินถูกต้อง ✅ (yc)
-                        // ------------------------------------------
                         if (action === 'yc') {
                             const depositAmount = foundRequest.amount;
                             
-                            // 💡 เนื่องจากระบบเดิมของน้าโหลดข้อมูลใส่ usersWallets ไว้แล้ว เราจะทำการบวกเงินเข้าไปในตัวแปรโดยตรง
                             if (usersWallets[foundQueueKey]) {
                                 usersWallets[foundQueueKey].balance = (usersWallets[foundQueueKey].balance || 0) + depositAmount;
                                 
-                                // 🛠️ เรียกฟังก์ชันเซฟข้อมูลกลับไป Firebase ตามระบบของน้า (ถ้าในโค้ดเดิมมีฟังก์ชันชื่ออืน เช่น saveDataToFirebase ให้เปลี่ยนตรงนี้ได้ครับ)
                                 if (typeof saveDataToFirebase === 'function') {
                                     await saveDataToFirebase();
                                 } else if (typeof saveUserData === 'function') {
@@ -1509,17 +1499,11 @@ else if (command.toLowerCase() === "y") {
                                 }
                             }
 
-                            // 🧹 ลบข้อมูลออกจากคิวแจ้งฝากชั่วคราว
                             delete global.depositQueue[foundQueueKey];
-
                             replyText = `🎉 อนุมัติสำเร็จ! สมาชิกลำดับที่ ${targetMemberId} เติมเงินเข้ากระเป๋าจำนวน ${depositAmount} บาท เรียบร้อยแล้วครับน้า! ลุยต่อได้เลย 🃏`;
                         }
 
-                        // ------------------------------------------
-                        // เคสที่ 3.2: ยอดไม่ตรง/สลิปปลอม ปฏิเสธการฝาก ❌ (nc)
-                        // ------------------------------------------
                         if (action === 'nc') {
-                            // 🧹 ลบคิวฝากทิ้งทันที
                             delete global.depositQueue[foundQueueKey];
                             replyText = `❌ รายการแจ้งฝากของสมาชิกลำดับที่ ${targetMemberId} ไม่ผ่านการตรวจสอบ! กรุณาตรวจสอบยอดเงิน/รูปสลิป หรือติดต่อแอดมินโดยตรงครับ`;
                         }

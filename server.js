@@ -1472,10 +1472,7 @@ if (event.message.type === 'image') {
     }
   }
 }
-    // ==========================================
 // [สเต็ปที่ 3] คำสั่งแอดมินอนุมัติ (yc [เลขสมาชิก]) และ ปฏิเสธ (nc [เลขสมาชิก])
-// ==========================================
-const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db"; // 👑 ไอดี LINE ของคุณน้า
 const isAdmin = (userId === ADMIN_ID); 
 
 if (isAdmin && (text && (text.startsWith('yc') || text.startsWith('nc')))) {

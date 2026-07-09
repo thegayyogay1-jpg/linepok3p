@@ -18,6 +18,7 @@ let tempDealerResult = null; // ใช้พักข้อมูลผลแต
 let matchHistory = []; // เก็บประวัติสถิติย้อนหลังสูงสุด 5 รอบ
 let detailedRoundHistory = {}; // ตัวแปรเก็บข้อมูลสำหรับแอดมินดึงย้อนหลัง
 let pastRoundsData = {}; //  ถังเก็บประวัติโพยและผลไพ่แยกรายรอบ (สำหรับดึง v,m)
+let withdrawQueue = []; // 📦 ถังสำหรับเก็บคิวสมาชิกที่แจ้งถอนเงิน
 
 app.post('/callback', async (req, res) => {
     const events = req.body.events;
@@ -138,6 +139,29 @@ app.post('/callback', async (req, res) => {
                     }
                 }
             }
+                // ==================== [ คำสั่งแอดมิน: ชถ (เช็กรายการรอถอนเงินทั้งหมด) ] ====================
+            else if (userMsg.trim() === 'ชถ') {
+                const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
+                if (userId !== ADMIN_ID) {
+                    replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งนี้ครับ";
+                } else {
+                    if (withdrawQueue.length === 0) {
+                        replyText = "🎉 [ระบบคิวถอน] ไม่มีรายการค้างถอนในขณะนี้ครับ! สบายใจได้";
+                    } else {
+                        let queueText = "📋 [รายการรอถอนเงินทั้งหมด] 📋\n(เรียงตามลำดับก่อน-หลัง)\n\n";
+                        
+                        withdrawQueue.forEach((item, index) => {
+                            queueText += `${index + 1}. 👤 สมาชิกคนที่: ${item.memberNumber}\n`;
+                            queueText += `   📛 ชื่อ: คุณ ${item.name}\n`;
+                            queueText += `   💰 ยอดถอน: ${item.amount} บาท\n`;
+                            queueText += `   🕒 เวลา: ${item.time} น.\n\n`;
+                        });
+                        
+                        queueText += `────────────────\n📌 รวมทั้งหมด: ${withdrawQueue.length} รายการค้างถอน\n💡 วิธีเคลียร์คิว: พิมพ์ "y เลขสมาชิก" (เช่น: y 1 หรือโอนพร้อมกันหลายคนพิมพ์: y 1 3 5)`;
+                        replyText = queueText;
+                    }
+                }
+            }    
             // ==================== [ 2. แอดมิน เปิด/ปิดรอบแทง - เวอร์ชันป้องกันมือลั่น ] ====================
 else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
     const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
@@ -1028,6 +1052,14 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                         // 🔒 สั่งล็อกสถานะบัญชี และจำยอดเงินที่ต้องการถอนไว้ (ยังไม่หักเครดิตจริง)
                         user.isWithdrawLocked = true;
                         user.pendingWithdrawAmount = withdrawAmount;
+
+                        // 💡 [วางโค้ดที่นี่] เพิ่มเข้าคิวตามที่แจ้งมาครับ
+            withdrawQueue.push({ 
+                memberNumber: user.memberNumber, 
+                name: user.name, 
+                amount: withdrawAmount, // ดึงจากตัวแปร withdrawAmount ที่เช็กผ่านแล้ว
+                time: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) 
+            });
                         
                         replyText = `⏳ [ระบบรับเรื่องแจ้งถอน] ⏳\n` +
                                     `👤 คุณ: ${user.name} (ID: ${user.memberNumber})\n` +
@@ -1038,52 +1070,73 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                     }
                 }
             }
-                // ==================== [ ระบบแอดมินอนุมัติการถอนเงิน (y เลขสมาชิก) ] ====================
-            else if (command.toLowerCase() === "y") {
-                const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
-                if (userId !== ADMIN_ID) {
-                    replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งอนุมัติยอดถอนเงินครับ";
+                // ==================== [ ระบบแอดมินอนุมัติการถอนเงิน (y เลขสมาชิก แบบคนเดียว หรือ หลายคนพร้อมกัน) ] ====================
+else if (command.toLowerCase() === "y") {
+    const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
+    if (userId !== ADMIN_ID) {
+        replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งอนุมัติยอดถอนเงินครับ";
+    } else {
+        // ดึงเลขสมาชิกทั้งหมดที่พิมพ์ต่อท้าย (ตัดคำว่า y ออก แล้วกรองเอาเฉพาะตัวเลขที่มีค่า)
+        const targetMemberIds = args.slice(1).map(id => parseInt(id)).filter(id => !isNaN(id));
+
+        if (targetMemberIds.length === 0) {
+            replyText = "⚠️ รูปแบบคำสั่งไม่ถูกต้อง กรุณาพิมพ์: y [เลขสมาชิก] หรือ y [เลขสมาชิก1] [เลขสมาชิก2] ...\n(ตัวอย่างเช่น: Y 1 หรือ Y 1 2 3)";
+        } else {
+            let successReports = [];
+            let errorReports = [];
+
+            // วนลูปประมวลผลเลขสมาชิกทุกคนที่ส่งมาพร้อมกัน
+            for (let targetMemberId of targetMemberIds) {
+                let foundUserKey = null;
+                for (let key in usersWallets) {
+                    if (usersWallets[key].memberNumber === targetMemberId) {
+                        foundUserKey = key;
+                        break;
+                    }
+                }
+
+                if (!foundUserKey) {
+                    errorReports.push(`❌ ไม่พบเลขสมาชิกที่ ${targetMemberId} ในระบบครับ`);
                 } else {
-                    const targetMemberId = parseInt(args[1]);
-
-                    if (!targetMemberId || isNaN(targetMemberId)) {
-                        replyText = "⚠️ รูปแบบคำสั่งไม่ถูกต้อง กรุณาพิมพ์: y [เลขสมาชิก] หรือ Y [เลขสมาชิก] (ตัวอย่างเช่น: Y 1)";
+                    const user = usersWallets[foundUserKey];
+                    
+                    if (!user.isWithdrawLocked) {
+                        errorReports.push(`⚠️ สมาชิก ID: ${targetMemberId} คุณ ${user.name} ไม่ได้มียอดแจ้งถอนค้างไว้ครับ`);
                     } else {
-                        let foundUserKey = null;
-                        for (let key in usersWallets) {
-                            if (usersWallets[key].memberNumber === targetMemberId) {
-                                foundUserKey = key;
-                                break;
-                            }
-                        }
+                        const finalAmount = user.pendingWithdrawAmount;
+                        
+                        // ✅ 1. ทำการหักเงินเครดิตจริงออกจากกระเป๋า
+                        user.balance -= finalAmount;
+                        
+                        // 🔓 2. ทำการปลดล็อกบัญชีให้ส่งโพยใหม่ได้ตามปกติ
+                        user.isWithdrawLocked = false;
+                        user.pendingWithdrawAmount = 0;
 
-                        if (!foundUserKey) {
-                            replyText = `❌ ไม่พบเลขสมาชิกที่ ${targetMemberId} ในระบบครับ`;
-                        } else {
-                            const user = usersWallets[foundUserKey];
-                            
-                            if (!user.isWithdrawLocked) {
-                                replyText = `⚠️ สมาชิก ID: ${targetMemberId} คุณ ${user.name} ไม่ได้มียอดแจ้งถอนค้างไว้ในระบบครับ`;
-                            } else {
-                                const finalAmount = user.pendingWithdrawAmount;
-                                
-                                // ✅ 1. ทำการหักเงินเครดิตจริงออกจากกระเป๋า
-                                user.balance -= finalAmount;
-                                
-                                // 🔓 2. ทำการปลดล็อกบัญชีให้ส่งโพยใหม่ได้ตามปกติ
-                                user.isWithdrawLocked = false;
-                                user.pendingWithdrawAmount = 0;
-
-                                replyText = `✅ [อนุมัติถอนเงินสำเร็จ] 🎉\n` +
-                                            `👤 สมาชิก: ${user.name} (ID: ${user.memberNumber})\n` +
-                                            `💸 หักเครดิตเรียบร้อย: -${finalAmount} บาท\n` +
-                                            `💰 ยอดเครดิตคงเหลือ: ${user.balance} บาท\n` +
-                                            `🔓 สถานะบัญชี: ปลดล็อกเรียบร้อย สามารถทำรายการส่งโพยรอบถัดไปได้ปกติครับ`;
-                            }
-                        }
+                        // เก็บข้อความสำเร็จของแต่ละคนไว้ประกอบร่างตอนท้าย
+                        successReports.push(
+                            `👤 คุณ: ${user.name} (ID: ${user.memberNumber})\n` +
+                            `💸 หักเครดิตเรียบร้อย: -${finalAmount} บาท\n` +
+                            `💰 ยอดเครดิตคงเหลือ: ${user.balance} บาท\n` +
+                            `🔓 สถานะบัญชี: ปลดล็อกเรียบร้อย ทำรายการต่อได้ปกติครับ`
+                        );
                     }
                 }
             }
+
+            // --- จัดรูปแบบข้อความแสดงผลลัพธ์ให้สวยงามสะดุดตา ---
+            let finalReply = "";
+            if (successReports.length > 0) {
+                finalReply += `✅ [อนุมัติถอนเงินสำเร็จ] 🎉\n──────────────────\n` + successReports.join('\n──────────────────\n');
+            }
+            if (errorReports.length > 0) {
+                if (finalReply !== "") finalReply += `\n\n──────────────────\n🚨 รายงานข้อผิดพลาด:\n`;
+                finalReply += errorReports.join('\n');
+            }
+
+            replyText = finalReply;
+        }
+    }
+}
                 // ==================== [ ระบบแอดมินเรียกดูรายงานผลและโพยย้อนหลัง (v เลขรอบ) ] ====================
             else if (command.toLowerCase() === "v") {
                 const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";

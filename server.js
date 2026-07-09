@@ -888,7 +888,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                         const userName = userBets[0].name;
 
                         // 2. สร้างหัวข้อรายงานผลไพ่รวมของรอบนั้น
-                        let reportText = `🔍 ดึงข้อมูลโพยรายบุคคลย้อนหลัง\n──────────────────\n;
+                        let reportText = `🔍 ดึงข้อมูลโพยรายบุคคลย้อนหลัง\n──────────────────\n`;
                         reportText += `🎬 รอบที่: ${roundTarget} \n สมาชิกคนที่ ${memberTarget} (${userName})\n `;
                         reportText += `──────────────────\n`;
                         reportText += `👑 เจ้ามือ: ${historicalDealer.name} (${historicalDealer.mult} เด้ง)\n──────────────────\n`;

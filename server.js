@@ -68,14 +68,87 @@ async function saveDataToFirebase() {
 
 app.post('/callback', async (req, res) => {
     const events = req.body.events;
-    if (!events) return res.sendStatus(200);
+    // =================================================================
+        // 📸 [ดักจับรูปภาพ] เอามาวางไว้บนสุดตรงนี้เลย เพื่อให้รับสลิปได้ทันที ไม่เงียบ!
+        // =================================================================
+        if (event.type === 'message' && event.message.type === 'image') {
+            if (global.depositQueue && global.depositQueue[userId]) {
+                const currentQueue = global.depositQueue[userId];
+                const currentTime = Date.now();
 
-    for (let event of events) {
-        if (event.type === 'message' && event.message.type === 'text') {
-            const replyToken = event.replyToken;
-            const userId = event.source.userId; 
-            const originalMsg = event.message.text.trim(); 
-            const userMsg = originalMsg.toLowerCase().replace(/\s+/g, ''); 
+                if (currentQueue && currentQueue.status === 'WAITING_FOR_SLIP') {
+                    const timeDiff = currentTime - currentQueue.timestamp;
+                    
+                    if (timeDiff <= 60000) { 
+                        const messageId = event.message.id;
+                        const slipUrl = `https://api-data.line.me/v2/bot/message/${messageId}/content`;
+
+                        global.depositQueue[userId].slipUrl = slipUrl;
+                        global.depositQueue[userId].status = 'PENDING_ADMIN';
+
+                        const adminNotifyMessage = `🔔 มีรายการแจ้งฝากใหม่!\nสมาชิกลำดับที่: ${currentQueue.memberId}\nชื่อ: ${currentQueue.name}\nยอดเงิน: ${currentQueue.amount} บาท\n🔗 ลิงก์รูปสลิป: ${slipUrl}\n\n👉 วิธีอนุมัติพิมพ์: yc ${currentQueue.memberId}\n👉 วิธีปฏิเสธพิมพ์: nc ${currentQueue.memberId}`;
+                        
+                        const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
+                        try {
+                            await axios.post('https://api.line.me/v2/bot/message/push', {
+                                to: ADMIN_ID,
+                                messages: [{ type: 'text', text: adminNotifyMessage }]
+                            }, {
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${TOKEN}`
+                                }
+                            });
+                        } catch (err) {
+                            console.error("❌ ส่ง Push หาแอดมินล้มเหลว:", err.message);
+                        }
+                        
+                        // ⚡ ส่งคำตอบกลับฝั่งลูกค้าทันที แล้วจบงานของรูปภาพ
+                        try {
+                            await axios.post('https://api.line.me/v2/bot/message/reply', {
+                                replyToken: replyToken,
+                                messages: [{ type: 'text', text: '✅ บอทได้รับรูปภาพสลิปแล้วครับน้า! กำลังส่งต่อให้แอดมินตรวจสอบความถูกต้อง รอสักครู่นะครับ' }]
+                            }, {
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${TOKEN}`
+                                }
+                            });
+                        } catch (err) {
+                            console.error("❌ ส่งข้อความตอบกลับลูกค้าล้มเหลว:", err.message);
+                        }
+                        return res.sendStatus(200);
+                    } else {
+                        delete global.depositQueue[userId];
+                        try {
+                            await axios.post('https://api.line.me/v2/bot/message/reply', {
+                                replyToken: replyToken,
+                                messages: [{ type: 'text', text: '❌ ส่งรูปสลิปช้าเกิน 1 นาที ระบบตัดคิวแล้วครับน้า พิมพ์แจ้งฝากใหม่อีกรอบนะครับ' }]
+                            }, {
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${TOKEN}`
+                                }
+                            });
+                        } catch (err) {
+                            console.error("❌ ส่งข้อความแจ้งหมดเวลาล้มเหลว:", err.message);
+                        }
+                        return res.sendStatus(200);
+                    }
+                }
+            }
+            // ถ้าส่งรูปมาแต่ไม่ได้อยู่ในระบบคิวฝากเงิน ให้ปล่อยผ่านบอทไม่ทำงาน
+            return res.sendStatus(200);
+        }
+
+        // =================================================================
+        // 📄 หลังจากหลุดจากเช็ครูปภาพด้านบนมาแล้ว ค่อยให้ระบบตรวจข้อความ (Text) ทำงานต่อ
+        // =================================================================
+        if (event.type !== 'message' || event.message.type !== 'text') {
+            return res.sendStatus(200);
+        }
+
+        const originalMsg = event.message.text.trim(); 
 
             let replyText = ""; 
             const args = originalMsg.split(/\s+/); 

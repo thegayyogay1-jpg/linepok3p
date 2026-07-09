@@ -1146,7 +1146,7 @@ else if (command.toLowerCase() === "y") {
 
             // แสดงยอดคงค้างในคิวปัจจุบันพ่วงท้าย
             const queueCount = typeof withdrawQueue !== 'undefined' ? withdrawQueue.length : 0;
-            finalReply += `\n\n📊 คงเหลือในคิวรอถอน: ${queueCount} รายการ (พิมพ์ "ชถ" เพื่อดูคิวปัจจุบัน)`;
+            finalReply += `\n──────────────────\n📊 คงเหลือในคิวรอถอน: ${queueCount} รายการ (พิมพ์ "ชถ" เพื่อดูคิวปัจจุบัน)`;
 
             replyText = finalReply;
         }

@@ -203,7 +203,7 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                                 closingBetSection = `📝 สรุปยอดแทงประจำรอบ\n──────────────────\n• ไม่มีสมาชิกส่งโพยเดิมพันในรอบนี้`;
                             }
 
-                            replyText = `🚫ปิดรอบแทงเรียบร้อยแล้วครับ\n🏁 จบรอบที่: ${currentRound}\n──────────────────\n${closingBetSection}🔒 หยุดรับโพยทุกกรณี รอแอดมินสรุปผลสักครู่ครับ`;
+                            replyText = `🚫ปิดรอบแทงเรียบร้อยแล้วครับ\n🏁 จบรอบที่: ${currentRound}\n──────────────────${closingBetSection}🔒 หยุดรับโพยทุกกรณี รอแอดมินสรุปผลสักครู่ครับ`;
                         }
                     } else if (userMsg === 'rst') {
             currentRound = 0;
@@ -761,7 +761,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                 
                 // ตรวจสอบว่าในรอบนี้ยูสเซอร์แทงฝั่งเจ้ามือหรือไม่ เพื่อความสวยงามในการแสดงข้อความท้ายรายงาน
                 let isUserBettingOnDealer = userBetsArray.some(b => b.betType === "มจ" || b.betType.startsWith('จ'));
-                let feeNote = (isUserBettingOnDealer && userTotalWinLoss !== 0) ? " (คิดต๋งขาชนะ 10% แล้ว)" : "";
+                let feeNote = (isUserBettingOnDealer && userTotalWinLoss !== 0) ? " (หักต๋งขาเจ้ามือที่ชนะแล้ว)" : "";
                 
                 let turnNote = user.turnoverTarget > 0 ? ` ⚠️ (เหลือเทิร์น: ${user.turnoverTarget} บ.)` : " 🟢 (เทิร์นครบแล้ว)";
                 summaryPayoutText += `👤 ${user.name} (ID: ${user.memberNumber})\n  ยอดสุทธิ: ${sign}${userTotalWinLoss} บาท${feeNote}\n(เครดิตคงเหลือ: ${user.balance} บ.)\n──────────────────\n`;
@@ -1146,7 +1146,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                         }
                         const myBets = roundBets[userId];
                         if (myBets && myBets.length > 0) {
-                            memberInfo += `📝 โพยในรอบนี้\n──────────────────\n`;
+                            memberInfo += `📝 โพยในรอบนี้\n──────────────────`;
                             myBets.forEach((bet, index) => {
                                 memberInfo += `\n  ${index + 1}. ${bet.detail}`;
                                 
@@ -1170,7 +1170,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                     }
 
                     // 💡 [เพิ่มป้ายแนะนำคำสั่งและกติกาพ่วงท้ายกล่องข้อความตอนกด c]
-                    memberInfo += `──────────────────\n` +
+                    memberInfo += `\n──────────────────\n` +
                                   `📖 คู่มือช่วยเหลือสมาชิก\n` +
                                   `👉 พิมพ์ คส เพื่อดูคำสั่งทั้งหมด\n` +
                                   `👉 พิมพ์ บช หรือ /บช เพื่อดูเลขบัญชี\n` +

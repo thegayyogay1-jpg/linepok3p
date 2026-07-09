@@ -888,11 +888,11 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                         const userName = userBets[0].name;
 
                         // 2. สร้างหัวข้อรายงานผลไพ่รวมของรอบนั้น
-                        let reportText = `🔍 **[ ดึงข้อมูลโพยรายบุคคลย้อนหลัง ]**\n`;
-                        reportText += `🎬 รอบที่: ${roundTarget} ของสมาชิกคนที่ ${memberTarget} (${userName})\n`;
-                        reportText += `──────────────────\n`;
-                        reportText += `👑 เจ้ามือ: ${historicalDealer.name} (${historicalDealer.mult} เด้ง)\n\n`;
-                        reportText += `📝 **ผลไพ่กระดานรอบที่ ${roundTarget} :**\n`;
+                        let reportText = `🔍 ดึงข้อมูลโพยรายบุคคลย้อนหลัง\n──────────────────\n;
+                        reportText += `🎬 รอบที่: ${roundTarget} \n สมาชิกคนที่ ${memberTarget} (${userName}) `;
+                        reportText += `\n──────────────────\n`;
+                        reportText += `👑 เจ้ามือ: ${historicalDealer.name} (${historicalDealer.mult} เด้ง)\n──────────────────\n`;
+                        reportText += `📝 ผลไพ่กระดานรอบที่ ${roundTarget} \n──────────────────\n`;
 
                         // ลูปพ่นผลไพ่ทั้ง 6 ขาของรอบนั้น
                         for (let leg = 1; leg <= 6; leg++) {
@@ -902,15 +902,14 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                                 let s3 = res.threeCards.score > historicalDealer.score ? "🟢 ชนะ" : (res.threeCards.score < historicalDealer.score ? "🔴 แพ้" : "🟡 เสมor");
                                 
                                 reportText += `• ขา ${leg}:\n`;
-                                reportText += `   - [อยู่ 2ใบ]: ${res.twoCards.name} (${res.twoCards.mult}เด้ง) -> ${s2}\n`;
-                                reportText += `   - [จั่ว 3ใบ]: ${res.threeCards.name} (${res.threeCards.mult}เด้ง) -> ${s3}\n`;
+                                reportText += `   - [2ใบ]: ${res.twoCards.name} (${res.twoCards.mult}เด้ง) ${s2}\n`;
+                                reportText += `   - [3ใบ]: ${res.threeCards.name} (${res.threeCards.mult}เด้ง) ${s3}\n──────────────────\n`;
                             } else {
                                 reportText += `• ขา ${leg} -> ⚠️ ไม่มีผลไพ่ (🔴 แพ้เจ้ามือ)\n`;
                             }
                         }
 
-                        reportText += `──────────────────\n`;
-                        reportText += `📋 **โพยรอบนี้ของคุณ ${userName} :**\n`;
+                        reportText += `📋 โพยรอบนี้ของคุณ \n ${userName} \n──────────────────\n`;
 
                         let totalWinLoss = 0;
                         let detailRows = "";
@@ -997,9 +996,8 @@ else if (userMsg === 'ok' || userMsg === 'no') {
 
                         // 4. ประกอบร่างข้อความสรุปท้ายกระดาษ
                         let signStr = totalWinLoss > 0 ? `กำไร +${totalWinLoss}` : (totalWinLoss < 0 ? `ขาดทุน ${totalWinLoss}` : `เสมอตัว +0`);
-                        reportText += `\n📊 **สรุปดีเทลการเล่น :**\n${detailRows}`;
-                        reportText += `👉 ยอดกำไร/ขาดทุนในรอบนี้: **${signStr} บาท**\n`;
-                        reportText += `💡 *หมายเหตุ: หากต้องการเช็คยอดเครดิตปัจจุบันล่าสุด ให้สมาชิกพิมพ์คำสั่ง "c" ครับ*`;
+                        reportText += `──────────────────\n📊 สรุปดีเทลการเล่น \n──────────────────\n${detailRows}`;
+                        reportText += `\n──────────────────\n👉 ยอดกำไร/ขาดทุนในรอบนี้: ${signStr} บาท`;                   
 
                         replyText = reportText;
                     }

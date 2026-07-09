@@ -1390,9 +1390,8 @@ else if (command.toLowerCase() === "y") {
 
                 if (!amount || isNaN(amount) || amount <= 0) {
                     replyText = '❌ พิมพ์รูปแบบผิดครับน้า! ต้องพิมพ์เช่น: ฝาก 500';
-                    await saveDataToFirebase(); // ใช้ระบบบันทึกเดิมถ้ามี หรือส่งตอบกลับตามระบบเดิม
                 } else {
-                    // เช็กข้อมูลสมาชิกจากระบบเดิมเพื่อเช็กเลข ID สมาชิก
+                    // ดึงข้อมูลสมาชิกจากระบบเดิมเพื่อเช็กเลข ID สมาชิก
                     const userWalletRef = admin.database().ref(`system_data/usersWallets/${userId}`);
                     const walletSnapshot = await userWalletRef.once('value');
                     const walletData = walletSnapshot.val();
@@ -1400,7 +1399,7 @@ else if (command.toLowerCase() === "y") {
                     if (!walletData) {
                         replyText = '❌ น้ายังไม่ได้สมัครสมาชิก พิมพ์สมัครก่อนนะครับ';
                     } else {
-                        // รองรับทั้ง memberId หรือ memberNumber จากระบบของน้า
+                        // ดึงเลขสมาชิกลำดับที่... (อิงตามระบบเดิมของน้า)
                         const memberId = walletData.memberNumber || walletData.memberId; 
 
                         // เช็กคิวแจ้งฝากในระบบชั่วคราว
@@ -1452,12 +1451,12 @@ else if (command.toLowerCase() === "y") {
                             status: 'PENDING_ADMIN'
                         });
 
-                        // 📢 ยิงข้อความรายงานส่งตรงเข้าหลังบ้านของน้าตาม ADMIN_ID ด้านบน
+                        // 📢 ยิงข้อความรายงานส่งตรงเข้าหลังบ้านของน้าโดยตรง
                         const adminNotifyMessage = `🔔 มีรายการแจ้งฝากใหม่!\nสมาชิกลำดับที่: ${currentQueue.memberId}\nชื่อ: ${currentQueue.name}\nยอดเงิน: ${currentQueue.amount} บาท\n🔗 ลิงก์รูปสลิป: ${slipUrl}\n\n👉 วิธีอนุมัติพิมพ์: yc ${currentQueue.memberId}\n👉 วิธีปฏิเสธพิมพ์: nc ${currentQueue.memberId}`;
                         
-                        await lineClient.pushMessage(ADMIN_ID, { type: 'text', text: adminNotifyMessage });
+                        // ป้อนไอดีน้าลงไปตรงๆ ป้องกันตัวแปรหายล่มระบบ
+                        await lineClient.pushMessage("U2fb9233e5c539ae3970cbd698e2e18db", { type: 'text', text: adminNotifyMessage });
                         
-                        // ใช้ return เพื่อตัดจบระบบส่งข้อความรูปภาพ
                         return replyMessage(event.replyToken, '✅ บอทได้รับรูปภาพสลิปแล้วครับน้า! กำลังส่งต่อให้แอดมินตรวจสอบความถูกต้อง รอสักครู่นะครับ');
                     } else {
                         // เกิน 1 นาที ลบทิ้งทันที เคลียร์หลังบ้านให้สะอาด
@@ -1470,7 +1469,7 @@ else if (command.toLowerCase() === "y") {
             // ==========================================
             // [สเต็ปที่ 3] คำสั่งแอดมินอนุมัติ (yc [เลขสมาชิก]) และ ปฏิเสธ (nc [เลขสมาชิก])
             // ==========================================
-            if (userId === ADMIN_ID && originalMsg && (originalMsg.startsWith('yc') || originalMsg.startsWith('nc'))) {
+            if (userId === "U2fb9233e5c539ae3970cbd698e2e18db" && originalMsg && (originalMsg.startsWith('yc') || originalMsg.startsWith('nc'))) {
                 const args = originalMsg.split(' ');
                 const action = args[0]; // 'yc' หรือ 'nc'
                 const targetMemberId = parseInt(args[1]); // เลขสมาชิกที่น้าพิมพ์มา เช่น 4

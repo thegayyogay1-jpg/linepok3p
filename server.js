@@ -1380,7 +1380,7 @@ else if (command.toLowerCase() === "y") {
                             totalReport += `📋 ข้อมูลสมาชิกหมายเลข [ ${foundUser.memberNumber} ]\n` +
                                            `👤 ชื่อ: คุณ ${foundUser.name}\n` +
                                            `💰 เงินในระบบ: ${foundUser.balance.toLocaleString()} บาท\n` +
-                                           `💰 ${withdrawStatusText}\n` +
+                                           ` ${withdrawStatusText}\n` +
                                            `🏦 ธนาคาร: ${foundUser.bankName || "ไม่ได้ระบุ"}\n` +
                                            `💳 เลข บช: ${foundUser.bankAccount || "ไม่ได้ระบุ"}`;
                         } else {
@@ -1395,6 +1395,45 @@ else if (command.toLowerCase() === "y") {
                     });
 
                     replyText = totalReport;
+                }
+            }
+            // ==================== [ เพิ่มใหม่: คำสั่งแอดมินลบสมาชิกรายคนผ่านแชทส่วนตัว (del1, del2...) ] ====================
+            else if (userMsg.startsWith('del') && !userMsg.includes('-') && !userMsg.endsWith('+')) {
+                const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db"; // 👑 ไอดี LINE ของคุณน้า
+                
+                // 🚨 กรองขั้นสูงสุด: ถ้าไม่ใช่แอดมิน หรือ แอดมินไม่ได้สั่งในแชทส่วนตัว (1 ต่อ 1) ให้บอทเงียบกริบไม่ตอบ
+                if (userId !== ADMIN_ID || event.source.type !== 'user') {
+                    return res.sendStatus(200);
+                }
+
+                // ตัดคำว่า del ออกเพื่อเอาตัวเลขสมาชิกที่น้าต้องการลบ
+                const targetIdStr = userMsg.replace('del', '').trim();
+                const targetMemberId = parseInt(targetIdStr);
+
+                if (!isNaN(targetMemberId)) {
+                    let targetUserIdInFirebase = null;
+                    let targetName = "";
+
+                    // วนลูปค้นหาเพื่อถอดไอดี LINE ดิบของสมาชิกคนนั้นออกมาจากคลัง
+                    for (let id in usersWallets) {
+                        if (usersWallets[id].memberNumber === targetMemberId) {
+                            targetUserIdInFirebase = id;
+                            targetName = usersWallets[id].name;
+                            break;
+                        }
+                    }
+
+                    if (!targetUserIdInFirebase) {
+                        replyText = `❌ ไม่พบข้อมูลสมาชิกหมายเลข ${targetMemberId} ในระบบครับน้า`;
+                    } else {
+                        // ❌ ทำการลบข้อมูลของสมาชิกคนนั้นออกจากออบเจกต์ระบบทันที
+                        delete usersWallets[targetUserIdInFirebase];
+                        
+                        // บันทึกการเปลี่ยนแปลงขึ้นไปบนคลัง Firebase หลังบ้าน
+                        await saveDataToFirebase();
+
+                        replyText = `🗑️ ลบข้อมูลสำเร็จเรียบร้อยครับน้า!\n──────────────────\n🆔 สมาชิกหมายเลข: [ ${targetMemberId} ]\n👤 ชื่อเดิม: คุณ ${targetName}\n──────────────────\n✨ ตอนนี้สถานะของเขาถูกเคลียร์เป็นศูนย์เรียบร้อย สามารถให้เขาพิมพ์สมัครสมาชิกผูกบัญชีใหม่ในกลุ่มหลักได้เลยครับ`;
+                    }
                 }
             }
 

@@ -1341,7 +1341,7 @@ else if (command.toLowerCase() === "y") {
             } // ปิดระบบลงทะเบียน
             
             // ==================== [ เพิ่มใหม่: คำสั่งแอดมินดูบัญชีเชิงลึกส่วนตัวหลังบ้าน (m1, m2, m3...) ] ====================
-            else if (userMsg.startsWith('m') && !userMsg.includes('-') && !userMsg.endsWith('+') && userMsg !== 'มข' && userMsg !== 'มจ') {
+             if (userMsg.startsWith('m') && !userMsg.includes('-') && !userMsg.endsWith('+') && userMsg !== 'มข' && userMsg !== 'มจ') {
                 const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db"; // 👑 ไอดี LINE ของคุณน้า
                 
                 // ตัดคำว่า m ออกเพื่อเอาตัวเลขสมาชิกมาค้นหา

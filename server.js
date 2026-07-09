@@ -159,15 +159,15 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                             // --- สร้างข้อความสถิติย้อนหลังแบบแยกขา ---
                             let historyText = "";
                             if (matchHistory.length > 0) {
-                                historyText = `\n\n📈 **สถิติผลเจ้ามือ 5 รอบล่าสุด:**\n`;
+                                historyText = `\n\n📈 สถิติผลเจ้ามือ 5 รอบล่าสุด:\n`;
                                 matchHistory.forEach((h) => {
                                     historyText += `• ${h}\n`;
                                 });
                             } else {
-                                historyText = `\n\n📈 **สถิติย้อนหลัง:** ยังไม่มีข้อมูลในเซสชันนี้`;
+                                historyText = `\n\n📈 สถิติย้อนหลัง: ยังไม่มีข้อมูล`;
                             }
 
-                            replyText = `📢 เริ่มเปิดรอบแทงแล้วครับ!\n🎰 รอบที่: ${currentRound}${historyText}\n✨ สมาชิกทุกท่านสามารถส่งโพยเข้ามาได้เลยครับครับ 🎰`;
+                            replyText = `📢 เริ่มเปิดรอบแทงแล้วครับ!\n🎰 รอบที่: ${currentRound}${historyText}\n✨ สมาชิกสามารถส่งโพยเข้ามาได้เลยครับครับ 🎰`;
                         }
         } else if (userMsg === 'x') {
                         if (!isRoundOpen) {
@@ -198,9 +198,9 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                             }
                             let closingBetSection = "";
                             if (hasAnyBet) {
-                                closingBetSection = `\n\n📝 **สรุปยอดแทงประจำรอบ:**\n${betSummaryText}`;
+                                closingBetSection = `\n\n📝 สรุปยอดแทงประจำรอบ\n${betSummaryText}`;
                             } else {
-                                closingBetSection = `\n\n📝 **สรุปยอดแทงประจำรอบ:**\n• ไม่มีสมาชิกส่งโพยเดิมพันในรอบนี้`;
+                                closingBetSection = `\n\n📝 สรุปยอดแทงประจำรอบ\n• ไม่มีสมาชิกส่งโพยเดิมพันในรอบนี้`;
                             }
 
                             replyText = `🚫ปิดรอบแทงเรียบร้อยแล้วครับ!\n🏁 จบรอบที่: ${currentRound}${closingBetSection}\n\n🔒 หยุดรับโพยทุกกรณี รอแอดมินสรุปผลสักครู่ครับ`;
@@ -240,10 +240,10 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                             isDrawOpen = false;
 
                             // 2. เริ่มสร้างกล่องข้อความสรุปรายขาของสมาชิกทุกคนในรอบนี้
-                            let summaryLegsText = `🔒 **ปิดรอบขอจั่วไพ่เรียบร้อยแล้วครับ!**\n` +
-                                                  `🎰 ล็อกสถานะไพ่ 2 ใบ / 3 ใบของทุกขาแล้ว รอแอดมินสรุปผลและคิดเงินสักครู่ครับ\n` +
+                            let summaryLegsText = `🔒 ปิดรอบขอจั่วไพ่เรียบร้อยแล้วครับ\n` +
+                                                  `🎰 ล็อกสถานะไพ่ 2 ใบ/ 3 ใบของทุกขาแล้ว รอสรุปผลและคิดเงินสักครู่ครับ\n` +
                                                   `──────────────────\n` +
-                                                  `📋 **[ รายงานสรุปโพยและยอดแทงในรอบนี้ ]**\n\n`;
+                                                  `📋รายงานสรุปโพยและยอดแทงในรอบนี้\n\n`;
 
                             let hasBets = false;
 
@@ -289,10 +289,10 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                                     const drawStr = drawLegsDetail.length > 0 ? drawLegsDetail.sort().join(', ') : "ไม่มี (อยู่ 2 ใบ)";
 
                                     // เติมรายงานรายบุคคลเข้าไปในข้อความสรุป
-                                    summaryLegsText += `👤 **คุณ: ${user.name} (ID: ${user.memberNumber})**\n` +
+                                    summaryLegsText += `👤 คุณ: ${user.name} (ID: ${user.memberNumber})\n` +
                                                        `👉 แทงขา: [ ${legsStr} ]\n` +
                                                        `🃏 ขอจั่วเพิ่มขา: [ ${drawStr} ]\n` +
-                                                       `💰 ยอดเล่นรวม: ${totalRealPlay} บาท *(รวมค้ำเด้ง: ${totalWithBounce} บาท)*\n` +
+                                                       `💰 ยอดเล่นรวม: ${totalRealPlay} บาท (รวมค้ำเด้ง: ${totalWithBounce} บาท)\n` +
                                                        `──────────────────\n`;
                                 }
                             }
@@ -463,11 +463,11 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
             // ==================== [ 5. ระบบคืนโพย / ยกเลิกโพยในรอบ ] ====================
             else if (userMsg === "r") {
                 if (!isRoundOpen) {
-                    replyText = "🚫 ไม่สามารถคืนโพยได้ครับ เนื่องจากแอดมินทำการปิดรอบแทงเรียบร้อยแล้ว";
+                    replyText = "🚫 ไม่สามารถคืนโพยได้ครับ เนื่องจากปิดรอบแทงเรียบร้อยแล้ว";
                 } else {
                     const isRegistered = usersWallets[userId] ? true : false;
                     if (!isRegistered) {
-                        replyText = `📢 คุณยังไม่ได้ลงทะเบียนสมาชิกในระบบเลยครับ`;
+                        replyText = `📢 คุณยังไม่ได้ลงทะเบียนสมาชิกในระบบครับ`;
                     } else {
                         const user = usersWallets[userId];
                         const myBets = roundBets[userId];
@@ -526,10 +526,10 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                         if (drawSuccessLegs.length > 0) {
                             const sortedLegs = drawSuccessLegs.sort((a, b) => a - b).join(', ');
                             const user = usersWallets[userId];
-                            replyText = `🃏 [ระบบจั่วไพ่] สมาชิกคุณ ${user.name} (ID: ${user.memberNumber}) ขอจั่วไพ่เพิ่มที่ ➡️ ขา: ${sortedLegs} ครับ ➕`;
+                            replyText = `🃏 สมาชิกคุณ ${user.name} (ID: ${user.memberNumber}) จั่วไพ่เพิ่มที่ ➡️ ขา: ${sortedLegs} ครับ `;
                         } else {
                             // ถ้าคนนั้นมีแต่โพยฝั่งเจ้ามืออย่างเดียว บอทจะแจ้งเตือนตัดสิทธิ์ทันที
-                            replyText = "⚠️ คำสั่งไม่ทำงาน: เนื่องจากคุณแทงฝั่งเจ้ามือไว้ โพยฝั่งเจ้ามือไม่สามารถขอจั่วไพ่ได้ครับ (ระบบจะรันกฎอัตโนมัติตอนคิดเงิน)";
+                            replyText = "⚠️ คำสั่งไม่ทำงาน: เนื่องจากคุณแทงฝั่งเจ้ามือไว้ โพยฝั่งเจ้ามือไม่สามารถขอจั่วไพ่ได้ครับ";
                         }
                     }
                 }
@@ -559,10 +559,10 @@ else if (originalMsg.startsWith('>')) {
 
             if (isDealer && clean.includes('#')) { isPok = true; clean = clean.replace('#', ''); }
 
-            if (clean === 't') { rawScore = 700; multiplier = 5; typeName = "ตอง (5 เท่า)"; } 
-            else if (clean === 'sf') { rawScore = 600; multiplier = 5; typeName = "สเตฟฟลัช (5 เท่า)"; } 
-            else if (clean === 'h') { rawScore = 500; multiplier = 3; typeName = "เซียน/สามเหลือง (3 เท่า)"; } 
-            else if (clean === 's') { rawScore = 400; multiplier = 3; typeName = "เรียง (3 เท่า)"; } 
+            if (clean === 't') { rawScore = 700; multiplier = 5; typeName = "ตอง"; } 
+            else if (clean === 'sf') { rawScore = 600; multiplier = 5; typeName = "สเตฟฟลัช"; } 
+            else if (clean === 'h') { rawScore = 500; multiplier = 3; typeName = "เซียน/สามเหลือง"; } 
+            else if (clean === 's') { rawScore = 400; multiplier = 3; typeName = "เรียง"; } 
             else {
                 let pts = parseInt(clean);
                 if (isNaN(pts)) pts = 0;
@@ -616,7 +616,7 @@ else if (originalMsg.startsWith('>')) {
         tempDealerResult = dealerResult;
 
         // --- พ่นรายงานสรุปผลกระดานให้ตรวจสอบพร้อมสถานะ 🟢🔴 ---
-        let checkText = `📊 [ตรวจสอบผลการเล่น] รอบที่: ${currentRound}\n`;
+        let checkText = `📊 ตรวจสอบผลการเล่น รอบที่: ${currentRound}\n`;
         checkText += `👑 เจ้ามือ: ${dealerResult.name} (${dealerResult.mult} เด้ง)\n\n`;
         checkText += `📝 ลำดับหน้าไพ่และการประเมินผล:\n`;
 
@@ -634,13 +634,13 @@ else if (originalMsg.startsWith('>')) {
 
                 checkText += `• ขา ${leg}:\n`;
                 checkText += `   - [2ใบ]: ${res.twoCards.name} (${res.twoCards.mult}เด้ง) ${status2Str}\n`;
-                checkText += `   - [3ใบ]: ${res.threeCards.name} (${res.threeCards.mult}เด้ง) ${status3Str}\n`;
+                checkText += `   - [3ใบ]: ${res.threeCards.name} (${res.threeCards.mult}เด้ง) ${status3Str}\n\n`;
             } else {
                 checkText += `• ขา ${leg} -> ⚠️ ไม่มีผลไพ่ (ระบบตีเป็นบอด แพ้เจ้ามือ 🔴)\n`;
             }
         }
         
-        checkText += `\n🚨 [ระบบล็อกเพื่อความปลอดภัย]\n หากข้อมูลถูกต้อง ให้พิมพ์: ok\nหากพิมพ์ผิดให้พิมพ์: no`;
+        checkText += `\n🚨 กรุณาตรวจเช็คผลที่ส่ง\n หากข้อมูลถูกต้อง ให้พิมพ์: ok\nหากพิมพ์ผิดให้พิมพ์: no`;
         replyText = checkText;
     }
 }
@@ -1139,13 +1139,13 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                     if (userMsg === 'c') {
                         let memberInfo = `👤 สมาชิกคนที่: ${user.memberNumber}\n👤 ชื่อ-นามสกุล: ${user.name}\n💰 ยอดเงิน: ${user.balance} บาท`;
                         if (user.turnoverTarget > 0) {
-                            memberInfo += `\n🔒 ยอดเทิร์นคงค้าง: ${user.turnoverTarget} บาท (ติดโปรโบนัส)`;
+                            memberInfo += `\n🔒 เทิร์นคงค้าง: ${user.turnoverTarget} บาท `;
                         } else {
-                        memberInfo += `\n🔓 สถานะเทิร์น: ปกติ (ถอนเงินได้เลย)`;
+                        memberInfo += `\n🔓 สถานะเทิร์น: ปกติ `;
                         }
                         const myBets = roundBets[userId];
                         if (myBets && myBets.length > 0) {
-                            memberInfo += `\n\n📝 รายการโพยค้างในรอบนี้:`;
+                            memberInfo += `\n\n📝 โพยในรอบนี้:`;
                             myBets.forEach((bet, index) => {
                                 memberInfo += `\n  ${index + 1}. ${bet.detail}`;
                                 
@@ -1158,22 +1158,22 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                                         }
                                     }
                                     if (drawLegs.length > 0) {
-                                        memberInfo += ` 🃏 (ขอจั่วเพิ่มขา: ${drawLegs.sort().join(', ')})`;
+                                        memberInfo += ` 🃏 (จั่วเพิ่มขา: ${drawLegs.sort().join(', ')})`;
                                     }
                                 }
                             });
                             const totalHold = myBets.reduce((sum, bet) => sum + bet.holdCost, 0);
                         memberInfo += `\n🔒 ยอดค้ำประกันเด้งที่ล็อกไว้: ${totalHold} บาท`;
                     } else {
-                        memberInfo += `\n\n📝 รายการโพยค้างในรอบนี้: ไม่มีโพยค้าง`;
+                        memberInfo += `\n\n📝 โพยในรอบนี้ ไม่มีโพยค้าง`;
                     }
 
                     // 💡 [เพิ่มป้ายแนะนำคำสั่งและกติกาพ่วงท้ายกล่องข้อความตอนกด c]
                     memberInfo += `\n\n──────────────────\n` +
-                                  `📖 *คู่มือช่วยเหลือสมาชิก:*\n` +
-                                  `👉 พิมพ์ **คส** เพื่อดูคำสั่งทั้งหมด\n` +
-                                  `👉 พิมพ์ **บช** หรือ **/บช** เพื่อดูเลขบัญชี\n` +
-                                  `👉 พิมพ์ **กต** เพื่ออ่านกติกาห้อง`;
+                                  `📖 คู่มือช่วยเหลือสมาชิก\n` +
+                                  `👉 พิมพ์ คส เพื่อดูคำสั่งทั้งหมด\n` +
+                                  `👉 พิมพ์ บช หรือ /บช เพื่อดูเลขบัญชี\n` +
+                                  `👉 พิมพ์ กต เพื่ออ่านกติกาห้อง`;
 
                     replyText = memberInfo;
                     } else if (originalMsg.startsWith('C/') || originalMsg.startsWith('c/')) {

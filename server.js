@@ -198,12 +198,12 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                             }
                             let closingBetSection = "";
                             if (hasAnyBet) {
-                                closingBetSection = `\n\n📝 สรุปยอดแทงประจำรอบ\n${betSummaryText}`;
+                                closingBetSection = `📝 สรุปยอดแทงประจำรอบ\n${betSummaryText}`;
                             } else {
-                                closingBetSection = `\n\n📝 สรุปยอดแทงประจำรอบ\n• ไม่มีสมาชิกส่งโพยเดิมพันในรอบนี้`;
+                                closingBetSection = `📝 สรุปยอดแทงประจำรอบ\n• ไม่มีสมาชิกส่งโพยเดิมพันในรอบนี้`;
                             }
 
-                            replyText = `🚫ปิดรอบแทงเรียบร้อยแล้วครับ!\n🏁 จบรอบที่: ${currentRound}${closingBetSection}\n\n🔒 หยุดรับโพยทุกกรณี รอแอดมินสรุปผลสักครู่ครับ`;
+                            replyText = `🚫ปิดรอบแทงเรียบร้อยแล้วครับ\n🏁 จบรอบที่: ${currentRound}\n──────────────────\n${closingBetSection}\n──────────────────\n🔒 หยุดรับโพยทุกกรณี รอแอดมินสรุปผลสักครู่ครับ`;
                         }
                     } else if (userMsg === 'rst') {
             currentRound = 0;
@@ -228,7 +228,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                             replyText = `⚠️ ตอนนี้ระบบกำลังเปิด "รอบขอจั่วไพ่ใบที่ 3" อยู่แล้วครับ ไม่จำเป็นต้องเปิดซ้ำครับ`;
                         } else {
                             isDrawOpen = true; // เปิดสิทธิ์ให้บอทรับคำสั่งเครื่องหมาย + จากสมาชิก
-                            replyText = `🃏 เปิดรอบขอจั่วไพ่ใบที่ 3 (รอบที่ ${currentRound}) \n\n📢 หากต้องการจั่วเพิ่ม ให้พิมพ์เลขขาตามด้วย + เช่น พิมพ์ "1+" หรือ "12+" \n*หากขาไหนต้องการอยู่ (ไม่จั่ว) ไม่ต้องพิมพ์อะไรส่งมาครับ*`;
+                            replyText = `🃏 เปิดรอบขอจั่วไพ่ใบที่ 3 (รอบที่ ${currentRound})\n──────────────────\n📢 หากต้องการจั่วเพิ่ม ให้พิมพ์เลขขาตามด้วย + เช่น พิมพ์ "1+" หรือ "12+" \n*หากขาไหนต้องการอยู่ (ไม่จั่ว) ไม่ต้องพิมพ์อะไรส่งมาครับ*`;
                         }
                     } 
                     // 🔴 [ฝั่งปิดรอบจั่ว xx + สรุปรายละเอียดรายบุคคล]
@@ -439,10 +439,10 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                                 roundBets[userId] = [];
                             }
 
-                            let summaryText = `✅ บันทึกโพยและหักค้ำประกัน 3 เด้งเรียบร้อย! 🎉\n👤 คุณ: ${user.name} (ID: ${user.memberNumber})\n\n📝 รายการแทงหน้าโพย:\n`;
+                            let summaryText = `✅ บันทึกโพยและหักค้ำประกัน 3 เด้งเรียบร้อย 🎉\n──────────────────\n👤 คุณ: ${user.name} (ID: ${user.memberNumber})\n──────────────────\n📝 รายการแทง\n──────────────────\n`;
                             
                             processedBets.forEach((bet) => {
-                                summaryText += `• ${bet.detail}\n`;
+                                summaryText += `• ${bet.detail}`;
                                 
                                 roundBets[userId].push({
                                     name: user.name,
@@ -455,7 +455,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                                     time: new Date().toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok' })
                                 });
                             });
-                            summaryText += `\n💵 ยอดแทงรวม: ${totalActualBet} บาท\n🔒 หักค้ำประกันรวม (x3): ${totalHoldCost} บาท\n💰 เครดิตคงเหลือชั่วคราว: ${user.balance} บาท\n*หากผลลัพธ์ไม่ได้แพ้ 3 เด้ง ระบบจะคืนเครดิตส่วนต่างให้ตอนสรุปผลครับ*`;
+                            summaryText += `\n──────────────────\n💵 ยอดแทงรวม: ${totalActualBet} บาท\n🔒 หักค้ำประกันรวม (x3): ${totalHoldCost} บาท\n💰 เครดิตคงเหลือชั่วคราว: ${user.balance} บาท\n*หากผลลัพธ์ไม่ได้แพ้ 3 เด้ง ระบบจะคืนเครดิตส่วนต่างให้ตอนสรุปผลครับ*`;
                             replyText = summaryText;
                         }
                     }
@@ -527,7 +527,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                         if (drawSuccessLegs.length > 0) {
                             const sortedLegs = drawSuccessLegs.sort((a, b) => a - b).join(', ');
                             const user = usersWallets[userId];
-                            replyText = `🃏 สมาชิกคุณ ${user.name} (ID: ${user.memberNumber}) จั่วไพ่เพิ่มที่ ➡️ ขา: ${sortedLegs} ครับ `;
+                            replyText = `🃏 สมาชิกคุณ ${user.name} (ID: ${user.memberNumber})\n──────────────────\nจั่วไพ่เพิ่มที่ ➡️ ขา: ${sortedLegs} ครับ `;
                         } else {
                             // ถ้าคนนั้นมีแต่โพยฝั่งเจ้ามืออย่างเดียว บอทจะแจ้งเตือนตัดสิทธิ์ทันที
                             replyText = "⚠️ คำสั่งไม่ทำงาน: เนื่องจากคุณแทงฝั่งเจ้ามือไว้ โพยฝั่งเจ้ามือไม่สามารถขอจั่วไพ่ได้ครับ";
@@ -562,7 +562,7 @@ else if (originalMsg.startsWith('>')) {
 
             if (clean === 't') { rawScore = 700; multiplier = 5; typeName = "ตอง"; } 
             else if (clean === 'sf') { rawScore = 600; multiplier = 5; typeName = "สเตฟฟลัช"; } 
-            else if (clean === 'h') { rawScore = 500; multiplier = 3; typeName = "เซียน/สามเหลือง"; } 
+            else if (clean === 'h') { rawScore = 500; multiplier = 3; typeName = "เซียน/3เหลือง"; } 
             else if (clean === 's') { rawScore = 400; multiplier = 3; typeName = "เรียง"; } 
             else {
                 let pts = parseInt(clean);
@@ -655,8 +655,8 @@ else if (userMsg === 'ok' || userMsg === 'no') {
         replyText = "⚠️ ไม่มีข้อมูลผลแต้มค้างอยู่ในระบบครับ กรุณาส่งผลแต้มด้วยเครื่องหมาย > ก่อนครับ";
     } else {
         if (userMsg === 'ok') {
-            let summaryPayoutText = `💰 [สรุปยอดรับ-จ่ายเงินรางวัล] รอบที่: ${currentRound}\n`;
-            summaryPayoutText += `👑 เจ้ามือ: ${tempDealerResult.name}\n----------------------------------\n`;
+            let summaryPayoutText = `💰 สรุปยอดได้/เสีย รอบที่: ${currentRound}\n──────────────────\n`;
+            summaryPayoutText += `👑 เจ้ามือ: ${tempDealerResult.name}\n──────────────────\n`;
             
             let hasAnyBet = false;
 
@@ -764,14 +764,14 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                 let feeNote = (isUserBettingOnDealer && userTotalWinLoss !== 0) ? " (คิดต๋งขาชนะ 10% แล้ว)" : "";
                 
                 let turnNote = user.turnoverTarget > 0 ? ` ⚠️ (เหลือเทิร์น: ${user.turnoverTarget} บ.)` : " 🟢 (เทิร์นครบแล้ว)";
-                summaryPayoutText += `👤 ${user.name} (ID: ${user.memberNumber})\n   ยอดสุทธิ: ${sign}${userTotalWinLoss} บาท${feeNote} (เครดิต: ${user.balance} บ.)\n`;
+                summaryPayoutText += `👤 ${user.name} (ID: ${user.memberNumber})\n  ยอดสุทธิ: ${sign}${userTotalWinLoss} บาท${feeNote}\n(เครดิตคงเหลือ: ${user.balance} บ.)\n──────────────────\n`;
             } // ปิดลูป for (let uId in roundBets)
 
             if (!hasAnyBet) {
                 summaryPayoutText += "📝 รอบนี้ไม่มีสมาชิกส่งโพยเดิมพันเข้ามาครับ\n";
             }
 
-            summaryPayoutText += `\n✨ ระบบได้ทำการคำนวณเงินและอัปเดตกระเป๋าเงินให้ทุกคนเรียบร้อยแล้วครับ! 🏁`;
+            summaryPayoutText += `✨ ระบบได้ทำการคำนวณเงินและอัปเดตกระเป๋าเงินให้ทุกคนเรียบร้อยแล้วครับ 🏁`;
             replyText = summaryPayoutText;
 
             // 📊 [ระบบบันทึกสถิติแบบละเอียดแยกขา] 

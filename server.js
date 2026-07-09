@@ -1080,7 +1080,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                                             `👤 สมาชิก: ${user.name} (ID: ${user.memberNumber})\n` +
                                             `💸 หักเครดิตเรียบร้อย: -${finalAmount} บาท\n` +
                                             `💰 ยอดเครดิตคงเหลือ: ${user.balance} บาท\n` +
-                                            `🔓 **สถานะบัญชี:** ปลดล็อกเรียบร้อย สามารถทำรายการส่งโพยรอบถัดไปได้ปกติครับ 🏁`;
+                                            `🔓 สถานะบัญชี: ปลดล็อกเรียบร้อย สามารถทำรายการส่งโพยรอบถัดไปได้ปกติครับ`;
                             }
                         }
                     }
@@ -1129,24 +1129,24 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                                 turnoverTarget: 0,
                                 turnoverCount: 0     
                         };
-                            replyText = `🎉 ลงทะเบียนสมาชิกใหม่สำเร็จ! 🎉\n🆔 คุณคือสมาชิกคนที่: ${nextMemberId}\n👤 ชื่อ-นามสกุล: ${fullName}\n\n💰 ยอดคงเหลือ: 0 บาท\n*ตอนนี้คุณสามารถส่งโพยและพิมพ์ C เพื่อเช็คการ์ดสมาชิกได้แล้วครับ`;
+                            replyText = `🎉 ลงทะเบียนสมาชิกใหม่สำเร็จ! 🎉\n──────────────────\n🆔 คุณคือสมาชิกคนที่: ${nextMemberId}\n👤 ชื่อ-นามสกุล: ${fullName}\n💰 ยอดคงเหลือ: 0 บาท\n──────────────────\nตอนนี้คุณสามารถส่งโพยและพิมพ์ C เพื่อเช็คการ์ดสมาชิก`;
                             nextMemberId++;
                         }
                     } else {
-                        replyText = `📢 ยินดีต้อนรับครับสมาชิกใหม่!\n\n⚠️ คุณยังไม่ได้ลงทะเบียนชื่อจริงในระบบ\nกรุณาพิมพ์: C/ชื่อ-นามสกุล ของท่านเพื่อเปิดการใช้งานบอทครับ\n(ตัวอย่าง: C/นายแจ๊ค เด้งดี)`;
+                        replyText = `📢 ยินดีต้อนรับครับสมาชิกใหม่\n──────────────────\n⚠️ คุณยังไม่ได้ลงทะเบียนในระบบ\n──────────────────\nกรุณาพิมพ์: C/ชื่อ-นามสกุล เพื่อลงทะเบียนใช้งาน และ ใช้ในการถอนเครดิต\n(ตัวอย่าง: C/นายแจ๊ค เด้งดี)\n⚠️กรุณาใช้ชื่อ-นามสกุลให้ตรงกันกับ บช. ที่ใช้ในการฝากของท่าน⚠️`;
                     }
                 } else {
                     const user = usersWallets[userId];
                     if (userMsg === 'c') {
                         let memberInfo = `👤 สมาชิกคนที่: ${user.memberNumber}\n👤 ชื่อ-นามสกุล: ${user.name}\n💰 ยอดเงิน: ${user.balance} บาท`;
                         if (user.turnoverTarget > 0) {
-                            memberInfo += `\n🔒 เทิร์นคงค้าง: ${user.turnoverTarget} บาท `;
+                            memberInfo += `\n🔒 เทิร์นคงค้าง: ${user.turnoverTarget} บาท \n──────────────────\n`;
                         } else {
-                        memberInfo += `\n🔓 สถานะเทิร์น: ปกติ `;
+                        memberInfo += `\n🔓 สถานะเทิร์น: ปกติ\n──────────────────\n `;
                         }
                         const myBets = roundBets[userId];
                         if (myBets && myBets.length > 0) {
-                            memberInfo += `\n\n📝 โพยในรอบนี้:`;
+                            memberInfo += `📝 โพยในรอบนี้:`;
                             myBets.forEach((bet, index) => {
                                 memberInfo += `\n  ${index + 1}. ${bet.detail}`;
                                 
@@ -1166,7 +1166,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                             const totalHold = myBets.reduce((sum, bet) => sum + bet.holdCost, 0);
                         memberInfo += `\n🔒 ยอดค้ำประกันเด้งที่ล็อกไว้: ${totalHold} บาท`;
                     } else {
-                        memberInfo += `\n\n📝 โพยในรอบนี้ ไม่มีโพยค้าง`;
+                        memberInfo += `📝 โพยในรอบนี้ ไม่มีโพยค้าง`;
                     }
 
                     // 💡 [เพิ่มป้ายแนะนำคำสั่งและกติกาพ่วงท้ายกล่องข้อความตอนกด c]

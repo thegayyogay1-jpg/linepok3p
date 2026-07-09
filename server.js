@@ -1339,6 +1339,58 @@ else if (command.toLowerCase() === "y") {
                     }
                 }
             } // ปิดระบบลงทะเบียน
+            
+            // ==================== [ เพิ่มใหม่: คำสั่งแอดมินดูบัญชีเชิงลึกส่วนตัวหลังบ้าน (m1, m2, m3...) ] ====================
+            else if (userMsg.startsWith('m') && !userMsg.includes('-') && !userMsg.endsWith('+') && userMsg !== 'มข' && userMsg !== 'มจ') {
+                const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db"; // 👑 ไอดี LINE ของคุณน้า
+                
+                // ตัดคำว่า m ออกเพื่อเอาตัวเลขสมาชิกมาค้นหา
+                const targetIdStr = userMsg.replace('m', '').trim();
+                const targetMemberId = parseInt(targetIdStr);
+
+                if (!isNaN(targetMemberId)) {
+                    // 🚨 กรองขั้นสูงสุด: ถ้าไม่ใช่แอดมิน หรือ แอดมินไม่ได้สั่งในแชทส่วนตัว (1 ต่อ 1) ให้บอทเงียบกริบไม่ตอบ
+                    if (userId !== ADMIN_ID || event.source.type !== 'user') {
+                        return res.sendStatus(200); // ดีดออกจากระบบทันที ไม่แสดงข้อความใดๆ หน้ากลุ่ม
+                    }
+
+                    let foundUser = null;
+                    for (let id in usersWallets) {
+                        if (usersWallets[id].memberNumber === targetMemberId) {
+                            foundUser = usersWallets[id];
+                            break;
+                        }
+                    }
+
+                    if (!foundUser) {
+                        replyText = `❌ ไม่พบข้อมูลสมาชิกหมายเลข ${targetMemberId} ในระบบครับน้า`;
+                    } else {
+                        // ตรวจสอบสถานะการแจ้งถอนเงิน ณ ปัจจุบัน
+                        let withdrawStatusText = "🟢 ไม่มีการแจ้งถอนค้างอยู่ในระบบ";
+                        if (foundUser.isWithdrawLocked && foundUser.pendingWithdrawAmount > 0) {
+                            withdrawStatusText = `🚨 แจ้งถอนปัจจุบัน: ${foundUser.pendingWithdrawAmount.toLocaleString()} บาท`;
+                        }
+
+                        // ประกอบร่างรายงานข้อมูลพ่นส่งให้น้าคนเดียวในแชทส่วนตัว
+                        replyText = `📋 ข้อมูลบัญชีสมาชิกหมายเลข ${foundUser.memberNumber}\n` +
+                                    `👤 ชื่อ: คุณ ${foundUser.name}\n` +
+                                    `💰 ยอดเงินในระบบ: ${foundUser.balance.toLocaleString()} บาท\n` +
+                                    `💰 ${withdrawStatusText}\n` +
+                                    `🏦 ธนาคาร: ${foundUser.bankName || "ไม่ได้ระบุ"}\n` +
+                                    `💳 เลข บช: ${foundUser.bankAccount || "ไม่ได้ระบุ"}`;
+                    }
+                }
+            }
+
+            // ==================== [ จุดตรวจสอบคัดกรอง: ป้องกันไม่ให้บุคคลทั่วไปใช้งานบอทในแชทส่วนตัว ] ====================
+            if (event.source.type === 'user') {
+                const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db"; // 👑 ไอดี LINE ของคุณน้า
+                // ถ้ายืนยันว่าคนพิมพ์ไม่ใช่แอดมิน ให้บอท "นิ่งเงียบสนิท" ไม่ประมวลผลคำสั่งใดๆ ทั้งสิ้นในแชทส่วนตัว
+                if (userId !== ADMIN_ID) {
+                    return res.sendStatus(200);
+                }
+            }
+        
             // 🚀 ยิงข้อความตอบกลับไปที่ LINE
             if (replyText) {
                 try {

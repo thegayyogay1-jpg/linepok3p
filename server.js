@@ -731,7 +731,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                             } 
                             else if (finalCard.score < tempDealerResult.score) {
                                 let loseMultiplier = tempDealerResult.mult;
-                                if (isUserDrawn && (finalCard.v === 't' || finalCard.v === 'sf' || finalCard.v === 's' || finalCard.v === 'h')) {
+                                if (loseMultiplier > 3) {
                                     loseMultiplier = 3;
                                 }
                                 userTotalWinLoss -= (betPrice * loseMultiplier);

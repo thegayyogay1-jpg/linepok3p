@@ -889,8 +889,8 @@ else if (userMsg === 'ok' || userMsg === 'no') {
 
                         // 2. สร้างหัวข้อรายงานผลไพ่รวมของรอบนั้น
                         let reportText = `🔍 ดึงข้อมูลโพยรายบุคคลย้อนหลัง\n──────────────────\n;
-                        reportText += `🎬 รอบที่: ${roundTarget} \n สมาชิกคนที่ ${memberTarget} (${userName}) `;
-                        reportText += `\n──────────────────\n`;
+                        reportText += `🎬 รอบที่: ${roundTarget} \n สมาชิกคนที่ ${memberTarget} (${userName})\n `;
+                        reportText += `──────────────────\n`;
                         reportText += `👑 เจ้ามือ: ${historicalDealer.name} (${historicalDealer.mult} เด้ง)\n──────────────────\n`;
                         reportText += `📝 ผลไพ่กระดานรอบที่ ${roundTarget} \n──────────────────\n`;
 

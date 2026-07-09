@@ -1316,24 +1316,8 @@ else if (command.toLowerCase() === "y") {
 
                         replyText = memberInfo;
                     } else if (originalMsg.startsWith('C/') || originalMsg.startsWith('c/')) {
-                        // 🔄 กรณีคนเก่าพิมพ์ C/ เข้ามาอีกรอบ เพื่อเปลี่ยนข้อมูลบัญชีหรือชื่อ
-                        const registerData = originalMsg.substring(2).trim();
-                        const dataParts = registerData.split(',');
-                        const fullName = dataParts[0] ? dataParts[0].trim() : "";
-                        const bankName = dataParts[1] ? dataParts[1].trim() : "";
-                        const bankAccount = dataParts[2] ? dataParts[2].trim() : "";
-
-                        // คนเก่าก็ต้องบังคับกรอกมาให้ครบ 3 ช่องเหมือนกันเวลาจะแก้ข้อมูล
-                        if (fullName === "" || bankName === "" || bankAccount === "") {
-                            replyText = `❌ อัปเดตข้อมูลไม่สำเร็จครับน้า!\nกรุณาพิมพ์ข้อมูลให้ครบถ้วนคั่นด้วยจุลภาค: C/ชื่อ,ธนาคาร,เลขบัญชี`;
-                        } else {
-                            user.name = fullName;
-                            user.bankName = bankName;
-                            user.bankAccount = bankAccount;
-                            
-                            await saveDataToFirebase();
-                            replyText = `✨ อัปเดตข้อมูลสมาชิกเรียบร้อยแล้วครับน้า!\n🆔 สมาชิกคนที่: ${user.memberNumber}\n👤 ชื่อ: คุณ ${fullName}\n🏦 ธนาคาร: ${bankName}\n🔒 ข้อมูลธนาคารได้รับการอัปเดตและเก็บเข้าคลังส่วนตัวเรียบร้อยแล้วครับ`;
-                        }
+                        // 🔒 [แก้ไขใหม่: บล็อกเหลี่ยม!] ป้องกันคนเก่าแอบพิมพ์ C/ มาเปลี่ยนชื่อหรือเลขบัญชีเองหลังบ้าน
+                        replyText = `❌ ไม่สามารถเปลี่ยนข้อมูลเองได้ค่ะคุณ ${user.name}!\n──────────────────\n⚠️ เนื่องจากระบบได้ผูกบัญชีธนาคารของคุณไว้ในคลังความปลอดภัยแล้ว\n\n📌 หากต้องการเปลี่ยน ชื่อ-นามสกุล หรือ เลขบัญชีธนาคาร กรุณาทักแชทติดต่อแอดมินโดยตรงเพื่อขออัปเดตข้อมูลนะคะ 🙏`;
                     } else {
                         replyText = "";
                     }
@@ -1398,7 +1382,7 @@ else if (command.toLowerCase() === "y") {
                 }
             }
             // ==================== [ เพิ่มใหม่: คำสั่งแอดมินลบสมาชิกรายคนผ่านแชทส่วนตัว (del1, del2...) ] ====================
-            else if (userMsg.startsWith('del') && !userMsg.includes('-') && !userMsg.endsWith('+')) {
+            else if (userMsg.startsWith('d') && !userMsg.includes('-') && !userMsg.endsWith('+')) {
                 const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db"; // 👑 ไอดี LINE ของคุณน้า
                 
                 // 🚨 กรองขั้นสูงสุด: ถ้าไม่ใช่แอดมิน หรือ แอดมินไม่ได้สั่งในแชทส่วนตัว (1 ต่อ 1) ให้บอทเงียบกริบไม่ตอบ
@@ -1407,7 +1391,7 @@ else if (command.toLowerCase() === "y") {
                 }
 
                 // ตัดคำว่า del ออกเพื่อเอาตัวเลขสมาชิกที่น้าต้องการลบ
-                const targetIdStr = userMsg.replace('del', '').trim();
+                const targetIdStr = userMsg.replace('d', '').trim();
                 const targetMemberId = parseInt(targetIdStr);
 
                 if (!isNaN(targetMemberId)) {

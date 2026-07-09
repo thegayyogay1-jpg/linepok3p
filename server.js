@@ -159,15 +159,15 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                             // --- สร้างข้อความสถิติย้อนหลังแบบแยกขา ---
                             let historyText = "";
                             if (matchHistory.length > 0) {
-                                historyText = `\n\n📈 สถิติผลเจ้ามือ 5 รอบล่าสุด:\n`;
+                                historyText = `📈 สถิติผลเจ้ามือ 5 รอบล่าสุด:`;
                                 matchHistory.forEach((h) => {
-                                    historyText += `• ${h}\n`;
+                                    historyText += `• ${h}`;
                                 });
                             } else {
-                                historyText = `\n\n📈 สถิติย้อนหลัง: ยังไม่มีข้อมูล`;
+                                historyText = `📈 สถิติย้อนหลัง: ยังไม่มีข้อมูล`;
                             }
 
-                            replyText = `📢 เริ่มเปิดรอบแทงแล้วครับ!\n🎰 รอบที่: ${currentRound}${historyText}\n✨ สมาชิกสามารถส่งโพยเข้ามาได้เลยครับครับ 🎰`;
+                            replyText = `📢 เริ่มเปิดรอบแทงแล้วครับ!\n🎰 รอบที่: ${currentRound}\n──────────────────\n${historyText}\n──────────────────\n✨ สมาชิกสามารถส่งโพยเข้ามาได้เลยครับครับ 🎰`;
                         }
         } else if (userMsg === 'x') {
                         if (!isRoundOpen) {
@@ -617,12 +617,9 @@ else if (originalMsg.startsWith('>')) {
         tempDealerResult = dealerResult;
 
         // --- พ่นรายงานสรุปผลกระดานให้ตรวจสอบพร้อมสถานะ 🟢🔴 ---
-        let checkText = `📊 ตรวจสอบผลการเล่น รอบที่: ${currentRound}\n`+
-                        `──────────────────\n\n`;
-        checkText += `👑 เจ้ามือ: ${dealerResult.name} (${dealerResult.mult} เด้ง)\n`
-                     `──────────────────\n\n`;
-        checkText += `📝 ลำดับหน้าไพ่และผลแพ้ชนะ:\n`+
-                     `──────────────────\n\n`;
+        let checkText = `📊 ตรวจสอบผลการเล่น รอบที่: ${currentRound}\n──────────────────\n`;
+        checkText += `👑 เจ้ามือ: ${dealerResult.name} (${dealerResult.mult} เด้ง)\n──────────────────\n`;
+        checkText += `📝 ลำดับหน้าไพ่และผลแพ้ชนะ:\n──────────────────\n`;
 
         for (let leg = 1; leg <= 6; leg++) {
             if (roomResults[leg]) {
@@ -638,8 +635,7 @@ else if (originalMsg.startsWith('>')) {
 
                 checkText += `• ขา ${leg}:\n`;
                 checkText += `   - [2ใบ]: ${res.twoCards.name} (${res.twoCards.mult}เด้ง) ${status2Str}\n`;
-                checkText += `   - [3ใบ]: ${res.threeCards.name} (${res.threeCards.mult}เด้ง) ${status3Str}\n`+
-                             `──────────────────\n`;
+                checkText += `   - [3ใบ]: ${res.threeCards.name} (${res.threeCards.mult}เด้ง) ${status3Str}\n──────────────────\n`;
             } else {
                 checkText += `• ขา ${leg} -> ⚠️ ไม่มีผลไพ่ (ระบบตีเป็นบอด แพ้เจ้ามือ 🔴)\n`;
             }

@@ -60,11 +60,11 @@ app.post('/callback', async (req, res) => {
                             if (command === "เติม") {
                                 usersWallets[foundUserKey].balance += amount;
                                 const user = usersWallets[foundUserKey];
-                                replyText = `💰 เติมเครดิตให้ ${user.memberNumber} คุณ ${user.name} +${amount} สำเร็จ!\nยอดสุทธิ: ${user.balance} บาท`;
+                                replyText = `💰 เติมเครดิตสมาชิกที่ ${user.memberNumber} \n คุณ ${user.name} +${amount} สำเร็จ!\n──────────────────\nยอดสุทธิ: ${user.balance} บาท`;
                             } else if (command === "ลบ") {
                                 usersWallets[foundUserKey].balance -= amount;
                                 const user = usersWallets[foundUserKey];
-                                replyText = `🚨 ลบยอดเครดิตของ ${user.memberNumber} คุณ ${user.name} -${amount}!\nยอดปัจจุบัน: ${user.balance} บาท`;
+                                replyText = `🚨 ลบยอดเครดิตสมาชิกที่ ${user.memberNumber} \n คุณ ${user.name} -${amount}!\n──────────────────\nยอดปัจจุบัน: ${user.balance} บาท`;
                             }
                         }
                     }
@@ -99,8 +99,8 @@ app.post('/callback', async (req, res) => {
                             user.balance += amount;
                             user.turnoverTarget = amount * 10; // 200 x 10 = 2000 บาท
 
-                            replyText = `🎁 เติมโบนัสให้ [ ${user.memberNumber} ] คุณ ${user.name} สำเร็จ!\n` +
-                                        `💰 ยอดสุทธิ: +${amount} บาท\n` +
+                            replyText = `🎁 เติมโบนัสให้สมาชิกที่ [ ${user.memberNumber} ] \n คุณ ${user.name} สำเร็จ!\n──────────────────\n` +
+                                        `💰 ยอดสุทธิ: +${amount} บาท\n──────────────────\n` +
                                         `🔒 เงื่อนไข ต้องทำยอดเทิร์นสะสม (ได้/เสีย) ให้ครบ: ${user.turnoverTarget} บาท`;
                         }
                     }
@@ -159,9 +159,9 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                             // --- สร้างข้อความสถิติย้อนหลังแบบแยกขา ---
                             let historyText = "";
                             if (matchHistory.length > 0) {
-                                historyText = `📈 สถิติผลเจ้ามือ 5 รอบล่าสุด:`;
+                                historyText = `📈 สถิติผลเจ้ามือ 5 รอบล่าสุด:\n──────────────────\n`;
                                 matchHistory.forEach((h) => {
-                                    historyText += `• ${h}`;
+                                    historyText += ` ${h}\n──────────────────\n`;
                                 });
                             } else {
                                 historyText = `📈 สถิติย้อนหลัง: ยังไม่มีข้อมูล`;
@@ -198,12 +198,12 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                             }
                             let closingBetSection = "";
                             if (hasAnyBet) {
-                                closingBetSection = `📝 สรุปยอดแทงประจำรอบ\n${betSummaryText}`;
+                                closingBetSection = `📝 สรุปยอดแทงประจำรอบ\n──────────────────\n${betSummaryText}\n──────────────────\n`;
                             } else {
-                                closingBetSection = `📝 สรุปยอดแทงประจำรอบ\n• ไม่มีสมาชิกส่งโพยเดิมพันในรอบนี้`;
+                                closingBetSection = `📝 สรุปยอดแทงประจำรอบ\n──────────────────\n• ไม่มีสมาชิกส่งโพยเดิมพันในรอบนี้`;
                             }
 
-                            replyText = `🚫ปิดรอบแทงเรียบร้อยแล้วครับ\n🏁 จบรอบที่: ${currentRound}\n──────────────────\n${closingBetSection}\n──────────────────\n🔒 หยุดรับโพยทุกกรณี รอแอดมินสรุปผลสักครู่ครับ`;
+                            replyText = `🚫ปิดรอบแทงเรียบร้อยแล้วครับ\n🏁 จบรอบที่: ${currentRound}\n──────────────────\n${closingBetSection}🔒 หยุดรับโพยทุกกรณี รอแอดมินสรุปผลสักครู่ครับ`;
                         }
                     } else if (userMsg === 'rst') {
             currentRound = 0;
@@ -228,7 +228,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                             replyText = `⚠️ ตอนนี้ระบบกำลังเปิด "รอบขอจั่วไพ่ใบที่ 3" อยู่แล้วครับ ไม่จำเป็นต้องเปิดซ้ำครับ`;
                         } else {
                             isDrawOpen = true; // เปิดสิทธิ์ให้บอทรับคำสั่งเครื่องหมาย + จากสมาชิก
-                            replyText = `🃏 เปิดรอบขอจั่วไพ่ใบที่ 3 (รอบที่ ${currentRound})\n──────────────────\n📢 หากต้องการจั่วเพิ่ม ให้พิมพ์เลขขาตามด้วย + เช่น พิมพ์ "1+" หรือ "12+" \n*หากขาไหนต้องการอยู่ (ไม่จั่ว) ไม่ต้องพิมพ์อะไรส่งมาครับ*`;
+                            replyText = `🃏 เปิดรอบขอจั่วไพ่ใบที่ 3 (รอบที่ ${currentRound})\n──────────────────\n📢 หากต้องการจั่วเพิ่ม ให้พิมพ์เลขขาตามด้วย + เช่น พิมพ์ "1+" หรือ "12+" \n──────────────────\n⚠️หากขาไหนต้องการอยู่ (ไม่จั่ว) ไม่ต้องพิมพ์อะไรส่งมาครับ`;
                         }
                     } 
                     // 🔴 [ฝั่งปิดรอบจั่ว xx + สรุปรายละเอียดรายบุคคล]
@@ -455,7 +455,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                                     time: new Date().toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok' })
                                 });
                             });
-                            summaryText += `\n──────────────────\n💵 ยอดแทงรวม: ${totalActualBet} บาท\n🔒 หักค้ำประกันรวม (x3): ${totalHoldCost} บาท\n💰 เครดิตคงเหลือชั่วคราว: ${user.balance} บาท\n*หากผลลัพธ์ไม่ได้แพ้ 3 เด้ง ระบบจะคืนเครดิตส่วนต่างให้ตอนสรุปผลครับ*`;
+                            summaryText += `\n──────────────────\n💵 ยอดแทงรวม: ${totalActualBet} บาท\n🔒 หักค้ำประกันรวม (x3): ${totalHoldCost} บาท\n💰 เครดิตคงเหลือ: ${user.balance} บาท\n──────────────────\n 🔔หากแพ้ไม่เกิน 3 เด้ง ระบบจะคืนเครดิตส่วนต่างให้ตอนสรุปผลครับ`;
                             replyText = summaryText;
                         }
                     }
@@ -527,7 +527,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                         if (drawSuccessLegs.length > 0) {
                             const sortedLegs = drawSuccessLegs.sort((a, b) => a - b).join(', ');
                             const user = usersWallets[userId];
-                            replyText = `🃏 สมาชิกคุณ ${user.name} (ID: ${user.memberNumber})\n──────────────────\nจั่วไพ่เพิ่มที่ ➡️ ขา: ${sortedLegs} ครับ `;
+                            replyText = `🃏 สมาชิกคุณ ${user.name} (ID: ${user.memberNumber})\n──────────────────\nจั่วไพ่เพิ่มที่ ➡️ ขา: ${sortedLegs} `;
                         } else {
                             // ถ้าคนนั้นมีแต่โพยฝั่งเจ้ามืออย่างเดียว บอทจะแจ้งเตือนตัดสิทธิ์ทันที
                             replyText = "⚠️ คำสั่งไม่ทำงาน: เนื่องจากคุณแทงฝั่งเจ้ามือไว้ โพยฝั่งเจ้ามือไม่สามารถขอจั่วไพ่ได้ครับ";
@@ -1129,11 +1129,11 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                                 turnoverTarget: 0,
                                 turnoverCount: 0     
                         };
-                            replyText = `🎉 ลงทะเบียนสมาชิกใหม่สำเร็จ! 🎉\n──────────────────\n🆔 คุณคือสมาชิกคนที่: ${nextMemberId}\n👤 ชื่อ-นามสกุล: ${fullName}\n💰 ยอดคงเหลือ: 0 บาท\n──────────────────\nตอนนี้คุณสามารถส่งโพยและพิมพ์ C เพื่อเช็คการ์ดสมาชิก`;
+                            replyText = `🎉 ลงทะเบียนสมาชิกใหม่สำเร็จ! 🎉\n──────────────────\n🆔 คุณคือสมาชิกคนที่: ${nextMemberId}\n👤 ชื่อ-นามสกุล: ${fullName}\n💰 ยอดคงเหลือ: 0 บาท\n──────────────────\nตอนนี้คุณสามารถส่งโพยหรือพิมพ์ C เพื่อเช็คการ์ดสมาชิก`;
                             nextMemberId++;
                         }
                     } else {
-                        replyText = `📢 ยินดีต้อนรับครับสมาชิกใหม่\n──────────────────\n⚠️ คุณยังไม่ได้ลงทะเบียนในระบบ\n──────────────────\nกรุณาพิมพ์: C/ชื่อ-นามสกุล เพื่อลงทะเบียนใช้งาน และ ใช้ในการถอนเครดิต\n(ตัวอย่าง: C/นายแจ๊ค เด้งดี)\n⚠️กรุณาใช้ชื่อ-นามสกุลให้ตรงกันกับ บช. ที่ใช้ในการฝากของท่าน⚠️`;
+                        replyText = `📢 ยินดีต้อนรับครับสมาชิกใหม่\n──────────────────\n⚠️ คุณยังไม่ได้ลงทะเบียนในระบบ\n──────────────────\nกรุณาพิมพ์: C/ชื่อ-นามสกุล เพื่อลงทะเบียนใช้งาน และ ใช้ในการถอนเครดิต\n(ตัวอย่าง: C/นายแจ๊ค เด้งดี)\n──────────────────\n⚠️กรุณาใช้ชื่อ-นามสกุลให้ตรงกันกับ บช. ที่ใช้ในการฝากของท่าน⚠️`;
                     }
                 } else {
                     const user = usersWallets[userId];
@@ -1146,7 +1146,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                         }
                         const myBets = roundBets[userId];
                         if (myBets && myBets.length > 0) {
-                            memberInfo += `📝 โพยในรอบนี้:`;
+                            memberInfo += `📝 โพยในรอบนี้\n──────────────────\n`;
                             myBets.forEach((bet, index) => {
                                 memberInfo += `\n  ${index + 1}. ${bet.detail}`;
                                 
@@ -1164,13 +1164,13 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                                 }
                             });
                             const totalHold = myBets.reduce((sum, bet) => sum + bet.holdCost, 0);
-                        memberInfo += `\n🔒 ยอดค้ำประกันเด้งที่ล็อกไว้: ${totalHold} บาท`;
+                        memberInfo += `\n──────────────────\n🔒 ยอดประกันเด้งที่ล็อกไว้: ${totalHold} บาท`;
                     } else {
                         memberInfo += `📝 โพยในรอบนี้ ไม่มีโพยค้าง`;
                     }
 
                     // 💡 [เพิ่มป้ายแนะนำคำสั่งและกติกาพ่วงท้ายกล่องข้อความตอนกด c]
-                    memberInfo += `\n\n──────────────────\n` +
+                    memberInfo += `──────────────────\n` +
                                   `📖 คู่มือช่วยเหลือสมาชิก\n` +
                                   `👉 พิมพ์ คส เพื่อดูคำสั่งทั้งหมด\n` +
                                   `👉 พิมพ์ บช หรือ /บช เพื่อดูเลขบัญชี\n` +

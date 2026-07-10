@@ -104,9 +104,18 @@ app.post('/callback', async (req, res) => {
                         if (!foundUserKey) {
                             replyText = `❌ ไม่พบเลขสมาชิกที่ ${targetMemberId} ในระบบครับ`;
                         } else {
-                            if (command === "เติม") {
-                                usersWallets[foundUserKey].balance += amount;
-                                const user = usersWallets[foundUserKey];
+                            if (command === "เติม") {                 
+                                // 🚨 [ดักคนเหลี่ยม] เช็กก่อนว่าสมาชิกคนนี้ได้พิมพ์ "ฝาก" เพื่อเปิดยอดฝากไว้จริงไหม
+                                if (!global.depositQueue || !global.depositQueue[foundUserKey] || global.depositQueue[foundUserKey].status !== 'WAITING_ADMIN') {
+                                    replyText = `❌ เติมเงินไม่สำเร็จ! สมาชิกหมายเลข ${targetMemberId} ยังไม่ได้พิมพ์เปิดยอดฝากเข้ามาในระบบ หรือยอดนี้เคยถูกแอดมินเติมไปแล้วครับน้า (ดักคนเหลี่ยมสำเร็จ!)`;
+                                } else {
+                                    // 🔓 ถ้าตรวจเช็กคิวฝากถูกต้อง ให้บวกเงินเข้าระบบเดิมของน้าเลย
+                                    usersWallets[foundUserKey].balance += amount;
+                                    const user = usersWallets[foundUserKey];
+                                    
+                                    // 🧼 ล้างคิวฝากของคนนี้ทิ้งทันที เพื่อไม่ให้เอาสลิปเดิมมาแจ้งซ้ำได้อีก!
+                                    delete global.depositQueue[foundUserKey];
+                                    
                                 await saveDataToFirebase(); // 💾 เพิ่มจุดที่ 1
                                 replyText = `💰 เติมเครดิตสมาชิกที่ ${user.memberNumber} \n คุณ ${user.name} +${amount} สำเร็จ!\n──────────────────\nยอดสุทธิ: ${user.balance} บาท`;
                             } else if (command === "ลบ") {
@@ -142,11 +151,19 @@ app.post('/callback', async (req, res) => {
                         if (!foundUserKey) {
                             replyText = `❌ ไม่พบเลขสมาชิกที่ ${targetMemberId} ในระบบครับ`;
                         } else {
+                            // 🚨 [ดักคนเหลี่ยม] เช็กก่อนว่าสมาชิกคนนี้ได้พิมพ์ "ฝาก" เพื่อเปิดยอดฝากไว้จริงไหม
+                            if (!global.depositQueue || !global.depositQueue[foundUserKey] || global.depositQueue[foundUserKey].status !== 'WAITING_ADMIN') {
+                                replyText = `❌ เติมโบนัสไม่สำเร็จ! สมาชิกหมายเลข ${targetMemberId} ยังไม่ได้พิมพ์เปิดยอดฝากเข้ามาในระบบ หรือยอดนี้เคยถูกเติมไปแล้วครับน้า (กันคนเหลี่ยมเอาสลิปเก่ามาเวียนเทียน!)`;
+                            } else {
                             const user = usersWallets[foundUserKey];
                             
                             // 🧮 เติมเงินให้จริง + คำนวณเทิร์น 10 เท่าจากยอดรวมทันที
                             user.balance += amount;
                             user.turnoverTarget = amount * 10; // 200 x 10 = 2000 บาท
+
+                             // 🧼 ล้างคิวฝากของคนนี้ทิ้งทันที เพื่อไม่ให้เอามาเคลมซ้ำได้อีก!
+                                delete global.depositQueue[foundUserKey];
+                                
                             await saveDataToFirebase();
 
                             replyText = `🎁 เติมโบนัสให้สมาชิกที่ [ ${user.memberNumber} ] \n คุณ ${user.name} สำเร็จ!\n──────────────────\n` +
@@ -189,6 +206,44 @@ app.post('/callback', async (req, res) => {
                     }
                 }
             }
+               // =================================================================
+            // 💰 [แทรกตรงนี้เลยน้า!] คำสั่ง "ฝาก [เงิน]" (สุ่มเศษสตางค์ ใช้ replyText ระบบเดิม ไม่ทับรูป)
+            // =================================================================
+            else if (command === "ฝาก") {
+                const amount = parseInt(args[1]);
+
+                if (!amount || isNaN(amount) || amount <= 0) {
+                    replyText = '❌ พิมพ์รูปแบบผิดครับน้า! ต้องพิมพ์เช่น: ฝาก 500';
+                } else {
+                    const walletData = usersWallets[userId];
+
+                    if (!walletData) {
+                        replyText = '❌ น้ายังไม่ได้สมัครสมาชิก พิมพ์สมัครก่อนนะครับ';
+                    } else {
+                        if (!global.depositQueue) global.depositQueue = {};
+
+                        const currentQueue = global.depositQueue[userId];
+
+                        if (currentQueue && currentQueue.status === 'WAITING_ADMIN') {
+                            replyText = `⚠️ น้ามีรายการแจ้งฝากค้างอยู่ในระบบแล้วครับ!\n💰 ยอดที่ต้องโอน: ${currentQueue.displayAmount} บาท\n\n🔒 ระบบล็อกไม่ให้แจ้งฝากซ้ำ จนกว่าแอดมินจะกดอนุมัติ (เติมเงิน) ให้ครับน้า`;
+                        } else {
+                            const randomSatang = (Math.floor(Math.random() * 99) + 1) / 100;
+                            const totalWithSatang = amount + randomSatang;
+                            const displayAmount = totalWithSatang.toFixed(2);
+
+                            global.depositQueue[userId] = {
+                                memberId: walletData.memberNumber,
+                                name: walletData.name || 'ไม่ระบุชื่อ',
+                                rawAmount: amount,
+                                displayAmount: displayAmount,
+                                status: 'WAITING_ADMIN'
+                            };
+
+                            replyText = `📥 รับยอดแจ้งฝากเรียบร้อยครับ!\n\n💸 กรุณาโอนเงินจำนวน: 👉 ${displayAmount} บาท 👈\n\n⚠️ สำคัญมาก: กรุณาโอนยอดเงินและใส่เศษสตางค์ให้ตรงตามที่ระบบแจ้งเป๊ะๆ นะครับ เพื่อความรวดเร็วในการตรวจสอบของแอดมินครับน้า!`;
+                        }
+                    }
+                }
+            } 
                 // ==================== [ คำสั่งแอดมิน: ชถ (เช็กรายการรอถอนเงินทั้งหมด) ] ====================
             else if (userMsg.trim() === 'ชถ') {
                 const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";

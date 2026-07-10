@@ -68,87 +68,14 @@ async function saveDataToFirebase() {
 
 app.post('/callback', async (req, res) => {
     const events = req.body.events;
-    // =================================================================
-        // 📸 [ดักจับรูปภาพ] เอามาวางไว้บนสุดตรงนี้เลย เพื่อให้รับสลิปได้ทันที ไม่เงียบ!
-        // =================================================================
-        if (event.type === 'message' && event.message.type === 'image') {
-            if (global.depositQueue && global.depositQueue[userId]) {
-                const currentQueue = global.depositQueue[userId];
-                const currentTime = Date.now();
+    if (!events) return res.sendStatus(200);
 
-                if (currentQueue && currentQueue.status === 'WAITING_FOR_SLIP') {
-                    const timeDiff = currentTime - currentQueue.timestamp;
-                    
-                    if (timeDiff <= 60000) { 
-                        const messageId = event.message.id;
-                        const slipUrl = `https://api-data.line.me/v2/bot/message/${messageId}/content`;
-
-                        global.depositQueue[userId].slipUrl = slipUrl;
-                        global.depositQueue[userId].status = 'PENDING_ADMIN';
-
-                        const adminNotifyMessage = `🔔 มีรายการแจ้งฝากใหม่!\nสมาชิกลำดับที่: ${currentQueue.memberId}\nชื่อ: ${currentQueue.name}\nยอดเงิน: ${currentQueue.amount} บาท\n🔗 ลิงก์รูปสลิป: ${slipUrl}\n\n👉 วิธีอนุมัติพิมพ์: yc ${currentQueue.memberId}\n👉 วิธีปฏิเสธพิมพ์: nc ${currentQueue.memberId}`;
-                        
-                        const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
-                        try {
-                            await axios.post('https://api.line.me/v2/bot/message/push', {
-                                to: ADMIN_ID,
-                                messages: [{ type: 'text', text: adminNotifyMessage }]
-                            }, {
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'Authorization': `Bearer ${TOKEN}`
-                                }
-                            });
-                        } catch (err) {
-                            console.error("❌ ส่ง Push หาแอดมินล้มเหลว:", err.message);
-                        }
-                        
-                        // ⚡ ส่งคำตอบกลับฝั่งลูกค้าทันที แล้วจบงานของรูปภาพ
-                        try {
-                            await axios.post('https://api.line.me/v2/bot/message/reply', {
-                                replyToken: replyToken,
-                                messages: [{ type: 'text', text: '✅ บอทได้รับรูปภาพสลิปแล้วครับน้า! กำลังส่งต่อให้แอดมินตรวจสอบความถูกต้อง รอสักครู่นะครับ' }]
-                            }, {
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'Authorization': `Bearer ${TOKEN}`
-                                }
-                            });
-                        } catch (err) {
-                            console.error("❌ ส่งข้อความตอบกลับลูกค้าล้มเหลว:", err.message);
-                        }
-                        return res.sendStatus(200);
-                    } else {
-                        delete global.depositQueue[userId];
-                        try {
-                            await axios.post('https://api.line.me/v2/bot/message/reply', {
-                                replyToken: replyToken,
-                                messages: [{ type: 'text', text: '❌ ส่งรูปสลิปช้าเกิน 1 นาที ระบบตัดคิวแล้วครับน้า พิมพ์แจ้งฝากใหม่อีกรอบนะครับ' }]
-                            }, {
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'Authorization': `Bearer ${TOKEN}`
-                                }
-                            });
-                        } catch (err) {
-                            console.error("❌ ส่งข้อความแจ้งหมดเวลาล้มเหลว:", err.message);
-                        }
-                        return res.sendStatus(200);
-                    }
-                }
-            }
-            // ถ้าส่งรูปมาแต่ไม่ได้อยู่ในระบบคิวฝากเงิน ให้ปล่อยผ่านบอทไม่ทำงาน
-            return res.sendStatus(200);
-        }
-
-        // =================================================================
-        // 📄 หลังจากหลุดจากเช็ครูปภาพด้านบนมาแล้ว ค่อยให้ระบบตรวจข้อความ (Text) ทำงานต่อ
-        // =================================================================
-        if (event.type !== 'message' || event.message.type !== 'text') {
-            return res.sendStatus(200);
-        }
-
-        const originalMsg = event.message.text.trim(); 
+    for (let event of events) {
+        if (event.type === 'message' && event.message.type === 'text') {
+            const replyToken = event.replyToken;
+            const userId = event.source.userId; 
+            const originalMsg = event.message.text.trim(); 
+            const userMsg = originalMsg.toLowerCase().replace(/\s+/g, ''); 
 
             let replyText = ""; 
             const args = originalMsg.split(/\s+/); 
@@ -1454,132 +1381,42 @@ else if (command.toLowerCase() === "y") {
                     replyText = totalReport;
                 }
             }
-              // ==========================================
-            // [ย้ายมาคั่นตรงนี้] ส่วนดักจับเมื่อสมาชิก "กดส่งรูปภาพสลิป" เข้ามาในไลน์
-            // ==========================================
-            else if (event.message && event.message.type === 'image') {
-                if (global.depositQueue && global.depositQueue[userId]) {
-                    const currentQueue = global.depositQueue[userId];
-                    const currentTime = Date.now();
+            // ==================== [ เพิ่มใหม่: คำสั่งแอดมินลบสมาชิกรายคนผ่านแชทส่วนตัว (del1, del2...) ] ====================
+            else if (userMsg.startsWith('d') && !userMsg.includes('-') && !userMsg.endsWith('+')) {
+                const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db"; // 👑 ไอดี LINE ของคุณน้า
+                
+                // 🚨 กรองขั้นสูงสุด: ถ้าไม่ใช่แอดมิน หรือ แอดมินไม่ได้สั่งในแชทส่วนตัว (1 ต่อ 1) ให้บอทเงียบกริบไม่ตอบ
+                if (userId !== ADMIN_ID || event.source.type !== 'user') {
+                    return res.sendStatus(200);
+                }
 
-                    // เช็กว่าคนส่งรูป มีการกดพิมพ์คำว่า "ฝาก" ไว้ก่อนหน้านี้ไม่เกิน 1 นาทีไหม
-                    if (currentQueue && currentQueue.status === 'WAITING_FOR_SLIP') {
-                        const timeDiff = currentTime - currentQueue.timestamp;
+                // ตัดคำว่า del ออกเพื่อเอาตัวเลขสมาชิกที่น้าต้องการลบ
+                const targetIdStr = userMsg.replace('d', '').trim();
+                const targetMemberId = parseInt(targetIdStr);
+
+                if (!isNaN(targetMemberId)) {
+                    let targetUserIdInFirebase = null;
+                    let targetName = "";
+
+                    // วนลูปค้นหาเพื่อถอดไอดี LINE ดิบของสมาชิกคนนั้นออกมาจากคลัง
+                    for (let id in usersWallets) {
+                        if (usersWallets[id].memberNumber === targetMemberId) {
+                            targetUserIdInFirebase = id;
+                            targetName = usersWallets[id].name;
+                            break;
+                        }
+                    }
+
+                    if (!targetUserIdInFirebase) {
+                        replyText = `❌ ไม่พบข้อมูลสมาชิกหมายเลข ${targetMemberId} ในระบบครับน้า`;
+                    } else {
+                        // ❌ ทำการลบข้อมูลของสมาชิกคนนั้นออกจากออบเจกต์ระบบทันที
+                        delete usersWallets[targetUserIdInFirebase];
                         
-                        if (timeDiff <= 60000) { // ถ้ารูปมาไวภายใน 1 นาทีจริง
-                            const messageId = event.message.id;
-                            // 🔗 สร้างลิงก์รูปภาพของ LINE 
-                            const slipUrl = `https://api-data.line.me/v2/bot/message/${messageId}/content`;
+                        // บันทึกการเปลี่ยนแปลงขึ้นไปบนคลัง Firebase หลังบ้าน
+                        await saveDataToFirebase();
 
-                            // อัปเดตสถานะคิว รอแอดมินตรวจ
-                            global.depositQueue[userId].slipUrl = slipUrl;
-                            global.depositQueue[userId].status = 'PENDING_ADMIN';
-
-                            // 📢 ยิงข้อความรายงานส่งตรงเข้าไลน์ส่วนตัวของน้า
-                            const adminNotifyMessage = `🔔 มีรายการแจ้งฝากใหม่!\nสมาชิกลำดับที่: ${currentQueue.memberId}\nชื่อ: ${currentQueue.name}\nยอดเงิน: ${currentQueue.amount} บาท\n🔗 ลิงก์รูปสลิป: ${slipUrl}\n\n👉 วิธีอนุมัติพิมพ์: yc ${currentQueue.memberId}\n👉 วิธีปฏิเสธพิมพ์: nc ${currentQueue.memberId}`;
-                            
-                            const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
-                            await lineClient.pushMessage(ADMIN_ID, { type: 'text', text: adminNotifyMessage });
-                            
-                            replyText = '✅ บอทได้รับรูปภาพสลิปแล้วครับน้า! กำลังส่งต่อให้แอดมินตรวจสอบความถูกต้อง รอสักครู่นะครับ';
-                        } else {
-                            // เกิน 1 นาที ลบทิ้งคิวเคลียร์หน่วยความจำ
-                            delete global.depositQueue[userId];
-                            replyText = '❌ ส่งรูปสลิปช้าเกิน 1 นาที ระบบตัดคิวแล้วครับน้า พิมพ์แจ้งฝากใหม่อีกรอบนะครับ';
-                        }
-                    }
-                }
-            }
-
-            // ==========================================
-            // [ต่อท้าย] คำสั่งดักจับเมื่อสมาชิกพิมพ์ "ฝาก [จำนวนเงิน]"
-            // ==========================================
-            else if (originalMsg && originalMsg.startsWith('ฝาก')) {
-                const args = originalMsg.split(' ');
-                const amount = parseInt(args[1]);
-
-                if (!amount || isNaN(amount) || amount <= 0) {
-                    replyText = '❌ พิมพ์รูปแบบผิดครับน้า! ต้องพิมพ์เช่น: ฝาก 500';
-                } else {
-                    const walletData = usersWallets[userId];
-
-                    if (!walletData) {
-                        replyText = '❌ น้ายังไม่ได้สมัครสมาชิก พิมพ์สมัครก่อนนะครับ';
-                    } else {
-                        const memberId = walletData.memberNumber; 
-
-                        if (!global.depositQueue) {
-                            global.depositQueue = {};
-                        }
-
-                        const currentQueue = global.depositQueue[userId];
-                        const currentTime = Date.now();
-
-                        if (currentQueue && (currentTime - currentQueue.timestamp < 60000)) {
-                            replyText = '⚠️ น้ามีรายการฝากค้างอยู่! โปรดส่งรูปสลิปภายใน 1 นาที หรือรอให้ครบกำหนดก่อนครับ';
-                        } else {
-                            global.depositQueue[userId] = {
-                                userId: userId,
-                                memberId: memberId,
-                                name: walletData.name || 'ไม่ระบุชื่อ',
-                                amount: amount,
-                                timestamp: currentTime,
-                                status: 'WAITING_FOR_SLIP'
-                            };
-                            replyText = `📥 รับยอดแจ้งฝาก ${amount} บาทเรียบร้อย! ภายใน 1 นาทีนี้ ขอความกรุณาน้ากดส่งรูปภาพสลิปหลักฐานต่อได้เลยครับ (ช่วงนี้ระบบจะล็อคไม่ให้พิมพ์ฝากซ้ำครับ)`;
-                        }
-                    }
-                }
-            }
-
-            // ==========================================
-            // [ต่อท้าย] คำสั่งแอดมินอนุมัติ (yc [เลขสมาชิก]) และ ปฏิเสธ (nc [เลขสมาชิก])
-            // ==========================================
-            else if (userId === "U2fb9233e5c539ae3970cbd698e2e18db" && originalMsg && (originalMsg.startsWith('yc') || originalMsg.startsWith('nc'))) {
-                const args = originalMsg.split(' ');
-                const action = args[0]; 
-                const targetMemberId = parseInt(args[1]); 
-
-                if (!targetMemberId || isNaN(targetMemberId)) {
-                    replyText = '❌ พิมพ์รูปแบบผิดครับน้า! ต้องพิมพ์เช่น: yc 4 หรือ nc 4';
-                } else {
-                    let foundQueueKey = null;
-                    let foundRequest = null;
-
-                    if (global.depositQueue) {
-                        for (const key in global.depositQueue) {
-                            if (global.depositQueue[key].memberId === targetMemberId) {
-                                foundQueueKey = key; 
-                                foundRequest = global.depositQueue[key];
-                                break;
-                            }
-                        }
-                    }
-
-                    if (!foundRequest) {
-                        replyText = `❌ ไม่พบรายการคิวแจ้งฝากของสมาชิกลำดับที่ ${targetMemberId} ในระบบครับน้า`;
-                    } else {
-                        if (action === 'yc') {
-                            const depositAmount = foundRequest.amount;
-                            
-                            if (usersWallets[foundQueueKey]) {
-                                usersWallets[foundQueueKey].balance = (usersWallets[foundQueueKey].balance || 0) + depositAmount;
-                                
-                                if (typeof saveDataToFirebase === 'function') {
-                                    await saveDataToFirebase();
-                                } else if (typeof saveUserData === 'function') {
-                                    await saveUserData();
-                                }
-                            }
-
-                            delete global.depositQueue[foundQueueKey];
-                            replyText = `🎉 อนุมัติสำเร็จ! สมาชิกลำดับที่ ${targetMemberId} เติมเงินเข้ากระเป๋าจำนวน ${depositAmount} บาท เรียบร้อยแล้วครับน้า! ลุยต่อได้เลย 🃏`;
-                        }
-
-                        if (action === 'nc') {
-                            delete global.depositQueue[foundQueueKey];
-                            replyText = `❌ รายการแจ้งฝากของสมาชิกลำดับที่ ${targetMemberId} ไม่ผ่านการตรวจสอบ! กรุณาตรวจสอบยอดเงิน/รูปสลิป หรือติดต่อแอดมินโดยตรงครับ`;
-                        }
+                        replyText = `🗑️ ลบข้อมูลสำเร็จเรียบร้อยครับน้า!\n──────────────────\n🆔 สมาชิกหมายเลข: [ ${targetMemberId} ]\n👤 ชื่อเดิม: คุณ ${targetName}\n──────────────────\n✨ ตอนนี้สถานะของเขาถูกเคลียร์เป็นศูนย์เรียบร้อย สามารถให้เขาพิมพ์สมัครสมาชิกผูกบัญชีใหม่ในกลุ่มหลักได้เลยครับ`;
                     }
                 }
             }

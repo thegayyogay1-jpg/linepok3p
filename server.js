@@ -107,7 +107,7 @@ app.post('/callback', async (req, res) => {
                             if (command === "เติม") {
                                 // 🚨 [ดักคนเหลี่ยม] เช็กก่อนว่าสมาชิกคนนี้ได้พิมพ์ "ฝาก" เพื่อเปิดยอดฝากไว้จริงไหม
                                 if (!global.depositQueue || !global.depositQueue[foundUserKey] || global.depositQueue[foundUserKey].status !== 'WAITING_ADMIN') {
-                                    replyText = `❌ เติมเงินไม่สำเร็จ! สมาชิกหมายเลข ${targetMemberId} ยังไม่ได้พิมพ์เปิดยอดฝากเข้ามาในระบบ หรือยอดนี้เคยถูกแอดมินเติมไปแล้วครับน้า (ดักคนเหลี่ยมสำเร็จ!)`;
+                                    replyText = `❌ เติมเงินไม่สำเร็จ! \n สมาชิกเลข ${targetMemberId} ยังไม่ได้พิมพ์ฝากเข้ามาในระบบ หรือยอดนี้เคยเติมไป`;
                                 } else {
                                     usersWallets[foundUserKey].balance += amount;
                                     const user = usersWallets[foundUserKey];
@@ -183,14 +183,14 @@ app.post('/callback', async (req, res) => {
                     const walletData = usersWallets[userId];
 
                     if (!walletData) {
-                        replyText = '❌ น้ายังไม่ได้สมัครสมาชิก พิมพ์สมัครก่อนนะครับ';
+                        replyText = '❌ ยังไม่ได้สมัครสมาชิก \n พิมพ์ C/ชื่อ-นามสกุล,ธนาคาร,เลขธนาคาร เพื่อสมัครก่อนครับ';
                     } else {
                         if (!global.depositQueue) global.depositQueue = {};
 
                         const currentQueue = global.depositQueue[userId];
 
                         if (currentQueue && currentQueue.status === 'WAITING_ADMIN') {
-                            replyText = `⚠️ น้ามีรายการแจ้งฝากค้างอยู่ในระบบแล้วครับ!\n💰 ยอดที่ต้องโอน: ${currentQueue.displayAmount} บาท\n\n🔒 ระบบล็อกไม่ให้แจ้งฝากซ้ำ จนกว่าแอดมินจะกดอนุมัติ (เติมเงิน) ให้ครับน้า`;
+                            replyText = `⚠️ มีรายการแจ้งฝากค้างอยู่ในระบบ\n💰 ยอดที่ต้องโอน: ${currentQueue.displayAmount} บาท\n────────────────\n🔒 ระบบล็อกไม่ให้แจ้งฝากซ้ำ \n จนกว่าจะอนุมัติเติมเงินจากแอดมิน`;
                         } else {
                             const randomSatang = (Math.floor(Math.random() * 99) + 1) / 100;
                             const totalWithSatang = amount + randomSatang;
@@ -204,7 +204,7 @@ app.post('/callback', async (req, res) => {
                                 status: 'WAITING_ADMIN'
                             };
 
-                            replyText = `📥 รับยอดแจ้งฝากเรียบร้อยครับ!\n\n💸 กรุณาโอนเงินจำนวน: 👉 ${displayAmount} บาท 👈\n\n⚠️ สำคัญมาก: กรุณาโอนยอดเงินและใส่เศษสตางค์ให้ตรงตามที่ระบบแจ้งเป๊ะๆ นะครับ เพื่อความรวดเร็วในการตรวจสอบของแอดมินครับน้า!`;
+                            replyText = `📥 รับยอดแจ้งฝากเรียบร้อยครับ\n────────────────\n💸 กรุณาโอนเงินจำนวน:  ${displayAmount} บาท \n────────────────\n⚠️ สำคัญมาก: กรุณาโอนยอดเงินและใส่เศษสตางค์ให้ตรงตามที่ระบบแจ้ง เพื่อความรวดเร็วในการตรวจสอบ`;
                         }
                     }
                 }

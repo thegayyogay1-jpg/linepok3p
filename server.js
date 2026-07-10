@@ -118,6 +118,7 @@ app.post('/callback', async (req, res) => {
                                     
                                 await saveDataToFirebase(); // 💾 เพิ่มจุดที่ 1
                                 replyText = `💰 เติมเครดิตสมาชิกที่ ${user.memberNumber} \n คุณ ${user.name} +${amount} สำเร็จ!\n──────────────────\nยอดสุทธิ: ${user.balance} บาท`;
+                                }
                             } else if (command === "ลบ") {
                                 usersWallets[foundUserKey].balance -= amount;
                                 const user = usersWallets[foundUserKey];

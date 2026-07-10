@@ -104,39 +104,38 @@ app.post('/callback', async (req, res) => {
                         if (!foundUserKey) {
                             replyText = `❌ ไม่พบเลขสมาชิกที่ ${targetMemberId} ในระบบครับ`;
                         } else {
-                            if (command === "เติม") {                 
+                            if (command === "เติม") {
                                 // 🚨 [ดักคนเหลี่ยม] เช็กก่อนว่าสมาชิกคนนี้ได้พิมพ์ "ฝาก" เพื่อเปิดยอดฝากไว้จริงไหม
                                 if (!global.depositQueue || !global.depositQueue[foundUserKey] || global.depositQueue[foundUserKey].status !== 'WAITING_ADMIN') {
                                     replyText = `❌ เติมเงินไม่สำเร็จ! สมาชิกหมายเลข ${targetMemberId} ยังไม่ได้พิมพ์เปิดยอดฝากเข้ามาในระบบ หรือยอดนี้เคยถูกแอดมินเติมไปแล้วครับน้า (ดักคนเหลี่ยมสำเร็จ!)`;
                                 } else {
-                                    // 🔓 ถ้าตรวจเช็กคิวฝากถูกต้อง ให้บวกเงินเข้าระบบเดิมของน้าเลย
                                     usersWallets[foundUserKey].balance += amount;
                                     const user = usersWallets[foundUserKey];
                                     
-                                    // 🧼 ล้างคิวฝากของคนนี้ทิ้งทันที เพื่อไม่ให้เอาสลิปเดิมมาแจ้งซ้ำได้อีก!
-                                    delete global.depositQueue[foundUserKey];
-                                    
-                                await saveDataToFirebase(); // 💾 เพิ่มจุดที่ 1
-                                replyText = `💰 เติมเครดิตสมาชิกที่ ${user.memberNumber} \n คุณ ${user.name} +${amount} สำเร็จ!\n──────────────────\nยอดสุทธิ: ${user.balance} บาท`;
+                                    // 🧼 ล้างคิวฝากทิ้งทันที
+                                    delete global.depositQueue[foundUserKey]; 
+
+                                    await saveDataToFirebase(); 
+                                    replyText = `💰 เติมเครดิตสมาชิกที่ ${user.memberNumber} \n คุณ ${user.name} +${amount} สำเร็จ!\n──────────────────\nยอดสุทธิ: ${user.balance} บาท`;
                                 }
                             } else if (command === "ลบ") {
                                 usersWallets[foundUserKey].balance -= amount;
                                 const user = usersWallets[foundUserKey];
-                                await saveDataToFirebase(); // 💾 เพิ่มจุดที่ 1
+                                await saveDataToFirebase(); 
                                 replyText = `🚨 ลบยอดเครดิตสมาชิกที่ ${user.memberNumber} \n คุณ ${user.name} -${amount}!\n──────────────────\nยอดปัจจุบัน: ${user.balance} บาท`;
                             }
                         }
                     }
                 }
             }
-                // ==================== [ ระบบเติมเงินแบบติดโปรโบนัสคูณ 10 (B เลขสมาชิก จำนวนเงิน) ] ====================
+// ==================== [ ระบบเติมเงินแบบติดโปรโบนัสคูณ 10 (B เลขสมาชิก จำนวนเงิน) ] ====================
             else if (command === "B" || command === "b") {
                 const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
                 if (userId !== ADMIN_ID) {
                     replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งนี้ครับ";
                 } else {
                     const targetMemberId = parseInt(args[1]); 
-                    const amount = parseFloat(args[2]); // ยอดรวมที่แอดมินพิมพ์มา เช่น 200
+                    const amount = parseFloat(args[2]); 
 
                     if (!targetMemberId || isNaN(amount) || amount <= 0) {
                         replyText = `⚠️ รูปแบบโปรโบนัสไม่ถูกต้อง\nกรุณาพิมพ์: B [เลขสมาชิก] [ยอดรวมรวมโบนัส]\n(ตัวอย่าง: B 1 200)`;
@@ -152,64 +151,29 @@ app.post('/callback', async (req, res) => {
                         if (!foundUserKey) {
                             replyText = `❌ ไม่พบเลขสมาชิกที่ ${targetMemberId} ในระบบครับ`;
                         } else {
-                            // 🚨 [ดักคนเหลี่ยม] เช็กก่อนว่าสมาชิกคนนี้ได้พิมพ์ "ฝาก" เพื่อเปิดยอดฝากไว้จริงไหม
+                            // 🚨 [ดักคนเหลี่ยม] เช็กคิวฝากเงินก่อนให้โปรโบนัส
                             if (!global.depositQueue || !global.depositQueue[foundUserKey] || global.depositQueue[foundUserKey].status !== 'WAITING_ADMIN') {
-                                replyText = `❌ เติมโบนัสไม่สำเร็จ! สมาชิกหมายเลข ${targetMemberId} ยังไม่ได้พิมพ์เปิดยอดฝากเข้ามาในระบบ หรือยอดนี้เคยถูกเติมไปแล้วครับน้า (กันคนเหลี่ยมเอาสลิปเก่ามาเวียนเทียน!)`;
+                                replyText = `❌ เติมโบนัสไม่สำเร็จ! สมาชิกหมายเลข ${targetMemberId} ยังไม่ได้พิมพ์เปิดยอดฝากเข้ามาในระบบ หรือยอดนี้เคยถูกเติมไปแล้วครับน้า`;
                             } else {
-                            const user = usersWallets[foundUserKey];
-                            
-                            // 🧮 เติมเงินให้จริง + คำนวณเทิร์น 10 เท่าจากยอดรวมทันที
-                            user.balance += amount;
-                            user.turnoverTarget = amount * 10; // 200 x 10 = 2000 บาท
-
-                             // 🧼 ล้างคิวฝากของคนนี้ทิ้งทันที เพื่อไม่ให้เอามาเคลมซ้ำได้อีก!
-                                delete global.depositQueue[foundUserKey];
+                                const user = usersWallets[foundUserKey];
                                 
-                            await saveDataToFirebase();
+                                user.balance += amount;
+                                user.turnoverTarget = amount * 10; 
+                                
+                                // 🧼 ล้างคิวฝากทิ้งทันที
+                                delete global.depositQueue[foundUserKey]; 
 
-                            replyText = `🎁 เติมโบนัสให้สมาชิกที่ [ ${user.memberNumber} ] \n คุณ ${user.name} สำเร็จ!\n──────────────────\n` +
-                                        `💰 ยอดสุทธิ: +${amount} บาท\n──────────────────\n` +
-                                        `🔒 เงื่อนไข ต้องทำยอดเทิร์นสะสม (ได้/เสีย) ให้ครบ: ${user.turnoverTarget} บาท`;
-                        }
-                    }
-                }
-            }
-                else if (userMsg.startsWith('bb')) {
-                const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
-                if (userId !== ADMIN_ID) {
-                    replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งนี้ครับ";
-                } else {
-                    // แกะเอาเฉพาะตัวเลขสมาชิกออกมา (ตัดคำว่า bb และลบช่องว่างออก)
-                    const targetMemberId = parseInt(userMsg.replace('bb', '').trim());
-                    
-                    if (isNaN(targetMemberId)) {
-                        replyText = `⚠️ รูปแบบคำสั่งไม่ถูกต้อง\nกรุณาพิมพ์: bbตามด้วยเลขสมาชิก\n(ตัวอย่างเช่น: bb1)`;
-                    } else {
-                        let targetUserId = null;
-                        // ค้นหา ID ผู้ใช้งานในระบบผ่าน memberNumber
-                        for (let id in usersWallets) {
-                            if (usersWallets[id].memberNumber === targetMemberId) {
-                                targetUserId = id;
-                                break;
+                                await saveDataToFirebase();
+
+                                replyText = `🎁 เติมโบนัสให้สมาชิกที่ [ ${user.memberNumber} ] \n คุณ ${user.name} สำเร็จ!\n──────────────────\n` +
+                                            `💰 ยอดสุทธิ: +${amount} บาท\n──────────────────\n` +
+                                            `🔒 เงื่อนไข ต้องทำยอดเทิร์นสะสม (ได้/เสีย) ให้ครบ: ${user.turnoverTarget} บาท`;
                             }
                         }
-
-                        if (targetUserId) {
-                            // 🔓 ทำการรีเซ็ตยอดเทิร์นเป้าหมายและจำนวนเทิร์นที่นับได้ให้กลายเป็น 0 ทันที
-                            usersWallets[targetUserId].turnoverTarget = 0;
-                            usersWallets[targetUserId].turnoverCount = 0;
-                            await saveDataToFirebase(); // 💾 เซฟถาวร
-                            
-                            replyText = `🔓 ล้างยอดเทิร์นสำเร็จ!\n👤 สมาชิกคนที่: ${targetMemberId}\n👤 ชื่อ: ${usersWallets[targetUserId].name}\n\n✨ สถานะปัจจุบัน: ปกติ (ถอนเงินได้เลยไม่ติดโปร)`;
-                        } else {
-                            replyText = `❌ ไม่พบข้อมูลสมาชิกคนที่ ${targetMemberId} ในระบบครับ`;
-                        }
                     }
                 }
             }
-               // =================================================================
-            // 💰 [แทรกตรงนี้เลยน้า!] คำสั่ง "ฝาก [เงิน]" (สุ่มเศษสตางค์ ใช้ replyText ระบบเดิม ไม่ทับรูป)
-            // =================================================================
+// ==================== [ ระบบแจ้งฝากเงินสุ่มเศษสตางค์ ] ====================
             else if (command === "ฝาก") {
                 const amount = parseInt(args[1]);
 
@@ -244,7 +208,7 @@ app.post('/callback', async (req, res) => {
                         }
                     }
                 }
-            } 
+            }
                 // ==================== [ คำสั่งแอดมิน: ชถ (เช็กรายการรอถอนเงินทั้งหมด) ] ====================
             else if (userMsg.trim() === 'ชถ') {
                 const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";

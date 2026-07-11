@@ -71,8 +71,8 @@ app.post('/callback', async (req, res) => {
     if (!events) return res.sendStatus(200);
 
     for (let event of events) {
-        // =================================================================
-        // 📸 [ระบบฟิวชั่น V2] ดักจับรูปภาพสลิป (ดาวน์โหลดข้อมูลดิบเพื่อดีดเข้าไลน์แอดมิน)
+       // =================================================================
+        // 📸 [ระบบฟิวชั่น ร่างสุดยอด] ดักจับรูปภาพสลิป (บันทึกและส่งผ่าน Render ตัวเอง)
         // =================================================================
         if (event.type === 'message' && event.message.type === 'image') {
             const replyToken = event.replyToken;
@@ -81,23 +81,34 @@ app.post('/callback', async (req, res) => {
             if (global.depositQueue && global.depositQueue[userId] && global.depositQueue[userId].status === 'WAITING_ADMIN') {
                 const currentQueue = global.depositQueue[userId];
                 const messageId = event.message.id;
-                
                 const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
                 
+                // ตั้งชื่อไฟล์รูปภาพตามสมาชิกลำดับที่ เพื่อไม่ให้ซ้ำกัน
+                const filename = `slip-${currentQueue.memberId}.jpg`;
+
                 try {
-                    // 📁 1. ไปดูดไฟล์ภาพแบบ Binary (แปะ Token ไปด้วยเพื่อให้ LINE ยอมปล่อยรูป)
-                    const lineImageResponse = await axios({
+                    // 📁 1. ดาวน์โหลดรูปภาพสลิปดิบจาก LINE API
+                    const response = await axios({
                         method: 'get',
                         url: `https://api-data.line.me/v2/bot/message/${messageId}/content`,
-                        responseType: 'arraybuffer',
+                        responseType: 'stream',
                         headers: { 'Authorization': `Bearer ${TOKEN}` }
                     });
 
-                    // 🛠️ 2. แปลงรูปภาพเป็นรูปแบบ Base64 เพื่อให้ส่งต่อได้ปลอดภัย
-                    const base64Image = Buffer.from(lineImageResponse.data, 'binary').toString('base64');
-                    const dataUrl = `data:image/jpeg;base64,${base64Image}`;
+                    // 💾 2. บันทึกรูปภาพลงบนเซิร์ฟเวอร์ Render
+                    const writer = fs.createWriteStream(filename);
+                    response.data.pipe(writer);
 
-                    // 🔔 3. เตรียมข้อความสรุปข้อมูลส่งให้แอดมิน
+                    // รอจนบันทึกไฟล์เสร็จสิ้น
+                    await new Promise((resolve, reject) => {
+                        writer.on('finish', resolve);
+                        writer.on('error', reject);
+                    });
+
+                    // 🔗 3. สร้างลิงก์สาธารณะจากเซิร์ฟเวอร์ของน้าเอง (ดึงชื่อ URL จาก Render อัตโนมัติ)
+                    const myServerUrl = `https://linepok3p.onrender.com/${filename}`;
+
+                    // 🔔 4. เตรียมข้อความสรุปข้อมูลส่งให้แอดมิน
                     const adminNotifyMessage = `🔔 มีรายการแจ้งโอนเงินใหม่!\n\n` +
                                                `🆔 สมาชิกลำดับที่: ${currentQueue.memberId}\n` +
                                                `👤 ชื่อ: ${currentQueue.name}\n` +
@@ -105,14 +116,14 @@ app.post('/callback', async (req, res) => {
                                                `👉 อนุมัติเติมเงินพิมพ์: เติม ${currentQueue.memberId} ${currentQueue.rawAmount}\n` +
                                                `👉 อนุมัติแบบติดโปรพิมพ์: B ${currentQueue.memberId} [ยอดรวมโบนัส]`;
 
-                    // 🚀 4. สั่ง Push ส่งข้อมูลหาแอดมิน (คราวนี้ส่งแบบ Data URL เพื่อตัดปัญหา LINE บล็อกรูป)
+                    // 🚀 5. สั่ง Push ส่งรูปภาพที่ดึงจากเซิร์ฟเวอร์เรา + ข้อความ หาแอดมินพร้อมกัน
                     await axios.post('https://api.line.me/v2/bot/message/push', {
                         to: ADMIN_ID,
                         messages: [
                             {
                                 type: 'image',
-                                originalContentUrl: dataUrl,
-                                previewImageUrl: dataUrl
+                                originalContentUrl: myServerUrl,
+                                previewImageUrl: myServerUrl
                             },
                             { 
                                 type: 'text', 
@@ -126,7 +137,7 @@ app.post('/callback', async (req, res) => {
                         }
                     });
 
-                    // 💬 5. ตอบกลับแจ้งสมาชิกฝั่งลูกค้า
+                    // 💬 6. ตอบกลับแจ้งสมาชิกฝั่งลูกค้า
                     await axios.post('https://api.line.me/v2/bot/message/reply', {
                         replyToken: replyToken,
                         messages: [{ type: 'text', text: `✅ บอทได้รับรูปภาพสลิปยอด ${currentQueue.displayAmount} บาท เรียบร้อยแล้วครับน้า!\n\n⏳ ระบบกำลังส่งต่อสลิปให้แอดมินตรวจสอบความถูกต้อง รอเครดิตเข้าสักครู่นะครับ` }]
@@ -1634,3 +1645,5 @@ else if (command.toLowerCase() === "y") {
 
 app.get('/', (req, res) => { res.send('ระบบลงทะเบียนรันปกติ'); });
 app.listen(process.env.PORT || 3000, () => { console.log('Server is running...'); });
+// เปิดทางให้เข้าถึงไฟล์รูปภาพสลิปที่เซฟไว้ในเครื่องได้ตรงๆ
+app.use(express.static(__dirname));

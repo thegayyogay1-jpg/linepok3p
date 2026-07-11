@@ -122,7 +122,7 @@ app.post('/callback', async (req, res) => {
                                                `💰 ยอดที่ต้องตรงกับสลิป:\n ${currentQueue.displayAmount} บาท ${timeWarningTag}\n──────────────────\n` +
                                                `👉 อนุมัติเติมเงินพิมพ์: เติม ${currentQueue.memberId} ${currentQueue.rawAmount}\n` +
                                                `👉 อนุมัติแบบติดโปรพิมพ์: B ${currentQueue.memberId} [ยอดรวมโบนัส]`+
-                                               `👉 ปฏิเสธพิมพ์: cc ${currentQueue.memberId}`;
+                                               `👉 ปฏิเสธพิมพ์: cc ${currentQueue.memberId}n`;
 
                     // 🚀 4. สั่ง Push ส่งรูปภาพ + ข้อความ หาแอดมินพร้อมกัน
                     await axios.post('https://api.line.me/v2/bot/message/push', {

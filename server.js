@@ -220,7 +220,7 @@ app.post('/callback', async (req, res) => {
                     }
                 }
             }
-// ==================== [ ระบบเติมเงินแบบติดโปรโบนัสคูณ 10 (B เลขสมาชิก จำนวนเงิน) ] ====================
+// ==================== [ ระบบเติมเงินแบบติดโปรโบนัสคูณ 15 (B เลขสมาชิก จำนวนเงิน) ] ====================
             else if (command === "B" || command === "b") {
                 // 🚨 เปลี่ยนตรงนี้: เช็กว่า ID คนพิมพ์อยู่ในกล่องแอดมินไหม
                 if (!ADMIN_IDS.includes(userId)) {
@@ -250,7 +250,7 @@ app.post('/callback', async (req, res) => {
                                 const user = usersWallets[foundUserKey];
                                 
                                 user.balance += amount;
-                                user.turnoverTarget = amount * 10; 
+                                user.turnoverTarget = amount * 15; 
                                 
                                 // 🧼 ล้างคิวฝากทิ้งทันที
                                 delete global.depositQueue[foundUserKey]; 

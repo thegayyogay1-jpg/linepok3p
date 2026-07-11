@@ -72,38 +72,47 @@ app.post('/callback', async (req, res) => {
 
     for (let event of events) {
         // =================================================================
-        // 📸 [ระบบฟิวชั่น] ดักจับรูปภาพสลิป (ส่งรูปภาพดีดเข้าไลน์แอดมินโดยตรง)
+        // 📸 [ระบบฟิวชั่น V2] ดักจับรูปภาพสลิป (ดาวน์โหลดข้อมูลดิบเพื่อดีดเข้าไลน์แอดมิน)
         // =================================================================
         if (event.type === 'message' && event.message.type === 'image') {
             const replyToken = event.replyToken;
             const userId = event.source.userId;
 
-            // เช็กก่อนว่าสมาชิกคนนี้ได้พิมพ์ "ฝาก" สุ่มเศษสตางค์ค้างไว้ในระบบไหม
             if (global.depositQueue && global.depositQueue[userId] && global.depositQueue[userId].status === 'WAITING_ADMIN') {
                 const currentQueue = global.depositQueue[userId];
                 const messageId = event.message.id;
                 
-                // 🔗 ลิงก์ดึงรูปภาพของไลน์ดั้งเดิม
-                const slipUrl = `https://api-data.line.me/v2/bot/message/${messageId}/content`;
-
-                // 🔔 1. เตรียมข้อความสรุปข้อมูลส่งให้แอดมิน
-                const adminNotifyMessage = `🔔 มีรายการแจ้งโอนเงินใหม่!\n\n` +
-                                           `🆔 สมาชิกลำดับที่: ${currentQueue.memberId}\n` +
-                                           `👤 ชื่อ: ${currentQueue.name}\n` +
-                                           `💰 ยอดที่ต้องตรงกับสลิป: 👉 ${currentQueue.displayAmount} บาท 👈\n\n` +
-                                           `👉 อนุมัติเติมเงินพิมพ์: เติม ${currentQueue.memberId} ${currentQueue.rawAmount}\n` +
-                                           `👉 อนุมัติแบบติดโปรพิมพ์: B ${currentQueue.memberId} [ยอดรวมโบนัส]`;
-                
                 const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
+                
                 try {
-                    // 🚀 2. สั่ง Push ส่งทั้ง "รูปภาพสลิปจริง" และ "ข้อความข้อมูล" ไปแอดมินพร้อมกันในชุดเดียว!
+                    // 📁 1. ไปดูดไฟล์ภาพแบบ Binary (แปะ Token ไปด้วยเพื่อให้ LINE ยอมปล่อยรูป)
+                    const lineImageResponse = await axios({
+                        method: 'get',
+                        url: `https://api-data.line.me/v2/bot/message/${messageId}/content`,
+                        responseType: 'arraybuffer',
+                        headers: { 'Authorization': `Bearer ${TOKEN}` }
+                    });
+
+                    // 🛠️ 2. แปลงรูปภาพเป็นรูปแบบ Base64 เพื่อให้ส่งต่อได้ปลอดภัย
+                    const base64Image = Buffer.from(lineImageResponse.data, 'binary').toString('base64');
+                    const dataUrl = `data:image/jpeg;base64,${base64Image}`;
+
+                    // 🔔 3. เตรียมข้อความสรุปข้อมูลส่งให้แอดมิน
+                    const adminNotifyMessage = `🔔 มีรายการแจ้งโอนเงินใหม่!\n\n` +
+                                               `🆔 สมาชิกลำดับที่: ${currentQueue.memberId}\n` +
+                                               `👤 ชื่อ: ${currentQueue.name}\n` +
+                                               `💰 ยอดที่ต้องตรงกับสลิป: 👉 ${currentQueue.displayAmount} บาท 👈\n\n` +
+                                               `👉 อนุมัติเติมเงินพิมพ์: เติม ${currentQueue.memberId} ${currentQueue.rawAmount}\n` +
+                                               `👉 อนุมัติแบบติดโปรพิมพ์: B ${currentQueue.memberId} [ยอดรวมโบนัส]`;
+
+                    // 🚀 4. สั่ง Push ส่งข้อมูลหาแอดมิน (คราวนี้ส่งแบบ Data URL เพื่อตัดปัญหา LINE บล็อกรูป)
                     await axios.post('https://api.line.me/v2/bot/message/push', {
                         to: ADMIN_ID,
                         messages: [
                             {
                                 type: 'image',
-                                originalContentUrl: slipUrl, // รูปภาพเต็มขนาด (LINE จะดึงด้วย Token บอทให้เองอัตโนมัติ)
-                                previewImageUrl: slipUrl     // รูปภาพขนาดเล็กพรีวิว
+                                originalContentUrl: dataUrl,
+                                previewImageUrl: dataUrl
                             },
                             { 
                                 type: 'text', 
@@ -117,7 +126,7 @@ app.post('/callback', async (req, res) => {
                         }
                     });
 
-                    // 💬 3. ตอบกลับแจ้งสมาชิกฝั่งลูกค้าตามปกติ
+                    // 💬 5. ตอบกลับแจ้งสมาชิกฝั่งลูกค้า
                     await axios.post('https://api.line.me/v2/bot/message/reply', {
                         replyToken: replyToken,
                         messages: [{ type: 'text', text: `✅ บอทได้รับรูปภาพสลิปยอด ${currentQueue.displayAmount} บาท เรียบร้อยแล้วครับน้า!\n\n⏳ ระบบกำลังส่งต่อสลิปให้แอดมินตรวจสอบความถูกต้อง รอเครดิตเข้าสักครู่นะครับ` }]

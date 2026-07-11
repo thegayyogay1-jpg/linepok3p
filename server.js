@@ -1580,6 +1580,43 @@ else if (command.toLowerCase() === "y") {
                     }
                 }
             }
+                // ==================== [ เพิ่มใหม่: คำสั่งแอดมินเช็ก ID LINE ตัวจริงของสมาชิก (id1, id2...) ] ====================
+            else if (userMsg.startsWith('id') && !userMsg.includes('-') && !userMsg.endsWith('+')) {
+                
+                // 🚨 กรองขั้นสูงสุด: ถ้าไม่ใช่แอดมินในกล่องกลาง หรือ แอดมินไม่ได้สั่งในแชทส่วนตัว (1 ต่อ 1) ให้บอทเงียบกริบไม่ตอบ
+                if (!ADMIN_IDS.includes(userId) || event.source.type !== 'user') {
+                    return res.sendStatus(200);
+                }
+
+                const args = userMsg.split(/\s+/);
+                const targetMemberId = parseInt(args[0].replace('id', '')); // ดึงตัวเลขจากคำว่า id12 -> 12
+
+                if (!targetMemberId || isNaN(targetMemberId)) {
+                    replyText = "❌ รูปแบบผิดครับน้า! ต้องพิมพ์เช่น: id12 (เพื่อเช็ก ID LINE ของสมาชิกเลขที่ 12)";
+                } else {
+                    let foundUserKey = null;
+                    // ค้นหาในฐานข้อมูลกระเป๋าตังค์
+                    for (let key in usersWallets) {
+                        if (usersWallets[key].memberNumber === targetMemberId) {
+                            foundUserKey = key; // key ก็คือ ID LINE (U...) นั่นเองครับ
+                            break;
+                        }
+                    }
+
+                    if (foundUserKey) {
+                        const user = usersWallets[foundUserKey];
+                        // 👑 พ่น ID LINE ตัวจริงออกมาให้แอดมินก๊อปปี้ได้ง่ายๆ
+                        replyText = `👑 [ข้อมูล ID LINE สมาชิก]\n` +
+                                    `──────────────────\n` +
+                                    `🆔 สมาชิกลำดับที่: ${user.memberNumber}\n` +
+                                    `👤 ชื่อ: ${user.name}\n` +
+                                    `🔑 ID LINE (ก๊อปปี้ช่องนี้): \n\`${foundUserKey}\``; 
+                                    // การใส่ `ครอบไว้ จะทำให้บนหน้าจอไลน์ของน้ากดจิ้มทีเดียวแล้วก๊อปปี้ข้อความได้เลยครับ
+                    } else {
+                        replyText = `❌ ไม่พบเลขสมาชิกที่ ${targetMemberId} ในระบบครับน้า`;
+                    }
+                }
+            }
             // ==================== [  คำสั่งแอดมินรีเซ็ตระบบล้างกระดานผ่านแชทส่วนตัว (resetall) ] ====================
             else if (userMsg === 'ล้างระบบ') {
                 const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db"; // 👑 ไอดี LINE ของคุณน้า

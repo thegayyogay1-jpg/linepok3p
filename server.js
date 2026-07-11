@@ -73,7 +73,7 @@ app.post('/callback', async (req, res) => {
 
     for (let event of events) {
        // =================================================================
-        // 📸 [ระบบฟิวชั่น ร่างสุดยอด] ดักจับรูปภาพสลิป (บันทึกและส่งผ่าน Render ตัวเอง)
+        // 📸 [ระบบฟิวชั่น ร่างอัปเกรดเตือนภัย] ดักจับรูปภาพสลิป + เตือนแอดมินถ้าส่งช้าเกิน 5 นาที
         // =================================================================
         if (event.type === 'message' && event.message.type === 'image') {
             const replyToken = event.replyToken;
@@ -84,7 +84,15 @@ app.post('/callback', async (req, res) => {
                 const messageId = event.message.id;
                 const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
                 
-                // ตั้งชื่อไฟล์รูปภาพตามสมาชิกลำดับที่ เพื่อไม่ให้ซ้ำกัน
+                // ⏱️ คำนวณเวลาที่ใช้ไปนับตั้งแต่กดฝาก (หน่วยเป็นนาที)
+                const timeElapsed = (Date.now() - currentQueue.createdAt) / 1000 / 60;
+
+                // 🚨 สร้างป้ายเตือนภัย ถ้าส่งสลิปช้ากว่า 5 นาที
+                let timeWarningTag = "";
+                if (timeElapsed > 5) {
+                    timeWarningTag = `\n\n⚠️ [แจ้งเตือนภัย] สลิปนี้ส่งเลทเกิน 5 นาทีนะน้า! (ส่งช้าไปประมาณ ${Math.floor(timeElapsed)} นาที) เช็กเวลาโอนบนสลิปและสเตทเม้นท์ให้ดีๆ ก่อนกดเติมเงินครับ!`;
+                }
+
                 const filename = `slip-${currentQueue.memberId}.jpg`;
 
                 try {
@@ -100,36 +108,27 @@ app.post('/callback', async (req, res) => {
                     const writer = fs.createWriteStream(filename);
                     response.data.pipe(writer);
 
-                    // รอจนบันทึกไฟล์เสร็จสิ้น
                     await new Promise((resolve, reject) => {
                         writer.on('finish', resolve);
                         writer.on('error', reject);
                     });
 
-                    // 🔗 3. สร้างลิงก์สาธารณะจากเซิร์ฟเวอร์ของน้าเอง (ดึงชื่อ URL จาก Render อัตโนมัติ)
                     const myServerUrl = `https://linepok3p.onrender.com/${filename}`;
 
-                    // 🔔 4. เตรียมข้อความสรุปข้อมูลส่งให้แอดมิน
+                    // 🔔 3. เตรียมข้อความสรุปข้อมูลส่งให้แอดมิน + แปะป้ายเตือนภัยเข้าไปด้วย
                     const adminNotifyMessage = `🔔 มีรายการแจ้งโอนเงินใหม่!\n\n` +
                                                `🆔 สมาชิกลำดับที่: ${currentQueue.memberId}\n` +
                                                `👤 ชื่อ: ${currentQueue.name}\n` +
-                                               `💰 ยอดที่ต้องตรงกับสลิป: 👉 ${currentQueue.displayAmount} บาท 👈\n\n` +
+                                               `💰 ยอดที่ต้องตรงกับสลิป: 👉 ${currentQueue.displayAmount} บาท 👈${timeWarningTag}\n\n` +
                                                `👉 อนุมัติเติมเงินพิมพ์: เติม ${currentQueue.memberId} ${currentQueue.rawAmount}\n` +
                                                `👉 อนุมัติแบบติดโปรพิมพ์: B ${currentQueue.memberId} [ยอดรวมโบนัส]`;
 
-                    // 🚀 5. สั่ง Push ส่งรูปภาพที่ดึงจากเซิร์ฟเวอร์เรา + ข้อความ หาแอดมินพร้อมกัน
+                    // 🚀 4. สั่ง Push ส่งรูปภาพ + ข้อความ หาแอดมินพร้อมกัน
                     await axios.post('https://api.line.me/v2/bot/message/push', {
                         to: ADMIN_ID,
                         messages: [
-                            {
-                                type: 'image',
-                                originalContentUrl: myServerUrl,
-                                previewImageUrl: myServerUrl
-                            },
-                            { 
-                                type: 'text', 
-                                text: adminNotifyMessage 
-                            }
+                            { type: 'image', originalContentUrl: myServerUrl, previewImageUrl: myServerUrl },
+                            { type: 'text', text: adminNotifyMessage }
                         ]
                     }, {
                         headers: {
@@ -138,7 +137,7 @@ app.post('/callback', async (req, res) => {
                         }
                     });
 
-                    // 💬 6. ตอบกลับแจ้งสมาชิกฝั่งลูกค้า
+                    // 💬 5. ตอบกลับแจ้งสมาชิกฝั่งลูกค้าตามปกติ
                     await axios.post('https://api.line.me/v2/bot/message/reply', {
                         replyToken: replyToken,
                         messages: [{ type: 'text', text: `✅ บอทได้รับรูปภาพสลิปยอด ${currentQueue.displayAmount} บาท เรียบร้อยแล้วครับน้า!\n\n⏳ ระบบกำลังส่งต่อสลิปให้แอดมินตรวจสอบความถูกต้อง รอเครดิตเข้าสักครู่นะครับ` }]

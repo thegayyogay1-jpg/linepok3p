@@ -72,7 +72,7 @@ app.post('/callback', async (req, res) => {
 
     for (let event of events) {
         // =================================================================
-        // 📸 [ระบบฟิวชั่น] ดักจับรูปภาพสลิป (เฉพาะคนที่พิมพ์ "ฝาก" เปิดยอดไว้)
+        // 📸 [ระบบฟิวชั่น] ดักจับรูปภาพสลิป (ส่งรูปภาพดีดเข้าไลน์แอดมินโดยตรง)
         // =================================================================
         if (event.type === 'message' && event.message.type === 'image') {
             const replyToken = event.replyToken;
@@ -83,24 +83,33 @@ app.post('/callback', async (req, res) => {
                 const currentQueue = global.depositQueue[userId];
                 const messageId = event.message.id;
                 
-                // 🔗 ลิงก์ดึงรูปภาพจาก Server ของ LINE
+                // 🔗 ลิงก์ดึงรูปภาพของไลน์ดั้งเดิม
                 const slipUrl = `https://api-data.line.me/v2/bot/message/${messageId}/content`;
 
-                // 🔔 ส่งข้อความ Push แจ้งเตือนแอดมินในไลน์กลุ่มทันที พร้อมแนบลิงก์รูปสลิป
-                const adminNotifyMessage = `🔔 มีรายการแจ้งโอนเงินพร้อมสลิปใหม่!\n\n` +
+                // 🔔 1. เตรียมข้อความสรุปข้อมูลส่งให้แอดมิน
+                const adminNotifyMessage = `🔔 มีรายการแจ้งโอนเงินใหม่!\n\n` +
                                            `🆔 สมาชิกลำดับที่: ${currentQueue.memberId}\n` +
                                            `👤 ชื่อ: ${currentQueue.name}\n` +
-                                           `💰 ยอดที่ระบบสุ่มให้โอน: 👉 ${currentQueue.displayAmount} บาท 👈\n` +
-                                           `🔗 ลิงก์รูปภาพสลิป: ${slipUrl}\n\n` +
+                                           `💰 ยอดที่ต้องตรงกับสลิป: 👉 ${currentQueue.displayAmount} บาท 👈\n\n` +
                                            `👉 อนุมัติเติมเงินพิมพ์: เติม ${currentQueue.memberId} ${currentQueue.rawAmount}\n` +
                                            `👉 อนุมัติแบบติดโปรพิมพ์: B ${currentQueue.memberId} [ยอดรวมโบนัส]`;
                 
                 const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
                 try {
-                    // ส่งข้อความหาแอดมิน
+                    // 🚀 2. สั่ง Push ส่งทั้ง "รูปภาพสลิปจริง" และ "ข้อความข้อมูล" ไปแอดมินพร้อมกันในชุดเดียว!
                     await axios.post('https://api.line.me/v2/bot/message/push', {
                         to: ADMIN_ID,
-                        messages: [{ type: 'text', text: adminNotifyMessage }]
+                        messages: [
+                            {
+                                type: 'image',
+                                originalContentUrl: slipUrl, // รูปภาพเต็มขนาด (LINE จะดึงด้วย Token บอทให้เองอัตโนมัติ)
+                                previewImageUrl: slipUrl     // รูปภาพขนาดเล็กพรีวิว
+                            },
+                            { 
+                                type: 'text', 
+                                text: adminNotifyMessage 
+                            }
+                        ]
                     }, {
                         headers: {
                             'Content-Type': 'application/json',
@@ -108,7 +117,7 @@ app.post('/callback', async (req, res) => {
                         }
                     });
 
-                    // ตอบกลับแจ้งสมาชิกฝั่งลูกค้า
+                    // 💬 3. ตอบกลับแจ้งสมาชิกฝั่งลูกค้าตามปกติ
                     await axios.post('https://api.line.me/v2/bot/message/reply', {
                         replyToken: replyToken,
                         messages: [{ type: 'text', text: `✅ บอทได้รับรูปภาพสลิปยอด ${currentQueue.displayAmount} บาท เรียบร้อยแล้วครับน้า!\n\n⏳ ระบบกำลังส่งต่อสลิปให้แอดมินตรวจสอบความถูกต้อง รอเครดิตเข้าสักครู่นะครับ` }]
@@ -122,10 +131,9 @@ app.post('/callback', async (req, res) => {
                 } catch (err) {
                     console.error("❌ ระบบแจ้งเตือนรูปสลิปล้มเหลว:", err.message);
                 }
-                return res.sendStatus(200); // ทำงานของรูปภาพเสร็จแล้ว จบกระบวนการตรงนี้เลย
+                return res.sendStatus(200); 
             }
             
-            // ถ้าส่งรูปมาลอยๆ โดยไม่ได้พิมพ์คำว่า "ฝาก" เพื่อเปิดระบบไว้ก่อน ให้ปล่อยผ่านบอทไม่ทำงาน
             return res.sendStatus(200);
         }
         if (event.type === 'message' && event.message.type === 'text') {

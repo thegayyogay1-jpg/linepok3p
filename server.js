@@ -71,6 +71,63 @@ app.post('/callback', async (req, res) => {
     if (!events) return res.sendStatus(200);
 
     for (let event of events) {
+        // =================================================================
+        // 📸 [ระบบฟิวชั่น] ดักจับรูปภาพสลิป (เฉพาะคนที่พิมพ์ "ฝาก" เปิดยอดไว้)
+        // =================================================================
+        if (event.type === 'message' && event.message.type === 'image') {
+            const replyToken = event.replyToken;
+            const userId = event.source.userId;
+
+            // เช็กก่อนว่าสมาชิกคนนี้ได้พิมพ์ "ฝาก" สุ่มเศษสตางค์ค้างไว้ในระบบไหม
+            if (global.depositQueue && global.depositQueue[userId] && global.depositQueue[userId].status === 'WAITING_ADMIN') {
+                const currentQueue = global.depositQueue[userId];
+                const messageId = event.message.id;
+                
+                // 🔗 ลิงก์ดึงรูปภาพจาก Server ของ LINE
+                const slipUrl = `https://api-data.line.me/v2/bot/message/${messageId}/content`;
+
+                // 🔔 ส่งข้อความ Push แจ้งเตือนแอดมินในไลน์กลุ่มทันที พร้อมแนบลิงก์รูปสลิป
+                const adminNotifyMessage = `🔔 มีรายการแจ้งโอนเงินพร้อมสลิปใหม่!\n\n` +
+                                           `🆔 สมาชิกลำดับที่: ${currentQueue.memberId}\n` +
+                                           `👤 ชื่อ: ${currentQueue.name}\n` +
+                                           `💰 ยอดที่ระบบสุ่มให้โอน: 👉 ${currentQueue.displayAmount} บาท 👈\n` +
+                                           `🔗 ลิงก์รูปภาพสลิป: ${slipUrl}\n\n` +
+                                           `👉 อนุมัติเติมเงินพิมพ์: เติม ${currentQueue.memberId} ${currentQueue.rawAmount}\n` +
+                                           `👉 อนุมัติแบบติดโปรพิมพ์: B ${currentQueue.memberId} [ยอดรวมโบนัส]`;
+                
+                const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
+                try {
+                    // ส่งข้อความหาแอดมิน
+                    await axios.post('https://api.line.me/v2/bot/message/push', {
+                        to: ADMIN_ID,
+                        messages: [{ type: 'text', text: adminNotifyMessage }]
+                    }, {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${TOKEN}`
+                        }
+                    });
+
+                    // ตอบกลับแจ้งสมาชิกฝั่งลูกค้า
+                    await axios.post('https://api.line.me/v2/bot/message/reply', {
+                        replyToken: replyToken,
+                        messages: [{ type: 'text', text: `✅ บอทได้รับรูปภาพสลิปยอด ${currentQueue.displayAmount} บาท เรียบร้อยแล้วครับน้า!\n\n⏳ ระบบกำลังส่งต่อสลิปให้แอดมินตรวจสอบความถูกต้อง รอเครดิตเข้าสักครู่นะครับ` }]
+                    }, {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${TOKEN}`
+                        }
+                    });
+
+                } catch (err) {
+                    console.error("❌ ระบบแจ้งเตือนรูปสลิปล้มเหลว:", err.message);
+                }
+                return res.sendStatus(200); // ทำงานของรูปภาพเสร็จแล้ว จบกระบวนการตรงนี้เลย
+            }
+            
+            // ถ้าส่งรูปมาลอยๆ โดยไม่ได้พิมพ์คำว่า "ฝาก" เพื่อเปิดระบบไว้ก่อน ให้ปล่อยผ่านบอทไม่ทำงาน
+            return res.sendStatus(200);
+        }
         if (event.type === 'message' && event.message.type === 'text') {
             const replyToken = event.replyToken;
             const userId = event.source.userId; 

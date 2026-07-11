@@ -7,6 +7,12 @@ app.use(express.json());
 // 💡 ไม่ต้องใส่ Token ในนี้แล้ว ระบบจะดึงจากตัวแปรบน Render อัตโนมัติ
 const TOKEN = process.env.CHANNEL_ACCESS_TOKEN;
 
+// 👥 [กล่องรวม ID แอดมินกลาง] มีแอดมินเพิ่มมาใส่เพิ่มตรงนี้ที่เดียวจบเลยครับน้า!
+const ADMIN_IDS = [
+    "U2fb9233e5c539ae3970cbd698e2e18db", // แอดมินคนที่ 1
+    "Uxxxxxxใส่IDไลน์ของแอดมินคนที่2ตรงนี้ครับxxxxxx" // แอดมินคนที่ 2
+];
+
 // 📡 ลิงก์เชื่อมโยงไปยังฐานข้อมูล Firebase ถาวร 
 const FIREBASE_URL = "https://my-pokdeng-bot-default-rtdb.asia-southeast1.firebasedatabase.app/"; 
 
@@ -169,9 +175,9 @@ app.post('/callback', async (req, res) => {
 
             // ==================== [ 1. ระบบเติมเงิน/ลบเงิน ] ====================
             if (command === "เติม" || command === "ลบ") {
-                const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
-                if (userId !== ADMIN_ID) {
-                    replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งจัดการเครดิตครับ";
+                // 🚨 เปลี่ยนตรงนี้: เช็กว่า ID คนพิมพ์อยู่ในกล่องแอดมินไหม
+                if (!ADMIN_IDS.includes(userId)) {
+                    replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งนี้ครับ";
                 } else {
                     const targetMemberId = parseInt(args[1]); 
                     const amount = parseFloat(args[2]);      
@@ -216,8 +222,8 @@ app.post('/callback', async (req, res) => {
             }
 // ==================== [ ระบบเติมเงินแบบติดโปรโบนัสคูณ 10 (B เลขสมาชิก จำนวนเงิน) ] ====================
             else if (command === "B" || command === "b") {
-                const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
-                if (userId !== ADMIN_ID) {
+                // 🚨 เปลี่ยนตรงนี้: เช็กว่า ID คนพิมพ์อยู่ในกล่องแอดมินไหม
+                if (!ADMIN_IDS.includes(userId)) {
                     replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งนี้ครับ";
                 } else {
                     const targetMemberId = parseInt(args[1]); 
@@ -263,9 +269,8 @@ app.post('/callback', async (req, res) => {
 // ❌ [คำสั่งแอดมิน] ยกเลิกคิวแจ้งฝากเงิน (พิมพ์: cc [เลขสมาชิก])
 // =================================================================
             else if (command === "cc" || command === "Cc" || command === "CC") {
-                // เช็กก่อนว่าเป็นแอดมินตัวจริงไหม (ล็อก ID แอดมินไว้เพื่อความปลอดภัย)
-                const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
-                if (userId !== ADMIN_ID) {
+                // 🚨 เปลี่ยนตรงนี้: เช็กว่า ID คนพิมพ์อยู่ในกล่องแอดมินไหม
+                if (!ADMIN_IDS.includes(userId)) {
                     replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งนี้ครับ";
                 } else {
                     const targetMemberId = parseInt(args[1]); // ดึงเลขสมาชิกจากช่องที่สอง เช่น cc 1
@@ -354,8 +359,8 @@ app.post('/callback', async (req, res) => {
             }
                 // ==================== [ คำสั่งแอดมิน: ชถ (เช็กรายการรอถอนเงินทั้งหมด) ] ====================
             else if (userMsg.trim() === 'ชถ') {
-                const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
-                if (userId !== ADMIN_ID) {
+               // 🚨 เปลี่ยนตรงนี้: เช็กว่า ID คนพิมพ์อยู่ในกล่องแอดมินไหม
+                if (!ADMIN_IDS.includes(userId)) {
                     replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งนี้ครับ";
                 } else {
                     if (withdrawQueue.length === 0) {
@@ -377,10 +382,9 @@ app.post('/callback', async (req, res) => {
             }    
             // ==================== [ 2. แอดมิน เปิด/ปิดรอบแทง - เวอร์ชันป้องกันมือลั่น ] ====================
 else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
-    const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
-    if (userId !== ADMIN_ID) {
-        replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งควบคุมระบบครับ";
-    } else {
+    if (!ADMIN_IDS.includes(userId)) {
+    replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งนี้ครับ";
+} else {
         if (userMsg === 'o') {
             if (isRoundOpen) {
                 replyText = `⚠️ ตอนนี้ระบบกำลังเปิด "รอบที่ ${currentRound}" อยู่แล้วครับ`;
@@ -456,10 +460,9 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
 }
             // ==================== [ 3. แอดมิน เปิด/ปิดรอบจั่วไพ่ - เวอร์ชันบล็อกพิมพ์ซ้ำ ] ====================
 else if (userMsg === 'oo' || userMsg === 'xx') {
-                const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
-                if (userId !== ADMIN_ID) {
-                    replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งระบบจั่วครับ";
-                } else {
+                if (!ADMIN_IDS.includes(userId)) {
+    replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งนี้ครับ";
+} else {
                     // 🟢 [ฝั่งเปิดรอบจั่ว oo]
                     if (userMsg === 'oo') {
                         if (isRoundOpen) {
@@ -779,8 +782,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
             }
                 // ==================== [ 8. ระบบแอดมินส่งผลสรุปคำนวณแต้ม - เวอร์ชันใช้เครื่องหมาย = คั่นแยกขา (แก้ไขบั๊กตำแหน่งสลับ) ] ====================
 else if (originalMsg.startsWith('>')) {
-    const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
-    if (userId !== ADMIN_ID) {
+   if (!ADMIN_IDS.includes(userId)) {
         replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งสรุปผลคะแนนครับ";
     } else if (isRoundOpen) {
         replyText = "⚠️ ต้องพิมพ์ปิดรอบแทง (X) และทำขั้นตอนจั่วไพ่ให้เสร็จก่อน จึงจะสรุปผลได้ครับ";
@@ -890,8 +892,7 @@ else if (originalMsg.startsWith('>')) {
 
 // ==================== [ 9. ระบบแอดมินยืนยันผลคำนวณเงินจริง OK / NO (Settlement Engine) ] ====================
 else if (userMsg === 'ok' || userMsg === 'no') {
-    const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
-    if (userId !== ADMIN_ID) return;
+    if (!ADMIN_IDS.includes(userId)) return;
 
     if (!tempRoomResults || !tempDealerResult) {
         replyText = "⚠️ ไม่มีข้อมูลผลแต้มค้างอยู่ในระบบครับ กรุณาส่งผลแต้มด้วยเครื่องหมาย > ก่อนครับ";
@@ -1295,10 +1296,9 @@ else if (userMsg === 'ok' || userMsg === 'no') {
             }
                 // ==================== [ ระบบแอดมินอนุมัติการถอนเงิน (y เลขสมาชิก แบบคนเดียว หรือ หลายคนพร้อมกัน) ] ====================
 else if (command.toLowerCase() === "y") {
-    const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
-    if (userId !== ADMIN_ID) {
-        replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งอนุมัติยอดถอนเงินครับ";
-    } else {
+    if (!ADMIN_IDS.includes(userId)) {
+    replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งนี้ครับ";
+} else {
         // 🎯 ดึงเลขสมาชิกทั้งหมดจากตัวแปร args (เช่น พิมพ์ "y 1 2" -> args จะได้ ['1', '2'])
         // แต่ถ้าแอดมินพิมพ์แค่ "y" ลอยๆ args ตัวแรกสุด (args[0]) อาจจะเป็นคำว่า y ให้ข้ามไปเอาตัวถัดไป
         let targetMemberIds = args.map(id => parseInt(id)).filter(id => !isNaN(id));
@@ -1378,10 +1378,9 @@ else if (command.toLowerCase() === "y") {
 }
                 // ==================== [ ระบบแอดมินเรียกดูรายงานผลและโพยย้อนหลัง (v เลขรอบ) ] ====================
             else if (command.toLowerCase() === "v") {
-                const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
-                if (userId !== ADMIN_ID) {
-                    replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งดึงข้อมูลย้อนหลังครับ";
-                } else {
+                if (!ADMIN_IDS.includes(userId)) {
+    replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งนี้ครับ";
+} else {
                     const targetRound = parseInt(args[1]);
 
                     if (!targetRound || isNaN(targetRound)) {
@@ -1490,12 +1489,12 @@ else if (command.toLowerCase() === "y") {
             
             // ==================== [ แก้ไขบั๊ก m 1 2: คำสั่ง m เช็กบัญชีแยกรายคนด้วยเว้นวรรคอย่างแม่นยำ ] ====================
             if (userMsg.startsWith('m') && !userMsg.includes('-') && !userMsg.endsWith('+') && userMsg !== 'มข' && userMsg !== 'มจ') {
-                const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db"; // 👑 ไอดี LINE ของคุณน้า
-                
-                // 🚨 กรองขั้นสูงสุด: ถ้าไม่ใช่แอดมิน หรือ แอดมินไม่ได้สั่งในแชทส่วนตัว (1 ต่อ 1) ให้บอทเงียบกริบไม่ตอบ
-                if (userId !== ADMIN_ID || event.source.type !== 'user') {
+                // 🚨 กรองขั้นสูงสุด: ถ้าไม่ใช่แอดมินในกล่องกลาง หรือ แอดมินไม่ได้สั่งในแชทส่วนตัว (1 ต่อ 1) ให้บอทเงียบกริบไม่ตอบ
+                if (!ADMIN_IDS.includes(userId) || event.source.type !== 'user') {
                     return res.sendStatus(200);
                 }
+
+                const args = userMsg.split(/\s+/);
 
                 // 🛠️ แก้ไขจุดนี้: ดึงข้อความดิบทั้งหมดที่ต่อจากตัว m (เก็บเว้นวรรคเอาไว้ตัดแบ่ง)
                 const rawData = originalMsg.substring(1).trim(); 
@@ -1547,10 +1546,7 @@ else if (command.toLowerCase() === "y") {
             }
             // ==================== [ เพิ่มใหม่: คำสั่งแอดมินลบสมาชิกรายคนผ่านแชทส่วนตัว (del1, del2...) ] ====================
             else if (userMsg.startsWith('d') && !userMsg.includes('-') && !userMsg.endsWith('+')) {
-                const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db"; // 👑 ไอดี LINE ของคุณน้า
-                
-                // 🚨 กรองขั้นสูงสุด: ถ้าไม่ใช่แอดมิน หรือ แอดมินไม่ได้สั่งในแชทส่วนตัว (1 ต่อ 1) ให้บอทเงียบกริบไม่ตอบ
-                if (userId !== ADMIN_ID || event.source.type !== 'user') {
+                if (!ADMIN_IDS.includes(userId) || event.source.type !== 'user') {
                     return res.sendStatus(200);
                 }
 
@@ -1615,9 +1611,8 @@ else if (command.toLowerCase() === "y") {
 
             // ==================== [ จุดตรวจสอบคัดกรอง: ป้องกันไม่ให้บุคคลทั่วไปใช้งานบอทในแชทส่วนตัว ] ====================
             if (event.source.type === 'user') {
-                const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db"; // 👑 ไอดี LINE ของคุณน้า
-                // ถ้ายืนยันว่าคนพิมพ์ไม่ใช่แอดมิน ให้บอท "นิ่งเงียบสนิท" ไม่ประมวลผลคำสั่งใดๆ ทั้งสิ้นในแชทส่วนตัว
-                if (userId !== ADMIN_ID) {
+                // 👥 เช็กว่า ID คนทักอยู่ในกล่องแอดมินรวมไหม ถ้ายืนยันว่าไม่ใช่แอดมิน ให้บอท "นิ่งเงียบสนิท" ทันที
+                if (!ADMIN_IDS.includes(userId)) {
                     return res.sendStatus(200);
                 }
             }

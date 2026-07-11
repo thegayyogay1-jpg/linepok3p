@@ -258,6 +258,63 @@ app.post('/callback', async (req, res) => {
                     }
                 }
             }
+// =================================================================
+// ❌ [คำสั่งแอดมิน] ยกเลิกคิวแจ้งฝากเงิน (พิมพ์: cc [เลขสมาชิก])
+// =================================================================
+            else if (msg.startsWith("cc ")) {
+                // เช็กก่อนว่าเป็นแอดมินตัวจริงไหม (ล็อก ID แอดมินไว้เพื่อความปลอดภัย)
+                const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
+                if (userId !== ADMIN_ID) return res.sendStatus(200);
+
+                const args = msg.split(/\s+/);
+                const targetMemberId = args[1]; // ดึงเลขสมาชิกที่พิมพ์มา เช่น cc 1
+
+                if (!targetMemberId) {
+                    replyText = "❌ รูปแบบผิดครับน้า! ต้องพิมพ์เช่น: cc [เลขสมาชิก]";
+                } else {
+                    // ค้นหาในคิวฝากว่า เลขสมาชิกนี้ตรงกับ userId ไหนในระบบ RAM
+                    let foundUserId = null;
+                    let foundQueueData = null;
+
+                    if (global.depositQueue) {
+                        for (let uid in global.depositQueue) {
+                            if (global.depositQueue[uid].memberId == targetMemberId) {
+                                foundUserId = uid;
+                                foundQueueData = global.depositQueue[uid];
+                                break;
+                            }
+                        }
+                    }
+
+                    // 🧼 ถ้าเจอคิว ให้ทำการลบออกจากระบบทันที
+                    if (foundUserId) {
+                        delete global.depositQueue[foundUserId]; // ล้างคิวออกจาก RAM
+                        
+                        replyText = `❌ [แอดมินสั่งยกเลิก] ทำการยกเลิกและล้างคิวฝากของ สมาชิกลำดับที่: ${targetMemberId} เรียบร้อยแล้วครับน้า!`;
+
+                        // 💬 ส่งข้อความไปเตือนฝั่งลูกค้าให้รู้ตัวด้วยว่าโดนปฏิเสธคิว
+                        try {
+                            await axios.post('https://api.line.me/v2/bot/message/push', {
+                                to: foundUserId,
+                                messages: [{ 
+                                    type: 'text', 
+                                    text: `❌ รายการแจ้งฝากยอดเงินของน้าถูกปฏิเสธ/ยกเลิกโดยแอดมินครับ\n\n⚠️ เหตุผล: สลิปไม่ถูกต้อง หรือยอดเงินไม่ตรง\n👉 หากต้องการทำรายการใหม่ กรุณาพิมพ์คำสั่ง "ฝาก [ยอดเงิน]" อีกครั้งครับ` 
+                                }]
+                            }, {
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${TOKEN}`
+                                }
+                            });
+                        } catch (err) {
+                            console.error("❌ ส่งข้อความแจ้งยกเลิกหาลูกค้าล้มเหลว:", err.message);
+                        }
+
+                    } else {
+                        replyText = `❌ ไม่พบรายการคิวฝากค้างในระบบที่ตรงกับสมาชิกลำดับที่ ${targetMemberId} ครับน้า เช็กตัวเลขดีๆ อีกทีครับ`;
+                    }
+                }
+            }
 // ==================== [ ระบบแจ้งฝากเงินสุ่มเศษสตางค์ ] ====================
             else if (command === "ฝาก") {
                 const amount = parseInt(args[1]);

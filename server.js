@@ -321,6 +321,40 @@ app.post('/callback', async (req, res) => {
                     }
                 }
             }
+                // ==================== [ 🛠️ คำสั่งแอดมินพิเศษ: เติมเครดิตฉุกเฉิน/แจกทุน (พิมพ์: แอด [เลขสมาชิก] [จำนวนเงิน]) ] ====================
+            else if (command === "แอด") {
+                // 👥 เช็กสิทธิ์แอดมินจากกล่องรวมกลาง
+                if (!ADMIN_IDS.includes(userId)) {
+                    replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งนี้ครับ";
+                } else {
+                    const targetMemberId = parseInt(args[1]); 
+                    const amount = parseFloat(args[2]);      
+
+                    if (!targetMemberId || isNaN(amount) || amount <= 0) {
+                        replyText = `⚠️ รูปแบบคำสั่งไม่ถูกต้องน้า\nกรุณาพิมพ์: แอด [เลขสมาชิก] [จำนวนเงิน]\n(ตัวอย่างเช่น: แอด 1 500)`;
+                    } else {
+                        let foundUserKey = null;
+                        for (let key in usersWallets) {
+                            if (usersWallets[key].memberNumber === targetMemberId) {
+                                foundUserKey = key;
+                                break;
+                            }
+                        }
+
+                        if (!foundUserKey) {
+                            replyText = `❌ ไม่พบเลขสมาชิกที่ ${targetMemberId} ในระบบครับน้า`;
+                        } else {
+                            // 🚀 บวกเงินเข้ากระเป๋าทันที ทะลุทุกระบบล็อก!
+                            usersWallets[foundUserKey].balance += amount;
+                            const user = usersWallets[foundUserKey];
+                            
+                            await saveDataToFirebase(); 
+                            
+                            replyText = `⚡ [ระบบเติมเงินฉุกเฉิน] \n➕ เพิ่มเครดิตให้สมาชิกที่ ${user.memberNumber}\n👤 คุณ ${user.name} +${amount} บาท สำเร็จ!\n──────────────────\n💰 ยอดสุทธิปัจจุบัน: ${user.balance} บาท`;
+                        }
+                    }
+                }
+            }
 // ==================== [ ระบบแจ้งฝากเงินสุ่มเศษสตางค์ ] ====================
             else if (command === "ฝาก") {
                 const amount = parseInt(args[1]);
@@ -1542,6 +1576,44 @@ else if (command.toLowerCase() === "y") {
                     });
 
                     replyText = totalReport;
+                }
+            }
+               // ==================== [ เพิ่มใหม่: คำสั่งแอดมินส่องภาพรวมสมาชิกทุกคน (พิมพ์: mall) ] ====================
+            else if (userMsg === 'mall' || userMsg === 'Mall' || userMsg === 'MALL') {
+                // 🚨 กรองขั้นสูงสุด: ถ้าไม่ใช่แอดมิน หรือ แอดมินไม่ได้สั่งในแชทส่วนตัว (1 ต่อ 1) ให้บอทเงียบกริบไม่ตอบ
+                if (!ADMIN_IDS.includes(userId) || event.source.type !== 'user') {
+                    return res.sendStatus(200);
+                }
+
+                let memberListText = `📊 [ รายงานข้อมูลสมาชิกทั้งหมด ]\n──────────────────\n`;
+                let totalMembers = 0;
+
+                // วนลูปดึงข้อมูลจาก usersWallets ทั้งหมดมาต่อกัน
+                for (let key in usersWallets) {
+                    const user = usersWallets[key];
+                    totalMembers++;
+
+                    // 💸 เช็กสถานะการแจ้งถอนเงิน (เลียนแบบล็อกเดียวกับคำสั่ง m)
+                    let withdrawStatusText = "🔔 สถานะถอน: ไม่ได้แจ้งถอน";
+                    if (global.withdrawQueue && global.withdrawQueue[key]) {
+                        withdrawStatusText = `🚨 สถานะถอน: ❌ แจ้งถอนอยู่ [ ${global.withdrawQueue[key].amount.toLocaleString()} บาท ]`;
+                    }
+
+                    memberListText += `📋 ข้อมูลสมาชิกหมายเลข [ ${user.memberNumber} ]\n` +
+                                      `👤 ชื่อ: คุณ ${user.name}\n` +
+                                      `💰 เงินในระบบ: ${user.balance.toLocaleString()} บาท\n` +
+                                      ` ${withdrawStatusText}\n` +
+                                      `🏦 ธนาคาร: ${user.bankName || "ไม่ได้ระบุ"}\n` +
+                                      `💳 เลข บช: ${user.bankAccount || "ไม่ได้ระบุ"}\n` +
+                                      `🔒 เป้าเทิร์น: ${(user.turnoverTarget || 0).toLocaleString()} บาท\n` +
+                                      `──────────────────\n`;
+                }
+
+                if (totalMembers === 0) {
+                    replyText = "📭 ปัจจุบันยังไม่มีสมาชิกสมัครเข้ามาในระบบเลยครับน้า";
+                } else {
+                    memberListText += `👥 รวมสมาชิกทั้งหมด: ${totalMembers} คน`;
+                    replyText = memberListText;
                 }
             }
             // ==================== [ เพิ่มใหม่: คำสั่งแอดมินลบสมาชิกรายคนผ่านแชทส่วนตัว (del1, del2...) ] ====================

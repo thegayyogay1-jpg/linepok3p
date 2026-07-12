@@ -814,7 +814,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                     }
                 }
             }
-               // ==================== [ 8. ระบบแอดมินส่งผลสรุปคำนวณแต้ม - เวอร์ชันแก้ไขบั๊กสูตรย่อ (เด้ง=/ , ป๊อก=*) ] ====================
+               // ==================== [ 8. ระบบแอดมินส่งผลสรุปคำนวณแต้ม - เวอร์ชันเสถียรสุด แกะเด้งขาด (เด้ง=/ , ป๊อก=*) ] ====================
 else if (originalMsg.startsWith('>')) {
     if (!ADMIN_IDS.includes(userId)) {
         replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งสรุปผลคะแนนครับ";
@@ -829,31 +829,34 @@ else if (originalMsg.startsWith('>')) {
             return res.sendStatus(200);
         }
 
-        // 🛠️ ฟังก์ชันแกะรหัสไพ่ (เวอร์ชันปรับปรุงความแม่นยำสูงสุด)
+        // 🛠️ ฟังก์ชันแกะรหัสไพ่ (เวอร์ชันนับ / ตรงตัว ไม่หักเด้งมั่ว)
         const parseCardStr = (str, isDealer = false, isThreeCards = false, forcePok = false) => {
             let clean = str.trim().toLowerCase();
-            let isPok = forcePok; // ถ้าถูกล็อกว่าป๊อกมาจากข้างนอก ให้ตั้งค่าเริ่มต้นเป็นป๊อกเลย
+            let isPok = forcePok; 
             let multiplier = 1; 
             let typeName = "แต้มปกติ";
             let rawScore = 0;
 
-            // เช็กเด้ง: นับจำนวน / เฉพาะในก้อนของตัวเอง
-            if (clean.includes('//')) { multiplier = 3; clean = clean.replace('//', ''); }
-            else if (clean.includes('/')) { multiplier = 2; clean = clean.replace('/', ''); }
+            // 🎯 นับเครื่องหมาย / เพื่อคิดเด้งแบบตรงไปตรงมา
+            const slashCount = (clean.match(/\//g) || []).length;
+            if (slashCount === 2) { multiplier = 3; }
+            else if (slashCount === 1) { multiplier = 2; }
+            
+            // ลบเครื่องหมาย / ออกทั้งหมดเพื่อแกะแต้ม
+            clean = clean.replace(/\//g, '');
 
             // เช็กป๊อกเจ้ามือ
             if (isDealer && clean.includes('*')) { isPok = true; clean = clean.replace('*', ''); }
 
             // แปลงแต้มพิเศษ
-            if (clean === 't') { rawScore = 700; multiplier = 5; typeName = "ตอง"; } 
+            if (clean === 't' || clean === 'ต') { rawScore = 700; multiplier = 5; typeName = "ตอง"; } 
             else if (clean === 'sf') { rawScore = 600; multiplier = 5; typeName = "สเตฟฟลัช"; } 
             else if (clean === 'h') { rawScore = 500; multiplier = 3; typeName = "เซียน/3เหลือง"; } 
-            else if (clean === 's') { rawScore = 400; multiplier = 3; typeName = "เรียง"; } 
+            else if (clean === 's' || clean === 'ร') { rawScore = 400; multiplier = 3; typeName = "เรียง"; } 
             else {
                 let pts = parseInt(clean);
                 if (isNaN(pts)) pts = 0;
                 
-                // สำหรับผู้เล่น (ไม่ใช้เจ้ามือ) ถ้าแต้มเป็น 8 หรือ 9 โดดๆ ตั้งแต่แรก หรือโดนบังคับล็อกว่าป๊อก
                 if (!isDealer && (pts === 8 || pts === 9)) {
                     isPok = true;
                 }
@@ -885,25 +888,21 @@ else if (originalMsg.startsWith('>')) {
             let result2Cards = null;
             let result3Cards = null;
 
-            // 🎯 แก้บั๊กเคสคั่นกลางด้วยเครื่องหมาย / เช่น "6/6" หรือ "6/6//" หรือ "2/3"
-            // เช็กว่ามีเครื่องหมาย / อยู่ตรงกลางข้อความ (ไม่ใช่แค่ลงท้าย)
-            const firstSlashIdx = innerContent.indexOf('/');
-            const lastSlashIdx = innerContent.lastIndexOf('/');
-            
-            let hasSlashInMiddle = false;
+            // 🎯 ล็อกจุดตัดตรงกลางระหว่างตัวเลขฝั่งซ้าย กับตัวเลขฝั่งขวา เพื่อไม่ให้สแลชตีกัน
             let splitIndex = -1;
-
-            // เดินลูปหาจุดตัดตรงกลางระหว่างตัวเลขตัวแรกกับตัวเลขตัวหลัง
             for (let j = 1; j < innerContent.length - 1; j++) {
+                // ถ้าเจอ / และตัวถัดไปเป็นตัวเลข หรือตัวอักษรพิเศษ (t, s, h, sf) แปลว่าเป็นจุดคั่นกลางชัวร์
                 if (innerContent.charAt(j) === '/' && isNaN(innerContent.charAt(j+1)) === false) {
-                    hasSlashInMiddle = true;
+                    splitIndex = j;
+                    break;
+                } else if (innerContent.charAt(j) === '/' && ['t','s','h','f','ต','ร'].includes(innerContent.charAt(j+1).toLowerCase())) {
                     splitIndex = j;
                     break;
                 }
             }
 
-            if (hasSlashInMiddle) {
-                // แยกฝั่งออกจากกันอย่างเด็ดขาดตรงเครื่องหมาย / คั่นกลาง
+            if (splitIndex !== -1) {
+                // ผ่าครึ่งข้อความแบบเด็ดขาด ตรงสแลชคั่นกลางตัวแรกที่เจอ
                 const part1 = innerContent.substring(0, splitIndex).trim(); 
                 const part2 = innerContent.substring(splitIndex + 1).trim(); 
                 
@@ -923,10 +922,9 @@ else if (originalMsg.startsWith('>')) {
                 result2Cards = parseCardStr(char1, false, false);
                 result3Cards = parseCardStr(char2, false, true);
             }
-            // กรณีพิมพ์ตัวเดียวโดดๆ เช่น "6" หรือ "8" หรือ "9"
+            // กรณีพิมพ์ตัวเดียวโดดๆ
             else {
                 let pts = parseInt(innerContent);
-                // 🚀 ล็อกตามกติกาน้า: ถ้าพิมพ์เลข 8 หรือ 9 ตัวเดียว บอทจะล็อกให้ป๊อกทั้งรอบ 2 ใบ และ 3 ใบ ทันที!
                 if (!isNaN(pts) && (pts === 8 || pts === 9)) {
                     result2Cards = parseCardStr(innerContent, false, false, true);
                     result3Cards = parseCardStr(innerContent, false, true, true);

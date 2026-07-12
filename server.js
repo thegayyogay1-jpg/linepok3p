@@ -814,7 +814,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                     }
                 }
             }
-               // ==================== [ 8. ระบบแอดมินส่งผลสรุปคำนวณแต้ม - เวอร์ชันเสถียรสุด แกะเด้งขาด (เด้ง=/ , ป๊อก=*) ] ====================
+               // ==================== [ 8. ระบบแอดมินส่งผลสรุปคำนวณแต้ม - เวอร์ชันชำแหละ RegEx แยกฝั่งขาด (เด้ง=/ , ป๊อก=*) ] ====================
 else if (originalMsg.startsWith('>')) {
     if (!ADMIN_IDS.includes(userId)) {
         replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งสรุปผลคะแนนครับ";
@@ -829,7 +829,7 @@ else if (originalMsg.startsWith('>')) {
             return res.sendStatus(200);
         }
 
-        // 🛠️ ฟังก์ชันแกะรหัสไพ่ (เวอร์ชันนับ / ตรงตัว ไม่หักเด้งมั่ว)
+        // 🛠️ ฟังก์ชันแกะรหัสไพ่ (นับสแลชแม่นยำ ไม่โดนตัวอื่นแย่ง)
         const parseCardStr = (str, isDealer = false, isThreeCards = false, forcePok = false) => {
             let clean = str.trim().toLowerCase();
             let isPok = forcePok; 
@@ -837,18 +837,18 @@ else if (originalMsg.startsWith('>')) {
             let typeName = "แต้มปกติ";
             let rawScore = 0;
 
-            // 🎯 นับเครื่องหมาย / เพื่อคิดเด้งแบบตรงไปตรงมา
+            // 🎯 นับเครื่องหมาย / เพื่อคิดเด้งแบบตรงตัว
             const slashCount = (clean.match(/\//g) || []).length;
             if (slashCount === 2) { multiplier = 3; }
             else if (slashCount === 1) { multiplier = 2; }
             
-            // ลบเครื่องหมาย / ออกทั้งหมดเพื่อแกะแต้ม
+            // ลบเครื่องหมาย / ออกทั้งหมดเพื่อส่องดูแต้มเนื้อๆ
             clean = clean.replace(/\//g, '');
 
             // เช็กป๊อกเจ้ามือ
             if (isDealer && clean.includes('*')) { isPok = true; clean = clean.replace('*', ''); }
 
-            // แปลงแต้มพิเศษ
+            // แปลงแต้มพิเศษ (รองรับทั้งไทยและอังกฤษ)
             if (clean === 't' || clean === 'ต') { rawScore = 700; multiplier = 5; typeName = "ตอง"; } 
             else if (clean === 'sf') { rawScore = 600; multiplier = 5; typeName = "สเตฟฟลัช"; } 
             else if (clean === 'h') { rawScore = 500; multiplier = 3; typeName = "เซียน/3เหลือง"; } 
@@ -857,6 +857,7 @@ else if (originalMsg.startsWith('>')) {
                 let pts = parseInt(clean);
                 if (isNaN(pts)) pts = 0;
                 
+                // สำหรับผู้เล่น ถ้าแต้มเป็น 8 หรือ 9 โดดๆ ให้ถือเป็นไพ่ป๊อกอัตโนมัติ
                 if (!isDealer && (pts === 8 || pts === 9)) {
                     isPok = true;
                 }
@@ -888,41 +889,19 @@ else if (originalMsg.startsWith('>')) {
             let result2Cards = null;
             let result3Cards = null;
 
-            // 🎯 ล็อกจุดตัดตรงกลางระหว่างตัวเลขฝั่งซ้าย กับตัวเลขฝั่งขวา เพื่อไม่ให้สแลชตีกัน
-            let splitIndex = -1;
-            for (let j = 1; j < innerContent.length - 1; j++) {
-                // ถ้าเจอ / และตัวถัดไปเป็นตัวเลข หรือตัวอักษรพิเศษ (t, s, h, sf) แปลว่าเป็นจุดคั่นกลางชัวร์
-                if (innerContent.charAt(j) === '/' && isNaN(innerContent.charAt(j+1)) === false) {
-                    splitIndex = j;
-                    break;
-                } else if (innerContent.charAt(j) === '/' && ['t','s','h','f','ต','ร'].includes(innerContent.charAt(j+1).toLowerCase())) {
-                    splitIndex = j;
-                    break;
-                }
-            }
+            // 🔥 [ใช้ระบบ RegEx ชำแหละข้อความขั้นสูง] แยกกลุ่มตัวเลขและเครื่องหมายสแลชออกจากกัน
+            // มองหาโครงสร้าง: (แต้มตัวแรก+สแลชฝั่งซ้าย) ตามด้วย (แต้มตัวหลัง+สแลชฝั่งขวา)
+            const match = innerContent.match(/^([0-9tshfตร]\/*)([0-9tshfตร]\/*)$/i);
 
-            if (splitIndex !== -1) {
-                // ผ่าครึ่งข้อความแบบเด็ดขาด ตรงสแลชคั่นกลางตัวแรกที่เจอ
-                const part1 = innerContent.substring(0, splitIndex).trim(); 
-                const part2 = innerContent.substring(splitIndex + 1).trim(); 
+            if (match) {
+                // ผ่าแยกฝั่งซ้าย (2 ใบ) และ ฝั่งขวา (3 ใบ) ออกจากกันแบบเด็ดขาดร้อยเปอร์เซ็นต์!
+                const part1 = match[1]; // เช่น "6/"
+                const part2 = match[2]; // เช่น "6//"
                 
                 result2Cards = parseCardStr(part1, false, false);
                 result3Cards = parseCardStr(part2, false, true);
             } 
-            // กรณีพิมพ์เลขติดกัน 2 ตัวดื้อๆ เช่น "59" หรือ "5s"
-            else if (innerContent.length >= 2 && !innerContent.includes('/') && isNaN(innerContent) === false) {
-                const char1 = innerContent.charAt(0);
-                const char2 = innerContent.charAt(1);
-                result2Cards = parseCardStr(char1, false, false);
-                result3Cards = parseCardStr(char2, false, true);
-            } 
-            else if (innerContent.length >= 2 && !innerContent.includes('/') && isNaN(innerContent.charAt(0)) === false) {
-                const char1 = innerContent.charAt(0);
-                const char2 = innerContent.substring(1);
-                result2Cards = parseCardStr(char1, false, false);
-                result3Cards = parseCardStr(char2, false, true);
-            }
-            // กรณีพิมพ์ตัวเดียวโดดๆ
+            // กรณีพิมพ์ตัวเดียวโดดๆ เช่น "6" หรือป๊อกโดดๆ เช่น "8", "9"
             else {
                 let pts = parseInt(innerContent);
                 if (!isNaN(pts) && (pts === 8 || pts === 9)) {

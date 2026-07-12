@@ -973,7 +973,6 @@ else if (originalMsg.startsWith('>')) {
         replyText = checkText;
     }
 }
-
 // ==================== [ 9. ระบบแอดมินยืนยันผลคำนวณเงินจริง OK / NO (Settlement Engine) ] ====================
 else if (userMsg === 'ok' || userMsg === 'no') {
     if (!ADMIN_IDS.includes(userId)) return;

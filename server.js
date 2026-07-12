@@ -814,18 +814,22 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                     }
                 }
             }
-                // ==================== [ 8. ระบบแอดมินส่งผลสรุปคำนวณแต้ม - เวอร์ชันใช้เครื่องหมาย = คั่นแยกขา (แก้ไขบั๊กตำแหน่งสลับ) ] ====================
+               // ==================== [ 8. ระบบแอดมินส่งผลสรุปคำนวณแต้ม - เวอร์ชันรหัสย่อเว้นวรรค (เด้ง=/ , ป๊อก=*) ] ====================
 else if (originalMsg.startsWith('>')) {
-   if (!ADMIN_IDS.includes(userId)) {
+    if (!ADMIN_IDS.includes(userId)) {
         replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งสรุปผลคะแนนครับ";
     } else if (isRoundOpen) {
         replyText = "⚠️ ต้องพิมพ์ปิดรอบแทง (X) และทำขั้นตอนจั่วไพ่ให้เสร็จก่อน จึงจะสรุปผลได้ครับ";
     } else {
-        // เอาเครื่องหมาย > ออกก่อน แล้วตัดแบ่งข้อความด้วยเครื่องหมาย = ตรงๆ เลย
         let textWithoutArrow = originalMsg.substring(1).trim();
-        const parts = textWithoutArrow.split('='); // แยกชิ้นส่วนด้วย =
+        const parts = textWithoutArrow.split(/\s+/); // แยกชิ้นส่วนขาด้วยเว้นวรรค
         
-        // ฟังก์ชันสำหรับแกะรหัสไพ่ (isThreeCards = true คือล็อกว่าห้ามติดป๊อกเด็ดขาด)
+        if (parts.length < 2) {
+            replyText = "⚠️ รูปแบบผิดครับน้า! ต้องพิมพ์เรียง ขา1 ขา2 ... และตัวสุดท้ายคือเจ้ามือ (คั่นด้วยเว้นวรรค)";
+            return res.sendStatus(200);
+        }
+
+        // 🛠️ ฟังก์ชันแกะรหัสไพ่ขั้นเทพ รองรับสูตรย่อของคุณน้า
         const parseCardStr = (str, isDealer = false, isThreeCards = false) => {
             let clean = str.trim().toLowerCase();
             let isPok = false;
@@ -833,11 +837,14 @@ else if (originalMsg.startsWith('>')) {
             let typeName = "แต้มปกติ";
             let rawScore = 0;
 
-            if (clean.includes('**')) { multiplier = 3; clean = clean.replace('**', ''); } 
-            else if (clean.includes('*')) { multiplier = 2; clean = clean.replace('*', ''); }
+            // 1. เช็กเด้ง: นับจำนวนเครื่องหมาย / เพื่อคิดเด้ง ( / คือ 2 เด้ง, // คือ 3 เด้ง)
+            if (clean.includes('//')) { multiplier = 3; clean = clean.replace('//', ''); }
+            else if (clean.includes('/')) { multiplier = 2; clean = clean.replace('/', ''); }
 
-            if (isDealer && clean.includes('#')) { isPok = true; clean = clean.replace('#', ''); }
+            // 2. เช็กป๊อกเจ้ามือ: ถ้าเป็นเจ้ามือและมีเครื่องหมาย * ให้ถือว่าเป็นไพ่ป๊อก
+            if (isDealer && clean.includes('*')) { isPok = true; clean = clean.replace('*', ''); }
 
+            // 3. แปลงแต้มพิเศษ
             if (clean === 't') { rawScore = 700; multiplier = 5; typeName = "ตอง"; } 
             else if (clean === 'sf') { rawScore = 600; multiplier = 5; typeName = "สเตฟฟลัช"; } 
             else if (clean === 'h') { rawScore = 500; multiplier = 3; typeName = "เซียน/3เหลือง"; } 
@@ -846,7 +853,8 @@ else if (originalMsg.startsWith('>')) {
                 let pts = parseInt(clean);
                 if (isNaN(pts)) pts = 0;
                 
-                if (!isThreeCards && (isPok || (!isDealer && !str.includes('/')))) {
+                // ถ้ายืนยันว่าเป็นไพ่ป๊อก (เช่น เจ้ามือใส่ *) หรือเป็นผู้เล่น 2 ใบแรกที่แต้มเป็น 8, 9 
+                if (!isThreeCards && (isPok || (!isDealer && !isThreeCards))) {
                     if (pts === 9) { rawScore = 900; typeName = "ป๊อก 9"; }
                     else if (pts === 8) { rawScore = 800; typeName = "ป๊อก 8"; }
                     else { rawScore = pts; typeName = `${pts} แต้ม`; }
@@ -857,29 +865,50 @@ else if (originalMsg.startsWith('>')) {
             return { score: rawScore, v: clean, mult: multiplier, name: typeName };
         };
 
-        // 👑 ชิ้นส่วนแรก (parts[0]) จะเป็นผลของฝั่งเจ้ามือเสมอ เช่น "จ5" หรือ "จ5*"
-        const dealerRawStr = parts[0] ? parts[0].replace('จ', '').trim() : '0';
+        // 👑 แกะรหัสเจ้ามือ (ตัวสุดท้ายของชุดข้อความ)
+        const dealerRawStr = parts[parts.length - 1]; 
         const dealerResult = parseCardStr(dealerRawStr, true, false);
 
         let roomResults = {}; 
-        let currentLeg = 1; 
+        const totalLegsToSend = Math.min(parts.length - 1, 6);
 
-        // ชิ้นส่วนที่เหลือตั้งแต่ตำแหน่งที่ 1 เป็นต้นไป จะไล่เป็น ขา 1, ขา 2, ขา 3 อัตโนมัติ
-        for (let i = 1; i < parts.length; i++) {
+        // 🔄 วนลูปแกะรหัสผู้เล่นรายขา
+        for (let i = 0; i < totalLegsToSend; i++) {
             let innerContent = parts[i].trim();
             if (innerContent === "") continue;
-            if (currentLeg > 6) break; 
 
+            let currentLeg = i + 1;
             let result2Cards = null;
             let result3Cards = null;
 
-            if (innerContent.includes('/')) {
-                const subParts = innerContent.split('/');
-                result2Cards = parseCardStr(subParts[0], false, false); // 2 ใบแรก (มีสิทธิ์ป๊อก)
-                result3Cards = parseCardStr(subParts[1], false, true);  // 3 ใบ (ไม่มีทางป๊อก บั๊กเคลียร์!)
-            } else {
+            // 🔥 สูตรลับคำนวณแยก 2 ใบ / 3 ใบ จากข้อความก้อนเดียว
+            // กรณีที่ 1: แอดมินคั่นกลางมาด้วยเด้ง เช่น "2/3" หรือ "7/4//"
+            if (innerContent.includes('/') && !innerContent.endsWith('/') && !innerContent.endsWith('//')) {
+                // หาตำแหน่งตัวแปรคั่นกลาง เพื่อแยกฝั่ง 2 ใบแรก กับ 3 ใบหลัง
+                const slashIndex = innerContent.indexOf('/');
+                const part1 = innerContent.substring(0, slashIndex + 1); // รวม / ตัวแรกไว้ให้ฝั่ง 2 ใบ
+                const part2 = innerContent.substring(slashIndex + 1);
+                result2Cards = parseCardStr(part1, false, false);
+                result3Cards = parseCardStr(part2, false, true);
+            } 
+            // กรณีที่ 2: พิมพ์เลขติดกัน 2 ตัวดื้อๆ เช่น "59" หรือตัวหนังสือผสม "5s"
+            else if (innerContent.length >= 2 && !innerContent.includes('/') && isNaN(innerContent) === false) {
+                const char1 = innerContent.charAt(0); // เลขตัวแรก = 2 ใบ
+                const char2 = innerContent.charAt(1); // เลขตัวสอง = 3 ใบ
+                result2Cards = parseCardStr(char1, false, false);
+                result3Cards = parseCardStr(char2, false, true);
+            } 
+            else if (innerContent.length >= 2 && !innerContent.includes('/') && isNaN(innerContent.charAt(0)) === false) {
+                // รองรับเคสผสมตัวอักษร เช่น "5s"
+                const char1 = innerContent.charAt(0);
+                const char2 = innerContent.substring(1);
+                result2Cards = parseCardStr(char1, false, false);
+                result3Cards = parseCardStr(char2, false, true);
+            }
+            // กรณีที่ 3: พิมพ์ตัวเดียวโดดๆ หรือแต้ม+เด้งปิดท้าย เช่น "6" หรือ "9//"
+            else {
                 result2Cards = parseCardStr(innerContent, false, false);
-                result3Cards = parseCardStr(innerContent, false, false);
+                result3Cards = parseCardStr(innerContent, false, true);
             }
 
             roomResults[currentLeg] = {
@@ -887,8 +916,6 @@ else if (originalMsg.startsWith('>')) {
                 twoCards: result2Cards,
                 threeCards: result3Cards
             };
-
-            currentLeg++; 
         }
 
         tempRoomResults = roomResults;
@@ -912,8 +939,8 @@ else if (originalMsg.startsWith('>')) {
                 else if (res.threeCards.score < dealerResult.score) status3Str = "🔴 แพ้";
 
                 checkText += `• ขา ${leg}:\n`;
-                checkText += `   - [2ใบ]: ${res.twoCards.name} (${res.twoCards.mult}เด้ง) ${status2Str}\n`;
-                checkText += `   - [3ใบ]: ${res.threeCards.name} (${res.threeCards.mult}เด้ง) ${status3Str}\n──────────────────\n`;
+                checkText += `    - [2ใบ]: ${res.twoCards.name} (${res.twoCards.mult}เด้ง) ${status2Str}\n`;
+                checkText += `    - [3ใบ]: ${res.threeCards.name} (${res.threeCards.mult}เด้ง) ${status3Str}\n──────────────────\n`;
             } else {
                 checkText += `• ขา ${leg} -> ⚠️ ไม่มีผลไพ่ (ระบบตีเป็นบอด แพ้เจ้ามือ 🔴)\n`;
             }

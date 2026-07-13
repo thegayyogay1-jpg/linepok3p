@@ -2039,6 +2039,30 @@ else if (command.toLowerCase() === "y") {
                             previewImageUrl: 'https://img1.pic.in.th/images/546565.png'     // 🔗 ใส่ลิงก์รูปเดียวกัน
                         }];
                     }
+                     // 8. ดักเช็ก: ถ้าแอดมินพิมเลขก่อนปิดรอบต่างๆ '1' ให้ใส่รูปปิดรอบเข้าไปข้างหน้าข้อความ
+                    else if (userMsg === '1') {
+                        sendMessages=[{
+                            type: 'image',
+                            originalContentUrl: 'https://img1.pic.in.th/images/123b7c9d976603693.png', // 🔗 ใส่ลิงก์รูปปิดรอบของคุณตรงนี้
+                            previewImageUrl: 'https://img1.pic.in.th/images/123b7c9d976603693.png'     // 🔗 ใส่ลิงก์รูปเดียวกัน
+                        }];
+                    }
+                    // 9. ดักเช็ก: ถ้าแอดมินพิมเลขก่อนปิดรอบต่างๆ '2' ให้ใส่รูปปิดรอบเข้าไปข้างหน้าข้อความ
+                    else if (userMsg === '2') {
+                        sendMessages=[{
+                            type: 'image',
+                            originalContentUrl: 'https://img1.pic.in.th/images/2d296264e3f50f2dc.png', // 🔗 ใส่ลิงก์รูปปิดรอบของคุณตรงนี้
+                            previewImageUrl: 'https://img1.pic.in.th/images/2d296264e3f50f2dc.png'     // 🔗 ใส่ลิงก์รูปเดียวกัน
+                        }];
+                    }
+                    // 10. ดักเช็ก: ถ้าแอดมินพิมเลขก่อนปิดรอบต่างๆ '3' ให้ใส่รูปปิดรอบเข้าไปข้างหน้าข้อความ
+                    else if (userMsg === '3') {
+                        sendMessages=[{
+                            type: 'image',
+                            originalContentUrl: 'https://img2.pic.in.th/33c27af2e18203562.png', // 🔗 ใส่ลิงก์รูปปิดรอบของคุณตรงนี้
+                            previewImageUrl: 'https://img2.pic.in.th/33c27af2e18203562.png'     // 🔗 ใส่ลิงก์รูปเดียวกัน
+                        }];
+                    }
                     // ส่งข้อความทั้งหมดออกไปหาผู้ใช้
                     await axios.post('https://api.line.me/v2/bot/message/reply', {
                         replyToken: replyToken,

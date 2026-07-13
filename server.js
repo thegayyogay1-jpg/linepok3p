@@ -779,7 +779,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                                 // 🍊 เคสเงินพอแค่ 2 เด้ง แต่ไม่ถึง 3 เด้ง -> ยอมให้แทงแต่จำกัดสิทธิ์จ่าย/หักสูงสุดแค่ 2 เด้ง
                                 maxHandMultiplier = 2;
                                 finalHoldCost = doubleHoldCost;
-                                limitReasonText = `\n⚠️ เนื่องจากเครดิตของคุณไม่พอค้ำประกัน 3 เด้ง (ขาดอีก ${tripleHoldCost - user.balance} บาท)\n🎯 โพยชุดนี้ระบบจะคิดผลได้-เสียให้สูงสุด "ไม่เกิน 2 เด้ง" เท่านั้นครับ! (น่าเสียดายจัง)`;
+                                limitReasonText = `\n⚠️ เนื่องจากเครดิตของคุณไม่พอค้ำประกัน 3 เด้ง (ขาดอีก ${tripleHoldCost - user.balance} บาท)\n──────────────────\n🎯 โพยชุดนี้ระบบจะคิดผลได้-เสียให้สูงสุด "ไม่เกิน 2 เด้ง" เท่านั้น`;
                             } 
                             else {
                                 // 🟢 เคสเงินพอค้ำ 3 เด้งสมบูรณ์แบบ
@@ -1374,7 +1374,10 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                                         let loseMultiplier = historicalDealer.mult;
                                         if (loseMultiplier > 3) {
                                             loseMultiplier = 3;
-                                        }        
+                                        }
+                                        // 🌟 ดักเพดานตัวคูณแพ้ ไม่ให้เกินที่ค้ำประกันไว้ในโพยเช่นกัน
+                                    if (bet.maxMultiplier && loseMultiplier > bet.maxMultiplier) {
+                                    loseMultiplier = bet.maxMultiplier;
                                         let loss = bet.pricePerLeg * loseMultiplier;
                                         totalWinLoss -= loss;
                                         detailRows += `ขาที่ ${legStr} ${statusAction} แพ้ -${loss}\n`;

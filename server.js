@@ -46,6 +46,7 @@ async function loadDataFromFirebase() {
             detailedRoundHistory = response.data.detailedRoundHistory || {};
             pastRoundsData = response.data.pastRoundsData || {};
             withdrawQueue = response.data.withdrawQueue || [];
+            usersRoundCrossCheck = response.data.usersRoundCrossCheck || {};
             console.log("✅ ดึงข้อมูลระบบทั้งหมดจาก Firebase สำเร็จเรียบร้อย!");
         }
     } catch (error) {

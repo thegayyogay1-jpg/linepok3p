@@ -761,41 +761,69 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                             });
                         }
 
-                        if (hasError) {
-                            replyText = errorMsg;
-                        } else if (totalHoldCost === 0) {
-                            replyText = "⚠️ ไม่พบรายการแทงในข้อความของคุณครับ";
-                        } else if (user.balance < totalHoldCost) {
-                            replyText = `❌ เครดิตของคุณไม่พอสหรับยอดค้ำประกันเด้ง (คิดสูงสุด 3 เด้ง) ครับ!\n💸 ยอดแทงปกติ: ${totalActualBet} บาท\n🔒 ต้องใช้ยอดค้ำประกันรวม: ${totalHoldCost} บาท\n💰 เครดิตปัจจุบันของคุณมี: ${user.balance} บาท`;
-                        } else {
-                            user.balance -= totalHoldCost;
-                            await saveDataToFirebase();
-                            if (!roundBets[userId]) {
-                                roundBets[userId] = [];
+                       // ==================== [ 🌟 เริ่มต้นระบบค้ำประกันเด้งอัจฉริยะ ] ====================
+                        if (!hasError && totalActualBet > 0) {
+                            let finalHoldCost = 0;
+                            let maxHandMultiplier = 3; // ค่าตั้งต้นคือค้ำ 3 เด้งปกติ
+                            let limitReasonText = "";
+
+                            const doubleHoldCost = totalActualBet * 2; // ยอดค้ำประกันขั้นต่ำ (2 เด้ง)
+                            const tripleHoldCost = totalActualBet * 3; // ยอดค้ำประกันปกติ (3 เด้ง)
+
+                            if (user.balance < doubleHoldCost) {
+                                // ❌ เคสเงินไม่พอแม้กระทั่ง 2 เด้ง -> ไม่ให้แทง
+                                replyText = `❌ เครดิตของคุณไม่พอสำหรับค้ำประกันขั้นต่ำ (2 เด้ง) ครับ!\n💸 ยอดแทงรวม: ${totalActualBet} บาท\n🔒 ต้องใช้ยอดค้ำประกันขั้นต่ำ (x2): ${doubleHoldCost} บาท\n💰 เครดิตปัจจุบันของคุณมี: ${user.balance} บาท`;
+                                hasError = true;
+                            } 
+                            else if (user.balance >= doubleHoldCost && user.balance < tripleHoldCost) {
+                                // 🍊 เคสเงินพอแค่ 2 เด้ง แต่ไม่ถึง 3 เด้ง -> ยอมให้แทงแต่จำกัดสิทธิ์จ่าย/หักสูงสุดแค่ 2 เด้ง
+                                maxHandMultiplier = 2;
+                                finalHoldCost = doubleHoldCost;
+                                limitReasonText = `\n⚠️ เนื่องจากเครดิตของคุณไม่พอค้ำประกัน 3 เด้ง (ขาดอีก ${tripleHoldCost - user.balance} บาท)\n🎯 โพยชุดนี้ระบบจะคิดผลได้-เสียให้สูงสุด "ไม่เกิน 2 เด้ง" เท่านั้นครับ! (น่าเสียดายจัง)`;
+                            } 
+                            else {
+                                // 🟢 เคสเงินพอค้ำ 3 เด้งสมบูรณ์แบบ
+                                maxHandMultiplier = 3;
+                                finalHoldCost = tripleHoldCost;
                             }
 
-                            let summaryText = `✅ บันทึกโพยและหักค้ำประกัน 3 เด้งเรียบร้อย 🎉\n──────────────────\n👤 คุณ: ${user.name} (ID: ${user.memberNumber})\n──────────────────\n📝 รายการแทง\n──────────────────\n`;
-                            
-                            processedBets.forEach((bet) => {
-                                summaryText += `• ${bet.detail}`;
+                            // ถ้าผ่านด่านการเงิน (ไม่มี Error) ทำการบันทึกและตัดยอดเครดิต
+                            if (!hasError) {
+                                user.balance -= finalHoldCost; // หักเงินค้ำประกันตามจริง (x2 หรือ x3)
+                                await saveDataToFirebase();
                                 
-                                roundBets[userId].push({
-                                    name: user.name,
-                                    memberNumber: user.memberNumber,
-                                    betType: bet.type,
-                                    detail: bet.detail,
-                                    pricePerLeg: bet.pricePerLeg,
-                                    actualBet: bet.actualBet,
-                                    holdCost: bet.holdCost, 
-                                    time: new Date().toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok' })
+                                if (!roundBets[userId]) {
+                                    roundBets[userId] = [];
+                                }
+
+                                let summaryText = `✅ บันทึกโพยเรียบร้อย 🎉\n──────────────────\n👤 คุณ: ${user.name} (ID: ${user.memberNumber})\n──────────────────\n📝 รายการแทง\n──────────────────\n`;
+                                
+                                processedBets.forEach((bet) => {
+                                    summaryText += `• ${bet.detail}\n`; 
+                                    
+                                    roundBets[userId].push({
+                                        name: user.name,
+                                        memberNumber: user.memberNumber,
+                                        betType: bet.type,
+                                        detail: bet.detail,
+                                        pricePerLeg: bet.pricePerLeg,
+                                        actualBet: bet.actualBet,
+                                        holdCost: (bet.actualBet * maxHandMultiplier), // บันทึกยอดค้ำตามจริงลงฐานข้อมูล
+                                        maxMultiplier: maxHandMultiplier, // 🔑 คีย์เวิร์ดสำคัญส่งไปให้ระบบคิดผลได้เสียอ่านค่า
+                                        time: new Date().toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok' })
+                                    });
                                 });
-                            });
-                            summaryText += `\n──────────────────\n💵 ยอดแทงรวม: ${totalActualBet} บาท\n🔒 หักค้ำประกันรวม (x3): ${totalHoldCost} บาท\n💰 เครดิตคงเหลือ: ${user.balance} บาท\n──────────────────\n 🔔หากแพ้ไม่เกิน 3 เด้ง ระบบจะคืนเครดิตส่วนต่างให้ตอนสรุปผลครับ`;
-                            replyText = summaryText;
+                                
+                                summaryText += `──────────────────\n💵 ยอดแทงรวม: ${totalActualBet} บาท\n🔒 หักค้ำประกันรอบนี้ (x${maxHandMultiplier}): ${finalHoldCost} บาท\n💰 เครดิตคงเหลือ: ${user.balance} บาท\n──────────────────${limitReasonText}\n 🔔 ระบบจะคืนเครดิตส่วนต่างให้ตอนสรุปผลครับ`;
+                                replyText = summaryText;
+                            }
+                        } else if (!hasError && totalActualBet === 0) {
+                            replyText = "⚠️ ไม่พบรายการแทงในข้อความของคุณครับ";
                         }
-                    }
-                }
-            }
+
+                        if (hasError && errorMsg !== "") {
+                            replyText = errorMsg;
+                        }
             // ==================== [ 5. ระบบคืนโพย / ยกเลิกโพยในรอบ ] ====================
             else if (userMsg === "r") {
                 if (!isRoundOpen) {
@@ -1065,12 +1093,20 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                             // คำนวณผลได้เสียของฝั่งผู้เล่นปกติ
                             if (finalCard.score > tempDealerResult.score) {
                                 let winMultiplier = finalCard.mult;
+                                // 🌟 [จุดเปลี่ยนที่ 1]: ดักเพดานเด้งฝั่งผู้เล่นชนะตามจริงที่มีการค้ำประกันไว้ (x2 หรือ x3)
+                                if (bet.maxMultiplier && winMultiplier > bet.maxMultiplier) {
+                                    winMultiplier = bet.maxMultiplier;
+                                }
                                 userTotalWinLoss += (betPrice * winMultiplier);
                             } 
                             else if (finalCard.score < tempDealerResult.score) {
                                 let loseMultiplier = tempDealerResult.mult;
                                 if (loseMultiplier > 3) {
                                     loseMultiplier = 3;
+                                }
+                                // 🌟 [จุดเปลี่ยนที่ 2]: ดักเพดานเด้งฝั่งผู้เล่นแพ้ (ถ้าเขาค้ำไว้แค่ 2 เด้ง ก็โดนหักสูงสุดแค่ 2 เด้ง)
+                                if (bet.maxMultiplier && loseMultiplier > bet.maxMultiplier) {
+                                    loseMultiplier = bet.maxMultiplier;
                                 }
                                 userTotalWinLoss -= (betPrice * loseMultiplier);
                             }
@@ -1091,6 +1127,10 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                             if (tempDealerResult.score > finalCard.score) {
                                 // เจ้ามือชนะขาผู้เล่นคนนั้น = คนแทงฝั่งเจ้าได้กำไร!
                                 let winMultiplier = tempDealerResult.mult;
+                                // 🌟 [จุดเปลี่ยนที่ 3]: ดักเพดานเด้งฝั่งคนแทงเจ้าชนะตามสิทธิ์ที่ค้ำประกันไว้
+                                if (bet.maxMultiplier && winMultiplier > bet.maxMultiplier) {
+                                    winMultiplier = bet.maxMultiplier;
+                                }
                                 let grossWin = betPrice * winMultiplier; // กำไรเต็มก่อนหัก
                                 
                                 // 🔥 หักต๋งรายขาทันที 10% (เหลือจ่ายจริง 90%)
@@ -1100,6 +1140,10 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                             else if (tempDealerResult.score < finalCard.score) {
                                 // เจ้ามือแพ้ขาผู้เล่นคนนั้น = คนแทงฝั่งเจ้าเสียเต็มจำนวนตามจำนวนเด้งของขานั้นๆ
                                 let loseMultiplier = finalCard.mult;
+                                // 🌟 [จุดเปลี่ยนที่ 4]: ดักเพดานเด้งฝั่งคนแทงเจ้าเสีย (ถ้าเขาค้ำไว้ 2 เด้ง ก็ลบไม่เกิน 2 เด้ง)
+                                if (bet.maxMultiplier && loseMultiplier > bet.maxMultiplier) {
+                                    loseMultiplier = bet.maxMultiplier;
+                                }
                                 userTotalWinLoss -= (betPrice * loseMultiplier);
                             }
                         }

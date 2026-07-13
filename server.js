@@ -1378,6 +1378,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                                         // 🌟 ดักเพดานตัวคูณแพ้ ไม่ให้เกินที่ค้ำประกันไว้ในโพยเช่นกัน
                                     if (bet.maxMultiplier && loseMultiplier > bet.maxMultiplier) {
                                     loseMultiplier = bet.maxMultiplier;
+                                    }
                                         let loss = bet.pricePerLeg * loseMultiplier;
                                         totalWinLoss -= loss;
                                         detailRows += `ขาที่ ${legStr} ${statusAction} แพ้ -${loss}\n`;

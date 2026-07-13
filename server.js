@@ -322,7 +322,7 @@ app.post('/callback', async (req, res) => {
                     }
                 }
             }
-                // ==================== [ 🛠️ คำสั่งแอดมินพิเศษ: เติมเครดิตฉุกเฉิน/แจกทุน+ติดเทิร์น (พิมพ์: @ [เลขสมาชิก] [จำนวนเงิน] หรือ @ [เลขสมาชิก] [จำนวนเงิน]#[ยอดเทิร์น]) ] ====================
+              // ==================== [ 🛠️ คำสั่งแอดมินพิเศษ: เติมเครดิตฉุกเฉิน/แจกทุน+ติดเทิร์น (พิมพ์: @ [เลขสมาชิก] [จำนวนเงิน] หรือ @ [เลขสมาชิก] [จำนวนเงิน]#[ยอดเทิร์น]) ] ====================
             else if (command === "@") {
                 // 👥 เช็กสิทธิ์แอดมินจากกล่องรวมกลาง
                 if (!ADMIN_IDS.includes(userId)) {
@@ -363,12 +363,13 @@ app.post('/callback', async (req, res) => {
                                 // 🚀 บวกเงินเข้ากระเป๋าทันที ทะลุทุกระบบล็อก!
                                 usersWallets[foundUserKey].balance += amount;
                                 
-                                // 📝 บันทึกยอดเทิร์นโอเวอร์สะสมเข้าไปในตัวแปร (ถ้ามีของเดิมอยู่แล้วจะบวกสมทบเพิ่มให้เลยครับ)
+                                // 📝 บันทึกยอดเทิร์นโอเวอร์สะสมเข้าไปในตัวแปร (ดักจับถ้าเป็นค่าว่างให้เป็น 0 ก่อนแล้วค่อยบวกทบ)
                                 if (turnoverRequirement > 0) {
-                                    if (!usersWallets[foundUserKey].turnoverRequirement) {
-                                        usersWallets[foundUserKey].turnoverRequirement = 0;
+                                    let currentTurnover = usersWallets[foundUserKey].turnoverRequirement;
+                                    if (!currentTurnover || isNaN(currentTurnover)) {
+                                        currentTurnover = 0;
                                     }
-                                    usersWallets[foundUserKey].turnoverRequirement += turnoverRequirement;
+                                    usersWallets[foundUserKey].turnoverRequirement = currentTurnover + turnoverRequirement;
                                 }
 
                                 const user = usersWallets[foundUserKey];
@@ -1786,8 +1787,8 @@ else if (command.toLowerCase() === "y") {
                     replyText = totalReport;
                 }
             }
-               // ==================== [ เพิ่มใหม่: คำสั่งแอดมินส่องภาพรวมสมาชิกทุกคน (พิมพ์: mall) ] ====================
-            else if (userMsg === 'mall' || userMsg === 'Mall' || userMsg === 'MALL') {
+               // ==================== [ เพิ่มใหม่: คำสั่งแอดมินส่องภาพรวมสมาชิกทุกคน (พิมพ์: mcall) ] ====================
+            else if (userMsg === 'mcall' || userMsg === 'MCall' || userMsg === 'MCALL') {
                 // 🚨 กรองขั้นสูงสุด: ถ้าไม่ใช่แอดมิน หรือ แอดมินไม่ได้สั่งในแชทส่วนตัว (1 ต่อ 1) ให้บอทเงียบกริบไม่ตอบ
                 if (!ADMIN_IDS.includes(userId) || event.source.type !== 'user') {
                     return res.sendStatus(200);
@@ -1818,7 +1819,7 @@ else if (command.toLowerCase() === "y") {
                 }
 
                 if (totalMembers === 0) {
-                    replyText = "📭 ปัจจุบันยังไม่มีสมาชิกสมัครเข้ามาในระบบเลยครับน้า";
+                    replyText = "📭 ปัจจุบันยังไม่มีสมาชิกสมัครเข้ามาในระบบเลยครับ";
                 } else {
                     memberListText += `👥 รวมสมาชิกทั้งหมด: ${totalMembers} คน`;
                     replyText = memberListText;

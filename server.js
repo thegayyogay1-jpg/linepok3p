@@ -1690,8 +1690,8 @@ else if (command.toLowerCase() === "y") {
             // ==================== [ 7. ระบบลงทะเบียน / เช็กบัตรสมาชิก (กรณีทั่วไป) ] ====================
             else {
                 const isRegistered = usersWallets[userId] ? true : false;
-
-                // 🌟 ประกาศตัวแปรดักจับสำหรับรองรับ Flex Message ไว้ก่อนเพื่อป้องกันบอทเอ่อ/เงียบ
+                
+                // ประกาศตัวแปรดักจับสำหรับรองรับ Flex Message ไว้ที่ระดับบนสุดของบล็อกนี้
                 let replyFlex = null;
 
                 if (!isRegistered) {
@@ -1727,7 +1727,9 @@ else if (command.toLowerCase() === "y") {
                         replyText = `📢 ยินดีต้อนรับครับสมาชิกใหม่\n──────────────────\n⚠️ คุณยังไม่ได้ลงทะเบียนในระบบ\n──────────────────\nกรุณาพิมพ์: C/ชื่อ-นามสกุล,ธนาคาร,เลขบัญชี เพื่อลงทะเบียนใช้งาน และ ใช้ในการถอนเครดิต\n(ตัวอย่าง: C/นายแจ๊ค เด้งดี,กสิกร,1234567890)\n──────────────────\n⚠️กรุณาใช้ชื่อ-นามสกุลให้ตรงกันกับ บช. ที่ใช้ในการฝากของท่าน⚠️`;
                     }
                 } else {
-                    const user = usersWallets[foundUserKey || userId]; // ดึงข้อมูลผู้ใช้ให้ชัวร์
+                    // 🛡️ แก้ไขตรงนี้: ดึงจาก userId โดยตรง ไม่ใช้ตัวแปรที่ไม่มีอยู่จริงแล้วครับ
+                    const user = usersWallets[userId]; 
+                    
                     if (userMsg === 'c') {
                         // 📝 เตรียมชุดรายการโพยในรอบนี้ (ถ้ามี)
                         let betContents = [];
@@ -1782,7 +1784,7 @@ else if (command.toLowerCase() === "y") {
                             turnStatusColor = "#ff5555";
                         }
 
-                        // 🏆 สร้างโครงสร้าง Flex Message สีดำ-ทอง ดีไซน์สุดพรีเมียมตามรูปตัวอย่าง
+                        // 🏆 โครงสร้าง Flex Message การ์ดดำ-ทอง
                         replyFlex = {
                             type: "flex",
                             altText: "📊 บัตรข้อมูลสมาชิกและยอดเงินของคุณ",
@@ -1810,7 +1812,6 @@ else if (command.toLowerCase() === "y") {
                                     type: "box",
                                     layout: "vertical",
                                     contents: [
-                                        // แถวสมาชิก
                                         {
                                             type: "box",
                                             layout: "horizontal",
@@ -1829,7 +1830,6 @@ else if (command.toLowerCase() === "y") {
                                             ]
                                         },
                                         { type: "separator", margin: "md", color: "#3a3a3c" },
-                                        // แถวเงินเครดิตสีเหลืองทองเด่นๆ
                                         {
                                             type: "box",
                                             layout: "horizontal",
@@ -1849,7 +1849,6 @@ else if (command.toLowerCase() === "y") {
                                             ]
                                         },
                                         { type: "separator", margin: "md", color: "#3a3a3c" },
-                                        // โซนโพยพนันย่อยๆ
                                         {
                                             type: "box",
                                             layout: "vertical",
@@ -1865,7 +1864,6 @@ else if (command.toLowerCase() === "y") {
                                             ]
                                         },
                                         { type: "separator", margin: "md", color: "#3a3a3c" },
-                                        // คู่มือช่วยเหลือสมาชิกท่อนล่างสุด
                                         {
                                             type: "box",
                                             layout: "vertical",
@@ -1879,7 +1877,8 @@ else if (command.toLowerCase() === "y") {
                                 }
                             }
                         };
-                        // 🚀 ส่งต่อการ์ดไปให้ระบบส่งข้อความด้านล่างรันต่อ
+                        
+                        // ส่งต่อการ์ดไปให้ท่อนส่งข้อความด้านล่าง
                         global.currentReplyFlex = replyFlex;
                     } else if (originalMsg.startsWith('C/') || originalMsg.startsWith('c/')) {
                         replyText = `❌ ไม่สามารถเปลี่ยนข้อมูลเองได้ค่ะคุณ ${user.name}!\n──────────────────\n⚠️ เนื่องจากระบบได้ผูกบัญชีธนาคารของคุณไว้ในคลังความปลอดภัยแล้ว\n\n📌 หากต้องการเปลี่ยน ชื่อ-นามสกุล หรือ เลขบัญชีธนาคาร กรุณาทักแชทติดต่อแอดมินโดยตรงเพื่อขออัปเดตข้อมูลนะคะ 🙏`;

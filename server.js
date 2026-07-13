@@ -223,11 +223,11 @@ app.post('/callback', async (req, res) => {
             }
 // ==================== [ ระบบเติมเงินแบบติดโปรโบนัสคูณ 25 (B เลขสมาชิก จำนวนเงิน) ] ====================
             else if (command === "B" || command === "b") {
-                // 🚨 เปลี่ยนตรงนี้: เช็กว่า ID คนพิมพ์อยู่ในกล่องแอดมินไหม
+                // 🚨 เช็กว่า ID คนพิมพ์อยู่ในกล่องแอดมินไหม
                 if (!ADMIN_IDS.includes(userId)) {
                     replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งนี้ครับ";
                 } else {
-                    const targetMemberId = parseInt(args[1]); 
+                    const targetMemberId = parseInt(args[1]);
                     const amount = parseFloat(args[2]); 
 
                     if (!targetMemberId || isNaN(amount) || amount <= 0) {
@@ -249,18 +249,26 @@ app.post('/callback', async (req, res) => {
                                 replyText = `❌ เติมโบนัสไม่สำเร็จ! สมาชิกหมายเลข ${targetMemberId} ยังไม่ได้พิมพ์เปิดยอดฝากเข้ามาในระบบ หรือยอดนี้เคยถูกเติมไปแล้วครับน้า`;
                             } else {
                                 const user = usersWallets[foundUserKey];
-                                
                                 user.balance += amount;
-                                user.turnoverTarget = amount * 25; 
+
+                                // 🔄 คำนวณยอดเทิร์นใหม่ของบิลนี้
+                                let newTurnoverTarget = amount * 25; 
+
+                                // 📊 ดึงยอดเทิร์นเดิมมาเช็ก ถ้าไม่มีหรือเป็นค่าว่างให้เริ่มต้นจาก 0 แล้วบวกทบเข้าไป
+                                let currentTurnover = user.turnoverTarget;
+                                if (!currentTurnover || isNaN(currentTurnover)) {
+                                    currentTurnover = 0;
+                                }
+                                user.turnoverTarget = currentTurnover + newTurnoverTarget;
                                 
                                 // 🧼 ล้างคิวฝากทิ้งทันที
-                                delete global.depositQueue[foundUserKey]; 
-
+                                delete global.depositQueue[foundUserKey];
                                 await saveDataToFirebase();
 
                                 replyText = `🎁 เติมโบนัสให้สมาชิกที่ [ ${user.memberNumber} ] \n คุณ ${user.name} สำเร็จ!\n──────────────────\n` +
                                             `💰 ยอดสุทธิ: +${amount} บาท\n──────────────────\n` +
-                                            `🔒 เงื่อนไข ต้องทำยอดเทิร์นสะสม (ได้/เสีย) ให้ครบ: ${user.turnoverTarget} บาท`;
+                                            `🔒 เงื่อนไข ต้องทำยอดเทิร์นสะสม (ได้/เสีย) เพิ่ม: +${newTurnoverTarget} บาท\n` +
+                                            `📊 ยอดเทิร์นคงเหลือรวมทั้งหมด: ${user.turnoverTarget} บาท`;
                             }
                         }
                     }
@@ -322,13 +330,13 @@ app.post('/callback', async (req, res) => {
                     }
                 }
             }
-              // ==================== [ 🛠️ คำสั่งแอดมินพิเศษ: เติมเครดิตฉุกเฉิน/แจกทุน+ติดเทิร์น (พิมพ์: @ [เลขสมาชิก] [จำนวนเงิน] หรือ @ [เลขสมาชิก] [จำนวนเงิน]#[ยอดเทิร์น]) ] ====================
+             // ==================== [ 🛠️ คำสั่งแอดมินพิเศษ: เติมเครดิตฉุกเฉิน/แจกทุน+ติดเทิร์น (พิมพ์: @ [เลขสมาชิก] [จำนวนเงิน] หรือ @ [เลขสมาชิก] [จำนวนเงิน]#[ยอดเทิร์น]) ] ====================
             else if (command === "@") {
                 // 👥 เช็กสิทธิ์แอดมินจากกล่องรวมกลาง
                 if (!ADMIN_IDS.includes(userId)) {
                     replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งนี้ครับ";
                 } else {
-                    const targetMemberId = parseInt(args[1]); 
+                    const targetMemberId = parseInt(args[1]);
                     let rawAmountStr = args[2] ? args[2].toString() : "";      
 
                     if (!targetMemberId || !rawAmountStr) {
@@ -363,13 +371,13 @@ app.post('/callback', async (req, res) => {
                                 // 🚀 บวกเงินเข้ากระเป๋าทันที ทะลุทุกระบบล็อก!
                                 usersWallets[foundUserKey].balance += amount;
                                 
-                                // 📝 บันทึกยอดเทิร์นโอเวอร์สะสมเข้าไปในตัวแปร (ดักจับถ้าเป็นค่าว่างให้เป็น 0 ก่อนแล้วค่อยบวกทบ)
+                                // 📝 บันทึกยอดเทิร์นโอเวอร์สะสมเข้าไปในตัวแปรหลัก (ดักจับถ้าเป็นค่าว่างให้เป็น 0 ก่อนแล้วค่อยบวกทบ)
                                 if (turnoverRequirement > 0) {
-                                    let currentTurnover = usersWallets[foundUserKey].turnoverRequirement;
+                                    let currentTurnover = usersWallets[foundUserKey].turnoverTarget;
                                     if (!currentTurnover || isNaN(currentTurnover)) {
                                         currentTurnover = 0;
                                     }
-                                    usersWallets[foundUserKey].turnoverRequirement = currentTurnover + turnoverRequirement;
+                                    usersWallets[foundUserKey].turnoverTarget = currentTurnover + turnoverRequirement;
                                 }
 
                                 const user = usersWallets[foundUserKey];
@@ -379,7 +387,7 @@ app.post('/callback', async (req, res) => {
                                 replyText = `⚡ [ระบบจัดการเครดิตแอดมิน] \n👤 คุณ ${user.name} (สมาชิกที่ ${user.memberNumber})\n💰 ได้รับเครดิต: +${amount} บาท\n`;
                                 if (turnoverRequirement > 0) {
                                     replyText += `⚠️ [ติดเงื่อนไข] ต้องทำยอดเทิร์นเพิ่ม: +${turnoverRequirement} บาท\n`;
-                                    replyText += `📊 ยอดเทิร์นคงเหลือรวมที่ต้องทำ: ${user.turnoverRequirement || 0} บาท\n`;
+                                    replyText += `📊 ยอดเทิร์นคงเหลือรวมที่ต้องทำ: ${user.turnoverTarget || 0} บาท\n`;
                                 } else {
                                     replyText += `✅ รูปแบบ: เติมเงินสดปกติ (ไม่ติดเทิร์น)\n`;
                                 }
@@ -1787,8 +1795,8 @@ else if (command.toLowerCase() === "y") {
                     replyText = totalReport;
                 }
             }
-               // ==================== [ เพิ่มใหม่: คำสั่งแอดมินส่องภาพรวมสมาชิกทุกคน (พิมพ์: mcall) ] ====================
-            else if (userMsg === 'mcall' || userMsg === 'MCall' || userMsg === 'MCALL') {
+               // ==================== [ เพิ่มใหม่: คำสั่งแอดมินส่องภาพรวมสมาชิกทุกคน (พิมพ์: oball) ] ====================
+            else if (userMsg === 'oball' || userMsg === 'Oball' || userMsg === 'OBALL') {
                 // 🚨 กรองขั้นสูงสุด: ถ้าไม่ใช่แอดมิน หรือ แอดมินไม่ได้สั่งในแชทส่วนตัว (1 ต่อ 1) ให้บอทเงียบกริบไม่ตอบ
                 if (!ADMIN_IDS.includes(userId) || event.source.type !== 'user') {
                     return res.sendStatus(200);

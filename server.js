@@ -21,6 +21,7 @@ let nextMemberId = 1;
 let isRoundOpen = false; // ตัวแปรจำสถานะ เปิด/ปิด รอบ
 let roundBets = {};      // ตัวแปรสำหรับจำโพยแทงในแต่ละรอบ
 let currentRound = 0;    // บรรทัดนี้เพื่อจำลำดับรอบปัจจุบัน
+let usersRoundCrossCheck = {}; // 🌟 วางตรงนี้เพื่อให้ระบบจำยาว ๆ ตลอดทั้งรอบ
 let isDrawOpen = false;  // บรรทัดนี้เพื่อเช็กสถานะรอบจั่วไพ่
 let tempRoomResults = null; // ใช้พักข้อมูลผลแต้มชั่วคราวที่แอดมินพึ่งพิมพ์ส่งมา
 let tempDealerResult = null; // ใช้พักข้อมูลผลแต้มของเจ้ามือชั่วคราว
@@ -485,6 +486,7 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
             isRoundOpen = false;
             isDrawOpen = false; // ล้างสถานะจั่วไปด้วยเลยตอนเซ็ตศูนย์
             roundBets = {};
+            usersRoundCrossCheck = {};
 
             await saveDataToFirebase(); //💾เซฟถาวร
             
@@ -621,6 +623,10 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                         let processedBets = [];
                         let hasError = false;
                         let errorMsg = "";
+                        if (!usersRoundCrossCheck[userId]) {
+                            usersRoundCrossCheck[userId] = {};
+                        }
+                        let betTracker = usersRoundCrossCheck[userId];
 
                         const allowedLegs = ['1', '2', '3', '4', '5', '6'];
                         const MIN_BET = 10;
@@ -658,10 +664,35 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                             if (targetStr === "มข") {
                                 legsCount = 6;
                                 betTypeDetail = `เหมาขาผู้เล่นสู้เจ้ามือ (6 ขา) ขาละ ${price} บาท`;
+            // 🟠 [แทรกดัก มข] วนเช็กขา 1-6 ว่ามีใครแทงฝั่งเจ้ามือ (dealer) ค้างไว้ไหม
+    for (let c = 1; c <= 6; c++) {
+        if (betTracker[c] && betTracker[c] === 'dealer') {
+            hasError = true;
+            errorMsg = `❌ แทง มข ไม่ได้! ขา ${c} มีการแทงฝั่งเจ้ามือค้างไว้แล้วในรอบนี้`;
+            break;
+        }
+    }
+    if (hasError) break; // ถ้าเออเร่อ ให้หลุดออกจากลูปตรวจโพยทันที
+    
+    // ถ้าผ่านหมด ให้บันทึกว่าทั้ง 6 ขาถูกจองฝั่งผู้เล่น (player)
+    for (let c = 1; c <= 6; c++) { betTracker[c] = 'player'; }
+                                
                             } else if (targetStr === "มจ") {
                                 legsCount = 6;
                                 betTypeDetail = `แทงเจ้ามือสู้ทุกขา (6 ขา) ขาละ ${price} บาท`;
-                            } else if (targetStr.startsWith('จ')) {
+                              // 🟠 [แทรกดัก มจ] วนเช็กขา 1-6 ว่ามีใครแทงฝั่งผู้เล่น (player) ค้างไว้ไหม
+    for (let c = 1; c <= 6; c++) {
+        if (betTracker[c] && betTracker[c] === 'player') {
+            hasError = true;
+            errorMsg = `❌ แทง มจ ไม่ได้! ขา ${c} มีการแทงฝั่งผู้เล่นค้างไว้แล้วในรอบนี้`;
+            break;
+        }
+    }
+    if (hasError) break; // ถ้าเออเร่อ ให้หลุดออกจากลูปตรวจโพยทันที
+
+    // ถ้าผ่านหมด ให้บันทึกว่าทั้ง 6 ขาถูกจองฝั่งเจ้ามือ (dealer)
+    for (let c = 1; c <= 6; c++) { betTracker[c] = 'dealer'; }
+} else if (targetStr.startsWith('จ')) {
                                 const legs = targetStr.substring(1);
                                 if (legs === "") { 
                                     hasError = true; 
@@ -678,7 +709,20 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                                 
                                 legsCount = legs.length;
                                 betTypeDetail = `เจ้ามือสู้ขา [${legs.split('').join(', ')}] ขาละ ${price} บาท`;
-                            } else {
+                            // 🟠 [แทรกดัก จ+เลขขา] ตรวจสอบทีละขาที่พิมพ์มา
+    const targetLegs = legs.split('');
+    for (let c of targetLegs) {
+        if (betTracker[c] && betTracker[c] === 'player') {
+            hasError = true;
+            errorMsg = `❌ แทงสวนไม่ได้! ขา ${c} มีการแทงฝั่งผู้เล่นไปแล้วในรอบนี้`;
+            break;
+        }
+    }
+    if (hasError) break;
+
+    // ถ้าผ่านหมด บันทึกฝั่งเจ้ามือลงไปในขานั้น ๆ
+    for (let c of targetLegs) { betTracker[c] = 'dealer'; }
+} else {
                                 let isLegsValid = targetStr.split('').every(char => allowedLegs.includes(char));
                                 if (!isLegsValid) {
                                     hasError = true;
@@ -687,7 +731,20 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                                 }
                                 legsCount = targetStr.length;
                                 betTypeDetail = `แทงขา [${targetStr.split('').join(', ')}] ขาละ ${price} บาท`;
-                            }
+                           // 🟠 [แทรกดัก ผู้เล่นรายขา] ตรวจสอบทีละขาที่พิมพ์มา
+    const targetLegs = targetStr.split('');
+    for (let c of targetLegs) {
+        if (betTracker[c] && betTracker[c] === 'dealer') {
+            hasError = true;
+            errorMsg = `❌ แทงสวนไม่ได้! ขา ${c} มีการแทงฝั่งเจ้ามือไปแล้วในรอบนี้`;
+            break;
+        }
+    }
+    if (hasError) break;
+
+    // ถ้าผ่านหมด บันทึกฝั่งผู้เล่นลงไปในขานั้น ๆ
+    for (let c of targetLegs) { betTracker[c] = 'player'; }
+}
 
                             let currentLineBet = price * legsCount;
                             let currentLineHold = currentLineBet * 3;

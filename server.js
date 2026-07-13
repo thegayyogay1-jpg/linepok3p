@@ -274,6 +274,41 @@ app.post('/callback', async (req, res) => {
                     }
                 }
             }
+                // ==================== [ 🧼 คำสั่งแอดมินพิเศษ: ล้างยอดเทิร์นโอเวอร์สมาชิก (พิมพ์: bb [เลขสมาชิก]) ] ====================
+            else if (command === "bb") {
+                // 👥 เช็กสิทธิ์แอดมินจากกล่องรวมกลาง
+                if (!ADMIN_IDS.includes(userId)) {
+                    replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งนี้ครับ";
+                } else {
+                    const targetMemberId = parseInt(args[1]);
+
+                    if (!targetMemberId || isNaN(targetMemberId)) {
+                        replyText = `⚠️ รูปแบบคำสั่งไม่ถูกต้องน้า\nกรุณาพิมพ์: bb [เลขสมาชิก]\n(ตัวอย่างเช่น: bb 1)`;
+                    } else {
+                        let foundUserKey = null;
+                        for (let key in usersWallets) {
+                            if (usersWallets[key].memberNumber === targetMemberId) {
+                                foundUserKey = key;
+                                break;
+                            }
+                        }
+
+                        if (!foundUserKey) {
+                            replyText = `❌ ไม่พบเลขสมาชิกที่ ${targetMemberId} ในระบบครับน้า`;
+                        } else {
+                            const user = usersWallets[foundUserKey];
+                            
+                            // 🧼 เคลียร์ยอดเทิร์นค้างเก่าทั้งหมดให้เป็น 0 ชัวร์ ๆ
+                            user.turnoverTarget = 0;
+                            
+                            // 💾 บันทึกการเปลี่ยนแปลงลง Firebase ถาวร
+                            await saveDataToFirebase();
+
+                            replyText = `🧼 [ระบบล้างยอดเทิร์นโอเวอร์] \n👤 คุณ ${user.name} (สมาชิกที่ ${user.memberNumber})\n✅ ทำการล้างยอดเทิร์นค้างเก่าทั้งหมดสำเร็จแล้วครับ!\n──────────────────\n📊 ยอดเทิร์นคงเหลือที่ต้องทำ: 0 บาท\n💰 เครดิตคงเหลือในกระเป๋า: ${user.balance} บาท`;
+                        }
+                    }
+                }
+            }
 // =================================================================
 // ❌ [คำสั่งแอดมิน] ยกเลิกคิวแจ้งฝากเงิน (พิมพ์: cc [เลขสมาชิก])
 // =================================================================

@@ -3,13 +3,13 @@ const axios = require('axios');
 const app = express();
 app.use(express.json());
 
-// 🌟 ประกาศตัวแปร Global ไว้บนสุดสำหรับถือข้อมูล Flex Message
+// 🌟 จุดสำคัญ 1: ประกาศตัวแปร Global ไว้บนสุดสำหรับถือข้อมูล Flex Message
 global.currentReplyFlex = null;
 
-// 💡 ดึง Token จากตัวแปร Environment ของ Render
+// 💡 จุดสำคัญ 2: ดึง Token จากตัวแปร Environment ของหลังบ้าน (Render / Railway)
 const TOKEN = process.env.CHANNEL_ACCESS_TOKEN;
 
-// 👥 ฐานข้อมูลจำลอง (ข้อมูลสมมุติสำหรับทดสอบการ์ดสมาชิก)
+// 👥 คลังข้อมูลจำลอง (สร้างไว้สำหรับเทสระบบการ์ด)
 let usersWallets = {
     "U1234567890abcdef": {
         memberNumber: 99,
@@ -19,7 +19,7 @@ let usersWallets = {
     }
 };
 
-// 📝 ข้อมูลโพยจำลองในรอบนั้น ๆ (สำหรับทดสอบให้การ์ดดึงไปแสดง)
+// 📝 ข้อมูลโพยจำลองในรอบนั้น ๆ (สำหรับทดสอบให้ดึงไปแปะในการ์ด)
 let roundBets = {
     "U1234567890abcdef": [
         { detail: "แทงขา 1 = 500", holdCost: 0 },
@@ -33,6 +33,7 @@ app.post('/webhook', async (req, res) => {
     
     if (events && events.length > 0) {
         for (let event of events) {
+            // กรองรับเฉพาะข้อความที่เป็นตัวหนังสือเท่านั้น
             if (event.type !== 'message' || event.message.type !== 'text') continue;
 
             const replyToken = event.replyToken;
@@ -41,13 +42,13 @@ app.post('/webhook', async (req, res) => {
             
             let replyText = "";
             
-            // ==================== [ คำสั่งทดสอบ: พิมพ์ c เช็กยอดการ์ดหรู ] ====================
+            // ==================== [ 🛠️ คำสั่งทดสอบ: พิมพ์ c เช็กยอดการ์ดหรู ] ====================
             if (userMsg === 'c') {
-                // บังคับให้ใช้ข้อมูลจำลอง (เพื่อให้น้าทดสอบดูหน้าตาการ์ดได้ทันที)
+                // บังคับล็อกอินดึงข้อมูลจำลองเสี่ยแจ๊คมาแสดง (เพื่อให้น้าทดสอบดูหน้าตากล่องได้ทันที)
                 const testUserId = "U1234567890abcdef";
                 const user = usersWallets[testUserId];
                 
-                // 📝 1. ดึงรายการโพยจำลองมาจัดระเบียบ
+                // 📝 1. ดึงรายการโพยจำลองมาจัดแถวตัวหนังสือย่อยในการ์ด
                 let betContents = [];
                 const myBets = roundBets[testUserId];
                 
@@ -76,11 +77,19 @@ app.post('/webhook', async (req, res) => {
                     const totalHold = myBets.reduce((sum, bet) => sum + bet.holdCost, 0);
                     betContents.push({
                         type: "text",
-                        text: `🔒 ประกันเด้5ที่ล็อก: ${totalHold} บาท`,
+                        text: `🔒 ประกันเด้งที่ล็อก: ${totalHold} บาท`,
                         color: "#ffaa00",
                         size: "xs",
                         weight: "bold",
                         margin: "sm"
+                    });
+                } else {
+                    betContents.push({
+                        type: "text",
+                        text: "ไม่มีโพยค้างในรอบนี้",
+                        color: "#888888",
+                        size: "xs",
+                        style: "italic"
                     });
                 }
 
@@ -88,7 +97,7 @@ app.post('/webhook', async (req, res) => {
                 let turnStatusText = "🔓 ปกติ (ไม่ติดเทิร์น)";
                 let turnStatusColor = "#55ff55";
 
-                // 🏆 3. ประกอบร่างโครงสร้างกล่อง Flex Message สีดำ-ทอง
+                // 🏆 3. ประกอบร่างกล่อง Flex Message สีดำ-ทอง ตามรูปเป๊ะ ๆ
                 global.currentReplyFlex = {
                     type: "flex",
                     altText: "📊 บัตรข้อมูลสมาชิกและยอดเงินของคุณ",
@@ -188,17 +197,17 @@ app.post('/webhook', async (req, res) => {
                 try {
                     let sendMessages = [];
 
-                    // ถ้ามีโครงสร้าง Flex Message ที่ประกอบเสร็จ ให้ใส่ลงอาร์เรย์ส่งทันที
+                    // ถ้ามีการ์ด Flex Message ให้ยัดลงกล่องส่งข้อมูล
                     if (global.currentReplyFlex) {
                         sendMessages.push(global.currentReplyFlex);
                     } else if (replyText) {
                         sendMessages.push({ type: 'text', text: replyText });
                     }
 
-                    // ล้างตัวแปร Global เคลียร์แรม
+                    // ล้างค่าแรมตัวแปร Global เคลียร์บิลรอบถัดไป
                     global.currentReplyFlex = null;
 
-                    // ส่งกลับไปยัง LINE API
+                    // ยิงข้อมูลกลับหาผู้ใช้ผ่าน LINE API
                     await axios.post('https://api.line.me/v2/bot/message/reply', {
                         replyToken: replyToken,
                         messages: sendMessages
@@ -217,5 +226,5 @@ app.post('/webhook', async (req, res) => {
     res.sendStatus(200);
 });
 
-app.get('/', (req, res) => { res.send('ระบบทดสอบการ์ดรันปกติครับน้า'); });
+app.get('/', (req, res) => { res.send('บอททดสอบระบบการ์ดว่างใช้งานรันปกติครับน้า'); });
 app.listen(process.env.PORT || 3000, () => { console.log('Server is running...'); });

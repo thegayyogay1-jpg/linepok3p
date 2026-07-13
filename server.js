@@ -28,7 +28,7 @@ let roundBets = {
 };
 
 // 🤖 จุดรับ Data จาก LINE Webhook
-app.post('/webhook', async (req, res) => {
+app.post('/callback', async (req, res) => {
     const events = req.body.events;
     
     if (events && events.length > 0) {

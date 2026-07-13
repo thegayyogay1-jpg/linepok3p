@@ -221,7 +221,7 @@ app.post('/callback', async (req, res) => {
                     }
                 }
             }
-// ==================== [ ระบบเติมเงินแบบติดโปรโบนัสคูณ 15 (B เลขสมาชิก จำนวนเงิน) ] ====================
+// ==================== [ ระบบเติมเงินแบบติดโปรโบนัสคูณ 25 (B เลขสมาชิก จำนวนเงิน) ] ====================
             else if (command === "B" || command === "b") {
                 // 🚨 เปลี่ยนตรงนี้: เช็กว่า ID คนพิมพ์อยู่ในกล่องแอดมินไหม
                 if (!ADMIN_IDS.includes(userId)) {
@@ -251,7 +251,7 @@ app.post('/callback', async (req, res) => {
                                 const user = usersWallets[foundUserKey];
                                 
                                 user.balance += amount;
-                                user.turnoverTarget = amount * 15; 
+                                user.turnoverTarget = amount * 25; 
                                 
                                 // 🧼 ล้างคิวฝากทิ้งทันที
                                 delete global.depositQueue[foundUserKey]; 
@@ -322,36 +322,68 @@ app.post('/callback', async (req, res) => {
                     }
                 }
             }
-                // ==================== [ 🛠️ คำสั่งแอดมินพิเศษ: เติมเครดิตฉุกเฉิน/แจกทุน (พิมพ์: แอด [เลขสมาชิก] [จำนวนเงิน]) ] ====================
-            else if (command === "แอด") {
+                // ==================== [ 🛠️ คำสั่งแอดมินพิเศษ: เติมเครดิตฉุกเฉิน/แจกทุน+ติดเทิร์น (พิมพ์: @ [เลขสมาชิก] [จำนวนเงิน] หรือ @ [เลขสมาชิก] [จำนวนเงิน]#[ยอดเทิร์น]) ] ====================
+            else if (command === "@") {
                 // 👥 เช็กสิทธิ์แอดมินจากกล่องรวมกลาง
                 if (!ADMIN_IDS.includes(userId)) {
                     replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งนี้ครับ";
                 } else {
                     const targetMemberId = parseInt(args[1]); 
-                    const amount = parseFloat(args[2]);      
+                    let rawAmountStr = args[2] ? args[2].toString() : "";      
 
-                    if (!targetMemberId || isNaN(amount) || amount <= 0) {
-                        replyText = `⚠️ รูปแบบคำสั่งไม่ถูกต้องน้า\nกรุณาพิมพ์: แอด [เลขสมาชิก] [จำนวนเงิน]\n(ตัวอย่างเช่น: แอด 1 500)`;
+                    if (!targetMemberId || !rawAmountStr) {
+                        replyText = `⚠️ รูปแบบคำสั่งไม่ถูกต้องน้า\n👉 เติมปกติ: @ [เลขสมาชิก] [จำนวนเงิน] (เช่น: @ 1 200)\n👉 แจกทุนติดเทิร์น: @ [เลขสมาชิก] [จำนวนเงิน]#[ยอดเทิร์น] (เช่น: @ 1 200#1000)`;
                     } else {
-                        let foundUserKey = null;
-                        for (let key in usersWallets) {
-                            if (usersWallets[key].memberNumber === targetMemberId) {
-                                foundUserKey = key;
-                                break;
-                            }
+                        let amount = 0;
+                        let turnoverRequirement = 0;
+
+                        // 🔍 ตรวจสอบว่ามีการใส่สัญลักษณ์ # เพื่อกำหนดเทิร์นโอเวอร์ไหม
+                        if (rawAmountStr.includes('#')) {
+                            const parts = rawAmountStr.split('#');
+                            amount = parseFloat(parts[0]);
+                            turnoverRequirement = parseFloat(parts[1]);
+                        } else {
+                            amount = parseFloat(rawAmountStr);
                         }
 
-                        if (!foundUserKey) {
-                            replyText = `❌ ไม่พบเลขสมาชิกที่ ${targetMemberId} ในระบบครับน้า`;
+                        if (isNaN(amount) || amount <= 0 || isNaN(turnoverRequirement) || turnoverRequirement < 0) {
+                            replyText = `⚠️ จำนวนเงิน หรือยอดเทิร์นโอเวอร์ไม่ถูกต้องครับน้า กรุณาเช็กตัวเลขอีกครั้งครับ`;
                         } else {
-                            // 🚀 บวกเงินเข้ากระเป๋าทันที ทะลุทุกระบบล็อก!
-                            usersWallets[foundUserKey].balance += amount;
-                            const user = usersWallets[foundUserKey];
-                            
-                            await saveDataToFirebase(); 
-                            
-                            replyText = `⚡ [ระบบเติมเงินฉุกเฉิน] \n➕ เพิ่มเครดิตให้สมาชิกที่ ${user.memberNumber}\n👤 คุณ ${user.name} +${amount} บาท สำเร็จ!\n──────────────────\n💰 ยอดสุทธิปัจจุบัน: ${user.balance} บาท`;
+                            let foundUserKey = null;
+                            for (let key in usersWallets) {
+                                if (usersWallets[key].memberNumber === targetMemberId) {
+                                    foundUserKey = key;
+                                    break;
+                                }
+                            }
+
+                            if (!foundUserKey) {
+                                replyText = `❌ ไม่พบเลขสมาชิกที่ ${targetMemberId} ในระบบครับน้า`;
+                            } else {
+                                // 🚀 บวกเงินเข้ากระเป๋าทันที ทะลุทุกระบบล็อก!
+                                usersWallets[foundUserKey].balance += amount;
+                                
+                                // 📝 บันทึกยอดเทิร์นโอเวอร์สะสมเข้าไปในตัวแปร (ถ้ามีของเดิมอยู่แล้วจะบวกสมทบเพิ่มให้เลยครับ)
+                                if (turnoverRequirement > 0) {
+                                    if (!usersWallets[foundUserKey].turnoverRequirement) {
+                                        usersWallets[foundUserKey].turnoverRequirement = 0;
+                                    }
+                                    usersWallets[foundUserKey].turnoverRequirement += turnoverRequirement;
+                                }
+
+                                const user = usersWallets[foundUserKey];
+                                await saveDataToFirebase(); 
+                                
+                                // 📱 ประกอบข้อความแจ้งเตือนแอดมินและสมาชิก
+                                replyText = `⚡ [ระบบจัดการเครดิตแอดมิน] \n👤 คุณ ${user.name} (สมาชิกที่ ${user.memberNumber})\n💰 ได้รับเครดิต: +${amount} บาท\n`;
+                                if (turnoverRequirement > 0) {
+                                    replyText += `⚠️ [ติดเงื่อนไข] ต้องทำยอดเทิร์นเพิ่ม: +${turnoverRequirement} บาท\n`;
+                                    replyText += `📊 ยอดเทิร์นคงเหลือรวมที่ต้องทำ: ${user.turnoverRequirement || 0} บาท\n`;
+                                } else {
+                                    replyText += `✅ รูปแบบ: เติมเงินสดปกติ (ไม่ติดเทิร์น)\n`;
+                                }
+                                replyText += `──────────────────\n💰 ยอดเงินปัจจุบัน: ${user.balance} บาท`;
+                            }
                         }
                     }
                 }

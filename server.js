@@ -1724,48 +1724,159 @@ else if (command.toLowerCase() === "y") {
                         replyText = `📢 ยินดีต้อนรับครับสมาชิกใหม่\n──────────────────\n⚠️ คุณยังไม่ได้ลงทะเบียนในระบบ\n──────────────────\nกรุณาพิมพ์: C/ชื่อ-นามสกุล,ธนาคาร,เลขบัญชี เพื่อลงทะเบียนใช้งาน และ ใช้ในการถอนเครดิต\n(ตัวอย่าง: C/นายแจ๊ค เด้งดี,กสิกร,1234567890)\n──────────────────\n⚠️กรุณาใช้ชื่อ-นามสกุลให้ตรงกันกับ บช. ที่ใช้ในการฝากของท่าน⚠️`;
                     }
                 } else {
-                    const user = usersWallets[userId];
+                    const user = usersWallets[foundUserKey || userId]; // ดึงข้อมูลผู้ใช้ให้ชัวร์
                     if (userMsg === 'c') {
-                        let memberInfo = `👤 สมาชิกคนที่: ${user.memberNumber}\n👤 ชื่อ-นามสกุล: ${user.name}\n💰 ยอดเงิน: ${user.balance} บาท`;
-                        if (user.turnoverTarget > 0) {
-                            memberInfo += `\n🔒 เทิร์นคงค้าง: ${user.turnoverTarget} บาท \n──────────────────\n`;
-                        } else {
-                            memberInfo += `\n🔓 สถานะเทิร์น: ปกติ\n──────────────────\n `;
-                        }
+                        // 📝 เตรียมชุดรายการโพยในรอบนี้ (ถ้ามี)
+                        let betContents = [];
                         const myBets = roundBets[userId];
+                        
                         if (myBets && myBets.length > 0) {
-                            memberInfo += `📝 โพยในรอบนี้\n──────────────────`;
                             myBets.forEach((bet, index) => {
-                                memberInfo += `\n  ${index + 1}. ${bet.detail}`;
-                                
+                                let betText = `${index + 1}. ${bet.detail}`;
                                 if (bet.drawStatus) {
                                     let drawLegs = [];
                                     for (let leg in bet.drawStatus) {
-                                        if (bet.drawStatus[leg] === "จั่ว") {
-                                            drawLegs.push(leg);
-                                        }
+                                        if (bet.drawStatus[leg] === "จั่ว") drawLegs.push(leg);
                                     }
                                     if (drawLegs.length > 0) {
-                                        memberInfo += ` 🃏 (จั่วเพิ่มขา: ${drawLegs.sort().join(', ')})`;
+                                        betText += ` 🃏 (จั่ว: ${drawLegs.sort().join(', ')})`;
                                     }
                                 }
+                                betContents.push({
+                                    type: "text",
+                                    text: betText,
+                                    color: "#e0e0e0",
+                                    size: "xs",
+                                    wrap: true,
+                                    margin: "xs"
+                                });
                             });
+                            
                             const totalHold = myBets.reduce((sum, bet) => sum + bet.holdCost, 0);
-                            memberInfo += `\n──────────────────\n🔒 ยอดประกันเด้งที่ล็อกไว้: ${totalHold} บาท`;
+                            betContents.push({
+                                type: "text",
+                                text: `🔒 ประกันเด้งที่ล็อก: ${totalHold} บาท`,
+                                color: "#ffaa00",
+                                size: "xs",
+                                weight: "bold",
+                                margin: "sm"
+                            });
                         } else {
-                            memberInfo += `📝 โพยในรอบนี้ ไม่มีโพยค้าง`;
+                            betContents.push({
+                                type: "text",
+                                text: "ไม่มีโพยค้างในรอบนี้",
+                                color: "#888888",
+                                size: "xs",
+                                style: "italic"
+                            });
                         }
 
-                        memberInfo += `\n──────────────────\n` +
-                                      `📖 คู่มือช่วยเหลือสมาชิก\n` +
-                                      `👉 พิมพ์ คส เพื่อดูคำสั่งทั้งหมด\n` +
-                                      `👉 พิมพ์ ฝาก จำนวน เพื่อฝากยอด\n` +
-                                      `👉 พิมพ์ ถอน จำนวน เพื่อถอนยอด\n` +
-                                      `👉 พิมพ์ กต เพื่ออ่านกติกาห้อง`;
+                        // 👑 สรุปสถานะเทิร์นโอเวอร์
+                        let turnStatusText = "🔓 ปกติ (ไม่ติดเทิร์น)";
+                        let turnStatusColor = "#55ff55";
+                        if (user.turnoverTarget > 0) {
+                            turnStatusText = `🔒 ค้าง ${user.turnoverTarget} บาท`;
+                            turnStatusColor = "#ff5555";
+                        }
 
-                        replyText = memberInfo;
+                        // 🏆 สร้างโครงสร้าง Flex Message สีดำ-ทอง ดีไซน์สุดพรีเมียมตามรูปตัวอย่าง
+                        replyFlex = {
+                            type: "flex",
+                            altText: "📊 บัตรข้อมูลสมาชิกและยอดเงินของคุณ",
+                            contents: {
+                                type: "bubble",
+                                styles: {
+                                    header: { backgroundColor: "#141416" },
+                                    body: { backgroundColor: "#1e1e22" }
+                                },
+                                header: {
+                                    type: "box",
+                                    layout: "vertical",
+                                    contents: [
+                                        {
+                                            type: "text",
+                                            text: "👑 POKDENG PREMIUM MEMBER",
+                                            weight: "bold",
+                                            color: "#d4af37",
+                                            size: "sm",
+                                            letterSpacing: "1px"
+                                        }
+                                    ]
+                                },
+                                body: {
+                                    type: "box",
+                                    layout: "vertical",
+                                    contents: [
+                                        // แถวสมาชิก
+                                        {
+                                            type: "box",
+                                            layout: "horizontal",
+                                            contents: [
+                                                { type: "text", text: "👤 สมาชิกคนที่", color: "#8e8e93", size: "xs" },
+                                                { type: "text", text: `No. ${user.memberNumber}`, color: "#ffffff", size: "xs", align: "end", weight: "bold" }
+                                            ]
+                                        },
+                                        {
+                                            type: "box",
+                                            layout: "horizontal",
+                                            margin: "sm",
+                                            contents: [
+                                                { type: "text", text: "👤 ชื่อลูกค้า", color: "#8e8e93", size: "xs" },
+                                                { type: "text", text: `${user.name}`, color: "#ffffff", size: "xs", align: "end", weight: "bold" }
+                                            ]
+                                        },
+                                        { type: "separator", margin: "md", color: "#3a3a3c" },
+                                        // แถวเงินเครดิตสีเหลืองทองเด่นๆ
+                                        {
+                                            type: "box",
+                                            layout: "horizontal",
+                                            margin: "md",
+                                            contents: [
+                                                { type: "text", text: "💵 เครดิตกระเป๋า", color: "#ffffff", size: "sm", weight: "bold" },
+                                                { type: "text", text: `${user.balance} บาท`, color: "#d4af37", size: "md", align: "end", weight: "bold" }
+                                            ]
+                                        },
+                                        {
+                                            type: "box",
+                                            layout: "horizontal",
+                                            margin: "sm",
+                                            contents: [
+                                                { type: "text", text: "📊 สถานะเทิร์น", color: "#8e8e93", size: "xs" },
+                                                { type: "text", text: turnStatusText, color: turnStatusColor, size: "xs", align: "end", weight: "bold" }
+                                            ]
+                                        },
+                                        { type: "separator", margin: "md", color: "#3a3a3c" },
+                                        // โซนโพยพนันย่อยๆ
+                                        {
+                                            type: "box",
+                                            layout: "vertical",
+                                            margin: "md",
+                                            contents: [
+                                                { type: "text", text: "📝 รายการโพยรอบนี้:", color: "#d4af37", size: "xs", weight: "bold", margin: "xs" },
+                                                {
+                                                    type: "box",
+                                                    layout: "vertical",
+                                                    margin: "xs",
+                                                    contents: betContents
+                                                }
+                                            ]
+                                        },
+                                        { type: "separator", margin: "md", color: "#3a3a3c" },
+                                        // คู่มือช่วยเหลือสมาชิกท่อนล่างสุด
+                                        {
+                                            type: "box",
+                                            layout: "vertical",
+                                            margin: "md",
+                                            contents: [
+                                                { type: "text", text: "📖 คู่มือช่วยเหลือใช้งาน", color: "#8e8e93", size: "xxs", weight: "bold" },
+                                                { type: "text", text: "• พิมพ์ คส เพื่อดูคำสั่งทั้งหมด\n• พิมพ์ ฝาก [จำนวน] หรือ ถอน [จำนวน]\n• พิมพ์ กต เพื่ออ่านกฎกติกาห้อง", color: "#aaaaaa", size: "xxs", margin: "xs", wrap: true }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        };
                     } else if (originalMsg.startsWith('C/') || originalMsg.startsWith('c/')) {
-                        // 🔒 [แก้ไขใหม่: บล็อกเหลี่ยม!] ป้องกันคนเก่าแอบพิมพ์ C/ มาเปลี่ยนชื่อหรือเลขบัญชีเองหลังบ้าน
                         replyText = `❌ ไม่สามารถเปลี่ยนข้อมูลเองได้ค่ะคุณ ${user.name}!\n──────────────────\n⚠️ เนื่องจากระบบได้ผูกบัญชีธนาคารของคุณไว้ในคลังความปลอดภัยแล้ว\n\n📌 หากต้องการเปลี่ยน ชื่อ-นามสกุล หรือ เลขบัญชีธนาคาร กรุณาทักแชทติดต่อแอดมินโดยตรงเพื่อขออัปเดตข้อมูลนะคะ 🙏`;
                     } else {
                         replyText = "";
@@ -1988,10 +2099,17 @@ if (userMsg === '3' || userMsg === '2' || userMsg === '1') {
             //==========================================================
         
             // 🚀 ยิงข้อความตอบกลับไปที่ LINE
-            if (replyText) {
+            if (replyText || (typeof replyFlex !== 'undefined' && replyFlex)) {
                 try {
-                    // 1. สร้างถังเก็บข้อความเริ่มต้น (ใส่ข้อความตัวหนังสือเดิมไว้ก่อน)
-                    let sendMessages = [{ type: 'text', text: replyText }];
+                    let sendMessages = [];
+
+                    // 1. ตรวจสอบว่ามี Flex Message ของคำสั่งเช็กยอด (c) หรือไม่
+                    if (typeof replyFlex !== 'undefined' && replyFlex) {
+                        sendMessages.push(replyFlex);
+                    } else if (replyText) {
+                        // ถ้าไม่มีการ์ด ให้ส่งเป็นตัวหนังสือปกติ
+                        sendMessages.push({ type: 'text', text: replyText });
+                    }
 
                     // 2. ดักเช็ก: ถ้าแอดมินพิมพ์เปิดรอบ 'o' ให้ใส่รูปเปิดรอบเข้าไปข้างหน้าข้อความ
                     if (userMsg === 'o') {
@@ -2070,6 +2188,9 @@ if (userMsg === '3' || userMsg === '2' || userMsg === '1') {
                             previewImageUrl: 'https://img2.pic.in.th/33c27af2e18203562.png'     // 🔗 ใส่ลิงก์รูปเดียวกัน
                         }];
                     }
+
+                    replyFlex = null;
+                    
                     // ส่งข้อความทั้งหมดออกไปหาผู้ใช้
                     await axios.post('https://api.line.me/v2/bot/message/reply', {
                         replyToken: replyToken,

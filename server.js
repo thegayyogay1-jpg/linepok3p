@@ -3,6 +3,7 @@ const axios = require('axios');
 const fs = require('fs'); // 📁 เติมตรงนี้เพื่อให้ระบบรู้จักการเขียนไฟล์ลงเครื่องครับน้า
 const app = express();
 app.use(express.json());
+global.currentReplyFlex = null;
 
 // 💡 ไม่ต้องใส่ Token ในนี้แล้ว ระบบจะดึงจากตัวแปรบน Render อัตโนมัติ
 const TOKEN = process.env.CHANNEL_ACCESS_TOKEN;
@@ -2103,16 +2104,16 @@ if (userMsg === '3' || userMsg === '2' || userMsg === '1') {
             //==========================================================
         
             // 🚀 ยิงข้อความตอบกลับไปที่ LINE
-            if (replyText || (typeof global.currentReplyFlex !== 'undefined' && global.currentReplyFlex)) {
-                try {
-                    let sendMessages = [];
+if (replyText || global.currentReplyFlex) {
+    try {
+        let sendMessages = [];
 
-                    // 1. ตรวจสอบว่ามีการ์ดส่งมาด้วยไหม
-                    if (typeof global.currentReplyFlex !== 'undefined' && global.currentReplyFlex) {
-                        sendMessages.push(global.currentReplyFlex);
-                    } else if (replyText && replyText !== "COUNTDOWN_IMAGE_TRIGGER") {
-                        sendMessages.push({ type: 'text', text: replyText });
-                    }
+        // 1. ตรวจสอบว่ามี Flex Message จากคำสั่ง c หรือไม่
+        if (global.currentReplyFlex) {
+            sendMessages.push(global.currentReplyFlex);
+        } else if (replyText && replyText !== "COUNTDOWN_IMAGE_TRIGGER") {
+            sendMessages.push({ type: 'text', text: replyText });
+        }
 
                     // 2. ดักเช็ก: ถ้าแอดมินพิมพ์เปิดรอบ 'o' ให้ใส่รูปเปิดรอบเข้าไปข้างหน้าข้อความ
                     if (userMsg === 'o') {

@@ -1367,14 +1367,24 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                                     if (isUserDrawn) statusAction = "[จั่ว]";
 
                                     if (finalCard.score > historicalDealer.score) {
-                                        let winMultiplier = finalCard.mult;
-                                        if (bet.maxMultiplier && winMultiplier > bet.maxMultiplier) {
-                                            winMultiplier = bet.maxMultiplier;
-                                        }
-                                        let profit = bet.pricePerLeg * finalCard.mult;
-                                        totalWinLoss += profit;
-                                        detailRows += `ขาที่ ${legStr} ${statusAction} ชนะ +${profit}\n`;
-                                    } else if (finalCard.score < historicalDealer.score) {
+                                        // 🌟 คำนวณหาเพดานค้ำประกันสูงสุดแบบชัวร์ ๆ
+    let maxLimit = 3; // ค่าตั้งต้น
+    if (bet.maxMultiplier) {
+        maxLimit = bet.maxMultiplier;
+    } else if (bet.holdCost && bet.actualBet) {
+        maxLimit = Math.round(bet.holdCost / bet.actualBet);
+    }
+
+    // 🌟 ดักเพดานตัวคูณชนะ ไม่ให้เกินที่ค้ำประกันไว้ในโพย
+    let winMultiplier = finalCard.mult;
+    if (winMultiplier > maxLimit) {
+        winMultiplier = maxLimit;
+    }
+
+    let profit = bet.pricePerLeg * winMultiplier;
+    totalWinLoss += profit;
+    detailRows += `ขาที่ ${legStr} ${statusAction} ชนะ +${profit} (x${winMultiplier})\n`;
+} else if (finalCard.score < historicalDealer.score) {
                                         let loseMultiplier = historicalDealer.mult;
                                         if (loseMultiplier > 3) {
                                             loseMultiplier = 3;
@@ -1400,21 +1410,37 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                                     }
 
                                     if (historicalDealer.score > finalCard.score) {
-    // 🌟 ดักเพดานกรณีแทงฝั่งเจ้ามือแล้วเจ้ามือชนะ (จำกัดเด้งไม่ให้เกินค้ำ)
-    let dealerWinMult = historicalDealer.mult;
-    if (bet.maxMultiplier && dealerWinMult > bet.maxMultiplier) {
-        dealerWinMult = bet.maxMultiplier;
+    // 🌟 คำนวณหาเพดานค้ำประกันสูงสุดแบบชัวร์ ๆ
+    let maxLimit = 3;
+    if (bet.maxMultiplier) {
+        maxLimit = bet.maxMultiplier;
+    } else if (bet.holdCost && bet.actualBet) {
+        maxLimit = Math.round(bet.holdCost / bet.actualBet);
     }
+
+    let dealerWinMult = historicalDealer.mult;
+    if (dealerWinMult > maxLimit) {
+        dealerWinMult = maxLimit;
+    }
+
     let grossWin = bet.pricePerLeg * dealerWinMult;
     let netWin = Math.floor(grossWin * 0.9);
     totalWinLoss += netWin;
     detailRows += `ขาที่ ${legStr} ${statusAction} เจ้าชนะ +${netWin} (หักต๋งแล้ว) (x${dealerWinMult})\n`;
 } else if (historicalDealer.score < finalCard.score) {
-    // 🌟 ดักเพดานกรณีแทงฝั่งเจ้ามือแล้วเจ้ามือแพ้ (จำกัดเด้งไม่ให้เกินค้ำ)
-    let dealerLoseMult = finalCard.mult;
-    if (bet.maxMultiplier && dealerLoseMult > bet.maxMultiplier) {
-        dealerLoseMult = bet.maxMultiplier;
+    // 🌟 คำนวณหาเพดานค้ำประกันสูงสุดแบบชัวร์ ๆ
+    let maxLimit = 3;
+    if (bet.maxMultiplier) {
+        maxLimit = bet.maxMultiplier;
+    } else if (bet.holdCost && bet.actualBet) {
+        maxLimit = Math.round(bet.holdCost / bet.actualBet);
     }
+
+    let dealerLoseMult = finalCard.mult;
+    if (dealerLoseMult > maxLimit) {
+        dealerLoseMult = maxLimit;
+    }
+
     let loss = bet.pricePerLeg * dealerLoseMult;
     totalWinLoss -= loss;
     detailRows += `ขาที่ ${legStr} ${statusAction} เจ้าแพ้ -${loss} (x${dealerLoseMult})\n`;

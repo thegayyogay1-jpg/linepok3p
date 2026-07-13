@@ -1691,6 +1691,9 @@ else if (command.toLowerCase() === "y") {
             else {
                 const isRegistered = usersWallets[userId] ? true : false;
 
+                // 🌟 ประกาศตัวแปรดักจับสำหรับรองรับ Flex Message ไว้ก่อนเพื่อป้องกันบอทเอ่อ/เงียบ
+                let replyFlex = null;
+
                 if (!isRegistered) {
                     if (originalMsg.startsWith('C/') || originalMsg.startsWith('c/')) {
                         const registerData = originalMsg.substring(2).trim();
@@ -1876,6 +1879,8 @@ else if (command.toLowerCase() === "y") {
                                 }
                             }
                         };
+                        // 🚀 ส่งต่อการ์ดไปให้ระบบส่งข้อความด้านล่างรันต่อ
+                        global.currentReplyFlex = replyFlex;
                     } else if (originalMsg.startsWith('C/') || originalMsg.startsWith('c/')) {
                         replyText = `❌ ไม่สามารถเปลี่ยนข้อมูลเองได้ค่ะคุณ ${user.name}!\n──────────────────\n⚠️ เนื่องจากระบบได้ผูกบัญชีธนาคารของคุณไว้ในคลังความปลอดภัยแล้ว\n\n📌 หากต้องการเปลี่ยน ชื่อ-นามสกุล หรือ เลขบัญชีธนาคาร กรุณาทักแชทติดต่อแอดมินโดยตรงเพื่อขออัปเดตข้อมูลนะคะ 🙏`;
                     } else {
@@ -2099,15 +2104,14 @@ if (userMsg === '3' || userMsg === '2' || userMsg === '1') {
             //==========================================================
         
             // 🚀 ยิงข้อความตอบกลับไปที่ LINE
-            if (replyText || (typeof replyFlex !== 'undefined' && replyFlex)) {
+            if (replyText || (typeof global.currentReplyFlex !== 'undefined' && global.currentReplyFlex)) {
                 try {
                     let sendMessages = [];
 
-                    // 1. ตรวจสอบว่ามี Flex Message ของคำสั่งเช็กยอด (c) หรือไม่
-                    if (typeof replyFlex !== 'undefined' && replyFlex) {
-                        sendMessages.push(replyFlex);
-                    } else if (replyText) {
-                        // ถ้าไม่มีการ์ด ให้ส่งเป็นตัวหนังสือปกติ
+                    // 1. ตรวจสอบว่ามีการ์ดส่งมาด้วยไหม
+                    if (typeof global.currentReplyFlex !== 'undefined' && global.currentReplyFlex) {
+                        sendMessages.push(global.currentReplyFlex);
+                    } else if (replyText && replyText !== "COUNTDOWN_IMAGE_TRIGGER") {
                         sendMessages.push({ type: 'text', text: replyText });
                     }
 
@@ -2189,7 +2193,8 @@ if (userMsg === '3' || userMsg === '2' || userMsg === '1') {
                         }];
                     }
 
-                    replyFlex = null;
+                    // 🧼 ล้างถังจำการ์ดออกทันทีเพื่อไม่ให้ไปค้างในคำสั่งคนอื่น
+                    global.currentReplyFlex = null;
                     
                     // ส่งข้อความทั้งหมดออกไปหาผู้ใช้
                     await axios.post('https://api.line.me/v2/bot/message/reply', {

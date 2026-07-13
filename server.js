@@ -1367,6 +1367,10 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                                     if (isUserDrawn) statusAction = "[จั่ว]";
 
                                     if (finalCard.score > historicalDealer.score) {
+                                        let winMultiplier = finalCard.mult;
+                                        if (bet.maxMultiplier && winMultiplier > bet.maxMultiplier) {
+                                            winMultiplier = bet.maxMultiplier;
+                                        }
                                         let profit = bet.pricePerLeg * finalCard.mult;
                                         totalWinLoss += profit;
                                         detailRows += `ขาที่ ${legStr} ${statusAction} ชนะ +${profit}\n`;
@@ -1396,17 +1400,27 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                                     }
 
                                     if (historicalDealer.score > finalCard.score) {
-                                        let grossWin = bet.pricePerLeg * historicalDealer.mult;
-                                        let netWin = Math.floor(grossWin * 0.9);
-                                        totalWinLoss += netWin;
-                                        detailRows += `ขาที่ ${legStr} ${statusAction} เจ้าชนะ +${netWin} (หักต๋งแล้ว)\n`;
-                                    } else if (historicalDealer.score < finalCard.score) {
-                                        let loss = bet.pricePerLeg * finalCard.mult;
-                                        totalWinLoss -= loss;
-                                        detailRows += `ขาที่ ${legStr} ${statusAction} เจ้าแพ้ -${loss}\n`;
-                                    } else {
-                                        detailRows += `ขาที่ ${legStr} ${statusAction} เสมอ +0\n`;
-                                    }
+    // 🌟 ดักเพดานกรณีแทงฝั่งเจ้ามือแล้วเจ้ามือชนะ (จำกัดเด้งไม่ให้เกินค้ำ)
+    let dealerWinMult = historicalDealer.mult;
+    if (bet.maxMultiplier && dealerWinMult > bet.maxMultiplier) {
+        dealerWinMult = bet.maxMultiplier;
+    }
+    let grossWin = bet.pricePerLeg * dealerWinMult;
+    let netWin = Math.floor(grossWin * 0.9);
+    totalWinLoss += netWin;
+    detailRows += `ขาที่ ${legStr} ${statusAction} เจ้าชนะ +${netWin} (หักต๋งแล้ว) (x${dealerWinMult})\n`;
+} else if (historicalDealer.score < finalCard.score) {
+    // 🌟 ดักเพดานกรณีแทงฝั่งเจ้ามือแล้วเจ้ามือแพ้ (จำกัดเด้งไม่ให้เกินค้ำ)
+    let dealerLoseMult = finalCard.mult;
+    if (bet.maxMultiplier && dealerLoseMult > bet.maxMultiplier) {
+        dealerLoseMult = bet.maxMultiplier;
+    }
+    let loss = bet.pricePerLeg * dealerLoseMult;
+    totalWinLoss -= loss;
+    detailRows += `ขาที่ ${legStr} ${statusAction} เจ้าแพ้ -${loss} (x${dealerLoseMult})\n`;
+} else {
+    detailRows += `ขาที่ ${legStr} ${statusAction} เสมอ +0\n`;
+}
                                 }
                             });
                         });

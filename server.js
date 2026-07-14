@@ -1,9 +1,15 @@
 const express = require('express');
+const promptPayQr = require('promptpay-qr');
+const QRCode = require('qrcode');
 const axios = require('axios');
 const fs = require('fs'); // 📁 เติมตรงนี้เพื่อให้ระบบรู้จักการเขียนไฟล์ลงเครื่องครับน้า
 const app = express();
 app.use(express.json());
+// เปิดโฟลเดอร์ public ให้สาธารณะ (รวมถึง LINE) สามารถวิ่งเข้ามาดึงรูปภาพ QR Code ไปแสดงผลได้
+app.use(express.static('public'));
 global.currentReplyFlex = null; // 👈 แทรกบรรทัดนี้ลงไปตรงนี้ครับ
+const promptPayQr = require('promptpay-qr');
+const QRCode = require('qrcode');
 
 // 💡 ไม่ต้องใส่ Token ในนี้แล้ว ระบบจะดึงจากตัวแปรบน Render อัตโนมัติ
 const TOKEN = process.env.CHANNEL_ACCESS_TOKEN;

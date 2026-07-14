@@ -1800,6 +1800,120 @@ else if (originalMsg.startsWith('>')) {
         return res.sendStatus(200); 
     }
 }
+    // ==================== [ ระบบสมาชิกแจ้งฝากเงิน + สุ่มทศนิยม & QR Code ] ====================
+else if (userMsg.startsWith('ฝาก')) {
+    const args = userMsg.split(' ');
+    const amountStr = args[1];
+    const amount = parseInt(amountStr);
+
+    if (isNaN(amount) || amount <= 0) {
+        replyText = "⚠️ กรุณาระบุยอดเงินที่ต้องการฝากให้ถูกต้องครับ เช่น พิมพ์: ฝาก 500";
+    } else {
+        // 1. สุ่มทศนิยม 2 ตำแหน่ง (.01 ถึง .99)
+        const randomSatang = parseFloat((Math.random() * 0.98 + 0.01).toFixed(2));
+        const finalAmount = amount + randomSatang; // ยอดรวมที่ต้องโอนจริง เช่น 500.34
+        
+        // 2. 🌟 ใส่เบอร์พร้อมเพย์ของน้าตรงนี้เลยครับ (สลับเป็นเบอร์พร้อมเพย์แท้ของน้านะครับ)
+        const myPromptPayNumber = "089XXXXXXX"; 
+        
+        try {
+            // 3. สร้างข้อความ Payload สำหรับแปลงเป็น QR Code พร้อมเพย์แบบระบุยอดเงิน
+            const payload = promptPayQr(myPromptPayNumber, { amount: finalAmount });
+            
+            // ตั้งชื่อไฟล์รูปภาพไม่ให้ซ้ำกัน โดยใช้เวลา + ยอดเงิน
+            const imageName = `qr_${Date.now()}_${amount}.png`;
+            const imagePath = `./public/${imageName}`;
+            
+            // 4. บันทึกและสร้างไฟล์รูปภาพ QR Code ลงในโฟลเดอร์ public ชั่วคราว
+            await QRCode.toFile(imagePath, payload);
+            
+            // 5. บันทึกยอดจองฝากนี้ลง Firebase (ตั้งค่าจำไว้ 10 นาที)
+            const depositKey = finalAmount.toFixed(2).replace('.', '_'); // แปลงเลข 500.34 เป็น 500_34
+            
+            await axios.put(`${FIREBASE_URL}/pending_deposits/${depositKey}.json`, {
+                userId: userId,
+                amount: amount,          // ยอดเงินหลัก (500)
+                finalAmount: finalAmount, // ยอดรวมทศนิยม (500.34)
+                timestamp: Date.now()
+            });
+
+            // 6. ดึงลิงก์ของเซิร์ฟเวอร์ Render น้ามาทำเป็น URL รูปภาพส่งให้ LINE
+            // (ระบบจะดึง URL โดเมนของ Render มาต่อยอดให้เองอัตโนมัติ)
+            const host = req.get('host');
+            const protocol = req.protocol;
+            const qrImageUrl = `${protocol}://${host}/${imageName}`;
+
+            // 7. ประกอบ Flex Message ส่ง QR Code ให้สมาชิกสแกนง่าย ๆ
+            global.currentReplyFlex = {
+                "type": "flex",
+                "altText": `QR Code ฝากเงินจำนวน ${finalAmount.toFixed(2)} บาท`,
+                "contents": {
+                    "type": "bubble",
+                    "styles": { "body": { "backgroundColor": "#1e1e24" } },
+                    "body": {
+                        "type": "box", "layout": "vertical", "spacing": "md",
+                        "contents": [
+                            { "type": "text", "text": "💳 ยอดเงินแจ้งฝากออโต้", "weight": "bold", "color": "#00ffcc", "size": "md", "align": "center" },
+                            { "type": "text", "text": `${finalAmount.toFixed(2)} บาท`, "weight": "bold", "color": "#ffffff", "size": "xxl", "align": "center" },
+                            { "type": "image", "url": qrImageUrl, "size": "xl", "aspectMode": "fit" },
+                            { "type": "text", "text": "⚠️ ห้ามโอนผิดยอด และต้องโอนภายใน 10 นาที", "color": "#ff3333", "size": "xs", "align": "center", "weight": "bold" },
+                            { "type": "text", "text": "📱 สแกน QR Code ด้านบนนี้จากแอปธนาคารได้เลยครับ ยอดเงินจะขึ้นให้อัตโนมัติ", "color": "#aaaaaa", "size": "xs", "align": "center", "wrap": true }
+                        ]
+                    }
+                }
+            };
+            
+            replyText = `📢 ยอดที่ต้องโอนจริงคือ: ${finalAmount.toFixed(2)} บาท\n(กรุณาสแกนจาก QR Code เพื่อให้ระบบเติมเครดิตอัตโนมัติครับ)`;
+
+        } catch (err) {
+            console.error("สร้าง QR Code ล้มเหลว", err);
+            replyText = "❌ ระบบสร้าง QR Code ขัดข้องชั่วคราว กรุณาลองใหม่อีกครั้งครับ";
+        }
+    }
+}
+    // ==================== [ ระบบจำลองดักอ่านเงินเข้าธนาคารอัตโนมัติ ] ====================
+else if (userMsg.startsWith('K-Connect:')) {
+    // ดึงตัวเลขทศนิยมออกมาจากข้อความแจ้งเตือน เช่น "K-Connect: มีเงินเข้าจำนวน 500.23 บาท"
+    const match = userMsg.match(/([0-9]+\.[0-9]{2})/);
+    
+    if (match) {
+        const detectedAmountStr = match[1]; // ได้ตัวหนังสือยอดเงิน เช่น "500.23"
+        const depositKey = detectedAmountStr.replace('.', '_'); // แปลงเป็น "500_23" เพื่อค้นหาใน Firebase
+        
+        try {
+            // 1. วิ่งไปค้นหาข้อมูลยอดจองนี้ใน Firebase
+            const response = await axios.get(`${FIREBASE_URL}/pending_deposits/${depositKey}.json`);
+            const depositData = response.data;
+            
+            if (depositData) {
+                const targetUserId = depositData.userId;
+                const creditToDeposit = depositData.amount; // ดึงยอดเงินหลักขึ้นมาเติม (เช่น 500 บาทถ้วน ไม่รวมเศษสตางค์)
+                
+                // 2. เช็กว่าผู้เล่นคนนั้นมีกระเป๋าเงินในระบบจริงไหม
+                if (usersWallets[targetUserId]) {
+                    // บวกเครดิตเข้ากระเป๋าเงินจริงของผู้เล่น
+                    usersWallets[targetUserId].balance += creditToDeposit;
+                    
+                    // บันทึกเงินลง Firebase ถาวร
+                    await saveDataToFirebase(); 
+                    
+                    // 3. ลบรายการยอดจองฝากนี้ออกจาก Firebase ทันที เพื่อป้องกันการแฮกหรือวนเติมเงินซ้ำ
+                    await axios.delete(`${FIREBASE_URL}/pending_deposits/${depositKey}.json`);
+                    
+                    // 4. ส่งข้อความแจ้งเตือนความสำเร็จกลับไปในไลน์
+                    replyText = `✅ [ระบบออโต้] ตรวจพบเงินเข้าจำนวน ${detectedAmountStr} บาท เรียบร้อยแล้ว!\n💰 ทำการเติมเครดิตให้คุณ ${usersWallets[targetUserId].name} (ID: ${usersWallets[targetUserId].memberNumber}) จำนวน +${creditToDeposit} บ. สำเร็จแล้วครับ 🏁\n💳 เครดิตคงเหลือปัจจุบัน: ${usersWallets[targetUserId].balance} บ.`;
+                } else {
+                    replyText = `⚠️ ตรวจพบยอดโอนเงินเข้า ${detectedAmountStr} บาท จริง แต่อาจไม่พบประวัติกระเป๋าเงินของสมาชิกคนนี้ในระบบหลักครับ`;
+                }
+            } else {
+                replyText = `🔍 คัดกรอง: ตรวจพบแจ้งเตือนยอดเงิน ${detectedAmountStr} บาท แต่อาจจะเป็นยอดฝากที่สำเร็จไปแล้ว หรือหมดอายุจอง 10 นาทีแล้วครับ`;
+            }
+        } catch (err) {
+            console.error("ระบบดักยอดเงินเข้าเกิดข้อผิดพลาด", err);
+            replyText = "❌ ระบบตรวจสอบเงินเข้าขัดข้องชั่วคราว แอดมินกรุณาตรวจสอบยอดในระบบอีกครั้ง";
+        }
+    }
+}
   // ==================== [ 9. ระบบแอดมินยืนยันผลคำนวณเงินจริง OK / NO (Settlement Engine) ] ====================
 else if (userMsg === 'ok' || userMsg === 'no') {
     if (!ADMIN_IDS.includes(userId)) return;

@@ -495,70 +495,157 @@ app.post('/callback', async (req, res) => {
             // ==================== [ 2. แอดมิน เปิด/ปิดรอบแทง - เวอร์ชันป้องกันมือลั่น ] ====================
 else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
     if (!ADMIN_IDS.includes(userId)) {
-    replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งนี้ครับ";
-} else {
+        replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งนี้ครับ";
+    } else {
         if (userMsg === 'o') {
             if (isRoundOpen) {
                 replyText = `⚠️ ตอนนี้ระบบกำลังเปิด "รอบที่ ${currentRound}" อยู่แล้วครับ`;
             } 
             // 🚨 [แก้ไขจุดบั๊ก] เช็กเพียงแค่ว่าถ้ารอบจั่วยังเปิดค้างอยู่ (isDrawOpen === true) เท่านั้นค่อยบล็อก
             else if (isDrawOpen) { 
-            replyText = `❌ ไม่สามารถเปิดรอบใหม่ได้ครับ!\nเนื่องจาก "รอบที่ ${currentRound}" ยังดำเนินรายการจั่วไพ่ไม่เสร็จสิ้น\n\n💡 หากต้องการเปิดรอบจั่ว ให้พิมพ์ oo\n💡 หากต้องการจบขั้นตอนจั่ว ให้พิมพ์ xx ก่อนครับ`;
+                replyText = `❌ 不 สามารถเปิดรอบใหม่ได้ครับ!\nเนื่องจาก "รอบที่ ${currentRound}" ยังดำเนินรายการจั่วไพ่ไม่เสร็จสิ้น\n\n💡 หากต้องการเปิดรอบจั่ว ให้พิมพ์ oo\n💡 หากต้องการจบขั้นตอนจั่ว ให้พิมพ์ xx ก่อนครับ`;
             } else {
-                            currentRound++;
-                            isRoundOpen = true;
-                            roundBets = {}; // ล้างข้อมูลโพยเก่าออกเพื่อเริ่มรอบใหม่
-                            
-                            // --- สร้างข้อความสถิติย้อนหลังแบบแยกขา ---
-                            let historyText = "";
-                            if (matchHistory.length > 0) {
-                                historyText = `📈 สถิติผลเจ้ามือ 5 รอบล่าสุด:\n──────────────────\n`;
-                                matchHistory.forEach((h) => {
-                                    historyText += `${h}\n──────────────────\n`;
-                                });
-                            } else {
-                                historyText = `📈 สถิติย้อนหลัง: ยังไม่มีข้อมูล`;
-                            }
+                currentRound++;
+                isRoundOpen = true;
+                roundBets = {}; // ล้างข้อมูลโพยเก่าออกเพื่อเริ่มรอบใหม่
+                
+                // --- สร้างโครงสร้างสถิติย้อนหลังเพื่อเอาไปใส่ใน Flex Message ---
+                let historyFlexContents = [];
+                if (matchHistory.length > 0) {
+                    matchHistory.forEach((h) => {
+                        historyFlexContents.push({
+                            "type": "text",
+                            "text": `• ${h}`,
+                            "size": "sm",
+                            "color": "#dddddd",
+                            "wrap": true
+                        });
+                    });
+                } else {
+                    historyFlexContents.push({
+                        "type": "text",
+                        "text": "• ยังไม่มีข้อมูลสถิติ",
+                        "size": "sm",
+                        "color": "#888888",
+                        "style": "italic"
+                    });
+                }
 
-                            replyText = `📢 เริ่มเปิดรอบแทงแล้วครับ!\n🎰 รอบที่: ${currentRound}\n──────────────────\n${historyText}✨ สมาชิกสามารถส่งโพยเข้ามาได้เลยครับครับ 🎰`;
+                // 🚀 ยิง Flex Message ธีมสีเขียวแจ้ง "เปิดรอบแทง"
+                try {
+                    await axios.post('https://api.line.me/v2/bot/message/reply', {
+                        replyToken: replyToken,
+                        messages: [{
+                            "type": "flex",
+                            "altText": `🟢 เริ่มเปิดรอบแทงแล้ว! รอบที่ ${currentRound}`,
+                            "contents": {
+                                "type": "bubble",
+                                "styles": { "body": { "backgroundColor": "#0d1b15" } }, // ดีไซน์พื้นหลังเขียวเข้มแบบโต๊ะคาสิโน
+                                "body": {
+                                    "type": "box", "layout": "vertical", "spacing": "md",
+                                    "contents": [
+                                        { "type": "text", "text": "🎰 เริ่มเปิดรอบแทงแล้วครับ 🎉", "weight": "bold", "color": "#00ff66", "size": "md", "align": "center" },
+                                        { "type": "text", "text": `รอบที่: ${currentRound}`, "weight": "bold", "color": "#ffffff", "size": "xl", "align": "center", "margin": "none" },
+                                        { "type": "separator", "color": "#1f3a2b" },
+                                        { "type": "text", "text": "📈 สถิติผลเจ้ามือ 5 รอบล่าสุด", "size": "xs", "color": "#00ff66", "weight": "bold" },
+                                        { "type": "box", "layout": "vertical", "spacing": "xs", "contents": historyFlexContents },
+                                        { "type": "separator", "color": "#1f3a2b" },
+                                        { "type": "text", "text": "✨ สมาชิกสามารถส่งโพยเข้ามาได้เลยครับ 🎰", "size": "sm", "color": "#ffffff", "wrap": true, "align": "center", "weight": "bold" }
+                                    ]
+                                }
+                            }
+                        }]
+                    }, {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${TOKEN}`
                         }
+                    });
+                } catch (error) {
+                    console.error("❌ ส่ง Flex Message เปิดรอบล้มเหลว:", error.response ? error.response.data : error.message);
+                }
+                return; // จบงานเปิดรอบ
+            }
         } else if (userMsg === 'x') {
-                        if (!isRoundOpen) {
-                            replyText = `⚠️ ระบบปิดรอบแทงอยู่แล้วครับ ไม่สามารถปิดซ้ำได้`;
-                        } else {
-                            isRoundOpen = false;
-                            
-// --- 📊 [สรุปยอดแทงรายบุคคล ดึงจากยอด actualBet ที่บันทึกไว้จริง] ---
-                            let betSummaryText = "";
-                            let hasAnyBet = false;
+            if (!isRoundOpen) {
+                replyText = `⚠️ ระบบปิดรอบแทงอยู่แล้วครับ ไม่สามารถปิดซ้ำได้`;
+            } else {
+                isRoundOpen = false;
+                
+                // --- 📊 [สรุปยอดแทงรายบุคคลเพื่อใส่ใน Flex] ---
+                let summaryFlexContents = [];
+                let hasAnyBet = false;
 
-                            for (let uId in roundBets) {
-                                const userBetsArray = roundBets[uId];
-                                if (!userBetsArray || userBetsArray.length === 0) continue;
+                for (let uId in roundBets) {
+                    const userBetsArray = roundBets[uId];
+                    if (!userBetsArray || userBetsArray.length === 0) continue;
 
-                                hasAnyBet = true;
-                                const user = usersWallets[uId];
-                                let userTotalBetAmt = 0;
+                    hasAnyBet = true;
+                    const user = usersWallets[uId];
+                    let userTotalBetAmt = 0;
 
-                                // วนลูปดึงค่า actualBet ของทุกโพยที่คนนี้แทงในรอบนี้มาบวกรวมกัน
-                                userBetsArray.forEach((b) => {
-                                    if (b.actualBet) {
-                                        userTotalBetAmt += b.actualBet;
-                                    }
-                                });
-
-                                betSummaryText += `• [ ${user.memberNumber} ] ${user.name} ➡️ ยอดแทง: ${userTotalBetAmt} บาท`;
-                            }
-                            let closingBetSection = "";
-                            if (hasAnyBet) {
-                                closingBetSection = `📝 สรุปยอดแทงประจำรอบ\n──────────────────\n${betSummaryText}\n──────────────────`;
-                            } else {
-                                closingBetSection = `📝 สรุปยอดแทงประจำรอบ\n──────────────────\n• ไม่มีสมาชิกส่งโพยเดิมพันในรอบนี้`;
-                            }
-
-                            replyText = `🚫ปิดรอบแทงเรียบร้อยแล้วครับ\n🏁 จบรอบที่: ${currentRound}\n──────────────────\n${closingBetSection}\n🔒 หยุดรับโพยทุกกรณี รอแอดมินสรุปผลสักครู่ครับ`;
+                    userBetsArray.forEach((b) => {
+                        if (b.actualBet) {
+                            userTotalBetAmt += b.actualBet;
                         }
-                    } else if (userMsg === 'rst') {
+                    });
+
+                    summaryFlexContents.push({
+                        "type": "box", "layout": "horizontal", "margin": "xs",
+                        "contents": [
+                            { "type": "text", "text": `• [ ${user.memberNumber} ] ${user.name}`, "size": "sm", "color": "#ffffff", "flex": 5, "wrap": true },
+                            { "type": "text", "text": `${userTotalBetAmt} ฿`, "size": "sm", "color": "#ffaa00", "align": "end", "weight": "bold", "flex": 3 }
+                        ]
+                    });
+                }
+
+                if (!hasAnyBet) {
+                    summaryFlexContents.push({
+                        "type": "text",
+                        "text": "• ไม่มีสมาชิกส่งโพยเดิมพันในรอบนี้",
+                        "size": "sm",
+                        "color": "#888888",
+                        "style": "italic",
+                        "align": "center"
+                    });
+                }
+
+                // 🚀 ยิง Flex Message ธีมสีแดง/ส้มแจ้ง "ปิดรับโพย"
+                try {
+                    await axios.post('https://api.line.me/v2/bot/message/reply', {
+                        replyToken: replyToken,
+                        messages: [{
+                            "type": "flex",
+                            "altText": `🚫 ปิดรอบแทงเรียบร้อย รอบที่ ${currentRound}`,
+                            "contents": {
+                                "type": "bubble",
+                                "styles": { "body": { "backgroundColor": "#1a1111" } }, // พื้นหลังดำอมแดง ดุดัน
+                                "body": {
+                                    "type": "box", "layout": "vertical", "spacing": "md",
+                                    "contents": [
+                                        { "type": "text", "text": "🚫 ปิดรอบแทงเรียบร้อยแล้วครับ 🏁", "weight": "bold", "color": "#ff3333", "size": "md", "align": "center" },
+                                        { "type": "text", "text": `จบรอบที่: ${currentRound}`, "weight": "bold", "color": "#ffffff", "size": "sm", "align": "center" },
+                                        { "type": "separator", "color": "#3a2222" },
+                                        { "type": "text", "text": "📝 สรุปยอดแทงประจำรอบ", "size": "xs", "color": "#ffaa00", "weight": "bold" },
+                                        { "type": "box", "layout": "vertical", "spacing": "xs", "contents": summaryFlexContents },
+                                        { "type": "separator", "color": "#3a2222" },
+                                        { "type": "text", "text": "🔒 หยุดรับโพยทุกกรณี รอแอดมินสรุปผลสักครู่ครับ", "size": "xs", "color": "#aaaaaa", "wrap": true, "align": "center" }
+                                    ]
+                                }
+                            }
+                        }]
+                    }, {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${TOKEN}`
+                        }
+                    });
+                } catch (error) {
+                    console.error("❌ ส่ง Flex Message ปิดรอบล้มเหลว:", error.response ? error.response.data : error.message);
+                }
+                return; // จบงานปิดรอบ
+            }
+        } else if (userMsg === 'rst') {
             currentRound = 0;
             isRoundOpen = false;
             isDrawOpen = false; // ล้างสถานะจั่วไปด้วยเลยตอนเซ็ตศูนย์

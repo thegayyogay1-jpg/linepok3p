@@ -2604,7 +2604,7 @@ else if (command.toLowerCase() === "y") {
                     // 🟢 กรณีที่เป็นสมาชิกเก่าที่ลงทะเบียนเรียบร้อยแล้ว
                     const user = usersWallets[userId];
                     
-                    // ==================== [ คำสั่งเช็กยอด c เวอร์ชันการ์ดดำทอง ] ====================
+                   // ==================== [ คำสั่งเช็กยอด c เวอร์ชันการ์ดดำทอง ] ====================
                     if (userMsg === 'c') {
                         // 🛠️ แก้ปัญหา LINE API บล็อกข้อความว่าง: บังคับให้ข้อความธรรมดาเป็น null เพื่อส่งแค่การ์ด Flex
                         replyText = null;
@@ -2678,7 +2678,7 @@ else if (command.toLowerCase() === "y") {
                                     contents: [
                                         {
                                             type: "text",
-                                            text: "👑 การ์ดข้อมูลสมากชิก",
+                                            text: "👑 การ์ดข้อมูลสมาชิก",
                                             weight: "bold",
                                             color: "#d4af37",
                                             size: "sm"
@@ -2721,8 +2721,8 @@ else if (command.toLowerCase() === "y") {
                                             layout: "horizontal",
                                             margin: "sm",
                                             contents: [
-                                                { type: "text", text: "📊 สถานะเทิร์น", color: "#8e8e93", size: "xs" },
-                                                { type: "text", text: turnStatusText, color: turnStatusColor, size: "xs", align: "end", weight: "bold" }
+                                                { type: "text", text: "📊 สถานะเทิร์น", color: "#8e8e93", size: "xs", flex: 4 },
+                                                { type: "text", text: turnStatusText, color: turnStatusColor, size: "xs", align: "end", weight: "bold", flex: 6 }
                                             ]
                                         },
                                         { type: "separator", margin: "md", color: "#3a3a3c" },
@@ -2753,7 +2753,7 @@ else if (command.toLowerCase() === "y") {
                                     ]
                                 }
                             }
-                        };
+                        ];
                     } else if (originalMsg.startsWith('C/') || originalMsg.startsWith('c/')) {
                         // 🔒 ป้องกันคนเก่าแอบพิมพ์ C/ มาเปลี่ยนชื่อหลังบ้าน
                         replyText = `❌ ไม่สามารถเปลี่ยนข้อมูลเองได้ค่ะคุณ ${user.name}!\n──────────────────\n⚠️ เนื่องจากระบบได้ผูกบัญชีธนาคารของคุณไว้ในคลังความปลอดภัยแล้ว\n\n📌 หากต้องการเปลี่ยน ชื่อ-นามสกุล หรือ เลขบัญชีธนาคาร กรุณาทักแชทติดต่อแอดมินโดยตรงเพื่อขออัปเดตข้อมูลนะคะ 🙏`;

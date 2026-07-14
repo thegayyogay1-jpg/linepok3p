@@ -673,6 +673,7 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
             isDrawOpen = false; // ล้างสถานะจั่วไปด้วยเลยตอนเซ็ตศูนย์
             roundBets = {};
             usersRoundCrossCheck = {};
+            matchHistory = []; // 👈 เพิ่มบรรทัดนี้เพื่อรีเซ็ตประวัติ 5 รอบย้อนหลังออกไปด้วยครับน้า
 
             await saveDataToFirebase(); //💾เซฟถาวร
             

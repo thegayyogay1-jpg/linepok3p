@@ -663,7 +663,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                     }
                 }
             }
-          // ==================== [ 4. ระบบรับโพยป๊อกเด้ง + หักค้ำประกัน 3 เด้ง ] ====================
+           // ==================== [ 4. ระบบรับโพยป๊อกเด้ง + หักค้ำประกัน 3 เด้ง ] ====================
             else if (originalMsg.includes('-') && !originalMsg.startsWith('C/') && !originalMsg.startsWith('c/')) {
                 if (!isRoundOpen) {
                     replyText = "🚫 ตอนนี้ระบบปิดรับโพยชั่วคราวครับ กรุณารอแอดมินเปิดรอบใหม่";
@@ -842,7 +842,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                         if (!hasError && totalActualBet > 0) {
                             let finalHoldCost = 0;
                             let maxHandMultiplier = 3; // ค่าตั้งต้นคือค้ำ 3 เด้งปกติ
-                            let limitReasonText = "✨ ค้ำประกัน 3 เด้งสมบูรณ์แบบ";
+                            let limitReasonText = "";
 
                             const doubleHoldCost = totalActualBet * 2; // ยอดค้ำประกันขั้นต่ำ (2 เด้ง)
                             const tripleHoldCost = totalActualBet * 3; // ยอดค้ำประกันปกติ (3 เด้ง)
@@ -856,7 +856,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                                 // 🍊 เคสเงินพอแค่ 2 เด้ง แต่ไม่ถึง 3 เด้ง -> ยอมให้แทงแต่จำกัดสิทธิ์จ่าย/หักสูงสุดแค่ 2 เด้ง
                                 maxHandMultiplier = 2;
                                 finalHoldCost = doubleHoldCost;
-                                limitReasonText = `⚠️ คิดผลสูงสุดไม่เกิน 2 เด้ง (เครดิตไม่พอค้ำ 3 เด้ง)`;
+                                limitReasonText = `\n⚠️ เนื่องจากเครดิตของคุณไม่พอค้ำประกัน 3 เด้ง (ขาดอีก ${tripleHoldCost - user.balance} บาท)\n──────────────────\n🎯 โพยชุดนี้ระบบจะคิดผลได้-เสียให้สูงสุด "ไม่เกิน 2 เด้ง" เท่านั้น`;
                             } 
                             else {
                                 // 🟢 เคสเงินพอค้ำ 3 เด้งสมบูรณ์แบบ
@@ -873,11 +873,11 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                                     roundBets[userId] = [];
                                 }
 
-                                // 📦 1. เตรียมอาเรย์สำหรับเก็บดีไซน์รายการแทงแต่ละบรรทัดเพื่อใส่ในกล่อง Flex
-                                let itemsFlexContents = [];
+                                let summaryText = `✅ บันทึกโพยเรียบร้อย 🎉\n──────────────────\n👤 คุณ: ${user.name} (ID: ${user.memberNumber})\n──────────────────\n📝 รายการแทง\n──────────────────\n`;
                                 
                                 processedBets.forEach((bet) => {
-                                    // เพิ่มข้อมูลลงฐานข้อมูล Firebase แบบเดิม 100%
+                                    summaryText += `• ${bet.detail}\n`; 
+                                    
                                     roundBets[userId].push({
                                         name: user.name,
                                         memberNumber: user.memberNumber,
@@ -885,90 +885,14 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                                         detail: bet.detail,
                                         pricePerLeg: bet.pricePerLeg,
                                         actualBet: bet.actualBet,
-                                        holdCost: (bet.actualBet * maxHandMultiplier), 
-                                        maxMultiplier: maxHandMultiplier, 
+                                        holdCost: (bet.actualBet * maxHandMultiplier), // บันทึกยอดค้ำตามจริงลงฐานข้อมูล
+                                        maxMultiplier: maxHandMultiplier, // 🔑 คีย์เวิร์ดสำคัญส่งไปให้ระบบคิดผลได้เสียอ่านค่า
                                         time: new Date().toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok' })
-                                    });
-
-                                    // เพิ่มข้อมูลเข้าไปในดีไซน์กล่องข้อความ Flex
-                                    itemsFlexContents.push({
-                                        "type": "text",
-                                        "text": `• ${bet.detail}`,
-                                        "size": "sm",
-                                        "color": "#dddddd",
-                                        "wrap": true
                                     });
                                 });
                                 
-                                // 🚀 2. สั่งยิง Flex Message ดำทอง ออกไปหาลูกค้าทันทีตรงนี้เลย ไม่ผ่านท่อนล่างให้เสี่ยงรวน
-                                try {
-                                    await axios.post('https://api.line.me/v2/bot/message/reply', {
-                                        replyToken: replyToken,
-                                        messages: [{
-                                            "type": "flex",
-                                            "altText": "🧾 บันทึกโพยสำเร็จเรียบร้อยแล้ว",
-                                            "contents": {
-                                                "type": "bubble",
-                                                "styles": { "body": { "backgroundColor": "#111111" } },
-                                                "body": {
-                                                    "type": "box", "layout": "vertical", "spacing": "md",
-                                                    "contents": [
-                                                        { "type": "text", "text": "✅ บันทึกโพยเรียบร้อย 🎉", "weight": "bold", "color": "#ffcc00", "size": "md", "align": "center" },
-                                                        { "type": "separator", "color": "#333333" },
-                                                        {
-                                                            "type": "box", "layout": "horizontal",
-                                                            "contents": [
-                                                                { "type": "text", "text": "👤 ผู้แทง:", "size": "sm", "color": "#888888", "flex": 2 },
-                                                                { "type": "text", "text": `${user.name} (ID: ${user.memberNumber})`, "size": "sm", "color": "#ffffff", "flex": 5, "weight": "bold" }
-                                                            ]
-                                                        },
-                                                        { "type": "separator", "color": "#333333" },
-                                                        { "type": "text", "text": "📝 รายการแทง", "size": "xs", "color": "#ffcc00", "weight": "bold" },
-                                                        { "type": "box", "layout": "vertical", "spacing": "xs", "contents": itemsFlexContents },
-                                                        { "type": "separator", "color": "#333333" },
-                                                        {
-                                                            "type": "box", "layout": "vertical", "spacing": "xs",
-                                                            "contents": [
-                                                                {
-                                                                    "type": "box", "layout": "horizontal",
-                                                                    "contents": [
-                                                                        { "type": "text", "text": "💵 ยอดแทงรวม:", "size": "sm", "color": "#aaa9aa" },
-                                                                        { "type": "text", "text": `${totalActualBet} บาท`, "size": "sm", "color": "#ffffff", "align": "end", "weight": "bold" }
-                                                                    ]
-                                                                },
-                                                                {
-                                                                    "type": "box", "layout": "horizontal",
-                                                                    "contents": [
-                                                                        { "type": "text", "text": `🔒 หักค้ำประกัน (x${maxHandMultiplier}):`, "size": "sm", "color": "#aaa9aa" },
-                                                                        { "type": "text", "text": `${finalHoldCost} บาท`, "size": "sm", "color": "#ff3333", "align": "end", "weight": "bold" }
-                                                                    ]
-                                                                },
-                                                                {
-                                                                    "type": "box", "layout": "horizontal",
-                                                                    "contents": [
-                                                                        { "type": "text", "text": "💰 เครดิตคงเหลือ:", "size": "sm", "color": "#aaa9aa" },
-                                                                        { "type": "text", "text": `${user.balance} บาท`, "size": "sm", "color": "#00ff00", "align": "end", "weight": "bold" }
-                                                                    ]
-                                                                }
-                                                            ]
-                                                        },
-                                                        { "type": "separator", "color": "#333333" },
-                                                        { "type": "text", "text": limitReasonText, "size": "xs", "color": "#ffaa00", "wrap": true, "align": "center" },
-                                                        { "type": "text", "text": "🔔 ระบบจะคืนเครดิตส่วนต่างให้ตอนสรุปผลครับ", "size": "xxs", "color": "#888888", "align": "center" }
-                                                    ]
-                                                }
-                                            }
-                                        }]
-                                    }, {
-                                        headers: {
-                                            'Content-Type': 'application/json',
-                                            'Authorization': `Bearer ${TOKEN}`
-                                        }
-                                    });
-                                } catch (error) {
-                                    console.error("❌ ส่ง Flex Message โพยแทงล้มเหลว:", error.response ? error.response.data : error.message);
-                                }
-                                return; // 🌟 จุดสำคัญ: ยิงข้อความเสร็จแล้ว ให้จบการทำงานตรงนี้เลย บอทจะได้ไม่ไปทำงานซ้ำซ้อนกับท่อนล่างไฟล์ครับน้า
+                                summaryText += `──────────────────\n💵 ยอดแทงรวม: ${totalActualBet} บาท\n🔒 หักค้ำประกันรอบนี้ (x${maxHandMultiplier}): ${finalHoldCost} บาท\n💰 เครดิตคงเหลือ: ${user.balance} บาท\n──────────────────${limitReasonText}\n 🔔 ระบบจะคืนเครดิตส่วนต่างให้ตอนสรุปผลครับ`;
+                                replyText = summaryText;
                             }
                         } else if (!hasError && totalActualBet === 0) {
                             replyText = "⚠️ ไม่พบรายการแทงในข้อความของคุณครับ";

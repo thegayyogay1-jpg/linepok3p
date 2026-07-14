@@ -1496,18 +1496,23 @@ else if (originalMsg.startsWith('>')) {
                 else if (res.threeCards.score < dealerResult.score) { status3Str = "แพ้ 🔴"; color3 = "#ff3333"; }
 
                 legsFlexContents.push({
-                    "type": "box", "layout": "vertical", "margin": "md", "spacing": "xs",
+                    "type": "box",
+                    "layout": "vertical",
+                    "margin": "md",
+                    "spacing": "xs",
                     "contents": [
                         { "type": "text", "text": `🃏 ขาที่ ${leg}`, "weight": "bold", "color": "#ffffff", "size": "sm" },
                         {
-                            "type": "box", "layout": "horizontal",
+                            "type": "box",
+                            "layout": "horizontal",
                             "contents": [
                                 { "type": "text", "text": `• [2ใบ]: ${res.twoCards.name} (${res.twoCards.mult}เด้ง)`, "size": "xs", "color": "#cccccc" },
                                 { "type": "text", "text": status2Str, "size": "xs", "color": color2, "align": "end", "weight": "bold" }
                             ]
                         },
                         {
-                            "type": "box", "layout": "horizontal",
+                            "type": "box",
+                            "layout": "horizontal",
                             "contents": [
                                 { "type": "text", "text": `• [3ใบ]: ${res.threeCards.name} (${res.threeCards.mult}เด้ง)`, "size": "xs", "color": "#cccccc" },
                                 { "type": "text", "text": status3Str, "size": "xs", "color": color3, "align": "end", "weight": "bold" }
@@ -1518,7 +1523,9 @@ else if (originalMsg.startsWith('>')) {
                 });
             } else {
                 legsFlexContents.push({
-                    "type": "box", "layout": "horizontal", "margin": "xs",
+                    "type": "box",
+                    "layout": "horizontal",
+                    "margin": "xs",
                     "contents": [
                         { "type": "text", "text": `🃏 ขาที่  ${leg}: ⚠️ ไม่มีผลไพ่`, "size": "xs", "color": "#888888", "style": "italic" },
                         { "type": "text", "text": "แพ้ 🔴", "size": "xs", "color": "#ff3333", "align": "end", "weight": "bold" }
@@ -1546,15 +1553,20 @@ else if (originalMsg.startsWith('>')) {
                             "type": "bubble",
                             "styles": { "body": { "backgroundColor": "#130f17" } },
                             "body": {
-                                "type": "box", "layout": "vertical", "spacing": "md",
+                                "type": "box",
+                                "layout": "vertical",
+                                "spacing": "md",
                                 "contents": [
                                     { "type": "text", "text": "📊 ตรวจสอบผลการเล่นผลคะแนน 🎰", "weight": "bold", "color": "#b8860b", "size": "md", "align": "center" },
                                     { "type": "text", "text": `รอบที่: ${currentRound}`, "weight": "bold", "color": "#ffffff", "size": "sm", "align": "center" },
                                     { "type": "separator", "color": "#2a2233" },
                                     {
-                                        "type": "box", "layout": "horizontal", "styles": { "body": { "backgroundColor": "#221929" } }, "padding": "sm",
+                                        "type": "box",
+                                        "layout": "horizontal",
+                                        "styles": { "body": { "backgroundColor": "#221929" } },
+                                        "padding": "sm",
                                         "contents": [
-                                            { "type": "text", "text": "👑 แต้มเจ้ามือ:", "weight": "bold", "color": "#ffaa00", "size": "sm" },
+                                            { "type": "text", "text": "👑 เจ้ามือ:", "weight": "bold", "color": "#ffaa00", "size": "sm" },
                                             { "type": "text", "text": `${dealerResult.name} (${dealerResult.mult} เด้ง)`, "weight": "bold", "color": "#ffffff", "size": "sm", "align": "end" }
                                         ]
                                     },
@@ -1565,6 +1577,7 @@ else if (originalMsg.startsWith('>')) {
                                     { "type": "text", "text": "🚨 กรุณาตรวจเช็คผลที่ส่ง\nหากข้อมูลถูกต้อง ให้พิมพ์: ok\nหากพิมพ์ผิดให้พิมพ์: no", "size": "xs", "color": "#ffcc00", "wrap": true, "align": "center", "weight": "bold" }
                                 ]
                             }
+                        ]
                     }
                 ]
             }, {
@@ -1576,7 +1589,7 @@ else if (originalMsg.startsWith('>')) {
         } catch (error) {
             console.error("❌ ส่งรูปภาพและ Flex ตรวจสอบผลล้มเหลว:", error.response ? error.response.data : error.message);
         }
-        return; 
+        return res.sendStatus(200); 
     }
 }
 // ==================== [ 9. ระบบแอดมินยืนยันผลคำนวณเงินจริง OK / NO (Settlement Engine) ] ====================

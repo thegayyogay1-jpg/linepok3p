@@ -1452,13 +1452,13 @@ else if (originalMsg.startsWith('>')) {
 
             if (match) {
                 // ผ่าแยกฝั่งซ้าย (2 ใบ) และ ฝั่งขวา (3 ใบ) ออกจากกันแบบเด็ดขาดร้อยเปอร์เซ็นต์!
-                const part1 = match[1]; // เช่น "6/"
-                const part2 = match[2]; // เช่น "6//"
+                const part1 = match[1]; 
+                const part2 = match[2]; 
                 
                 result2Cards = parseCardStr(part1, false, false);
                 result3Cards = parseCardStr(part2, false, true);
             } 
-            // กรณีพิมพ์ตัวเดียวโดดๆ เช่น "6" หรือป๊อกโดดๆ เช่น "8", "9"
+            // กรณีพิมพ์ตัวเดียวโดดๆ
             else {
                 let pts = parseInt(innerContent);
                 if (!isNaN(pts) && (pts === 8 || pts === 9)) {
@@ -1514,7 +1514,7 @@ else if (originalMsg.startsWith('>')) {
                             "type": "box",
                             "layout": "horizontal",
                             "contents": [
-                                { "type": "text", "text": `• [3ใบ]: ${res.threeCards.name} (${res.threeCards.mult}เด้ng)`, "size": "xs", "color": "#cccccc" },
+                                { "type": "text", "text": `• [3ใบ]: ${res.threeCards.name} (${res.threeCards.mult}เด้ง)`, "size": "xs", "color": "#cccccc" },
                                 { "type": "text", "text": status3Str, "size": "xs", "color": color3, "align": "end", "weight": "bold" }
                             ]
                         },
@@ -1563,8 +1563,9 @@ else if (originalMsg.startsWith('>')) {
                                     {
                                         "type": "box",
                                         "layout": "horizontal",
-                                        "styles": { "body": { "backgroundColor": "#221929" } },
+                                        "backgroundColor": "#221929",
                                         "padding": "sm",
+                                        "cornerRadius": "md",
                                         "contents": [
                                             { "type": "text", "text": "👑 เจ้ามือ:", "weight": "bold", "color": "#ffaa00", "size": "sm" },
                                             { "type": "text", "text": `${dealerResult.name} (${dealerResult.mult} เด้ง)`, "weight": "bold", "color": "#ffffff", "size": "sm", "align": "end" }

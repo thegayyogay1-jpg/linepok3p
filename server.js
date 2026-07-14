@@ -680,98 +680,204 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
         }
     }
 }
-            // ==================== [ 3. แอดมิน เปิด/ปิดรอบจั่วไพ่ - เวอร์ชันบล็อกพิมพ์ซ้ำ ] ====================
+           // ==================== [ 3. แอดมิน เปิด/ปิดรอบจั่วไพ่ - เวอร์ชันบล็อกพิมพ์ซ้ำ ] ====================
 else if (userMsg === 'oo' || userMsg === 'xx') {
-                if (!ADMIN_IDS.includes(userId)) {
-    replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งนี้ครับ";
-} else {
-                    // 🟢 [ฝั่งเปิดรอบจั่ว oo]
-                    if (userMsg === 'oo') {
-                        if (isRoundOpen) {
-                            replyText = "⚠️ ต้องพิมพ์ปิดรอบแทง (X) ก่อน จึงจะเปิดรอบจั่วได้ครับ";
-                        } else if (isDrawOpen) {
-                            replyText = `⚠️ ตอนนี้ระบบกำลังเปิด "รอบขอจั่วไพ่ใบที่ 3" อยู่แล้วครับ ไม่จำเป็นต้องเปิดซ้ำครับ`;
-                        } else {
-                            isDrawOpen = true; // เปิดสิทธิ์ให้บอทรับคำสั่งเครื่องหมาย + จากสมาชิก
-                            replyText = `🃏 เปิดรอบขอจั่วไพ่ใบที่ 3 (รอบที่ ${currentRound})\n──────────────────\n📢 หากต้องการจั่วเพิ่ม ให้พิมพ์เลขขาตามด้วย + เช่น พิมพ์ "1+" หรือ "12+" \n──────────────────\n⚠️หากขาไหนต้องการอยู่ (ไม่จั่ว) ไม่ต้องพิมพ์อะไรส่งมาครับ`;
+    if (!ADMIN_IDS.includes(userId)) {
+        replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งนี้ครับ";
+    } else {
+        // 🖼️ [ตั้งค่าลิงก์รูปภาพของน้าที่นี่]
+        // ⚠️ น้าเอาลิงก์ URL รูปภาพเปิดจั่ว/ปิดจั่วของน้า (ที่ขึ้นต้นด้วย https://) มาใส่แทนที่ได้เลยครับ
+        const openDrawImgUrl = "https://img2.pic.in.th/-__-----7fcbb7b1eadadfe1.jpg";
+        const closeDrawImgUrl = "https://img2.pic.in.th/-__-----17ded3ef1c297156.jpg";
+
+        // 🟢 [ฝั่งเปิดรอบจั่ว oo]
+        if (userMsg === 'oo') {
+            if (isRoundOpen) {
+                replyText = "⚠️ ต้องพิมพ์ปิดรอบแทง (X) ก่อน จึงจะเปิดรอบจั่วได้ครับ";
+            } else if (isDrawOpen) {
+                replyText = `⚠️ ตอนนี้ระบบกำลังเปิด "รอบขอจั่วไพ่ใบที่ 3" อยู่แล้วครับ ไม่จำเป็นต้องเปิดซ้ำครับ`;
+            } else {
+                isDrawOpen = true; // เปิดสิทธิ์ให้บอทรับคำสั่งเครื่องหมาย + จากสมาชิก
+
+                // 🚀 ยิงข้อความแพ็คคู่: [1. รูปภาพเปิดจั่วของน้า] + [2. Flex Message เปิดจั่วอย่างเป็นทางการ]
+                try {
+                    await axios.post('https://api.line.me/v2/bot/message/reply', {
+                        replyToken: replyToken,
+                        messages: [
+                            // 📸 ข้อความที่ 1: รูปเปิดจั่วของน้า
+                            {
+                                "type": "image",
+                                "originalContentUrl": openDrawImgUrl,
+                                "previewImageUrl": openDrawImgUrl
+                            },
+                            // 📊 ข้อความที่ 2: Flex Message เปิดจั่ว
+                            {
+                                "type": "flex",
+                                "altText": `🃏 เปิดรอบขอจั่วไพ่ใบที่ 3 (รอบที่ ${currentRound})`,
+                                "contents": {
+                                    "type": "bubble",
+                                    "styles": { "body": { "backgroundColor": "#0b1528" } }, // ธีมน้ำเงินเข้มคาสิโน
+                                    "body": {
+                                        "type": "box", "layout": "vertical", "spacing": "md",
+                                        "contents": [
+                                            { "type": "text", "text": "🃏 เปิดรอบขอจั่วไพ่ใบที่ 3 แล้วครับ 🎉", "weight": "bold", "color": "#3399ff", "size": "md", "align": "center" },
+                                            { "type": "text", "text": `รอบที่: ${currentRound}`, "weight": "bold", "color": "#ffffff", "size": "lg", "align": "center", "margin": "none" },
+                                            { "type": "separator", "color": "#1b2a47" },
+                                            { "type": "text", "text": "💡 สำหรับสมาชิกที่ต้องการจั่วไพ่เพิ่ม\nให้พิมพ์เลขขาตามด้วยเครื่องหมายบวก (+)\nเช่น พิมพ์ \"1+\" หรือ \"12+\"", "size": "sm", "color": "#dddddd", "wrap": true, "align": "center" },
+                                            { "type": "separator", "color": "#1b2a47" },
+                                            { "type": "text", "text": "⚠️ หากขาไหนต้องการอยู่ (ไม่จั่ว) ไม่ต้องพิมพ์อะไรส่งมาครับ", "size": "xs", "color": "#ffcc00", "wrap": true, "align": "center" }
+                                        ]
+                                    }
+                                }
+                            }
+                        ]
+                    }, {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${TOKEN}`
                         }
-                    } 
-                    // 🔴 [ฝั่งปิดรอบจั่ว xx + สรุปรายละเอียดรายบุคคล]
-                    else if (userMsg === 'xx') {
-                        if (!isDrawOpen) {
-                            replyText = "⚠️ ระบบปิดรอบจั่วไพ่อยู่แล้วครับ ไม่สามารถปิดซ้ำได้";
-                        } else {
-                            // 1. ปิดระบบรับรอบจั่วทันที
-                            isDrawOpen = false;
+                    });
+                } catch (error) {
+                    console.error("❌ ส่งรูปภาพและ Flex เปิดจั่วล้มเหลว:", error.response ? error.response.data : error.message);
+                }
+                return; // จบกระบวนการเปิดจั่วอย่างสมบูรณ์ บอทไม่ทำงานซ้ำซ้อน
+            }
+        } 
+        // 🔴 [ฝั่งปิดรอบจั่ว xx + สรุปรายละเอียดรายบุคคล]
+        else if (userMsg === 'xx') {
+            if (!isDrawOpen) {
+                replyText = "⚠️ ระบบปิดรอบจั่วไพ่อยู่แล้วครับ ไม่สามารถปิดซ้ำได้";
+            } else {
+                // 1. ปิดระบบรับรอบจั่วทันที
+                isDrawOpen = false;
 
-                            // 2. เริ่มสร้างกล่องข้อความสรุปรายขาของสมาชิกทุกคนในรอบนี้
-                            let summaryLegsText = `🔒 ปิดรอบขอจั่วไพ่เรียบร้อยแล้วครับ\n` +
-                                                  `🎰 ล็อกสถานะไพ่ 2 ใบ/ 3 ใบของทุกขาแล้ว รอสรุปผลและคิดเงินสักครู่ครับ\n` +
-                                                  `──────────────────\n` +
-                                                  `📋รายงานสรุปโพยและยอดแทงในรอบนี้\n`+
-                                                  `──────────────────\n`;
+                // 2. ดำเนินการวนลูปดึงข้อมูลจากโค้ดหลักของน้าแบบไม่มีตกหล่น
+                let summaryFlexContents = [];
+                let hasBets = false;
 
-                            let hasBets = false;
+                // วนลูปเช็กข้อมูลโพยของทุกคนในรอบนี้ (ตามตรรกะเดิมเป๊ะๆ)
+                for (let uid in roundBets) {
+                    const userBetsArray = roundBets[uid];
+                    if (userBetsArray && userBetsArray.length > 0) {
+                        hasBets = true;
+                        const user = usersWallets[uid]; // ดึงข้อมูลโปรไฟล์สมาชิก
 
-                            // วนลูปเช็กข้อมูลโพยของทุกคนในรอบนี้
-                            for (let uid in roundBets) {
-                                const userBetsArray = roundBets[uid];
-                                if (userBetsArray && userBetsArray.length > 0) {
-                                    hasBets = true;
-                                    const user = usersWallets[uid]; // ดึงข้อมูลโปรไฟล์สมาชิก
+                        let totalRealPlay = 0; // ยอดเล่นรวมจริง
+                        let totalWithBounce = 0; // ยอดค้ำประกัน (รวมค้ำเด้ง 3 เท่า)
+                        let betLegsDetail = []; // เก็บรายละเอียดเบอร์ขาที่แทง
+                        let drawLegsDetail = []; // เก็บรายละเอียดขาที่ขอจั่วเพิ่ม
 
-                                    let totalRealPlay = 0; // ยอดเล่นรวมจริง
-                                    let totalWithBounce = 0; // ยอดค้ำประกัน (รวมค้ำเด้ง 3 เท่า)
-                                    let betLegsDetail = []; // เก็บรายละเอียดเบอร์ขาที่แทง
-                                    let drawLegsDetail = []; // เก็บรายละเอียดขาที่ขอจั่วเพิ่ม
-
-                                    userBetsArray.forEach((bet) => {
-                                        // คำนวณเบอร์ขาฝั่งผู้เล่นปกติ
-                                        if (bet.betType !== "มข" && bet.betType !== "มจ" && !bet.betType.startsWith('จ')) {
-                                            const individualLegs = bet.betType.split('');
-                                            individualLegs.forEach((leg) => {
-                                                if (!betLegsDetail.includes(leg)) betLegsDetail.push(leg);
-                                                
-                                                // เช็กสถานะการจั่วใบที่ 3 ของขานี้
-                                                if (bet.drawStatus && bet.drawStatus[leg] === "จั่ว") {
-                                                    if (!drawLegsDetail.includes(leg)) drawLegsDetail.push(leg);
-                                                }
-                                            });
-                                        } 
-                                        // สำหรับกรณีแทงพิเศษอื่นๆ (มข / มจ / ขาเจ้ามือ)
-                                        else {
-                                            if (!betLegsDetail.includes(bet.betType)) {
-                                                betLegsDetail.push(bet.betType);
-                                            }
-                                        }
-
-                                        // คำนวณยอดเงินรวม
-                                        totalRealPlay += bet.totalPrice || bet.actualBet; // รองรับโครงสร้างชื่อตัวแปรของโพย
-                                        totalWithBounce += bet.holdCost; // ดึงยอดค้ำเด้ง 3 เท่าที่ระบบหักไว้จริงมาแสดง
-                                    });
-
-                                    // จัดเรียงรายชื่อขาให้สวยงามเพื่ออ่านง่าย
-                                    const legsStr = betLegsDetail.sort().join(', ');
-                                    const drawStr = drawLegsDetail.length > 0 ? drawLegsDetail.sort().join(', ') : "ไม่มี (อยู่ 2 ใบ)";
-
-                                    // เติมรายงานรายบุคคลเข้าไปในข้อความสรุป
-                                    summaryLegsText += `👤 คุณ: ${user.name} (ID: ${user.memberNumber})\n` +
-                                                       `👉 แทงขา: [ ${legsStr} ]\n` +
-                                                       `🃏 ขอจั่วเพิ่มขา: [ ${drawStr} ]\n` +
-                                                       `💰 ยอดเล่นรวม: ${totalRealPlay} บาท (รวมค้ำเด้ง: ${totalWithBounce} บาท)\n` +
-                                                       `──────────────────\n`;
+                        userBetsArray.forEach((bet) => {
+                            // คำนวณเบอร์ขาฝั่งผู้เล่นปกติ
+                            if (bet.betType !== "มข" && bet.betType !== "มจ" && !bet.betType.startsWith('จ')) {
+                                const individualLegs = bet.betType.split('');
+                                individualLegs.forEach((leg) => {
+                                    if (!betLegsDetail.includes(leg)) betLegsDetail.push(leg);
+                                    
+                                    // เช็กสถานะการจั่วใบที่ 3 ของขานี้
+                                    if (bet.drawStatus && bet.drawStatus[leg] === "จั่ว") {
+                                        if (!drawLegsDetail.includes(leg)) drawLegsDetail.push(leg);
+                                    }
+                                });
+                            } 
+                            // สำหรับกรณีแทงพิเศษอื่นๆ (มข / มจ / ขาเจ้ามือ)
+                            else {
+                                if (!betLegsDetail.includes(bet.betType)) {
+                                    betLegsDetail.push(bet.betType);
                                 }
                             }
 
-                            if (!hasBets) {
-                                summaryLegsText += "ℹ️ รอบนี้ไม่มีสมาชิกส่งโพยเดิมพันเข้ามาครับ";
-                            }
+                            // คำนวณยอดเงินรวม
+                            totalRealPlay += bet.totalPrice || bet.actualBet; // รองรับโครงสร้างชื่อตัวแปรของโพย
+                            totalWithBounce += bet.holdCost; // ดึงยอดค้ำเด้ง 3 เท่าที่ระบบหักไว้จริงมาแสดง
+                        });
 
-                            replyText = summaryLegsText;
-                        }
+                        // จัดเรียงรายชื่อขาให้สวยงามเพื่ออ่านง่าย
+                        const legsStr = betLegsDetail.sort().join(', ');
+                        const drawStr = drawLegsDetail.length > 0 ? drawLegsDetail.sort().join(', ') : "ไม่มี (อยู่ 2 ใบ)";
+
+                        // นำข้อมูลที่ประมวลผลได้มาแพ็คใส่รูปแบบ Flex Layout เพื่อความสวยงามและแสดงผลเป็นระเบียบ
+                        summaryFlexContents.push({
+                            "type": "box", "layout": "vertical", "margin": "md", "spacing": "xs",
+                            "contents": [
+                                { "type": "text", "text": `👤 ${user.name} (ID: ${user.memberNumber})`, "weight": "bold", "color": "#ffffff", "size": "sm" },
+                                {
+                                    "type": "box", "layout": "horizontal",
+                                    "contents": [
+                                        { "type": "text", "text": `👉 แทงขา: [ ${legsStr} ]`, "size": "xs", "color": "#cccccc", "flex": 5 },
+                                        { "type": "text", "text": `🃏 จั่วเพิ่ม: [ ${drawStr} ]`, "size": "xs", "color": "#3399ff", "flex": 5, "weight": "bold", "align": "end" }
+                                    ]
+                                },
+                                {
+                                    "type": "box", "layout": "horizontal",
+                                    "contents": [
+                                        { "type": "text", "text": `💰 ยอดเล่น: ${totalRealPlay} ฿`, "size": "xs", "color": "#aaaaaa", "flex": 5 },
+                                        { "type": "text", "text": `(รวมค้ำ: ${totalWithBounce} ฿)`, "size": "xs", "color": "#00ff66", "flex": 5, "align": "end", "weight": "bold" }
+                                    ]
+                                },
+                                { "type": "separator", "color": "#2c2214", "margin": "xs" }
+                            ]
+                        });
                     }
                 }
+
+                if (!hasBets) {
+                    summaryFlexContents.push({
+                        "type": "text",
+                        "text": "• รอบนี้ไม่มีสมาชิกส่งโพยเดิมพันเข้ามาครับ",
+                        "size": "sm",
+                        "color": "#888888",
+                        "style": "italic",
+                        "align": "center"
+                    });
+                }
+
+                // 🚀 ยิงข้อความแพ็คคู่: [1. รูปภาพปิดจั่วของน้า] + [2. Flex Message สรุปโพยและการจั่วรายบุคคล]
+                try {
+                    await axios.post('https://api.line.me/v2/bot/message/reply', {
+                        replyToken: replyToken,
+                        messages: [
+                            // 📸 ข้อความที่ 1: รูปปิดจั่วของน้า
+                            {
+                                "type": "image",
+                                "originalContentUrl": closeDrawImgUrl,
+                                "previewImageUrl": closeDrawImgUrl
+                            },
+                            // 📊 ข้อความที่ 2: Flex Message สรุปข้อมูลทั้งหมด (ดึงลอจิกจากของเดิมน้ามาแสดงผลสวยงาม)
+                            {
+                                "type": "flex",
+                                "altText": `🚫 ปิดรอบขอจั่วไพ่เรียบร้อยแล้ว (รอบที่ ${currentRound})`,
+                                "contents": {
+                                    "type": "bubble",
+                                    "styles": { "body": { "backgroundColor": "#1a140d" } }, // ธีมดำอมน้ำตาลทองคาสิโน
+                                    "body": {
+                                        "type": "box", "layout": "vertical", "spacing": "sm",
+                                        "contents": [
+                                            { "type": "text", "text": "🔒 ปิดรอบขอจั่วไพ่เรียบร้อยแล้วครับ 🏁", "weight": "bold", "color": "#ffaa00", "size": "md", "align": "center" },
+                                            { "type": "text", "text": "🎰 ล็อกสถานะไพ่ 2 ใบ/ 3 ใบของทุกขาแล้ว", "size": "xs", "color": "#ffffff", "align": "center" },
+                                            { "type": "separator", "color": "#3a2d1f" },
+                                            { "type": "text", "text": "📋 รายงานสรุปโพยและยอดแทงในรอบนี้", "size": "xs", "color": "#ffaa00", "weight": "bold" },
+                                            { "type": "box", "layout": "vertical", "spacing": "xs", "contents": summaryFlexContents },
+                                            { "type": "text", "text": "ℹ️ รอสรุปผลและคิดเงินสักครู่ครับ", "size": "xs", "color": "#aaaaaa", "align": "center", "margin": "sm" }
+                                        ]
+                                    }
+                                }
+                            }
+                        ]
+                    }, {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${TOKEN}`
+                        }
+                    });
+                } catch (error) {
+                    console.error("❌ ส่งรูปภาพและ Flex ปิดจั่วล้มเหลว:", error.response ? error.response.data : error.message);
+                }
+                return; // จบงานปิดจั่วและสรุปผล
             }
+        }
+    }
+}
         // ==================== [ 4. ระบบรับโพยป๊อกเด้ง + หักค้ำประกัน 3 เด้ง ] ====================
             else if (originalMsg.includes('-') && !originalMsg.startsWith('C/') && !originalMsg.startsWith('c/')) {
                 if (!isRoundOpen) {
@@ -2398,20 +2504,6 @@ if (userMsg === '3' || userMsg === '2' || userMsg === '1') {
                         sendMessages.push(global.currentReplyFlex);
                     }
 
-                    else if (userMsg === 'oo') {
-                        sendMessages.unshift({
-                            type: 'image',
-                            originalContentUrl: 'https://img2.pic.in.th/-__-----7fcbb7b1eadadfe1.jpg', 
-                            previewImageUrl: 'https://img2.pic.in.th/-__-----7fcbb7b1eadadfe1.jpg'     
-                        });
-                    }
-                    else if (userMsg === 'xx') {
-                        sendMessages.unshift({
-                            type: 'image',
-                            originalContentUrl: 'https://img2.pic.in.th/-__-----17ded3ef1c297156.jpg', 
-                            previewImageUrl: 'https://img2.pic.in.th/-__-----17ded3ef1c297156.jpg'     
-                        });
-                    }
                     else if (userMsg === 'กต') {
                         sendMessages.unshift({
                             type: 'image',

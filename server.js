@@ -1565,7 +1565,6 @@ else if (originalMsg.startsWith('>')) {
                                     { "type": "text", "text": "🚨 กรุณาตรวจเช็คผลที่ส่ง\nหากข้อมูลถูกต้อง ให้พิมพ์: ok\nหากพิมพ์ผิดให้พิมพ์: no", "size": "xs", "color": "#ffcc00", "wrap": true, "align": "center", "weight": "bold" }
                                 ]
                             }
-                        ]
                     }
                 ]
             }, {

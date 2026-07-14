@@ -1,88 +1,316 @@
 const express = require('express');
+
 const promptPayQr = require('promptpay-qr');
+
 const QRCode = require('qrcode');
+
 const axios = require('axios');
+
 const fs = require('fs'); // 📁 เติมตรงนี้เพื่อให้ระบบรู้จักการเขียนไฟล์ลงเครื่องครับน้า
+
 const app = express();
+
 app.use(express.json());
+
 // เปิดโฟลเดอร์ public ให้สาธารณะ (รวมถึง LINE) สามารถวิ่งเข้ามาดึงรูปภาพ QR Code ไปแสดงผลได้
+
 app.use(express.static('public'));
+
 global.currentReplyFlex = null; // 👈 แทรกบรรทัดนี้ลงไปตรงนี้ครับ
 
+
+
 // 💡 ไม่ต้องใส่ Token ในนี้แล้ว ระบบจะดึงจากตัวแปรบน Render อัตโนมัติ
+
 const TOKEN = process.env.CHANNEL_ACCESS_TOKEN;
 
+
+
 // 👥 [กล่องรวม ID แอดมินกลาง] มีแอดมินเพิ่มมาใส่เพิ่มตรงนี้ที่เดียวจบเลยครับน้า!
+
 const ADMIN_IDS = [
+
     "U2fb9233e5c539ae3970cbd698e2e18db", // แอดมินคนที่ 1
+
     "Uf48148ba5a3bfd14d4e81213daf56ef4" // แอดมินคนที่ 2
+
 ];
 
+
+
 // 📡 ลิงก์เชื่อมโยงไปยังฐานข้อมูล Firebase ถาวร 
+
 const FIREBASE_URL = "https://my-pokdeng-bot-default-rtdb.asia-southeast1.firebasedatabase.app/"; 
 
+
+
 let usersWallets = {};
+
 let nextMemberId = 1;
+
 let isRoundOpen = false; // ตัวแปรจำสถานะ เปิด/ปิด รอบ
+
 let roundBets = {};      // ตัวแปรสำหรับจำโพยแทงในแต่ละรอบ
+
 let currentRound = 0;    // บรรทัดนี้เพื่อจำลำดับรอบปัจจุบัน
+
 let isDrawOpen = false;  // บรรทัดนี้เพื่อเช็กสถานะรอบจั่วไพ่
+
 let tempRoomResults = null; // ใช้พักข้อมูลผลแต้มชั่วคราวที่แอดมินพึ่งพิมพ์ส่งมา
+
 let tempDealerResult = null; // ใช้พักข้อมูลผลแต้มของเจ้ามือชั่วคราว
+
 let matchHistory = []; // เก็บประวัติสถิติย้อนหลังสูงสุด 5 รอบ
+
 let detailedRoundHistory = {}; // ตัวแปรเก็บข้อมูลสำหรับแอดมินดึงย้อนหลัง
+
 let pastRoundsData = {}; //  ถังเก็บประวัติโพยและผลไพ่แยกรายรอบ (สำหรับดึง v,m)
+
 let withdrawQueue = []; // 📦 ถังสำหรับเก็บคิวสมาชิกที่แจ้งถอนเงิน
+
 let usersRoundCrossCheck = {}; // 🌟 เพิ่มบรรทัดนี้ไว้บนสุดของไฟล์
 
+
+
 // 🔄 ฟังก์ชันอัตโนมัติ: ดึงข้อมูลจาก Firebase มาอัปเดตลงในบอททันทีที่เปิดเครื่อง (แก้ไขดึงครบทุกกล่องแล้ว)
+
 async function loadDataFromFirebase() {
+
     try {
+
         const response = await axios.get(`${FIREBASE_URL}system_data.json`);
+
         if (response.data) {
+
             usersWallets = response.data.usersWallets || {};
+
             nextMemberId = response.data.nextMemberId || 1;
+
             isRoundOpen = response.data.isRoundOpen !== undefined ? response.data.isRoundOpen : false;
+
             roundBets = response.data.roundBets || {};
+
             currentRound = response.data.currentRound || 0;
+
             isDrawOpen = response.data.isDrawOpen !== undefined ? response.data.isDrawOpen : false;
+
             matchHistory = response.data.matchHistory || [];
+
             detailedRoundHistory = response.data.detailedRoundHistory || {};
+
             pastRoundsData = response.data.pastRoundsData || {};
+
             withdrawQueue = response.data.withdrawQueue || [];
+
             console.log("✅ ดึงข้อมูลระบบทั้งหมดจาก Firebase สำเร็จเรียบร้อย!");
+
         }
+
     } catch (error) {
+
         console.error("❌ ไม่สามารถดึงข้อมูลจาก Firebase ได้:", error.message);
+
     }
+
 }
+
 loadDataFromFirebase(); // สั่งให้ทำงานทันทีที่บอทรัน
 
+
+
 // 💾 ฟังก์ชันอัตโนมัติ: สั่งบันทึกข้อมูลปัจจุบันยิงกลับไปเก็บที่ตึก Firebase
+
 async function saveDataToFirebase() {
+
     try {
+
         await axios.put(`${FIREBASE_URL}system_data.json`, {
+
             usersWallets: usersWallets,
+
             nextMemberId: nextMemberId,
+
             isRoundOpen: isRoundOpen,         // 💾 จำสถานะ เปิด/ปิด รอบ
+
             roundBets: roundBets,             // 💾 จำโพยแทงในแต่ละรอบ
+
             currentRound: currentRound,       // 💾 จำลำดับรอบปัจจุบัน
+
             isDrawOpen: isDrawOpen,           // 💾 จำสถานะรอบจั่วไพ่
+
             matchHistory: matchHistory,       // 💾 จำประวัติสถิติย้อนหลัง 5 รอบ
+
             detailedRoundHistory: detailedRoundHistory, // 💾 จำข้อมูลแอดมินดึงย้อนหลัง
+
             pastRoundsData: pastRoundsData,   // 💾 จำประวัติโพยและผลไพ่แยกรายรอบ (v,m)
+
             withdrawQueue: withdrawQueue       // 💾 จำคิวสมาชิกที่แจ้งถอนเงิน
+
         });
+
         console.log("💾 บันทึกข้อมูลลง Firebase เรียบร้อย!");
+
     } catch (error) {
+
         console.error("❌ บันทึกข้อมูลลง Firebase ล้มเหลว:", error.message);
+
     }
+
 }
+
 app.post('/callback', async (req, res) => {
     const events = req.body.events;
     if (!events) return res.sendStatus(200);
 
     for (let event of events) {
+        // ดึงข้อความและ Token ออกมาเตรียมใช้งาน
+        const userMsg = event.message && event.message.text ? event.message.text.trim() : null;
+        const replyToken = event.replyToken;
+        const userId = event.source.userId;
+
+        // ==================== [ ⭐ ระบบดักเงินเข้าออโต้ วางไว้บนสุด ⭐ ] ====================
+        if (userMsg && userMsg.startsWith('KDeposit')) {
+            // ดึงตัวเลขทศนิยมออกมาจากข้อความ (เช่น 500.64)
+            const match = userMsg.match(/([0-9]+\.[0-9]{2})/);
+            
+            if (match) {
+                const detectedAmountStr = match[1]; // ได้ข้อความ "500.64"
+                const depositKey = detectedAmountStr.replace('.', '_'); // แปลงเป็น "500_48" เพื่อใช้ค้นหาใน Firebase
+                
+                try {
+                    // 1. ค้นหายอดจองฝากใน Firebase
+                    const response = await axios.get(`${FIREBASE_URL}/pending_deposits/${depositKey}.json`);
+                    const depositData = response.data;
+                    
+                    if (depositData) {
+                        const targetUserId = depositData.userId;
+                        const creditToDeposit = depositData.amount; // ยอดเงินหลัก (เช่น 500)
+                        
+                        // 2. เติมเครดิตให้ลูกค้า
+                        if (usersWallets[targetUserId]) {
+                            usersWallets[targetUserId].balance += creditToDeposit;
+                            await saveDataToFirebase(); 
+                            
+                            // เคลียร์คิวล็อกเดิม
+                            if (global.depositQueue && global.depositQueue[targetUserId]) {
+                                delete global.depositQueue[targetUserId];
+                            }
+                            
+                            // 3. ลบยอดจองฝากทิ้งป้องกันการเวียนซ้ำ
+                            await axios.delete(`${FIREBASE_URL}/pending_deposits/${depositKey}.json`);
+                            
+                            // 4. แจ้งเตือนสลิปเติมสำเร็จเข้าไปในไลน์
+                            try {
+                                await axios.post('https://api.line.me/v2/bot/message/reply', {
+                                    replyToken: replyToken,
+                                    messages: [
+                                        {
+                                            "type": "text",
+                                            "text": `✅ [ระบบออโต้] ตรวจพบเงินเข้าจำนวน ${detectedAmountStr} บาท เรียบร้อยแล้ว!\n💰 เติมเครดิตให้คุณ ${usersWallets[targetUserId].name} จำนวน +${creditToDeposit} บ. สำเร็จแล้วครับ 🏁\n💳 เครดิตคงเหลือปัจจุบัน: ${usersWallets[targetUserId].balance} บ.`
+                                        }
+                                    ]
+                                }, { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` } });
+                            } catch (lineErr) { console.error("Error sending auto credit success text:", lineErr); }
+
+                        } else {
+                            console.log(`⚠️ ไม่พบกระเป๋าเงินสำหรับ UID: ${targetUserId}`);
+                        }
+                    } else {
+                        console.log(`🔍 คัดกรอง: ไม่พบยอดเงินจองสำหรับ ${detectedAmountStr} (อาจเป็นยอดเก่าหรือกดซ้ำ)`);
+                    }
+                } catch (err) {
+                    console.error("ระบบดักยอดเงินเข้าเกิดข้อผิดพลาด", err);
+                }
+            }
+            continue; // ทำงานนี้เสร็จแล้วให้ข้ามไปทำข้อความถัดไปทันที ไม่ให้หลุดไปโดนระบบโพย
+        }
+        // ===========================================================================
+
+        // 📌 ตรงนี้ปล่อยให้ระบบเดิมของน้าทำต่อได้เลยครับ เช่น:
+        // if (userMsg === 'ฝาก') { ... }
+        // if (userMsg.startsWith('แทง')) { ... }
+        
+    } // จบ loop event
+    return res.sendStatus(200);
+});
+
+// ส่วนเปิดพอร์ตของน้าตอนท้ายไฟล์
+app.get('/', (req, res) => { res.send('ระบบลงทะเบียนรันปกติ'); });
+app.listen(process.env.PORT || 3000, () => { console.log('Server is running...'); });
+
+
+
+    for (let event of events) {
+
+        // ==================== [ ⭐ ระบบดักเงินเข้าออโต้ วางไว้บนสุด ⭐ ] ====================
+        if (userMsg && userMsg.startsWith('KDeposit')) {
+            // ดึงตัวเลขทศนิยมออกมาจากข้อความ (เช่น 500.64)
+            const match = userMsg.match(/([0-9]+\.[0-9]{2})/);
+            
+            if (match) {
+                const detectedAmountStr = match[1]; // ได้ข้อความ "500.64"
+                const depositKey = detectedAmountStr.replace('.', '_'); // แปลงเป็น "500_48" เพื่อใช้ค้นหาใน Firebase
+                
+                try {
+                    // 1. ค้นหายอดจองฝากใน Firebase
+                    const response = await axios.get(`${FIREBASE_URL}/pending_deposits/${depositKey}.json`);
+                    const depositData = response.data;
+                    
+                    if (depositData) {
+                        const targetUserId = depositData.userId;
+                        const creditToDeposit = depositData.amount; // ยอดเงินหลัก (เช่น 500)
+                        
+                        // 2. เติมเครดิตให้ลูกค้า
+                        if (usersWallets[targetUserId]) {
+                            usersWallets[targetUserId].balance += creditToDeposit;
+                            await saveDataToFirebase(); 
+                            
+                            // เคลียร์คิวล็อกเดิม
+                            if (global.depositQueue && global.depositQueue[targetUserId]) {
+                                delete global.depositQueue[targetUserId];
+                            }
+                            
+                            // 3. ลบยอดจองฝากทิ้งป้องกันการเวียนซ้ำ
+                            await axios.delete(`${FIREBASE_URL}/pending_deposits/${depositKey}.json`);
+                            
+                            // 4. แจ้งเตือนสลิปเติมสำเร็จเข้าไปในไลน์
+                            try {
+                                await axios.post('https://api.line.me/v2/bot/message/reply', {
+                                    replyToken: replyToken,
+                                    messages: [
+                                        {
+                                            "type": "text",
+                                            "text": `✅ [ระบบออโต้] ตรวจพบเงินเข้าจำนวน ${detectedAmountStr} บาท เรียบร้อยแล้ว!\n💰 เติมเครดิตให้คุณ ${usersWallets[targetUserId].name} จำนวน +${creditToDeposit} บ. สำเร็จแล้วครับ 🏁\n💳 เครดิตคงเหลือปัจจุบัน: ${usersWallets[targetUserId].balance} บ.`
+                                        }
+                                    ]
+                                }, { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` } });
+                            } catch (lineErr) { console.error("Error sending auto credit success text:", lineErr); }
+
+                        } else {
+                            console.log(`⚠️ ไม่พบกระเป๋าเงินสำหรับ UID: ${targetUserId}`);
+                        }
+                    } else {
+                        console.log(`🔍 คัดกรอง: ไม่พบยอดเงินจองสำหรับ ${detectedAmountStr} (อาจเป็นยอดเก่าหรือกดซ้ำ)`);
+                    }
+                } catch (err) {
+                    console.error("ระบบดักยอดเงินเข้าเกิดข้อผิดพลาด", err);
+                }
+            }
+            continue; // ทำงานนี้เสร็จแล้วให้ข้ามไปทำข้อความถัดไปทันที ไม่ให้หลุดไปโดนระบบโพย
+        }
+        // ===========================================================================
+
+        // 📌 ตรงนี้ปล่อยให้ระบบเดิมของน้าทำต่อได้เลยครับ เช่น:
+        // if (userMsg === 'ฝาก') { ... }
+        // if (userMsg.startsWith('แทง')) { ... }
+        
+    } // จบ loop event
+    return res.sendStatus(200);
+});
+
+// ส่วนเปิดพอร์ตของน้าตอนท้ายไฟล์
+app.get('/', (req, res) => { res.send('ระบบลงทะเบียนรันปกติ'); });
+app.listen(process.env.PORT || 3000, () => { console.log('Server is running...'); });
       // =================================================================
         // 📸 [ระบบฟิวชั่น ร่างอัปเกรดเตือนภัย] ดักจับรูปภาพสลิป + เตือนแอดมินถ้าส่งช้าเกิน 5 นาที
         // =================================================================

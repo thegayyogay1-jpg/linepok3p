@@ -31,6 +31,29 @@ let pastRoundsData = {}; //  ถังเก็บประวัติโพย
 let withdrawQueue = []; // 📦 ถังสำหรับเก็บคิวสมาชิกที่แจ้งถอนเงิน
 let usersRoundCrossCheck = {}; // 🌟 เพิ่มบรรทัดนี้ไว้บนสุดของไฟล์
 
+// 🔄 ฟังก์ชันอัตโนมัติ: ดึงข้อมูลจาก Firebase มาอัปเดตลงในบอททันทีที่เปิดเครื่อง
+async function loadDataFromFirebase() {
+    try {
+        const response = await axios.get(`${FIREBASE_URL}system_data.json`);
+        if (response.data) {
+            usersWallets = response.data.usersWallets || {};
+            nextMemberId = response.data.nextMemberId || 1;
+            isRoundOpen = response.data.isRoundOpen !== undefined ? response.data.isRoundOpen : false;
+            roundBets = response.data.roundBets || {};
+            currentRound = response.data.currentRound || 0;
+            isDrawOpen = response.data.isDrawOpen !== undefined ? response.data.isDrawOpen : false;
+            matchHistory = response.data.matchHistory || [];
+            detailedRoundHistory = response.data.detailedRoundHistory || {};
+            pastRoundsData = response.data.pastRoundsData || {};
+            withdrawQueue = response.data.withdrawQueue || [];
+            console.log("✅ ดึงข้อมูลระบบทั้งหมดจาก Firebase สำเร็จเรียบร้อย!");
+        }
+    } catch (error) {
+        console.error("❌ ไม่สามารถดึงข้อมูลจาก Firebase ได้:", error.message);
+    }
+}
+loadDataFromFirebase(); // 👈 สั่งให้ทำงานทันทีที่บอทรันเปิดเครื่อง
+
 // 💾 ฟังก์ชันอัตโนมัติ: สั่งบันทึกข้อมูลปัจจุบันยิงกลับไปเก็บที่ตึก Firebase
 async function saveDataToFirebase() {
     try {

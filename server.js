@@ -2154,6 +2154,7 @@ if (userMsg === '3' || userMsg === '2' || userMsg === '1') {
                         });
                     }
                     else if (userMsg === 'คส') {
+                        replyText = null;
                         sendMessages = [{
                             type: 'image',
                             originalContentUrl: 'https://img1.pic.in.th/images/546565.png', 
@@ -2161,6 +2162,7 @@ if (userMsg === '3' || userMsg === '2' || userMsg === '1') {
                         }];
                     }
                     else if (userMsg === '1') {
+                        replyText = null;
                         sendMessages = [{
                             type: 'image',
                             originalContentUrl: 'https://img1.pic.in.th/images/123b7c9d976603693.png', 
@@ -2168,6 +2170,7 @@ if (userMsg === '3' || userMsg === '2' || userMsg === '1') {
                         }];
                     }
                     else if (userMsg === '2') {
+                        replyText = null;
                         sendMessages = [{
                             type: 'image',
                             originalContentUrl: 'https://img1.pic.in.th/images/2d296264e3f50f2dc.png', 
@@ -2175,6 +2178,7 @@ if (userMsg === '3' || userMsg === '2' || userMsg === '1') {
                         }];
                     }
                     else if (userMsg === '3') {
+                        replyText = null;
                         sendMessages = [{
                             type: 'image',
                             originalContentUrl: 'https://img2.pic.in.th/33c27af2e18203562.png', 

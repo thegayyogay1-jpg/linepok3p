@@ -1,4 +1,6 @@
 const express = require('express');
+const promptPayQr = require('promptpay-qr');
+const QRCode = require('qrcode');
 const axios = require('axios');
 const fs = require('fs'); // 📁 เติมตรงนี้เพื่อให้ระบบรู้จักการเขียนไฟล์ลงเครื่องครับน้า
 const app = express();
@@ -79,81 +81,64 @@ app.post('/callback', async (req, res) => {
     if (!events) return res.sendStatus(200);
 
     for (let event of events) {
-        // ดึงข้อความและ Token ออกมาเตรียมใช้งาน
+        // ดึงข้อความออกมาเตรียมใช้งาน
         const userMsg = event.message && event.message.text ? event.message.text.trim() : null;
         const replyToken = event.replyToken;
         const userId = event.source.userId;
 
-        // ==================== [ ⭐ ระบบดักเงินเข้าออโต้ วางไว้บนสุด ⭐ ] ====================
-        if (userMsg && userMsg.startsWith('KDeposit')) {
-            // ดึงตัวเลขทศนิยมออกมาจากข้อความ (เช่น 500.64)
+        // ==================== [ ⭐ ระบบดักเงินเข้าออโต้ วางไว้บนสุดในลูป ⭐ ] ====================
+        if (userMsg && userMsg.startsWith('K-Connect:')) { 
+            // ⚠️ ปรับให้ตรงตามรูปสลิปของน้าที่เป็น "K-Connect: มีเงินเข้าจำนวน..." หรือ "KDeposit"
             const match = userMsg.match(/([0-9]+\.[0-9]{2})/);
-            
             if (match) {
-                const detectedAmountStr = match[1]; // ได้ข้อความ "500.64"
-                const depositKey = detectedAmountStr.replace('.', '_'); // แปลงเป็น "500_64" เพื่อใช้ค้นหาใน Firebase
+                const detectedAmountStr = match[1]; 
+                const depositKey = detectedAmountStr.replace('.', '_'); 
                 
                 try {
-                    // 1. ค้นหายอดจองฝากใน Firebase (🛠️ ลบ / ด้านหน้า pending_deposits ออกแล้ว)
                     const response = await axios.get(`${FIREBASE_URL}pending_deposits/${depositKey}.json`);
                     const depositData = response.data;
                     
                     if (depositData) {
                         const targetUserId = depositData.userId;
-                        const creditToDeposit = depositData.amount; // ยอดเงินหลัก (เช่น 500)
+                        const creditToDeposit = depositData.amount;
                         
-                        // 2. เติมเครดิตให้ลูกค้า
                         if (usersWallets[targetUserId]) {
                             usersWallets[targetUserId].balance += creditToDeposit;
                             await saveDataToFirebase(); 
                             
-                            // เคลียร์คิวล็อกเดิม
                             if (global.depositQueue && global.depositQueue[targetUserId]) {
                                 delete global.depositQueue[targetUserId];
                             }
                             
-                            // 3. ลบยอดจองฝากทิ้งป้องกันการเวียนซ้ำ (🛠️ ลบ / ด้านหน้า pending_deposits ออกแล้ว)
                             await axios.delete(`${FIREBASE_URL}pending_deposits/${depositKey}.json`);
                             
-                            // 4. แจ้งเตือนสลิปเติมสำเร็จเข้าไปในไลน์
-                            try {
-                                await axios.post('https://api.line.me/v2/bot/message/reply', {
-                                    replyToken: replyToken,
-                                    messages: [
-                                        {
-                                            "type": "text",
-                                            "text": `✅ [ระบบออโต้] ตรวจพบเงินเข้าจำนวน ${detectedAmountStr} บาท เรียบร้อยแล้ว!\n💰 เติมเครดิตให้คุณ ${usersWallets[targetUserId].name} จำนวน +${creditToDeposit} บ. สำเร็จแล้วครับ 🏁\n💳 เครดิตคงเหลือปัจจุบัน: ${usersWallets[targetUserId].balance} บ.`
-                                        }
-                                    ]
-                                }, { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` } });
-                            } catch (lineErr) { console.error("Error sending auto credit success text:", lineErr); }
-
-                        } else {
-                            console.log(`⚠️ ไม่พบกระเป๋าเงินสำหรับ UID: ${targetUserId}`);
+                            // ส่งข้อความแจ้งเตือนกลับหาลูกค้า
+                            await axios.post('https://api.line.me/v2/bot/message/reply', {
+                                replyToken: replyToken,
+                                messages: [{ "type": "text", "text": `✅ เติมเงินออโต้สำเร็จ ${creditToDeposit} บาท` }]
+                            }, { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` } });
                         }
-                    } else {
-                        console.log(`🔍 คัดกรอง: ไม่พบยอดเงินจองสำหรับ ${detectedAmountStr} (อาจเป็นยอดเก่าหรือกดซ้ำ)`);
                     }
                 } catch (err) {
-                    console.error("ระบบดักยอดเงินเข้าเกิดข้อผิดพลาด", err);
+                    console.error("ระบบดักยอดเงินเกิดข้อผิดพลาด", err);
                 }
             }
-            continue; // ทำงานนี้เสร็จแล้วให้ข้ามไปทำข้อความถัดไปทันที ไม่ให้หลุดไปโดนระบบโพย
+            continue; // ทำงานนี้เสร็จ ข้ามไปอีเวนต์ถัดไปเลย
         }
         // ===========================================================================
 
-        // 📌 ตรงนี้ปล่อยให้ระบบเดิมของน้าทำต่อได้เลยครับ เช่น:
-        // if (userMsg === 'ฝาก') { ... }
+        // 📌 ตรงนี้ปล่อยให้ระบบตรวจโพยเดิมของน้าทำต่อ (มันจะรู้จัก userMsg แล้ว)
+        if (userMsg === 'ฝาก') {
+            // โค้ดสร้างใบสั่งฝากเงิน/สร้าง QR Code ของน้า
+        }
         
-    } // จบ loop event
+    } // <-- ปิดลูป for (let event of events)
     return res.sendStatus(200);
-});
+}); // <-- ปิด app.post('/callback') ตรงนี้!
 
-// ส่วนเปิดพอร์ตของน้าตอนท้ายไฟล์
+// 3. ส่วนเปิดพอร์ตท้ายไฟล์
 app.get('/', (req, res) => { res.send('ระบบลงทะเบียนรันปกติ'); });
 app.listen(process.env.PORT || 3000, () => { console.log('Server is running...'); });
-
-
 
     for (let event of events) {
 

@@ -2102,107 +2102,106 @@ if (userMsg === '3' || userMsg === '2' || userMsg === '1') {
 
             //==========================================================
         
-            // 🚀 ยิงข้อความตอบกลับไปที่ LINE
+           // ==================== [ 🚀 บล็อกยิงข้อความตอบกลับ LINE แบบสมบูรณ์ ป้องกันข้อความว่าง ] ====================
             if (replyText || global.currentReplyFlex) {
                 try {
-                    // 1. สร้างถังเก็บข้อความเริ่มต้น (ใส่ข้อความตัวหนังสือเดิมไว้ก่อน)
-                    let sendMessages = [{ type: 'text', text: replyText }];
+                    let sendMessages = [];
 
-                    // 🌟 แทรก 3 บรรทัดนี้ลงไปตรงนี้เลยครับน้า
-if (global.currentReplyFlex) {
-    sendMessages.push(global.currentReplyFlex);
-}
+                    // 🌟 1. ดักจับ Flex Message (การ์ดดำทอง) ถ้ามีค่าให้ยัดลงถังเป็นอย่างแรก
+                    if (global.currentReplyFlex) {
+                        sendMessages.push(global.currentReplyFlex);
+                    }
 
-                    // 2. ดักเช็ก: ถ้าแอดมินพิมพ์เปิดรอบ 'o' ให้ใส่รูปเปิดรอบเข้าไปข้างหน้าข้อความ
+                    // 🌟 2. ชุดโค้ดรูปภาพเดิมของน้าทั้งหมด (คงเดิม 100% ห้ามแก้ไขลิงก์)
                     if (userMsg === 'o') {
                         sendMessages.unshift({
                             type: 'image',
-                            originalContentUrl: 'https://img2.pic.in.th/-__-----4b1c38e0628ea626.jpg', // 🔗 ใส่ลิงก์รูปเปิดรอบของคุณตรงนี้
-                            previewImageUrl: 'https://img2.pic.in.th/-__-----4b1c38e0628ea626.jpg'     // 🔗 ใส่ลิงก์รูปเดียวกัน
+                            originalContentUrl: 'https://img2.pic.in.th/-__-----4b1c38e0628ea626.jpg', 
+                            previewImageUrl: 'https://img2.pic.in.th/-__-----4b1c38e0628ea626.jpg'     
                         });
                     }
-                    // 3. ดักเช็ก: ถ้าแอดมินพิมพ์ปิดรอบ 'x' ให้ใส่รูปปิดรอบเข้าไปข้างหน้าข้อความ
                     else if (userMsg === 'x') {
                         sendMessages.unshift({
                             type: 'image',
-                            originalContentUrl: 'https://img2.pic.in.th/-__-----2cccaadd8f93c70b.jpg', // 🔗 ใส่ลิงก์รูปปิดรอบของคุณตรงนี้
-                            previewImageUrl: 'https://img2.pic.in.th/-__-----2cccaadd8f93c70b.jpg'     // 🔗 ใส่ลิงก์รูปเดียวกัน
+                            originalContentUrl: 'https://img2.pic.in.th/-__-----2cccaadd8f93c70b.jpg', 
+                            previewImageUrl: 'https://img2.pic.in.th/-__-----2cccaadd8f93c70b.jpg'     
                         });
                     }
-                    // 4. ดักเช็ก: ถ้าแอดมินพิมพ์ปิดรอบจั่ว 'oo' ให้ใส่รูปปิดรอบเข้าไปข้างหน้าข้อความ
                     else if (userMsg === 'oo') {
                         sendMessages.unshift({
                             type: 'image',
-                            originalContentUrl: 'https://img2.pic.in.th/-__-----7fcbb7b1eadadfe1.jpg', // 🔗 ใส่ลิงก์รูปปิดรอบของคุณตรงนี้
-                            previewImageUrl: 'https://img2.pic.in.th/-__-----7fcbb7b1eadadfe1.jpg'     // 🔗 ใส่ลิงก์รูปเดียวกัน
+                            originalContentUrl: 'https://img2.pic.in.th/-__-----7fcbb7b1eadadfe1.jpg', 
+                            previewImageUrl: 'https://img2.pic.in.th/-__-----7fcbb7b1eadadfe1.jpg'     
                         });
                     }
-                    // 5. ดักเช็ก: ถ้าแอดมินพิมพ์ปิดรอบจั่ว 'xx' ให้ใส่รูปปิดรอบเข้าไปข้างหน้าข้อความ
                     else if (userMsg === 'xx') {
                         sendMessages.unshift({
                             type: 'image',
-                            originalContentUrl: 'https://img2.pic.in.th/-__-----17ded3ef1c297156.jpg', // 🔗 ใส่ลิงก์รูปปิดรอบของคุณตรงนี้
-                            previewImageUrl: 'https://img2.pic.in.th/-__-----17ded3ef1c297156.jpg'     // 🔗 ใส่ลิงก์รูปเดียวกัน
+                            originalContentUrl: 'https://img2.pic.in.th/-__-----17ded3ef1c297156.jpg', 
+                            previewImageUrl: 'https://img2.pic.in.th/-__-----17ded3ef1c297156.jpg'     
                         });
                     }
-                    // 6. ดักเช็ก: ถ้าพิมพ์กติกา 'กต' ให้ใส่รูปปิดรอบเข้าไปข้างหน้าข้อความ
                     else if (userMsg === 'กต') {
                         sendMessages.unshift({
                             type: 'image',
-                            originalContentUrl: 'https://img2.pic.in.th/Modern-Game-Rules-Poster-for-Pokdeng.jpg', // 🔗 ใส่ลิงก์รูปปิดรอบของคุณตรงนี้
-                            previewImageUrl: 'https://img2.pic.in.th/Modern-Game-Rules-Poster-for-Pokdeng.jpg'     // 🔗 ใส่ลิงก์รูปเดียวกัน
+                            originalContentUrl: 'https://img2.pic.in.th/Modern-Game-Rules-Poster-for-Pokdeng.jpg', 
+                            previewImageUrl: 'https://img2.pic.in.th/Modern-Game-Rules-Poster-for-Pokdeng.jpg'     
                         },
-                                      {
+                        {
                             type: 'image',
-                            originalContentUrl: 'https://img2.pic.in.th/Abstract-Playful-Classroom-Rules.jpg', // 🔗 ใส่ลิงก์รูปปิดรอบของคุณตรงนี้
-                            previewImageUrl: 'https://img2.pic.in.th/Abstract-Playful-Classroom-Rules.jpg'     // 🔗 ใส่ลิงก์รูปเดียวกัน
+                            originalContentUrl: 'https://img2.pic.in.th/Abstract-Playful-Classroom-Rules.jpg', 
+                            previewImageUrl: 'https://img2.pic.in.th/Abstract-Playful-Classroom-Rules.jpg'     
                         });
                     }
-                    // 7. ดักเช็ก: ถ้าแอดมินพิมพ์ปิดรอบจั่ว 'คส' ให้ใส่รูปปิดรอบเข้าไปข้างหน้าข้อความ
                     else if (userMsg === 'คส') {
-                        sendMessages=[{
+                        sendMessages = [{
                             type: 'image',
-                            originalContentUrl: 'https://img1.pic.in.th/images/546565.png', // 🔗 ใส่ลิงก์รูปปิดรอบของคุณตรงนี้
-                            previewImageUrl: 'https://img1.pic.in.th/images/546565.png'     // 🔗 ใส่ลิงก์รูปเดียวกัน
+                            originalContentUrl: 'https://img1.pic.in.th/images/546565.png', 
+                            previewImageUrl: 'https://img1.pic.in.th/images/546565.png'     
                         }];
                     }
-                     // 8. ดักเช็ก: ถ้าแอดมินพิมเลขก่อนปิดรอบต่างๆ '1' ให้ใส่รูปปิดรอบเข้าไปข้างหน้าข้อความ
                     else if (userMsg === '1') {
-                        sendMessages=[{
+                        sendMessages = [{
                             type: 'image',
-                            originalContentUrl: 'https://img1.pic.in.th/images/123b7c9d976603693.png', // 🔗 ใส่ลิงก์รูปปิดรอบของคุณตรงนี้
-                            previewImageUrl: 'https://img1.pic.in.th/images/123b7c9d976603693.png'     // 🔗 ใส่ลิงก์รูปเดียวกัน
+                            originalContentUrl: 'https://img1.pic.in.th/images/123b7c9d976603693.png', 
+                            previewImageUrl: 'https://img1.pic.in.th/images/123b7c9d976603693.png'     
                         }];
                     }
-                    // 9. ดักเช็ก: ถ้าแอดมินพิมเลขก่อนปิดรอบต่างๆ '2' ให้ใส่รูปปิดรอบเข้าไปข้างหน้าข้อความ
                     else if (userMsg === '2') {
-                        sendMessages=[{
+                        sendMessages = [{
                             type: 'image',
-                            originalContentUrl: 'https://img1.pic.in.th/images/2d296264e3f50f2dc.png', // 🔗 ใส่ลิงก์รูปปิดรอบของคุณตรงนี้
-                            previewImageUrl: 'https://img1.pic.in.th/images/2d296264e3f50f2dc.png'     // 🔗 ใส่ลิงก์รูปเดียวกัน
+                            originalContentUrl: 'https://img1.pic.in.th/images/2d296264e3f50f2dc.png', 
+                            previewImageUrl: 'https://img1.pic.in.th/images/2d296264e3f50f2dc.png'     
                         }];
                     }
-                    // 10. ดักเช็ก: ถ้าแอดมินพิมเลขก่อนปิดรอบต่างๆ '3' ให้ใส่รูปปิดรอบเข้าไปข้างหน้าข้อความ
                     else if (userMsg === '3') {
-                        sendMessages=[{
+                        sendMessages = [{
                             type: 'image',
-                            originalContentUrl: 'https://img2.pic.in.th/33c27af2e18203562.png', // 🔗 ใส่ลิงก์รูปปิดรอบของคุณตรงนี้
-                            previewImageUrl: 'https://img2.pic.in.th/33c27af2e18203562.png'     // 🔗 ใส่ลิงก์รูปเดียวกัน
+                            originalContentUrl: 'https://img2.pic.in.th/33c27af2e18203562.png', 
+                            previewImageUrl: 'https://img2.pic.in.th/33c27af2e18203562.png'     
                         }];
+                    }
+                    
+                    // 🌟 3. ส่งข้อความตัวหนังสือปกติ (ดักจับ: ต้องไม่เป็นค่าว่าง ไม่เป็น null)
+                    if (replyText && replyText.trim() !== "") {
+                        sendMessages.push({ type: 'text', text: replyText });
                     }
 
-                    global.currentReplyFlex = null; // 🌟 แทรกบรรทัดนี้ไว้ก่อนสั่ง axios.post
+                    // 🧼 เคลียร์ค่าแรมของ Flex ออกเพื่อป้องกันบั๊กค้างคาในระบบ
+                    global.currentReplyFlex = null; 
                     
-                    // ส่งข้อความทั้งหมดออกไปหาผู้ใช้
-                    await axios.post('https://api.line.me/v2/bot/message/reply', {
-                        replyToken: replyToken,
-                        messages: sendMessages // 📦 ส่งทั้งรูปและข้อความไปพร้อมกันในชุดเดียว
-                    }, {
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${TOKEN}`
-                        }
-                    });
+                    // 🚀 4. สั่งยิงข้อมูลหา LINE (ถ้าในถังมีข้อความหรือรูปภาพ ให้ทำการส่งทันที)
+                    if (sendMessages.length > 0) {
+                        await axios.post('https://api.line.me/v2/bot/message/reply', {
+                            replyToken: replyToken,
+                            messages: sendMessages 
+                        }, {
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${TOKEN}`
+                            }
+                        });
+                    }
                 } catch (error) {
                     console.error("❌ ส่งข้อความกลับล้มเหลว:", error.response ? error.response.data : error.message);
                 }

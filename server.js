@@ -3208,7 +3208,14 @@ else if (userMsg.startsWith('K-Connect:')) {
     return res.sendStatus(200);
 }
 
+// 📌 1. เติมปีกกาปิดวงเล็บตรงนี้ (เพื่อปิดฟังก์ชัน Webhook หรือฟังก์ชันหลักเดิมของน้า)
+} 
+
+// 📌 2. ท่อนจบเปิดเซิร์ฟเวอร์ย้ายมาอยู่ล่างสุดแบบเคลียร์ ๆ
 app.get('/', (req, res) => { res.send('ระบบลงทะเบียนรันปกติ'); });
-app.listen(process.env.PORT || 3000, () => { console.log('Server is running...'); });
+
+app.listen(process.env.PORT || 3000, () => { 
+    console.log('Server is running...'); 
+});
 // เปิดทางให้เข้าถึงไฟล์รูปภาพสลิปที่เซฟไว้ในเครื่องได้ตรงๆ
 app.use(express.static(__dirname));

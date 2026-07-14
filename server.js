@@ -969,7 +969,47 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                             await saveDataToFirebase(); 
                             roundBets[userId] = []; 
 
-                            replyText = `🗑️ ยกเลิกโพยสำเร็จเรียบร้อยแล้วครับ!\n👤 คุณ: ${user.name} (ID: ${user.memberNumber})\n💰 ระบบได้ทำการคืนเครดิตค้ำประกันให้คุณ: +${totalRefund} บาท\n✨ ยอดเครดิตปัจจุบัน: ${user.balance} บาท\n*(ตอนนี้โพยรอบนี้ของคุณกลายเป็นว่างแล้ว สามารถส่งโพยใหม่ได้ครับ)*`;
+                            // 👑 ปรับปรุง: คืนโพยสำเร็จ เปลี่ยนเป็นการ์ด Flex ดำทอง!
+                            replyText = null;
+                            global.currentReplyFlex = {
+                                "type": "flex",
+                                "altText": "🗑️ ยกเลิกโพยสำเร็จแล้ว",
+                                "contents": {
+                                    "type": "bubble",
+                                    "styles": { "body": { "backgroundColor": "#111111" } },
+                                    "body": {
+                                        "type": "box", "layout": "vertical", "spacing": "md",
+                                        "contents": [
+                                            { "type": "text", "text": "🗑️ ยกเลิกโพยสำเร็จแล้ว 👍", "weight": "bold", "color": "#ff3333", "size": "md", "align": "center" },
+                                            { "type": "separator", "color": "#333333" },
+                                            {
+                                                "type": "box", "layout": "horizontal",
+                                                "contents": [
+                                                    { "type": "text", "text": "👤 สมาชิก:", "size": "sm", "color": "#888888", "flex": 2 },
+                                                    { "type": "text", "text": `${user.name} (ID: ${user.memberNumber})`, "size": "sm", "color": "#ffffff", "flex": 5, "weight": "bold" }
+                                                ]
+                                            },
+                                            { "type": "separator", "color": "#333333" },
+                                            {
+                                                "type": "box", "layout": "horizontal",
+                                                "contents": [
+                                                    { "type": "text", "text": "💰 คืนเครดิตค้ำประกัน:", "size": "sm", "color": "#aaa9aa" },
+                                                    { "type": "text", "text": `+${totalRefund} บาท`, "size": "sm", "color": "#00ff00", "align": "end", "weight": "bold" }
+                                                ]
+                                            },
+                                            {
+                                                "type": "box", "layout": "horizontal",
+                                                "contents": [
+                                                    { "type": "text", "text": "💵 ยอดเครดิตปัจจุบัน:", "size": "sm", "color": "#aaa9aa" },
+                                                    { "type": "text", "text": `${user.balance} บาท`, "size": "sm", "color": "#ffffff", "align": "end", "weight": "bold" }
+                                                ]
+                                            },
+                                            { "type": "separator", "color": "#333333" },
+                                            { "type": "text", "text": "✨ ตอนนี้กระดานของคุณว่างแล้ว สามารถส่งโพยใหม่ได้ทันทีครับ", "size": "xxs", "color": "#888888", "align": "center", "wrap": true }
+                                        ]
+                                    }
+                                }
+                            };
                         }
                     }
                 }
@@ -1013,7 +1053,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                             const sortedLegs = drawSuccessLegs.sort((a, b) => a - b).join(', ');
                             const user = usersWallets[userId];
                             
-                            // 👑 เปลี่ยนข้อความการขอจั่วไพ่ให้กลายเป็น Flex Message ดำทอง สุดหรูหรา!
+                            // 👑 ปรับปรุง: จั่วไพ่สำเร็จ เปลี่ยนเป็นการ์ด Flex ดำทอง!
                             replyText = null;
                             global.currentReplyFlex = {
                                 "type": "flex",
@@ -1042,7 +1082,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                                             },
                                             { "type": "separator", "color": "#333333", "margin": "md" },
                                             {
-                                                "type": "box", "layout": "horizontal", "margin": "md", "alignment": "center",
+                                                "type": "box", "layout": "horizontal", "margin": "md",
                                                 "contents": [
                                                     { "type": "text", "text": "➡️ ขอจั่วเพิ่มที่ขา:", "size": "sm", "color": "#aaaaaa", "flex": 4 },
                                                     { "type": "text", "text": `ขา [ ${sortedLegs} ]`, "size": "md", "color": "#00ff00", "flex": 5, "weight": "bold", "align": "end" }
@@ -1059,6 +1099,42 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                         }
                     }
                 }
+            }
+
+            // ==================== [ 🌟 ท่อนส่งข้อความกลับไปหา LINE API ] ====================
+            // เอากรณีพิเศษของ Flex Message ไปเช็คเพิ่มตรงนี้เพื่อป้องกันบอทเงียบครับน้า
+            if (global.currentReplyFlex) {
+                try {
+                    await axios.post('https://api.line.me/v2/bot/message/reply', {
+                        replyToken: replyToken,
+                        messages: [global.currentReplyFlex]
+                    }, {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${TOKEN}`
+                        }
+                    });
+                } catch (error) {
+                    console.error("❌ ส่ง Flex Message ล้มเหลว:", error.response ? error.response.data : error.message);
+                }
+                global.currentReplyFlex = null; // เคลียร์ค่าทิ้งหลังส่งเสร็จ
+                return; // จบการทำงาน
+            } else if (replyText) {
+                // ส่งข้อความแบบ Text ปกติ (กรณีแจ้งเตือน Error/ปิดห้องแทง)
+                try {
+                    await axios.post('https://api.line.me/v2/bot/message/reply', {
+                        replyToken: replyToken,
+                        messages: [{ type: 'text', text: replyText }]
+                    }, {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${TOKEN}`
+                        }
+                    });
+                } catch (error) {
+                    console.error("❌ ส่งข้อความ Text ล้มเหลว:", error.response ? error.response.data : error.message);
+                }
+                return;
             }
                // ==================== [ 8. ระบบแอดมินส่งผลสรุปคำนวณแต้ม - เวอร์ชันชำแหละ RegEx แยกฝั่งขาด (เด้ง=/ , ป๊อก=*) ] ====================
 else if (originalMsg.startsWith('>')) {

@@ -712,8 +712,16 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                 // --- 📊 สร้างโครงสร้างสถิติย้อนหลัง ---
                 let historyFlexContents = [];
                 if (matchHistory && matchHistory.length > 0) {
-                    // ทำการ Deep Copy ป้องกัน Object อ้างอิงทับซ้อนกันใน LINE
-                    historyFlexContents = JSON.parse(JSON.stringify(matchHistory));
+                    // แปลงข้อความสถิติธรรมดาให้กลายเป็นโครงสร้าง Text ที่ LINE ยอมรับอย่างถูกต้อง
+                    historyFlexContents = matchHistory.map(item => {
+                        return {
+                            "type": "text",
+                            "text": item,
+                            "size": "xs",
+                            "color": "#cccccc",
+                            "wrap": true
+                        };
+                    });
                 } else {
                     historyFlexContents.push({
                         "type": "text",

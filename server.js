@@ -1564,8 +1564,6 @@ else if (originalMsg.startsWith('>')) {
                                         "type": "box",
                                         "layout": "horizontal",
                                         "backgroundColor": "#221929",
-                                        "padding": "sm",
-                                        "cornerRadius": "md",
                                         "contents": [
                                             { "type": "text", "text": "👑 เจ้ามือ:", "weight": "bold", "color": "#ffaa00", "size": "sm" },
                                             { "type": "text", "text": `${dealerResult.name} (${dealerResult.mult} เด้ง)`, "weight": "bold", "color": "#ffffff", "size": "sm", "align": "end" }

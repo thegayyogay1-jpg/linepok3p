@@ -80,7 +80,7 @@ app.post('/callback', async (req, res) => {
     if (!events) return res.sendStatus(200);
 
     for (let event of events) {
-       // =================================================================
+      // =================================================================
         // 📸 [ระบบฟิวชั่น ร่างอัปเกรดเตือนภัย] ดักจับรูปภาพสลิป + เตือนแอดมินถ้าส่งช้าเกิน 5 นาที
         // =================================================================
         if (event.type === 'message' && event.message.type === 'image') {
@@ -112,7 +112,7 @@ app.post('/callback', async (req, res) => {
                         headers: { 'Authorization': `Bearer ${TOKEN}` }
                     });
 
-                    // 💾 2. บันทึกรูปภาพลงบนเซิร์ฟเวอร์ Render
+                    // 💾 2. บันทึกรูปภาพลงบนเซิร์ฟเวอร์ Render (ตรรกะเดิมที่ทำงานได้สมบูรณ์แบบห้ามแตะต้อง)
                     const writer = fs.createWriteStream(filename);
                     response.data.pipe(writer);
 
@@ -123,14 +123,14 @@ app.post('/callback', async (req, res) => {
 
                     const myServerUrl = `https://linepok3p.onrender.com/${filename}`;
 
-                    // 🔔 3. เตรียมข้อความสรุปข้อมูลส่งให้แอดมิน + แปะป้ายเตือนภัยเข้าไปด้วย
+                    // 🔔 3. เตรียมข้อความสรุปข้อมูลส่งให้แอดมิน + แปะป้ายเตือนภัยเข้าไปด้วย (Text ธรรมดาเพื่อให้ก๊อปปี้คำสั่งง่าย)
                     const adminNotifyMessage = `🔔 มีรายการแจ้งโอนเงินใหม่!\n──────────────────\n` +
                                                `🆔 สมาชิกลำดับที่: ${currentQueue.memberId}\n` +
                                                `👤 ชื่อ: ${currentQueue.name}\n` +
                                                `💰 ยอดที่ต้องตรงกับสลิป:\n ${currentQueue.displayAmount} บาท ${timeWarningTag}\n──────────────────\n` +
                                                `👉 อนุมัติเติมเงินพิมพ์: เติม ${currentQueue.memberId} ${currentQueue.rawAmount}\n` +
-                                               `👉 อนุมัติแบบติดโปรพิมพ์: B ${currentQueue.memberId} [ยอดรวมโบนัส]`+
-                                               `👉 ปฏิเสธพิมพ์: cc ${currentQueue.memberId}n`;
+                                               `👉 อนุมัติแบบติดโปรพิมพ์: B ${currentQueue.memberId} [ยอดรวมโบน.]`+
+                                               `👉 ปฏิเสธพิมพ์: cc ${currentQueue.memberId}`;
 
                     // 🚀 4. สั่ง Push ส่งรูปภาพ + ข้อความ หาแอดมินพร้อมกัน
                     await axios.post('https://api.line.me/v2/bot/message/push', {
@@ -146,10 +146,38 @@ app.post('/callback', async (req, res) => {
                         }
                     });
 
-                    // 💬 5. ตอบกลับแจ้งสมาชิกฝั่งลูกค้าตามปกติ
+                    // 💬 5. ตอบกลับแจ้งสมาชิกฝั่งลูกค้าด้วย Flex Message ธีมธุรกรรมฝากเงินสีเขียวนีออนสุดเท่ 
                     await axios.post('https://api.line.me/v2/bot/message/reply', {
                         replyToken: replyToken,
-                        messages: [{ type: 'text', text: `✅ ได้รับรูปภาพสลิปยอด ${currentQueue.displayAmount} บาท เรียบร้อยแล้ว!\n\n⏳ ระบบกำลังตรวจสอบความถูกต้อง รอเครดิตเข้าสักครู่ครับ` }]
+                        messages: [
+                            {
+                                "type": "flex",
+                                "altText": "✅ ได้รับสลิปเรียบร้อยแล้วค่ะ",
+                                "contents": {
+                                    "type": "bubble",
+                                    "styles": { "body": { "backgroundColor": "#09120e" } },
+                                    "body": {
+                                        "type": "box",
+                                        "layout": "vertical",
+                                        "spacing": "md",
+                                        "contents": [
+                                            { "type": "text", "text": "✅ ได้รับรูปภาพสลิปแล้ว", "weight": "bold", "color": "#00ff88", "size": "md", "align": "center" },
+                                            { "type": "separator", "color": "#12251c" },
+                                            {
+                                                "type": "box",
+                                                "layout": "horizontal",
+                                                "contents": [
+                                                    { "type": "text", "text": "💰 ยอดโอนในคิว:", "size": "sm", "color": "#8caf9c" },
+                                                    { "type": "text", "text": `${currentQueue.displayAmount} บาท`, "size": "sm", "color": "#00ff88", "weight": "bold", "align": "end" }
+                                                ]
+                                            },
+                                            { "type": "separator", "color": "#12251c" },
+                                            { "type": "text", "text": "⏳ ระบบกำลังตรวจสอบความถูกต้องของสลิปและยอดโอน กรุณารอเครดิตเข้ากระเป๋าสักครู่เดียวค่ะ 🏁", "size": "xs", "color": "#cccccc", "wrap": true, "align": "center" }
+                                        ]
+                                    }
+                                }
+                            }
+                        ]
                     }, {
                         headers: {
                             'Content-Type': 'application/json',
@@ -438,19 +466,123 @@ app.post('/callback', async (req, res) => {
                 const amount = parseInt(args[1]);
 
                 if (!amount || isNaN(amount) || amount <= 0) {
-                    replyText = '❌ พิมพ์รูปแบบผิดครับน้า! ต้องพิมพ์เช่น: ฝาก 500';
+                    try {
+                        await axios.post('https://api.line.me/v2/bot/message/reply', {
+                            replyToken: replyToken,
+                            messages: [
+                                {
+                                    "type": "flex",
+                                    "altText": "⚠️ รูปแบบการฝากเงินไม่ถูกต้อง",
+                                    "contents": {
+                                        "type": "bubble",
+                                        "styles": { "body": { "backgroundColor": "#0d1b15" } },
+                                        "body": {
+                                            "type": "box",
+                                            "layout": "vertical",
+                                            "spacing": "md",
+                                            "contents": [
+                                                { "type": "text", "text": "❌ พิมพ์รูปแบบผิดครับน้า!", "weight": "bold", "color": "#ff3333", "size": "md", "align": "center" },
+                                                { "type": "separator", "color": "#183226" },
+                                                { "type": "text", "text": "กรุณาพิมพ์ระบุจำนวนเงินที่ต้องการฝากด้วยค่ะ", "size": "xs", "color": "#cccccc", "align": "center" },
+                                                {
+                                                    "type": "box",
+                                                    "layout": "vertical",
+                                                    "backgroundColor": "#12261d",
+                                                    "paddingAll": "sm",
+                                                    "contents": [
+                                                        { "type": "text", "text": "📌 รูปแบบ: ฝาก [จำนวนเงิน]", "size": "xs", "color": "#00ffcc", "weight": "bold", "align": "center" },
+                                                        { "type": "text", "text": "👉 ตัวอย่าง: ฝาก 500", "size": "xs", "color": "#8abf9e", "align": "center" }
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            ]
+                        }, { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` } });
+                    } catch (err) { console.error("Error sending deposit invalid flex:", err); }
+                    return res.sendStatus(200);
                 } else {
                     const walletData = usersWallets[userId];
 
                     if (!walletData) {
-                        replyText = '❌ ยังไม่ได้สมัครสมาชิก \n พิมพ์ C/ชื่อ-นามสกุล,ธนาคาร,เลขธนาคาร เพื่อสมัครก่อนครับ';
+                        try {
+                            await axios.post('https://api.line.me/v2/bot/message/reply', {
+                                replyToken: replyToken,
+                                messages: [
+                                    {
+                                        "type": "flex",
+                                        "altText": "⚠️ สมาชิกยังไม่ได้ลงทะเบียน",
+                                        "contents": {
+                                            "type": "bubble",
+                                            "styles": { "body": { "backgroundColor": "#0d1b15" } },
+                                            "body": {
+                                                "type": "box",
+                                                "layout": "vertical",
+                                                "spacing": "md",
+                                                "contents": [
+                                                    { "type": "text", "text": "❌ ยังไม่ได้สมัครสมาชิก", "weight": "bold", "color": "#ff3333", "size": "md", "align": "center" },
+                                                    { "type": "separator", "color": "#183226" },
+                                                    { "type": "text", "text": "กรุณาลงทะเบียนเป็นสมาชิกกับเราก่อนเริ่มฝากเงินค่ะ", "size": "xs", "color": "#cccccc", "wrap": true, "align": "center" },
+                                                    {
+                                                        "type": "box",
+                                                        "layout": "vertical",
+                                                        "backgroundColor": "#12261d",
+                                                        "paddingAll": "sm",
+                                                        "contents": [
+                                                            { "type": "text", "text": "พิมพ์: C/ชื่อ-นามสกุล,ธนาคาร,เลขบัญชี", "size": "xs", "color": "#00ffcc", "wrap": true },
+                                                            { "type": "text", "text": "ตัวอย่าง: C/นายแจ๊ค เด้งดี,กสิกร,1234567890", "size": "xs", "color": "#8abf9e", "wrap": true }
+                                                        ]
+                                                    }
+                                                ]
+                                            }
+                                        }
+                                    }
+                                ]
+                            }, { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` } });
+                        } catch (err) { console.error("Error sending deposit non-regist flex:", err); }
+                        return res.sendStatus(200);
                     } else {
                         if (!global.depositQueue) global.depositQueue = {};
 
                         const currentQueue = global.depositQueue[userId];
 
                         if (currentQueue && currentQueue.status === 'WAITING_ADMIN') {
-                            replyText = `⚠️ มีรายการแจ้งฝากค้างอยู่ในระบบ\n💰 ยอดที่ต้องโอน: ${currentQueue.displayAmount} บาท\n────────────────\n🔒 ระบบล็อกไม่ให้แจ้งฝากซ้ำ \n จนกว่าจะอนุมัติเติมเงินจากแอดมิน`;
+                            try {
+                                await axios.post('https://api.line.me/v2/bot/message/reply', {
+                                    replyToken: replyToken,
+                                    messages: [
+                                        {
+                                            "type": "flex",
+                                            "altText": "⚠️ มีรายการฝากค้างอยู่",
+                                            "contents": {
+                                                "type": "bubble",
+                                                "styles": { "body": { "backgroundColor": "#0d1b15" } },
+                                                "body": {
+                                                    "type": "box",
+                                                    "layout": "vertical",
+                                                    "spacing": "md",
+                                                    "contents": [
+                                                        { "type": "text", "text": "⚠️ มีรายการแจ้งฝากค้างอยู่ในระบบ", "weight": "bold", "color": "#ffcc00", "size": "md", "align": "center" },
+                                                        { "type": "separator", "color": "#183226" },
+                                                        {
+                                                            "type": "box",
+                                                            "layout": "horizontal",
+                                                            "contents": [
+                                                                { "type": "text", "text": "💰 ยอดที่ต้องโอน:", "size": "sm", "color": "#8abf9e" },
+                                                                { "type": "text", "text": `${currentQueue.displayAmount} บาท`, "size": "sm", "color": "#00ffcc", "weight": "bold", "align": "end" }
+                                                            ]
+                                                        },
+                                                        { "type": "separator", "color": "#183226" },
+                                                        { "type": "text", "text": "🔒 ระบบล็อกไม่ให้แจ้งฝากซ้ำ จนกว่าแอดมินจะอนุมัติรายการเดิมเรียบร้อยค่ะ", "size": "xs", "color": "#ffaa00", "wrap": true, "align": "center" }
+                                                    ]
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }, { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` } });
+                            } catch (err) { console.error("Error sending pending deposit alert flex:", err); }
+                            return res.sendStatus(200);
                         } else {
                             const randomSatang = (Math.floor(Math.random() * 99) + 1) / 100;
                             const totalWithSatang = amount + randomSatang;
@@ -464,7 +596,72 @@ app.post('/callback', async (req, res) => {
                                 status: 'WAITING_ADMIN'
                             };
 
-                            replyText = `📥 รับแจ้งฝากเรียบร้อ\n────────────────\n💸 กรุณาโอนเงินจำนวน:  ${displayAmount} บาท\nเข้า บัญชี ด่านล่างนี้เท่านั้น\n────────────────\nเลขบัญชีการโอน\n037-1556-125\nธนาคาร กสิกร\nชื่อ นาย ภาณุวัฒก์ ก้องกุล\n────────────────\⚠️ สำคัญมาก: กรุณาโอนยอดเงินและใส่เศษสตางค์ให้ตรงตามที่ระบบแจ้งพร้อมส่งสลิป\n เพื่อความรวดเร็วในการตรวจสอบ`;
+                            // ==================== [ 🚀 ยิง Flex Message ใบแจ้งฝากสไตล์บิลธนาคารสีเขียวนีออน ] ====================
+                            try {
+                                await axios.post('https://api.line.me/v2/bot/message/reply', {
+                                    replyToken: replyToken,
+                                    messages: [
+                                        {
+                                            "type": "flex",
+                                            "altText": `📥 ใบสั่งฝากเครดิต ยอดโอน: ${displayAmount} บาท`,
+                                            "contents": {
+                                                "type": "bubble",
+                                                "styles": { "body": { "backgroundColor": "#09120e" } },
+                                                "body": {
+                                                    "type": "box",
+                                                    "layout": "vertical",
+                                                    "spacing": "md",
+                                                    "contents": [
+                                                        { "type": "text", "text": "📥 ใบสั่งรายการฝากเงิน", "weight": "bold", "color": "#00ff88", "size": "md", "align": "center" },
+                                                        { "type": "separator", "color": "#12251c" },
+                                                        {
+                                                            "type": "box",
+                                                            "layout": "vertical",
+                                                            "spacing": "xs",
+                                                            "contents": [
+                                                                { "type": "text", "text": "💸 กรุณาโอนเงินยอดสุทธิ:", "size": "xs", "color": "#8caf9c" },
+                                                                { "type": "text", "text": `${displayAmount} บาท`, "size": "xxl", "color": "#00ff88", "weight": "bold", "align": "center", "margin": "sm" },
+                                                                { "type": "text", "text": "(กรุณาโอนเศษสตางค์ให้ตรงเพื่ออัปยอดไวที่สุด)", "size": "10px", "color": "#ffaa00", "align": "center" }
+                                                            ]
+                                                        },
+                                                        { "type": "separator", "color": "#12251c" },
+                                                        { "type": "text", "text": "🏦 บัญชีสำหรับรับโอนเงิน", "size": "xs", "color": "#00ff88", "weight": "bold" },
+                                                        {
+                                                            "type": "box",
+                                                            "layout": "vertical",
+                                                            "backgroundColor": "#0f1f17",
+                                                            "paddingAll": "md",
+                                                            "spacing": "xs",
+                                                            "contents": [
+                                                                {
+                                                                    "type": "box", "layout": "horizontal", "contents": [
+                                                                        { "type": "text", "text": "ธนาคาร:", "size": "xs", "color": "#8caf9c" },
+                                                                        { "type": "text", "text": "กสิกรไทย", "size": "xs", "color": "#ffffff", "align": "end", "weight": "bold" }
+                                                                    ]
+                                                                },
+                                                                {
+                                                                    "type": "box", "layout": "horizontal", "contents": [
+                                                                        { "type": "text", "text": "เลขบัญชี:", "size": "xs", "color": "#8caf9c" },
+                                                                        { "type": "text", "text": "037-1556-125", "size": "xs", "color": "#00ff88", "align": "end", "weight": "bold" }
+                                                                    ]
+                                                                },
+                                                                {
+                                                                    "type": "box", "layout": "horizontal", "contents": [
+                                                                        { "type": "text", "text": "ชื่อบัญชี:", "size": "xs", "color": "#8caf9c" },
+                                                                        { "type": "text", "text": "นาย ภาณุวัฒก์ ก้องกุล", "size": "xs", "color": "#ffffff", "align": "end" }
+                                                                    ]
+                                                                }
+                                                            ]
+                                                        },
+                                                        { "type": "separator", "color": "#12251c" },
+                                                        { "type": "text", "text": "⚠️ สำคัญมาก: กรุณาโอนตามยอดที่มีเศษสตางค์ด้านบนให้ตรง แล้วส่งสลิปเพื่อยืนยันรายการค่ะ", "size": "11px", "color": "#ff4444", "wrap": true, "align": "center", "weight": "bold" }
+                                                    ]
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }, { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` } });
+                            } catch (err) { console.error("Error sending deposit bill flex:", err); }
                         }
                     }
                 }
@@ -2347,7 +2544,7 @@ else if (command.toLowerCase() === "y") {
                                                         { "type": "separator", "color": "#183242" },
                                                         { "type": "text", "text": "🔒 ข้อมูลบัญชีธนาคารบันทึกเข้าคลังหลังบ้านปลอดภัย ไม่แสดงหน้ากลุ่มค่ะ", "size": "10px", "color": "#a2c1d4", "wrap": true },
                                                         { "type": "separator", "color": "#183242" },
-                                                        { "type": "text", "text": "💡 ตอนนี้คุณสามารถส่งโพย หรือ ฝากเครดิตพิมพ์ [ฝาก จำนวนเงิน] ได้ทันทีค่ะ", "size": "xs", "color": "#00ffcc", "wrap": true, "style": "italic" }
+                                                        { "type": "text", "text": "💡 ตอนนี้คุณสามารถส่งโพย หรือ ฝากเครดิตพิมพ์ [ฝาก จำนวนเงิน] ได้เลย", "size": "xs", "color": "#00ffcc", "wrap": true, "style": "italic" }
                                                     ]
                                                 }
                                             }
@@ -2379,16 +2576,16 @@ else if (command.toLowerCase() === "y") {
                                                 "contents": [
                                                     { "type": "text", "text": "📢 ยินดีต้อนรับครับสมาชิกใหม่ 🤝", "weight": "bold", "color": "#00ffcc", "size": "md", "align": "center" },
                                                     { "type": "separator", "color": "#1d2d35" },
-                                                    { "type": "text", "text": "⚠️ คุณยังไม่ได้ลงทะเบียนในระบบบอท", "size": "xs", "color": "#ffcc00", "align": "center", "weight": "bold" },
+                                                    { "type": "text", "text": "⚠️ คุณยังไม่ได้ลงทะเบียนในระบบ", "size": "xs", "color": "#ffcc00", "align": "center", "weight": "bold" },
                                                     { "type": "separator", "color": "#1d2d35" },
-                                                    { "type": "text", "text": "กรุณาพิมพ์เพื่อลงทะเบียนและใช้ในการถอนเครดิต:", "size": "xs", "color": "#cccccc", "wrap": true },
+                                                    { "type": "text", "text": "กรุณาทำตามขั้นตอนด้านล่างเพื่อลงทะเบียน:", "size": "xs", "color": "#cccccc", "wrap": true },
                                                     {
                                                         "type": "box",
                                                         "layout": "vertical",
                                                         "backgroundColor": "#17262f",
                                                         "paddingAll": "sm",
                                                         "contents": [
-                                                            { "type": "text", "text": "格式: C/ชื่อ-นามสกุล,ธนาคาร,เลขบัญชี", "size": "xs", "color": "#ffffff", "weight": "bold" },
+                                                            { "type": "text", "text": "พิมพ์: C/ชื่อ นามสกุล,ธนาคาร,เลขบัญชี", "size": "xs", "color": "#ffffff", "weight": "bold" },
                                                             { "type": "text", "text": "ตัวอย่าง: C/นายแจ๊ค เด้งดี,กสิกร,1234567890", "size": "xs", "color": "#8ab4cd" }
                                                         ]
                                                     },

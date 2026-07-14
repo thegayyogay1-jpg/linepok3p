@@ -2005,7 +2005,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
             };
             
             detailedRoundHistory[currentRound] = summaryPayoutText;
-
+        }
     // ====// ==================== [ 10. ระบบคู่มือ: คำสั่งสมาชิก (คส), กติกา (กต) และ บัญชี (บช) ] ====================
             else if (userMsg === 'คส' || userMsg === 'กต' || userMsg === 'บช' || userMsg === '/บช') {
                 if (userMsg === 'คส') {

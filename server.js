@@ -2254,7 +2254,34 @@ else if (command.toLowerCase() === "y") {
 
                         // 🚨 [เช็กความครบถ้วน] ถ้าขาดสิ่งใดสิ่งหนึ่งไป หรือลืมใส่เครื่องหมายจุลภาค บอทจะไม่ให้ผ่าน!
                         if (fullName === "" || bankName === "" || bankAccount === "") {
-                            replyText = `❌ สมัครสมาชิกไม่สำเร็จครับน้า ข้อมูลไม่ครบ!\n──────────────────\n⚠️ กรุณาพิมพ์คั่นด้วยเครื่องหมายจุลภาค ( , ) ให้ครบทั้ง 3 ส่วน\n📌 รูปแบบ: C/ชื่อ-นามสกุล,ธนาคาร,เลขบัญชี\n👉 ตัวอย่าง: C/นายแจ๊ค เด้งดี,กสิกร,1234567890`;
+                            try {
+                                await axios.post('https://api.line.me/v2/bot/message/reply', {
+                                    replyToken: replyToken,
+                                    messages: [
+                                        {
+                                            "type": "flex",
+                                            "altText": "⚠️ สมัครสมาชิกไม่สำเร็จ ข้อมูลไม่ครบ",
+                                            "contents": {
+                                                "type": "bubble",
+                                                "styles": { "body": { "backgroundColor": "#0d161b" } },
+                                                "body": {
+                                                    "type": "box",
+                                                    "layout": "vertical",
+                                                    "spacing": "md",
+                                                    "contents": [
+                                                        { "type": "text", "text": "❌ สมัครสมาชิกไม่สำเร็จครับน้า ข้อมูลไม่ครบ!", "weight": "bold", "color": "#ff3333", "size": "md", "align": "center" },
+                                                        { "type": "separator", "color": "#1d2d35" },
+                                                        { "type": "text", "text": "⚠️ กรุณาพิมพ์คั่นด้วยเครื่องหมายจุลภาค ( , ) ให้ครบทั้ง 3 ส่วน", "size": "xs", "color": "#ff8888", "wrap": true },
+                                                        { "type": "text", "text": "📌 รูปแบบ: C/ชื่อ-นามสกุล,ธนาคาร,เลขบัญชี\n👉 ตัวอย่าง: C/นายแจ๊ค เด้งดี,กสิกร,1234567890", "size": "xs", "color": "#00cccc", "wrap": true },
+                                                        { "type": "separator", "color": "#1d2d35" }
+                                                    ]
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }, { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` } });
+                            } catch (err) { console.error("Error sending register fail flex:", err); }
+                            return res.sendStatus(200);
                         } else {
                             usersWallets[userId] = {
                                 memberNumber: nextMemberId,
@@ -2267,17 +2294,119 @@ else if (command.toLowerCase() === "y") {
                                 bankName: bankName,          // 🏦 เก็บข้อมูลธนาคารหลังบ้าน
                                 bankAccount: bankAccount     // 💳 เก็บเลขบัญชีหลังบ้าน
                             };
-                            replyText = `🎉 ลงทะเบียนสมาชิกใหม่สำเร็จ! 🎉\n──────────────────\n🆔 คุณคือสมาชิกคนที่: ${nextMemberId}\n👤 ชื่อ-นามสกุล: ${fullName}\n🏦 ธนาคาร: ${bankName}\n💰 ยอดคงเหลือ: 0 บาท\n🔒 ข้อมูลบัญชีธนาคาร: บันทึกเข้าคลังหลังบ้านเรียบร้อยแล้ว ปลอดภัย ไม่แสดงหน้ากลุ่มค่ะ\n──────────────────\nตอนนี้คุณสามารถส่งโพยหรือพิมพ์ C เพื่อเช็คการ์ดสมาชิก\n──────────────────\nหรือฝากเครดิต พิม ฝาก จำนวนเงิน`;
+
+                            // ==================== [ 🚀 ยิง Flex Message แจ้งสมัครสมาชิกใหม่สำเร็จ ] ====================
+                            try {
+                                await axios.post('https://api.line.me/v2/bot/message/reply', {
+                                    replyToken: replyToken,
+                                    messages: [
+                                        {
+                                            "type": "flex",
+                                            "altText": "🎉 ลงทะเบียนสมาชิกใหม่สำเร็จ! 🎉",
+                                            "contents": {
+                                                "type": "bubble",
+                                                "styles": { "body": { "backgroundColor": "#0c1921" } },
+                                                "body": {
+                                                    "type": "box",
+                                                    "layout": "vertical",
+                                                    "spacing": "md",
+                                                    "contents": [
+                                                        { "type": "text", "text": "🎉 ลงทะเบียนสมาชิกใหม่สำเร็จ! 🎉", "weight": "bold", "color": "#00ffcc", "size": "md", "align": "center" },
+                                                        { "type": "separator", "color": "#183242" },
+                                                        {
+                                                            "type": "box",
+                                                            "layout": "vertical",
+                                                            "spacing": "xs",
+                                                            "contents": [
+                                                                {
+                                                                    "type": "box", "layout": "horizontal", "contents": [
+                                                                        { "type": "text", "text": "🆔 รหัสสมาชิก:", "size": "xs", "color": "#8ab4cd" },
+                                                                        { "type": "text", "text": `${nextMemberId}`, "size": "xs", "color": "#ffffff", "align": "end", "weight": "bold" }
+                                                                    ]
+                                                                },
+                                                                {
+                                                                    "type": "box", "layout": "horizontal", "contents": [
+                                                                        { "type": "text", "text": "👤 ชื่อ-นามสกุล:", "size": "xs", "color": "#8ab4cd" },
+                                                                        { "type": "text", "text": `${fullName}`, "size": "xs", "color": "#ffffff", "align": "end" }
+                                                                    ]
+                                                                },
+                                                                {
+                                                                    "type": "box", "layout": "horizontal", "contents": [
+                                                                        { "type": "text", "text": "🏦 ธนาคาร:", "size": "xs", "color": "#8ab4cd" },
+                                                                        { "type": "text", "text": `${bankName}`, "size": "xs", "color": "#ffffff", "align": "end" }
+                                                                    ]
+                                                                },
+                                                                {
+                                                                    "type": "box", "layout": "horizontal", "contents": [
+                                                                        { "type": "text", "text": "💰 ยอดคงเหลือ:", "size": "xs", "color": "#8ab4cd" },
+                                                                        { "type": "text", "text": "0 บาท", "size": "xs", "color": "#00ff66", "align": "end", "weight": "bold" }
+                                                                    ]
+                                                                }
+                                                            ]
+                                                        },
+                                                        { "type": "separator", "color": "#183242" },
+                                                        { "type": "text", "text": "🔒 ข้อมูลบัญชีธนาคารบันทึกเข้าคลังหลังบ้านปลอดภัย ไม่แสดงหน้ากลุ่มค่ะ", "size": "10px", "color": "#a2c1d4", "wrap": true },
+                                                        { "type": "separator", "color": "#183242" },
+                                                        { "type": "text", "text": "💡 ตอนนี้คุณสามารถส่งโพย หรือ ฝากเครดิตพิมพ์ [ฝาก จำนวนเงิน] ได้ทันทีค่ะ", "size": "xs", "color": "#00ffcc", "wrap": true, "style": "italic" }
+                                                    ]
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }, { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` } });
+                            } catch (err) { console.error("Error sending register success flex:", err); }
+
                             nextMemberId++;
                             await saveDataToFirebase();
+                            return res.sendStatus(200);
                         }
                     } else {
-                        replyText = `📢 ยินดีต้อนรับครับสมาชิกใหม่\n──────────────────\n⚠️ คุณยังไม่ได้ลงทะเบียนในระบบ\n──────────────────\nกรุณาพิมพ์: C/ชื่อ-นามสกุล,ธนาคาร,เลขบัญชี เพื่อลงทะเบียนใช้งาน และ ใช้ในการถอนเครดิต\n(ตัวอย่าง: C/นายแจ๊ค เด้งดี,กสิกร,1234567890)\n──────────────────\n⚠️กรุณาใช้ชื่อ-นามสกุลให้ตรงกันกับ บช. ที่ใช้ในการฝากของท่าน⚠️`;
+                        // ==================== [ 🚀 ยิง Flex Message แจ้งเตือนให้สมัครสมาชิกก่อนเล่น ] ====================
+                        try {
+                            await axios.post('https://api.line.me/v2/bot/message/reply', {
+                                replyToken: replyToken,
+                                messages: [
+                                    {
+                                        "type": "flex",
+                                        "altText": "📢 ยินดีต้อนรับครับสมาชิกใหม่ กรุณาลงทะเบียน",
+                                        "contents": {
+                                            "type": "bubble",
+                                            "styles": { "body": { "backgroundColor": "#0d161b" } },
+                                            "body": {
+                                                "type": "box",
+                                                "layout": "vertical",
+                                                "spacing": "md",
+                                                "contents": [
+                                                    { "type": "text", "text": "📢 ยินดีต้อนรับครับสมาชิกใหม่ 🤝", "weight": "bold", "color": "#00ffcc", "size": "md", "align": "center" },
+                                                    { "type": "separator", "color": "#1d2d35" },
+                                                    { "type": "text", "text": "⚠️ คุณยังไม่ได้ลงทะเบียนในระบบบอท", "size": "xs", "color": "#ffcc00", "align": "center", "weight": "bold" },
+                                                    { "type": "separator", "color": "#1d2d35" },
+                                                    { "type": "text", "text": "กรุณาพิมพ์เพื่อลงทะเบียนและใช้ในการถอนเครดิต:", "size": "xs", "color": "#cccccc", "wrap": true },
+                                                    {
+                                                        "type": "box",
+                                                        "layout": "vertical",
+                                                        "backgroundColor": "#17262f",
+                                                        "paddingAll": "sm",
+                                                        "contents": [
+                                                            { "type": "text", "text": "格式: C/ชื่อ-นามสกุล,ธนาคาร,เลขบัญชี", "size": "xs", "color": "#ffffff", "weight": "bold" },
+                                                            { "type": "text", "text": "ตัวอย่าง: C/นายแจ๊ค เด้งดี,กสิกร,1234567890", "size": "xs", "color": "#8ab4cd" }
+                                                        ]
+                                                    },
+                                                    { "type": "separator", "color": "#1d2d35" },
+                                                    { "type": "text", "text": "⚠️ กรุณาใช้ชื่อ-นามสกุลให้ตรงกันกับ บช. ที่ใช้ในการฝากของท่าน ⚠️", "size": "11px", "color": "#ff3333", "wrap": true, "align": "center", "weight": "bold" }
+                                                ]
+                                            }
+                                        }
+                                    }
+                                ]
+                            }, { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` } });
+                        } catch (err) { console.error("Error sending alert non-registered flex:", err); }
+                        return res.sendStatus(200);
                     }
                 } else {
                     // 🟢 กรณีที่เป็นสมาชิกเก่าที่ลงทะเบียนเรียบร้อยแล้ว
                     const user = usersWallets[userId];
-
+                    
                     // ==================== [ คำสั่งเช็กยอด c เวอร์ชันการ์ดดำทอง ] ====================
                     if (userMsg === 'c') {
                         // 🛠️ แก้ปัญหา LINE API บล็อกข้อความว่าง: บังคับให้ข้อความธรรมดาเป็น null เพื่อส่งแค่การ์ด Flex

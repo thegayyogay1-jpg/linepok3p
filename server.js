@@ -3,6 +3,7 @@ const axios = require('axios');
 const fs = require('fs'); // 📁 เติมตรงนี้เพื่อให้ระบบรู้จักการเขียนไฟล์ลงเครื่องครับน้า
 const app = express();
 app.use(express.json());
+global.currentReplyFlex = null; // 👈 แทรกบรรทัดนี้ลงไปตรงนี้ครับ
 
 // 💡 ไม่ต้องใส่ Token ในนี้แล้ว ระบบจะดึงจากตัวแปรบน Render อัตโนมัติ
 const TOKEN = process.env.CHANNEL_ACCESS_TOKEN;
@@ -1786,7 +1787,7 @@ else if (originalMsg.startsWith('>')) {
         return res.sendStatus(200); 
     }
 }
-    // ==================== [ 9. ระบบแอดมินยืนยันผลคำนวณเงินจริง OK / NO (Settlement Engine) ] ====================
+   // ==================== [ 9. ระบบแอดมินยืนยันผลคำนวณเงินจริง OK / NO (Settlement Engine) ] ====================
 else if (userMsg === 'ok' || userMsg === 'no') {
     if (!ADMIN_IDS.includes(userId)) return;
 

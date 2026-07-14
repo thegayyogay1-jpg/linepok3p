@@ -31,29 +31,6 @@ let pastRoundsData = {}; //  ถังเก็บประวัติโพย
 let withdrawQueue = []; // 📦 ถังสำหรับเก็บคิวสมาชิกที่แจ้งถอนเงิน
 let usersRoundCrossCheck = {}; // 🌟 เพิ่มบรรทัดนี้ไว้บนสุดของไฟล์
 
-// 🔄 ฟังก์ชันอัตโนมัติ: ดึงข้อมูลจาก Firebase มาอัปเดตลงในบอททันทีที่เปิดเครื่อง (แก้ไขดึงครบทุกกล่องแล้ว)
-async function loadDataFromFirebase() {
-    try {
-        const response = await axios.get(`${FIREBASE_URL}system_data.json`);
-        if (response.data) {
-            usersWallets = response.data.usersWallets || {};
-            nextMemberId = response.data.nextMemberId || 1;
-            isRoundOpen = response.data.isRoundOpen !== undefined ? response.data.isRoundOpen : false;
-            roundBets = response.data.roundBets || {};
-            currentRound = response.data.currentRound || 0;
-            isDrawOpen = response.data.isDrawOpen !== undefined ? response.data.isDrawOpen : false;
-            matchHistory = response.data.matchHistory || [];
-            detailedRoundHistory = response.data.detailedRoundHistory || {};
-            pastRoundsData = response.data.pastRoundsData || {};
-            withdrawQueue = response.data.withdrawQueue || [];
-            console.log("✅ ดึงข้อมูลระบบทั้งหมดจาก Firebase สำเร็จเรียบร้อย!");
-        }
-    } catch (error) {
-        console.error("❌ ไม่สามารถดึงข้อมูลจาก Firebase ได้:", error.message);
-    }
-}
-loadDataFromFirebase(); // สั่งให้ทำงานทันทีที่บอทรัน
-
 // 💾 ฟังก์ชันอัตโนมัติ: สั่งบันทึกข้อมูลปัจจุบันยิงกลับไปเก็บที่ตึก Firebase
 async function saveDataToFirebase() {
     try {
@@ -64,7 +41,7 @@ async function saveDataToFirebase() {
             roundBets: roundBets,             // 💾 จำโพยแทงในแต่ละรอบ
             currentRound: currentRound,       // 💾 จำลำดับรอบปัจจุบัน
             isDrawOpen: isDrawOpen,           // 💾 จำสถานะรอบจั่วไพ่
-            matchHistory: matchHistory,       // 💾 จำประวัติสถิติย้อนหลัง 5 รอบ
+            matchHistory: matchHistory,        // 💾 จำประวัติสถิติย้อนหลัง 5 รอบ
             detailedRoundHistory: detailedRoundHistory, // 💾 จำข้อมูลแอดมินดึงย้อนหลัง
             pastRoundsData: pastRoundsData,   // 💾 จำประวัติโพยและผลไพ่แยกรายรอบ (v,m)
             withdrawQueue: withdrawQueue       // 💾 จำคิวสมาชิกที่แจ้งถอนเงิน
@@ -74,6 +51,223 @@ async function saveDataToFirebase() {
         console.error("❌ บันทึกข้อมูลลง Firebase ล้มเหลว:", error.message);
     }
 }
+
+// =========================================================================================
+// 🎯 [🎯 ส่วนที่ 1: วางฟังก์ชันคำนวณเงินตรงนี้เลยครับน้า โดดๆ ไม่ซ้อนใคร]
+// =========================================================================================
+async function processAdminSettlement(tempRoomResults, tempDealerResult, roundBets, usersWallets, currentRound, matchHistory, pastRoundsData, detailedRoundHistory) {
+    let summaryPayoutText = `💰 สรุปยอดได้/เสีย รอบที่: ${currentRound}\n──────────────────\n`;
+    summaryPayoutText += `👑 เจ้ามือ: ${tempDealerResult.name}\n──────────────────\n`;
+    
+    let hasAnyBet = false;
+    let flexUserContents = [];
+
+    for (let uId in roundBets) {
+        const userBetsArray = roundBets[uId];
+        if (!userBetsArray || userBetsArray.length === 0) continue;
+
+        hasAnyBet = true;
+        const user = usersWallets[uId];
+        let userTotalWinLoss = 0; 
+        let totalHoldRefund = 0;   
+        let totalBetAmountThisRound = 0; 
+
+        userBetsArray.forEach((bet) => {
+            totalHoldRefund += bet.holdCost; 
+
+            let legsToCalculate = [];
+            if (bet.betType === "มข" || bet.betType === "มจ") {
+                legsToCalculate = ['1', '2', '3', '4', '5', '6'];
+            } else if (bet.betType.startsWith('จ')) {
+                legsToCalculate = bet.betType.substring(1).split('');
+            } else {
+                legsToCalculate = bet.betType.split('');
+            }
+
+            totalBetAmountThisRound += (bet.pricePerLeg * legsToCalculate.length);
+
+            legsToCalculate.forEach((leg) => {
+                const legNum = parseInt(leg);
+                const matchResult = tempRoomResults[legNum];
+                if (!matchResult) return; 
+                
+                const isBettingOnDealer = (bet.betType === "มจ" || bet.betType.startsWith('จ'));
+                let finalCard;
+                const betPrice = bet.pricePerLeg; 
+
+                if (!isBettingOnDealer) {
+                    const isUserDrawn = (bet.drawStatus && bet.drawStatus[leg] === "จั่ว");
+                    finalCard = isUserDrawn ? matchResult.threeCards : matchResult.twoCards;
+
+                    if (finalCard.score > tempDealerResult.score) {
+                        let winMultiplier = finalCard.mult;
+                        if (bet.maxMultiplier && winMultiplier > bet.maxMultiplier) {
+                            winMultiplier = bet.maxMultiplier;
+                        }
+                        userTotalWinLoss += (betPrice * winMultiplier);
+                    } 
+                    else if (finalCard.score < tempDealerResult.score) {
+                        let loseMultiplier = tempDealerResult.mult;
+                        if (loseMultiplier > 3) loseMultiplier = 3;
+                        if (bet.maxMultiplier && loseMultiplier > bet.maxMultiplier) {
+                            loseMultiplier = bet.maxMultiplier;
+                        }
+                        userTotalWinLoss -= (betPrice * loseMultiplier);
+                    }
+                } 
+                else {
+                    let playerTwoCardScore = matchResult.twoCards.score;
+                    let playerTwoCardMult = matchResult.twoCards.mult;
+
+                    if (playerTwoCardScore <= 4 && playerTwoCardMult === 1) {
+                        finalCard = matchResult.threeCards; 
+                    } else {
+                        finalCard = matchResult.twoCards;   
+                    }
+
+                    if (tempDealerResult.score > finalCard.score) {
+                        let winMultiplier = tempDealerResult.mult;
+                        if (bet.maxMultiplier && winMultiplier > bet.maxMultiplier) {
+                            winMultiplier = bet.maxMultiplier;
+                        }
+                        let grossWin = betPrice * winMultiplier; 
+                        let netWin = Math.floor(grossWin * 0.9);
+                        userTotalWinLoss += netWin;
+                    } 
+                    else if (tempDealerResult.score < finalCard.score) {
+                        let loseMultiplier = finalCard.mult;
+                        if (bet.maxMultiplier && loseMultiplier > bet.maxMultiplier) {
+                            loseMultiplier = bet.maxMultiplier;
+                        }
+                        userTotalWinLoss -= (betPrice * loseMultiplier);
+                    }
+                }
+            });
+        }); 
+
+        user.balance = user.balance + totalHoldRefund + userTotalWinLoss;
+
+        if (user.turnoverTarget > 0 && userTotalWinLoss !== 0) {
+            let currentTurnoverMade = totalBetAmountThisRound; 
+            user.turnoverTarget -= currentTurnoverMade;
+            if (user.turnoverTarget < 0) user.turnoverTarget = 0; 
+        }
+
+        let sign = userTotalWinLoss > 0 ? "+" : "";
+        let displayColor = userTotalWinLoss > 0 ? "#00ff66" : (userTotalWinLoss < 0 ? "#ff3333" : "#ffcc00");
+        let isUserBettingOnDealer = userBetsArray.some(b => b.betType === "มจ" || b.betType.startsWith('จ'));
+        let feeNote = (isUserBettingOnDealer && userTotalWinLoss !== 0) ? " (หักต๋งแล้ว)" : "";
+
+        flexUserContents.push({
+            "type": "box",
+            "layout": "vertical",
+            "margin": "md",
+            "spacing": "xs",
+            "contents": [
+                { "type": "text", "text": `👤 ${user.name} (ID: ${user.memberNumber})`, "weight": "bold", "color": "#ffffff", "size": "sm" },
+                {
+                    "type": "box",
+                    "layout": "horizontal",
+                    "contents": [
+                        { "type": "text", "text": `• ยอดสุทธิ:${feeNote}`, "size": "xs", "color": "#cccccc" },
+                        { "type": "text", "text": `${sign}${userTotalWinLoss} บาท`, "size": "xs", "color": displayColor, "align": "end", "weight": "bold" }
+                    ]
+                },
+                {
+                    "type": "box",
+                    "layout": "horizontal",
+                    "contents": [
+                        { "type": "text", "text": `• เครดิตคงเหลือ:`, "size": "xs", "color": "#cccccc" },
+                        { "type": "text", "text": `${user.balance} บ.`, "size": "xs", "color": "#ffffff", "align": "end" }
+                    ]
+                },
+                { "type": "separator", "color": "#2a2233", "margin": "xs" }
+            ]
+        });
+
+        let oldSign = userTotalWinLoss > 0 ? "🟢 +" : (userTotalWinLoss < 0 ? "🔴 " : "🟡 ");
+        let oldFeeNote = (isUserBettingOnDealer && userTotalWinLoss !== 0) ? " \n(หักต๋งขาเจ้ามือที่ชนะแล้ว)" : "";
+        summaryPayoutText += `👤 ${user.name} (ID: ${user.memberNumber})\n  ยอดสุทธิ: ${oldSign}${userTotalWinLoss} บาท${oldFeeNote}\n เครดิตคงเหลือ: ${user.balance} บ.\n──────────────────\n`;
+    } 
+
+    if (!hasAnyBet) {
+        summaryPayoutText += "📝 รอบนี้ไม่มีสมาชิกส่งโพยเดิมพันเข้ามาครับ\n";
+    }
+    summaryPayoutText += `✨ ระบบได้ทำการคำนวณเงินและอัปเดตกระเป๋าเงินให้ทุกคนเรียบร้อยแล้วครับ 🏁`;
+
+    // 📊 ประมวลผลระบบสถิติแบบวงรีสีสากล
+    let dealerDisplay = ""; 
+    if (tempDealerResult.name.includes("ป๊อก 9")) dealerDisplay = "9ป";
+    else if (tempDealerResult.name.includes("ป๊อก 8")) dealerDisplay = "8ป";
+    else if (tempDealerResult.name.includes("ตอง")) dealerDisplay = "ตอง";
+    else if (tempDealerResult.name.includes("สเตฟฟลัช")) dealerDisplay = "สเตฟ";
+    else if (tempDealerResult.name.includes("เซียน")) dealerDisplay = "เซียน";
+    else if (tempDealerResult.name.includes("เรียง")) dealerDisplay = "เรียง";
+    else dealerDisplay = `${tempDealerResult.score}ต`;
+
+    const getOvalColor = (userScore, dealerScore) => {
+        if (userScore > dealerScore) return "#a3e635"; 
+        if (userScore < dealerScore) return "#f87171"; 
+        return "#facc15"; 
+    };
+
+    let historyRowContents = [
+        { "type": "text", "text": `ร.${currentRound} [👑 ${dealerDisplay}]`, "size": "xxs", "color": "#ffffff", "gravity": "center", "weight": "bold", "flex": 2 }
+    ];
+
+    for (let leg = 1; leg <= 6; leg++) {
+        let card2Text = "0ต", card3Text = "-";
+        let card2Bg = "#444446", card3Bg = "#444446"; 
+        
+        if (tempRoomResults[leg]) {
+            const legRes = tempRoomResults[leg];
+            if (legRes.twoCards.name.includes("ป๊อก 9")) card2Text = "9ป";
+            else if (legRes.twoCards.name.includes("ป๊อก 8")) card2Text = "8ป";
+            else card2Text = `${legRes.twoCards.score}ต`;
+            card2Bg = getOvalColor(legRes.twoCards.score, tempDealerResult.score);
+
+            if (legRes.threeCards) {
+                if (legRes.threeCards.name.includes("ตอง")) card3Text = "ตอง";
+                else if (legRes.threeCards.name.includes("สเตฟ")) card3Text = "สเตฟ";
+                else if (legRes.threeCards.name.includes("เซียน")) card3Text = "เซียน";
+                else if (legRes.threeCards.name.includes("เรียง")) card3Text = "เรียง";
+                else card3Text = `${legRes.threeCards.score}ต`;
+                card3Bg = getOvalColor(legRes.threeCards.score, tempDealerResult.score);
+            }
+        }
+
+        historyRowContents.push({
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "xxs",
+            "flex": 1,
+            "contents": [
+                { "type": "text", "text": `ข${leg}`, "size": "xxs", "color": "#aaaaaa", "align": "center" },
+                {
+                    "type": "box",
+                    "layout": "horizontal",
+                    "spacing": "xs",
+                    "contents": [
+                        { "type": "box", "layout": "vertical", "backgroundColor": card2Bg, "cornerRadius": "md", "contents": [{ "type": "text", "text": card2Text, "size": "xxs", "color": "#000000", "weight": "bold", "align": "center" }] },
+                        { "type": "box", "layout": "vertical", "backgroundColor": card3Bg, "cornerRadius": "md", "contents": [{ "type": "text", "text": card3Text, "size": "xxs", "color": "#000000", "weight": "bold", "align": "center" }] }
+                    ]
+                }
+            ]
+        });
+    }
+
+    matchHistory.push({ "type": "box", "layout": "horizontal", "margin": "sm", "spacing": "xs", "contents": historyRowContents });
+    if (matchHistory.length > 5) matchHistory.shift(); 
+
+    pastRoundsData[currentRound] = {
+        dealer: JSON.parse(JSON.stringify(tempDealerResult)),
+        rooms: JSON.parse(JSON.stringify(tempRoomResults)),
+        bets: JSON.parse(JSON.stringify(roundBets))
+    };
+    detailedRoundHistory[currentRound] = summaryPayoutText;
+}
+
+// =========================================================================================
 
 app.post('/callback', async (req, res) => {
     const events = req.body.events;
@@ -1788,7 +1982,7 @@ else if (originalMsg.startsWith('>')) {
         return res.sendStatus(200); 
     }
 }
-// ==================== [ 9. ระบบแอดมินยืนยันผลคำนวณเงินจริง OK / NO (Settlement Engine) ] ====================
+    // ==================== [ 9. ระบบแอดมินยืนยันผลคำนวณเงินจริง OK / NO (Settlement Engine) ] ====================
 else if (userMsg === 'ok' || userMsg === 'no') {
     if (!ADMIN_IDS.includes(userId)) return;
 
@@ -1796,317 +1990,27 @@ else if (userMsg === 'ok' || userMsg === 'no') {
         replyText = "⚠️ ไม่มีข้อมูลผลแต้มค้างอยู่ในระบบครับ กรุณาส่งผลแต้มด้วยเครื่องหมาย > ก่อนครับ";
     } else {
         if (userMsg === 'ok') {
-            let summaryPayoutText = `💰 สรุปยอดได้/เสีย รอบที่: ${currentRound}\n──────────────────\n`;
-            summaryPayoutText += `👑 เจ้ามือ: ${tempDealerResult.name}\n──────────────────\n`;
-            
-            let hasAnyBet = false;
-            let flexUserContents = []; // 🎨 อาเรย์สำหรับเก็บดีไซน์กล่องรายคนใน Flex Message
+            // เรียกใช้ฟังก์ชันประมวลผลแยกที่ทำไว้ด้านนอกอย่างปลอดภัย
+            await processAdminSettlement(
+                tempRoomResults, 
+                tempDealerResult, 
+                roundBets, 
+                usersWallets, 
+                currentRound, 
+                matchHistory, 
+                pastRoundsData, 
+                detailedRoundHistory
+            );
 
-            // วนลูปสมาชิกทุกคนที่มีการแทงในรอบนี้เพื่อคิดเงิน (ใช้ async-wait ด้านในได้ปลอดภัย)
-            const processPayouts = async () => {
-                for (let uId in roundBets) {
-                    const userBetsArray = roundBets[uId];
-                    if (!userBetsArray || userBetsArray.length === 0) continue;
-
-                    hasAnyBet = true;
-                    const user = usersWallets[uId];
-                    let userTotalWinLoss = 0; 
-                    let totalHoldRefund = 0;   
-                    let totalBetAmountThisRound = 0; // 📊 ตัวแปรเพิ่มใหม่สำหรับเก็บยอดแทงรวมแท้จริงในตานี้เพื่อเอาไปคิดเทิร์น
-
-                    userBetsArray.forEach((bet) => {
-                        totalHoldRefund += bet.holdCost; // ดึงเงินค้ำประกัน 3 เท่ากลับมาคืนก่อน
-
-                        // แกะข้อมูลตามประเภทโพย (เช่น "1", "มข", "จ12")
-                        let legsToCalculate = [];
-                        if (bet.betType === "มข" || bet.betType === "มจ") {
-                            legsToCalculate = ['1', '2', '3', '4', '5', '6'];
-                        } else if (bet.betType.startsWith('จ')) {
-                            legsToCalculate = bet.betType.substring(1).split('');
-                        } else {
-                            legsToCalculate = bet.betType.split('');
-                        }
-
-                        // 🧮 สะสมยอดเดิมพันรวมจากราคารายขาคูณจำนวนขาที่เปิดสู้จริงในตานี้
-                        totalBetAmountThisRound += (bet.pricePerLeg * legsToCalculate.length);
-
-                        // คำนวณเงินแยกตามรายขาในโพยใบนี้
-                        legsToCalculate.forEach((leg) => {
-                            const legNum = parseInt(leg);
-                            const matchResult = tempRoomResults[legNum];
-                            if (!matchResult) return; // ป้องกันกรณีขาไม่มีข้อมูลผล
-                            
-                            // 🔍 ตรวจสอบประเภทโพย: เป็นการแทงฝั่งเจ้ามือสู้ขาผู้เล่นใช่หรือไม่
-                            const isBettingOnDealer = (bet.betType === "มจ" || bet.betType.startsWith('จ'));
-
-                            let finalCard;
-                            const betPrice = bet.pricePerLeg; // ยอดแทงต่อ 1 ขา
-
-                            if (!isBettingOnDealer) {
-                                // 👤 [ฝั่งคนแทงผู้เล่นปกติ]
-                                const isUserDrawn = (bet.drawStatus && bet.drawStatus[leg] === "จั่ว");
-                                finalCard = isUserDrawn ? matchResult.threeCards : matchResult.twoCards;
-
-                                // คำนวณผลได้เสียของฝั่งผู้เล่นปกติ
-                                if (finalCard.score > tempDealerResult.score) {
-                                    let winMultiplier = finalCard.mult;
-                                    // 🌟 [จุดเปลี่ยนที่ 1]: ดักเพดานเด้งฝั่งผู้เล่นชนะตามจริงที่มีการค้ำประกันไว้ (x2 หรือ x3)
-                                    if (bet.maxMultiplier && winMultiplier > bet.maxMultiplier) {
-                                        winMultiplier = bet.maxMultiplier;
-                                    }
-                                    userTotalWinLoss += (betPrice * winMultiplier);
-                                } 
-                                else if (finalCard.score < tempDealerResult.score) {
-                                    let loseMultiplier = tempDealerResult.mult;
-                                    if (loseMultiplier > 3) {
-                                        loseMultiplier = 3;
-                                    }
-                                    // 🌟 [จุดเปลี่ยนที่ 2]: ดักเพดานเด้งฝั่งผู้เล่นแพ้
-                                    if (bet.maxMultiplier && loseMultiplier > bet.maxMultiplier) {
-                                        loseMultiplier = bet.maxMultiplier;
-                                    }
-                                    userTotalWinLoss -= (betPrice * loseMultiplier);
-                                }
-                            } 
-                            else {
-                                // 👑 [ฝั่งคนแทงเจ้ามือ (จ หรือ มจ)] -> ใช้กฎตายตัวแยกคำนวณเด็ดขาด
-                                let playerTwoCardScore = matchResult.twoCards.score;
-                                let playerTwoCardMult = matchResult.twoCards.mult;
-
-                                // รันกฎตายตัว: ขาผู้เล่นได้ 4 แต้มหรือต่ำกว่า (และไม่ใช่ 4 แต้มเด้ง) ให้เจ้ามือไปสู้กับผล 3 ใบ
-                                if (playerTwoCardScore <= 4 && playerTwoCardMult === 1) {
-                                    finalCard = matchResult.threeCards; // ชนกับผลไพ่ 3 ใบ
-                                } else {
-                                    finalCard = matchResult.twoCards;   // ชนกับผลไพ่ 2 ใบ (5 แต้มขึ้นไป หรือ 4 แต้มเด้ง)
-                                }
-
-                                // 🧮 ตรรกะคิดเงินของฝั่งคนแทงเจ้ามือ (หักต๋ง 10% เฉพาะขาที่ได้กำไร)
-                                if (tempDealerResult.score > finalCard.score) {
-                                    // เจ้ามือชนะขาผู้เล่นคนนั้น = คนแทงฝั่งเจ้าได้กำไร!
-                                    let winMultiplier = tempDealerResult.mult;
-                                    // 🌟 [จุดเปลี่ยนที่ 3]: ดักเพดานเด้งฝั่งคนแทงเจ้าชนะตามสิทธิ์ที่ค้ำประกันไว้
-                                    if (bet.maxMultiplier && winMultiplier > bet.maxMultiplier) {
-                                        winMultiplier = bet.maxMultiplier;
-                                    }
-                                    let grossWin = betPrice * winMultiplier; // กำไรเต็มก่อนหัก
-                                    
-                                    // 🔥 หักต๋งรายขาทันที 10% (เหลือจ่ายจริง 90%)
-                                    let netWin = Math.floor(grossWin * 0.9);
-                                    userTotalWinLoss += netWin;
-                                } 
-                                else if (tempDealerResult.score < finalCard.score) {
-                                    // เจ้ามือแพ้ขาผู้เล่นคนนั้น = คนแทงฝั่งเจ้าเสียเต็มจำนวนตามจำนวนเด้งของขานั้นๆ
-                                    let loseMultiplier = finalCard.mult;
-                                    // 🌟 [จุดเปลี่ยนที่ 4]: ดักเพดานเด้งฝั่งคนแทงเจ้าเสีย
-                                    if (bet.maxMultiplier && loseMultiplier > bet.maxMultiplier) {
-                                        loseMultiplier = bet.maxMultiplier;
-                                    }
-                                    userTotalWinLoss -= (betPrice * loseMultiplier);
-                                }
-                            }
-                        });
-                    }); // ปิด userBetsArray.forEach
-
-                    // 🧮 อัปเดตกระเป๋าเงินจริงหลังคิดยอดสุทธิ
-                    user.balance = user.balance + totalHoldRefund + userTotalWinLoss;
-
-                    // 📊 [ระบบคำนวณและหักยอดเทิร์นอัตโนมัติ]
-                    if (user.turnoverTarget > 0 && userTotalWinLoss !== 0) {
-                        let currentTurnoverMade = totalBetAmountThisRound; // หักลดลงเท่ากับยอดแทงจริง ไม่สนจำนวนเด้ง
-                        user.turnoverTarget -= currentTurnoverMade;
-                        if (user.turnoverTarget < 0) user.turnoverTarget = 0; 
-                    }
-
-                    await saveDataToFirebase(); //เซฟถาวรลง Firebase
-
-                    let sign = userTotalWinLoss > 0 ? "+" : "";
-                    let displayColor = userTotalWinLoss > 0 ? "#00ff66" : (userTotalWinLoss < 0 ? "#ff3333" : "#ffcc00");
-                    
-                    let isUserBettingOnDealer = userBetsArray.some(b => b.betType === "มจ" || b.betType.startsWith('จ'));
-                    let feeNote = (isUserBettingOnDealer && userTotalWinLoss !== 0) ? " (หักต๋งแล้ว)" : "";
-
-                    // 🛠️ ประกอบร่างดีไซน์ Flex รายบุคคล
-                    flexUserContents.push({
-                        "type": "box",
-                        "layout": "vertical",
-                        "margin": "md",
-                        "spacing": "xs",
-                        "contents": [
-                            { "type": "text", "text": `👤 ${user.name} (ID: ${user.memberNumber})`, "weight": "bold", "color": "#ffffff", "size": "sm" },
-                            {
-                                "type": "box",
-                                "layout": "horizontal",
-                                "contents": [
-                                    { "type": "text", "text": `• ยอดสุทธิ:${feeNote}`, "size": "xs", "color": "#cccccc" },
-                                    { "type": "text", "text": `${sign}${userTotalWinLoss} บาท`, "size": "xs", "color": displayColor, "align": "end", "weight": "bold" }
-                                ]
-                            },
-                            {
-                                "type": "box",
-                                "layout": "horizontal",
-                                "contents": [
-                                    { "type": "text", "text": `• เครดิตคงเหลือ:`, "size": "xs", "color": "#cccccc" },
-                                    { "type": "text", "text": `${user.balance} บ.`, "size": "xs", "color": "#ffffff", "align": "end" }
-                                ]
-                            },
-                            { "type": "separator", "color": "#2a2233", "margin": "xs" }
-                        ]
-                    });
-
-                    // เก็บลงตัวแปร text ระบบเดิมด้วยเพื่อไม่ให้ระบบหลังบ้านรวน
-                    let oldSign = userTotalWinLoss > 0 ? "🟢 +" : (userTotalWinLoss < 0 ? "🔴 " : "🟡 ");
-                    let oldFeeNote = (isUserBettingOnDealer && userTotalWinLoss !== 0) ? " \n(หักต๋งขาเจ้ามือที่ชนะแล้ว)" : "";
-                    summaryPayoutText += `👤 ${user.name} (ID: ${user.memberNumber})\n  ยอดสุทธิ: ${oldSign}${userTotalWinLoss} บาท${oldFeeNote}\n เครดิตคงเหลือ: ${user.balance} บ.\n──────────────────\n`;
-                } // ปิดลูป for (let uId in roundBets)
-            };
-
-            // เรียกรันประมวลผลการเงินแบบ Asynchronous
-            await processPayouts();
-
-            if (!hasAnyBet) {
-                summaryPayoutText += "📝 รอบนี้ไม่มีสมาชิกส่งโพยเดิมพันเข้ามาครับ\n";
-                flexUserContents.push({
-                    "type": "text",
-                    "text": "📝 รอบนี้ไม่มีสมาชิกส่งโพยเดิมพันเข้ามาครับ",
-                    "size": "xs",
-                    "color": "#888888",
-                    "style": "italic",
-                    "align": "center"
-                });
-            }
-
-            summaryPayoutText += `✨ ระบบได้ทำการคำนวณเงินและอัปเดตกระเป๋าเงินให้ทุกคนเรียบร้อยแล้วครับ 🏁`;
-            
-            // 📊 ==================== [ ส่วนประมวลผลระบบสถิติแบบวงรีสีสากลแยก 2 ใบ / 3 ใบ ] ====================
-            
-            // 1. แปลงแต้มเจ้ามือไว้เทียบผล
-            let dealerDisplay = ""; 
-            if (tempDealerResult.name.includes("ป๊อก 9")) dealerDisplay = "9ป";
-            else if (tempDealerResult.name.includes("ป๊อก 8")) dealerDisplay = "8ป";
-            else if (tempDealerResult.name.includes("ตอง")) dealerDisplay = "ตอง";
-            else if (tempDealerResult.name.includes("สเตฟฟลัช")) dealerDisplay = "สเตฟ";
-            else if (tempDealerResult.name.includes("เซียน")) dealerDisplay = "เซียน";
-            else if (tempDealerResult.name.includes("เรียง")) dealerDisplay = "เรียง";
-            else dealerDisplay = `${tempDealerResult.score}ต`;
-
-            // 2. ฟังก์ชันตัวช่วยเลือกสีวงรี (แพ้ = แดงอ่อน, ชนะ = เขียวอ่อน, เสมอ = เหลือง)
-            const getOvalColor = (userScore, dealerScore) => {
-                if (userScore > dealerScore) return "#a3e635"; // เขียวตองอ่อนสดใส 🟢
-                if (userScore < dealerScore) return "#f87171"; // แดงอ่อนสบายตา 🔴
-                return "#facc15"; // เหลืองสว่าง 🟡
-            };
-
-            // 3. วนลูปสร้างโครงสร้างกล่องรายขาสำหรับประวัติรอบนี้
-            let historyRowContents = [
-                { 
-                    "type": "text", 
-                    "text": `ร.${currentRound} [👑 ${dealerDisplay}]`, 
-                    "size": "xxs", 
-                    "color": "#ffffff", 
-                    "gravity": "center",
-                    "weight": "bold",
-                    "flex": 2
-                }
-            ];
-
-            for (let leg = 1; leg <= 6; leg++) {
-                let card2Text = "0ต", card3Text = "-";
-                let card2Bg = "#444446", card3Bg = "#444446"; // สีเทาเริ่มต้นกรณีไม่มีผลขานั้น
-                
-                if (tempRoomResults[leg]) {
-                    const legRes = tempRoomResults[leg];
-                    
-                    // --- ชุด 2 ใบแรก ---
-                    if (legRes.twoCards.name.includes("ป๊อก 9")) card2Text = "9ป";
-                    else if (legRes.twoCards.name.includes("ป๊อก 8")) card2Text = "8ป";
-                    else card2Text = `${legRes.twoCards.score}ต`;
-                    card2Bg = getOvalColor(legRes.twoCards.score, tempDealerResult.score);
-
-                    // --- ชุด 3 ใบ ---
-                    if (legRes.threeCards) {
-                        if (legRes.threeCards.name.includes("ตอง")) card3Text = "ตอง";
-                        else if (legRes.threeCards.name.includes("สเตฟ")) card3Text = "สเตฟ";
-                        else if (legRes.threeCards.name.includes("เซียน")) card3Text = "เซียน";
-                        else if (legRes.threeCards.name.includes("เรียง")) card3Text = "เรียง";
-                        else card3Text = `${legRes.threeCards.score}ต`;
-                        
-                        card3Bg = getOvalColor(legRes.threeCards.score, tempDealerResult.score);
-                    }
-                }
-
-                // โครงสร้างวงรีคู่แยก 2 ใบ | 3 ใบ ของขานั้นๆ ยัดลงแถวประวัติ
-                historyRowContents.push({
-                    "type": "box",
-                    "layout": "vertical",
-                    "spacing": "xxs",
-                    "flex": 1,
-                    "contents": [
-                        { "type": "text", "text": `ข${leg}`, "size": "xxs", "color": "#aaaaaa", "align": "center" },
-                        {
-                            "type": "box",
-                            "layout": "horizontal",
-                            "spacing": "xs",
-                            "contents": [
-                                // วงรีใบที่ 1 (2 ใบแรก)
-                                {
-                                    "type": "box",
-                                    "layout": "vertical",
-                                    "backgroundColor": card2Bg,
-                                    "cornerRadius": "md",
-                                    "contents": [
-                                        { "type": "text", "text": card2Text, "size": "xxs", "color": "#000000", "weight": "bold", "align": "center" }
-                                    ]
-                                },
-                                // วงรีใบที่ 2 (3 ใบ)
-                                {
-                                    "type": "box",
-                                    "layout": "vertical",
-                                    "backgroundColor": card3Bg,
-                                    "cornerRadius": "md",
-                                    "contents": [
-                                        { "type": "text", "text": card3Text, "size": "xxs", "color": "#000000", "weight": "bold", "align": "center" }
-                                    ]
-                                }
-                            ]
-                        }
-                    ]
-                });
-            }
-
-            // บันทึกตัว Object Flex Row นี้ลงอาร์เรย์สถิติย้อนหลัง
-            let targetFlexRow = {
-                "type": "box",
-                "layout": "horizontal",
-                "margin": "sm",
-                "spacing": "xs",
-                "contents": historyRowContents
-            };
-
-            matchHistory.push(targetFlexRow);
-            if (matchHistory.length > 5) matchHistory.shift(); 
-
-            pastRoundsData[currentRound] = {
-                dealer: JSON.parse(JSON.stringify(tempDealerResult)),
-                rooms: JSON.parse(JSON.stringify(tempRoomResults)),
-                bets: JSON.parse(JSON.stringify(roundBets))
-            };
-            
-            detailedRoundHistory[currentRound] = summaryPayoutText;
-            
-            // ล้างผลและข้อมูลรอบปัจจุบันเพื่อให้พร้อมเริ่มเกมรอบต่อไป
+            // ล้างผลและข้อมูลรอบปัจจุบัน
             tempRoomResults = null;
             tempDealerResult = null;
             isRoundOpen = false;
-            isDrawOpen = false; // ปิดการควบคุมเฟสการจั่วไพ่
+            isDrawOpen = false; 
             roundBets = {};
             usersRoundCrossCheck = {};
 
-            // ทำการเซฟฐานข้อมูล
-            const finalSave = async () => {
-                await saveDataToFirebase();
-            };
-            await finalSave();
-
+            await saveDataToFirebase();
             replyText = "🟢 ระบบทำการบันทึกประวัติวงรี และล้างสถานะเพื่อเตรียมพร้อมเริ่มรอบต่อไปเรียบร้อยครับ!";
         } else if (userMsg === 'no') {
             tempRoomResults = null;
@@ -2115,70 +2019,8 @@ else if (userMsg === 'ok' || userMsg === 'no') {
         }
     }
 }
+   
 
-            // ==================== [ 🚀 ยิงข้อความ Flex Message แจ้งบิลจริงแทน Text ธรรมดา ] ====================
-            try {
-                await axios.post('https://api.line.me/v2/bot/message/reply', {
-                    replyToken: replyToken,
-                    messages: [
-                        {
-                            "type": "flex",
-                            "altText": `💰 บิลสรุปยอดได้/เสีย รอบที่ ${currentRound}`,
-                            "contents": {
-                                "type": "bubble",
-                                "styles": { "body": { "backgroundColor": "#130f17" } },
-                                "body": {
-                                    "type": "box",
-                                    "layout": "vertical",
-                                    "spacing": "md",
-                                    "contents": [
-                                        { "type": "text", "text": "💰 สรุปยอดได้/เสีย เงินเครดิต 💸", "weight": "bold", "color": "#ffcc00", "size": "md", "align": "center" },
-                                        { "type": "text", "text": `รอบที่: ${currentRound}`, "weight": "bold", "color": "#ffffff", "size": "sm", "align": "center" },
-                                        { "type": "separator", "color": "#2a2233" },
-                                        {
-                                            "type": "box",
-                                            "layout": "horizontal",
-                                            "backgroundColor": "#221929",
-                                            "contents": [
-                                                { "type": "text", "text": "👑 ผลไพ่เจ้ามือ:", "weight": "bold", "color": "#ffaa00", "size": "sm" },
-                                                { "type": "text", "text": `${tempDealerResult.name}`, "weight": "bold", "color": "#ffffff", "size": "sm", "align": "end" }
-                                            ]
-                                        },
-                                        { "type": "separator", "color": "#2a2233" },
-                                        { "type": "text", "text": "📊 บิลรายงานผลได้-เสียรายบุคคล", "size": "xs", "color": "#ffaa00", "weight": "bold" },
-                                        { "type": "box", "layout": "vertical", "spacing": "xs", "contents": flexUserContents },
-                                        { "type": "text", "text": "🏁 ระบบอัปเดตกระเป๋าเงินให้ทุกคนเรียบร้อยแล้วครับ", "size": "xs", "color": "#a8a8a8", "align": "center", "style": "italic" }
-                                    ]
-                                }
-                            }
-                        }
-                    ]
-                }, {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${TOKEN}`
-                    }
-                });
-            } catch (error) {
-                console.error("❌ ส่ง Flex สรุปยอดเงินล้มเหลว:", error.response ? error.response.data : error.message);
-            }
-
-            // ล้างสมองบอทหลังคิดเงินเสร็จเพื่อเริ่มตาใหม่
-            tempRoomResults = null;
-            tempDealerResult = null;
-            isDrawOpen = false;
-            roundBets = {}; 
-
-            await saveDataToFirebase(); //เซฟถาวร
-            return res.sendStatus(200); // จบการทำงานตรงนี้เลยเนื่องจากใช้ส่งแบบ async ไปแล้ว
-
-        } else if (userMsg === 'no') {
-            tempRoomResults = null;
-            tempDealerResult = null;
-            replyText = "❌ ยกเลิกผลการเล่นเรียบร้อยแล้วครับ! แอดมินสามารถส่งผลใหม่อีกครั้งด้วยเครื่องหมาย > ได้ทันทีครับ 🔄";
-        }
-    }
-}
     // ====// ==================== [ 10. ระบบคู่มือ: คำสั่งสมาชิก (คส), กติกา (กต) และ บัญชี (บช) ] ====================
             else if (userMsg === 'คส' || userMsg === 'กต' || userMsg === 'บช' || userMsg === '/บช') {
                 if (userMsg === 'คส') {

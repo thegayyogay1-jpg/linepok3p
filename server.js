@@ -1802,162 +1802,166 @@ else if (userMsg === 'ok' || userMsg === 'no') {
             let hasAnyBet = false;
             let flexUserContents = []; // 🎨 อาเรย์สำหรับเก็บดีไซน์กล่องรายคนใน Flex Message
 
-            // วนลูปสมาชิกทุกคนที่มีการแทงในรอบนี้เพื่อคิดเงิน
-            for (let uId in roundBets) {
-                const userBetsArray = roundBets[uId];
-                if (!userBetsArray || userBetsArray.length === 0) continue;
+            // วนลูปสมาชิกทุกคนที่มีการแทงในรอบนี้เพื่อคิดเงิน (ใช้ async-wait ด้านในได้ปลอดภัย)
+            const processPayouts = async () => {
+                for (let uId in roundBets) {
+                    const userBetsArray = roundBets[uId];
+                    if (!userBetsArray || userBetsArray.length === 0) continue;
 
-                hasAnyBet = true;
-                const user = usersWallets[uId];
-                let userTotalWinLoss = 0; 
-                let totalHoldRefund = 0;   
-                let totalBetAmountThisRound = 0; // 📊 ตัวแปรเพิ่มใหม่สำหรับเก็บยอดแทงรวมแท้จริงในตานี้เพื่อเอาไปคิดเทิร์น
+                    hasAnyBet = true;
+                    const user = usersWallets[uId];
+                    let userTotalWinLoss = 0; 
+                    let totalHoldRefund = 0;   
+                    let totalBetAmountThisRound = 0; // 📊 ตัวแปรเพิ่มใหม่สำหรับเก็บยอดแทงรวมแท้จริงในตานี้เพื่อเอาไปคิดเทิร์น
 
-                userBetsArray.forEach((bet) => {
-                    totalHoldRefund += bet.holdCost; // ดึงเงินค้ำประกัน 3 เท่ากลับมาคืนก่อน
+                    userBetsArray.forEach((bet) => {
+                        totalHoldRefund += bet.holdCost; // ดึงเงินค้ำประกัน 3 เท่ากลับมาคืนก่อน
 
-                    // แกะข้อมูลตามประเภทโพย (เช่น "1", "มข", "จ12")
-                    let legsToCalculate = [];
-                    if (bet.betType === "มข" || bet.betType === "มจ") {
-                        legsToCalculate = ['1', '2', '3', '4', '5', '6'];
-                    } else if (bet.betType.startsWith('จ')) {
-                        legsToCalculate = bet.betType.substring(1).split('');
-                    } else {
-                        legsToCalculate = bet.betType.split('');
+                        // แกะข้อมูลตามประเภทโพย (เช่น "1", "มข", "จ12")
+                        let legsToCalculate = [];
+                        if (bet.betType === "มข" || bet.betType === "มจ") {
+                            legsToCalculate = ['1', '2', '3', '4', '5', '6'];
+                        } else if (bet.betType.startsWith('จ')) {
+                            legsToCalculate = bet.betType.substring(1).split('');
+                        } else {
+                            legsToCalculate = bet.betType.split('');
+                        }
+
+                        // 🧮 สะสมยอดเดิมพันรวมจากราคารายขาคูณจำนวนขาที่เปิดสู้จริงในตานี้
+                        totalBetAmountThisRound += (bet.pricePerLeg * legsToCalculate.length);
+
+                        // คำนวณเงินแยกตามรายขาในโพยใบนี้
+                        legsToCalculate.forEach((leg) => {
+                            const legNum = parseInt(leg);
+                            const matchResult = tempRoomResults[legNum];
+                            if (!matchResult) return; // ป้องกันกรณีขาไม่มีข้อมูลผล
+                            
+                            // 🔍 ตรวจสอบประเภทโพย: เป็นการแทงฝั่งเจ้ามือสู้ขาผู้เล่นใช่หรือไม่
+                            const isBettingOnDealer = (bet.betType === "มจ" || bet.betType.startsWith('จ'));
+
+                            let finalCard;
+                            const betPrice = bet.pricePerLeg; // ยอดแทงต่อ 1 ขา
+
+                            if (!isBettingOnDealer) {
+                                // 👤 [ฝั่งคนแทงผู้เล่นปกติ]
+                                const isUserDrawn = (bet.drawStatus && bet.drawStatus[leg] === "จั่ว");
+                                finalCard = isUserDrawn ? matchResult.threeCards : matchResult.twoCards;
+
+                                // คำนวณผลได้เสียของฝั่งผู้เล่นปกติ
+                                if (finalCard.score > tempDealerResult.score) {
+                                    let winMultiplier = finalCard.mult;
+                                    // 🌟 [จุดเปลี่ยนที่ 1]: ดักเพดานเด้งฝั่งผู้เล่นชนะตามจริงที่มีการค้ำประกันไว้ (x2 หรือ x3)
+                                    if (bet.maxMultiplier && winMultiplier > bet.maxMultiplier) {
+                                        winMultiplier = bet.maxMultiplier;
+                                    }
+                                    userTotalWinLoss += (betPrice * winMultiplier);
+                                } 
+                                else if (finalCard.score < tempDealerResult.score) {
+                                    let loseMultiplier = tempDealerResult.mult;
+                                    if (loseMultiplier > 3) {
+                                        loseMultiplier = 3;
+                                    }
+                                    // 🌟 [จุดเปลี่ยนที่ 2]: ดักเพดานเด้งฝั่งผู้เล่นแพ้
+                                    if (bet.maxMultiplier && loseMultiplier > bet.maxMultiplier) {
+                                        loseMultiplier = bet.maxMultiplier;
+                                    }
+                                    userTotalWinLoss -= (betPrice * loseMultiplier);
+                                }
+                            } 
+                            else {
+                                // 👑 [ฝั่งคนแทงเจ้ามือ (จ หรือ มจ)] -> ใช้กฎตายตัวแยกคำนวณเด็ดขาด
+                                let playerTwoCardScore = matchResult.twoCards.score;
+                                let playerTwoCardMult = matchResult.twoCards.mult;
+
+                                // รันกฎตายตัว: ขาผู้เล่นได้ 4 แต้มหรือต่ำกว่า (และไม่ใช่ 4 แต้มเด้ง) ให้เจ้ามือไปสู้กับผล 3 ใบ
+                                if (playerTwoCardScore <= 4 && playerTwoCardMult === 1) {
+                                    finalCard = matchResult.threeCards; // ชนกับผลไพ่ 3 ใบ
+                                } else {
+                                    finalCard = matchResult.twoCards;   // ชนกับผลไพ่ 2 ใบ (5 แต้มขึ้นไป หรือ 4 แต้มเด้ง)
+                                }
+
+                                // 🧮 ตรรกะคิดเงินของฝั่งคนแทงเจ้ามือ (หักต๋ง 10% เฉพาะขาที่ได้กำไร)
+                                if (tempDealerResult.score > finalCard.score) {
+                                    // เจ้ามือชนะขาผู้เล่นคนนั้น = คนแทงฝั่งเจ้าได้กำไร!
+                                    let winMultiplier = tempDealerResult.mult;
+                                    // 🌟 [จุดเปลี่ยนที่ 3]: ดักเพดานเด้งฝั่งคนแทงเจ้าชนะตามสิทธิ์ที่ค้ำประกันไว้
+                                    if (bet.maxMultiplier && winMultiplier > bet.maxMultiplier) {
+                                        winMultiplier = bet.maxMultiplier;
+                                    }
+                                    let grossWin = betPrice * winMultiplier; // กำไรเต็มก่อนหัก
+                                    
+                                    // 🔥 หักต๋งรายขาทันที 10% (เหลือจ่ายจริง 90%)
+                                    let netWin = Math.floor(grossWin * 0.9);
+                                    userTotalWinLoss += netWin;
+                                } 
+                                else if (tempDealerResult.score < finalCard.score) {
+                                    // เจ้ามือแพ้ขาผู้เล่นคนนั้น = คนแทงฝั่งเจ้าเสียเต็มจำนวนตามจำนวนเด้งของขานั้นๆ
+                                    let loseMultiplier = finalCard.mult;
+                                    // 🌟 [จุดเปลี่ยนที่ 4]: ดักเพดานเด้งฝั่งคนแทงเจ้าเสีย
+                                    if (bet.maxMultiplier && loseMultiplier > bet.maxMultiplier) {
+                                        loseMultiplier = bet.maxMultiplier;
+                                    }
+                                    userTotalWinLoss -= (betPrice * loseMultiplier);
+                                }
+                            }
+                        });
+                    }); // ปิด userBetsArray.forEach
+
+                    // 🧮 อัปเดตกระเป๋าเงินจริงหลังคิดยอดสุทธิ
+                    user.balance = user.balance + totalHoldRefund + userTotalWinLoss;
+
+                    // 📊 [ระบบคำนวณและหักยอดเทิร์นอัตโนมัติ]
+                    if (user.turnoverTarget > 0 && userTotalWinLoss !== 0) {
+                        let currentTurnoverMade = totalBetAmountThisRound; // หักลดลงเท่ากับยอดแทงจริง ไม่สนจำนวนเด้ง
+                        user.turnoverTarget -= currentTurnoverMade;
+                        if (user.turnoverTarget < 0) user.turnoverTarget = 0; 
                     }
 
-                    // 🧮 สะสมยอดเดิมพันรวมจากราคารายขาคูณจำนวนขาที่เปิดสู้จริงในตานี้
-                    totalBetAmountThisRound += (bet.pricePerLeg * legsToCalculate.length);
+                    await saveDataToFirebase(); //เซฟถาวรลง Firebase
 
-                    // คำนวณเงินแยกตามรายขาในโพยใบนี้
-                    legsToCalculate.forEach((leg) => {
-                        const legNum = parseInt(leg);
-                        const matchResult = tempRoomResults[legNum];
-                        if (!matchResult) return; // ป้องกันกรณีขาไม่มีข้อมูลผล
-                        
-                        // 🔍 ตรวจสอบประเภทโพย: เป็นการแทงฝั่งเจ้ามือสู้ขาผู้เล่นใช่หรือไม่
-                        const isBettingOnDealer = (bet.betType === "มจ" || bet.betType.startsWith('จ'));
+                    let sign = userTotalWinLoss > 0 ? "+" : "";
+                    let displayColor = userTotalWinLoss > 0 ? "#00ff66" : (userTotalWinLoss < 0 ? "#ff3333" : "#ffcc00");
+                    
+                    let isUserBettingOnDealer = userBetsArray.some(b => b.betType === "มจ" || b.betType.startsWith('จ'));
+                    let feeNote = (isUserBettingOnDealer && userTotalWinLoss !== 0) ? " (หักต๋งแล้ว)" : "";
 
-                        let finalCard;
-                        const betPrice = bet.pricePerLeg; // ยอดแทงต่อ 1 ขา
-
-                        if (!isBettingOnDealer) {
-                            // 👤 [ฝั่งคนแทงผู้เล่นปกติ] -> รันระบบเดิมของคุณที่สมบูรณ์แบบอยู่แล้ว 100%
-                            const isUserDrawn = (bet.drawStatus && bet.drawStatus[leg] === "จั่ว");
-                            finalCard = isUserDrawn ? matchResult.threeCards : matchResult.twoCards;
-
-                            // คำนวณผลได้เสียของฝั่งผู้เล่นปกติ
-                            if (finalCard.score > tempDealerResult.score) {
-                                let winMultiplier = finalCard.mult;
-                                // 🌟 [จุดเปลี่ยนที่ 1]: ดักเพดานเด้งฝั่งผู้เล่นชนะตามจริงที่มีการค้ำประกันไว้ (x2 หรือ x3)
-                                if (bet.maxMultiplier && winMultiplier > bet.maxMultiplier) {
-                                    winMultiplier = bet.maxMultiplier;
-                                }
-                                userTotalWinLoss += (betPrice * winMultiplier);
-                            } 
-                            else if (finalCard.score < tempDealerResult.score) {
-                                let loseMultiplier = tempDealerResult.mult;
-                                if (loseMultiplier > 3) {
-                                    loseMultiplier = 3;
-                                }
-                                // 🌟 [จุดเปลี่ยนที่ 2]: ดักเพดานเด้งฝั่งผู้เล่นแพ้ (ถ้าเขาค้ำไว้แค่ 2 เด้ง ก็โดนหักสูงสุดแค่ 2 เด้ง)
-                                if (bet.maxMultiplier && loseMultiplier > bet.maxMultiplier) {
-                                    loseMultiplier = bet.maxMultiplier;
-                                }
-                                userTotalWinLoss -= (betPrice * loseMultiplier);
-                            }
-                        } 
-                        else {
-                            // 👑 [ฝั่งคนแทงเจ้ามือ (จ หรือ มจ)] -> ใช้กฎตายตัวแยกคำนวณเด็ดขาด
-                            let playerTwoCardScore = matchResult.twoCards.score;
-                            let playerTwoCardMult = matchResult.twoCards.mult;
-
-                            // รันกฎตายตัว: ขาผู้เล่นได้ 4 แต้มหรือต่ำกว่า (และไม่ใช่ 4 แต้มเด้ง) ให้เจ้ามือไปสู้กับผล 3 ใบ
-                            if (playerTwoCardScore <= 4 && playerTwoCardMult === 1) {
-                                finalCard = matchResult.threeCards; // ชนกับผลไพ่ 3 ใบ
-                            } else {
-                                finalCard = matchResult.twoCards;   // ชนกับผลไพ่ 2 ใบ (5 แต้มขึ้นไป หรือ 4 แต้มเด้ง)
-                            }
-
-                            // 🧮 ตรรกะคิดเงินของฝั่งคนแทงเจ้ามือ (หักต๋ง 10% เฉพาะขาที่ได้กำไร)
-                            if (tempDealerResult.score > finalCard.score) {
-                                // เจ้ามือชนะขาผู้เล่นคนนั้น = คนแทงฝั่งเจ้าได้กำไร!
-                                let winMultiplier = tempDealerResult.mult;
-                                // 🌟 [จุดเปลี่ยนที่ 3]: ดักเพดานเด้งฝั่งคนแทงเจ้าชนะตามสิทธิ์ที่ค้ำประกันไว้
-                                if (bet.maxMultiplier && winMultiplier > bet.maxMultiplier) {
-                                    winMultiplier = bet.maxMultiplier;
-                                }
-                                let grossWin = betPrice * winMultiplier; // กำไรเต็มก่อนหัก
-                                
-                                // 🔥 หักต๋งรายขาทันที 10% (เหลือจ่ายจริง 90%)
-                                let netWin = Math.floor(grossWin * 0.9);
-                                userTotalWinLoss += netWin;
-                            } 
-                            else if (tempDealerResult.score < finalCard.score) {
-                                // เจ้ามือแพ้ขาผู้เล่นคนนั้น = คนแทงฝั่งเจ้าเสียเต็มจำนวนตามจำนวนเด้งของขานั้นๆ
-                                let loseMultiplier = finalCard.mult;
-                                // 🌟 [จุดเปลี่ยนที่ 4]: ดักเพดานเด้งฝั่งคนแทงเจ้าเสีย (ถ้าเขาค้ำไว้ 2 เด้ง ก็ลบไม่เกิน 2 เด้ง)
-                                if (bet.maxMultiplier && loseMultiplier > bet.maxMultiplier) {
-                                    loseMultiplier = bet.maxMultiplier;
-                                }
-                                userTotalWinLoss -= (betPrice * loseMultiplier);
-                            }
-                        }
+                    // 🛠️ ประกอบร่างดีไซน์ Flex รายบุคคล
+                    flexUserContents.push({
+                        "type": "box",
+                        "layout": "vertical",
+                        "margin": "md",
+                        "spacing": "xs",
+                        "contents": [
+                            { "type": "text", "text": `👤 ${user.name} (ID: ${user.memberNumber})`, "weight": "bold", "color": "#ffffff", "size": "sm" },
+                            {
+                                "type": "box",
+                                "layout": "horizontal",
+                                "contents": [
+                                    { "type": "text", "text": `• ยอดสุทธิ:${feeNote}`, "size": "xs", "color": "#cccccc" },
+                                    { "type": "text", "text": `${sign}${userTotalWinLoss} บาท`, "size": "xs", "color": displayColor, "align": "end", "weight": "bold" }
+                                ]
+                            },
+                            {
+                                "type": "box",
+                                "layout": "horizontal",
+                                "contents": [
+                                    { "type": "text", "text": `• เครดิตคงเหลือ:`, "size": "xs", "color": "#cccccc" },
+                                    { "type": "text", "text": `${user.balance} บ.`, "size": "xs", "color": "#ffffff", "align": "end" }
+                                ]
+                            },
+                            { "type": "separator", "color": "#2a2233", "margin": "xs" }
+                        ]
                     });
-                }); // ปิด userBetsArray.forEach
 
-                // 🧮 อัปเดตกระเป๋าเงินจริงหลังคิดยอดสุทธิ
-                user.balance = user.balance + totalHoldRefund + userTotalWinLoss;
+                    // เก็บลงตัวแปร text ระบบเดิมด้วยเพื่อไม่ให้ระบบหลังบ้านรวน
+                    let oldSign = userTotalWinLoss > 0 ? "🟢 +" : (userTotalWinLoss < 0 ? "🔴 " : "🟡 ");
+                    let oldFeeNote = (isUserBettingOnDealer && userTotalWinLoss !== 0) ? " \n(หักต๋งขาเจ้ามือที่ชนะแล้ว)" : "";
+                    summaryPayoutText += `👤 ${user.name} (ID: ${user.memberNumber})\n  ยอดสุทธิ: ${oldSign}${userTotalWinLoss} บาท${oldFeeNote}\n เครดิตคงเหลือ: ${user.balance} บ.\n──────────────────\n`;
+                } // ปิดลูป for (let uId in roundBets)
+            };
 
-                // 📊 [ระบบคำนวณและหักยอดเทิร์นอัตโนมัติ - เวอร์ชันสากลหักตามยอดแทงจริงที่มีผลได้เสีย]
-                if (user.turnoverTarget > 0 && userTotalWinLoss !== 0) {
-                    let currentTurnoverMade = totalBetAmountThisRound; // หักลดลงเท่ากับยอดแทงจริง ไม่สนจำนวนเด้ง
-                    user.turnoverTarget -= currentTurnoverMade;
-                    if (user.turnoverTarget < 0) user.turnoverTarget = 0; 
-                }
-
-                await saveDataToFirebase(); //เซฟถาวร
-
-                let sign = userTotalWinLoss > 0 ? "+" : "";
-                let displayColor = userTotalWinLoss > 0 ? "#00ff66" : (userTotalWinLoss < 0 ? "#ff3333" : "#ffcc00");
-                
-                let isUserBettingOnDealer = userBetsArray.some(b => b.betType === "มจ" || b.betType.startsWith('จ'));
-                let feeNote = (isUserBettingOnDealer && userTotalWinLoss !== 0) ? " (หักต๋งแล้ว)" : "";
-                let turnNote = user.turnoverTarget > 0 ? `⚠️ ค้าง: ${user.turnoverTarget} บ.` : "🟢 เทิร์นครบ";
-
-                // 🛠️ ประกอบร่างดีไซน์ Flex รายบุคคล
-                flexUserContents.push({
-                    "type": "box",
-                    "layout": "vertical",
-                    "margin": "md",
-                    "spacing": "xs",
-                    "contents": [
-                        { "type": "text", "text": `👤 ${user.name} (ID: ${user.memberNumber})`, "weight": "bold", "color": "#ffffff", "size": "sm" },
-                        {
-                            "type": "box",
-                            "layout": "horizontal",
-                            "contents": [
-                                { "type": "text", "text": `• ยอดสุทธิ:${feeNote}`, "size": "xs", "color": "#cccccc" },
-                                { "type": "text", "text": `${sign}${userTotalWinLoss} บาท`, "size": "xs", "color": displayColor, "align": "end", "weight": "bold" }
-                            ]
-                        },
-                        {
-                            "type": "box",
-                            "layout": "horizontal",
-                            "contents": [
-                                { "type": "text", "text": `• เครดิตคงเหลือ:`, "size": "xs", "color": "#cccccc" },
-                                { "type": "text", "text": `${user.balance} บ.`, "size": "xs", "color": "#ffffff", "align": "end" }
-                            ]
-                        },
-                        { "type": "separator", "color": "#2a2233", "margin": "xs" }
-                    ]
-                });
-
-                // เก็บลงตัวแปร text ระบบเดิมด้วยเพื่อไม่ให้ระบบหลังบ้านรวน
-                let oldSign = userTotalWinLoss > 0 ? "🟢 +" : (userTotalWinLoss < 0 ? "🔴 " : "🟡 ");
-                let oldFeeNote = (isUserBettingOnDealer && userTotalWinLoss !== 0) ? " \n(หักต๋งขาเจ้ามือที่ชนะแล้ว)" : "";
-                summaryPayoutText += `👤 ${user.name} (ID: ${user.memberNumber})\n  ยอดสุทธิ: ${oldSign}${userTotalWinLoss} บาท${oldFeeNote}\n เครดิตคงเหลือ: ${user.balance} บ.\n──────────────────\n`;
-            } // ปิดลูป for (let uId in roundBets)
+            // เรียกรันประมวลผลการเงินแบบ Asynchronous
+            await processPayouts();
 
             if (!hasAnyBet) {
                 summaryPayoutText += "📝 รอบนี้ไม่มีสมาชิกส่งโพยเดิมพันเข้ามาครับ\n";
@@ -2007,7 +2011,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
 
             for (let leg = 1; leg <= 6; leg++) {
                 let card2Text = "0ต", card3Text = "-";
-                let card2Bg = "#444446", card3Bg = "#444446"; // สีเทาเริ่มต้นกรณีไม่มีโพยแทงขานั้น
+                let card2Bg = "#444446", card3Bg = "#444446"; // สีเทาเริ่มต้นกรณีไม่มีผลขานั้น
                 
                 if (tempRoomResults[leg]) {
                     const legRes = tempRoomResults[leg];
@@ -2097,7 +2101,11 @@ else if (userMsg === 'ok' || userMsg === 'no') {
             roundBets = {};
             usersRoundCrossCheck = {};
 
-            await saveDataToFirebase(); //💾เซฟถาวรลงฐานข้อมูลคลาวด์
+            // ทำการเซฟฐานข้อมูล
+            const finalSave = async () => {
+                await saveDataToFirebase();
+            };
+            await finalSave();
 
             replyText = "🟢 ระบบทำการบันทึกประวัติวงรี และล้างสถานะเพื่อเตรียมพร้อมเริ่มรอบต่อไปเรียบร้อยครับ!";
         } else if (userMsg === 'no') {

@@ -684,7 +684,8 @@ app.post('/callback', async (req, res) => {
                     }
                 }
             }
-                else if (userMsg.startsWith('K-Connect:')) {
+                else if (userMsg && userMsg.startsWith('KDeposit')) {
+    // ใช้ดึงตัวเลขทศนิยมเหมือนเดิม
     const match = userMsg.match(/([0-9]+\.[0-9]{2})/);
     
     if (match) {

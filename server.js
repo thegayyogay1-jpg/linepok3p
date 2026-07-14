@@ -3149,69 +3149,72 @@ if (userMsg === '3' || userMsg === '2' || userMsg === '1') {
     res.sendStatus(200);
 });
 // ==================== [ ระบบจำลองดักอ่านเงินเข้าธนาคารอัตโนมัติ ] ====================
-// 📌 แก้ไขจาก else if เป็น if ธรรมดา เพื่อป้องกันบั๊กปีกกาจากโค้ดด้านบน
+// 📌 เพิ่มการดักจับข้อความ K-Connect
 if (userMsg && userMsg.startsWith('K-Connect:')) {
-    // ดึงตัวเลขทศนิยมออกมาจากข้อความแจ้งเตือน เช่น "K-Connect: มีเงินเข้าจำนวน 500.48 บาท"
-    const match = userMsg.match(/([0-9]+\.[0-9]{2})/);
     
-    if (match) {
-        const detectedAmountStr = match[1]; // ได้ตัวหนังสือยอดเงิน เช่น "500.48"
-        const depositKey = detectedAmountStr.replace('.', '_'); // แปลงเป็น "500_48" เพื่อใช้ค้นหาใน Firebase
+    // สร้างฟังก์ชันภายในที่เป็น async ขึ้นมารองรับการใช้ await ทันที
+    (async () => {
+        // ดึงตัวเลขทศนิยมออกมาจากข้อความแจ้งเตือน เช่น "K-Connect: มีเงินเข้าจำนวน 500.48 บาท"
+        const match = userMsg.match(/([0-9]+\.[0-9]{2})/);
         
-        try {
-            // 1. วิ่งไปค้นหาข้อมูลยอดจองนี้ใน Firebase
-            const response = await axios.get(`${FIREBASE_URL}/pending_deposits/${depositKey}.json`);
-            const depositData = response.data;
+        if (match) {
+            const detectedAmountStr = match[1]; // ได้ตัวหนังสือยอดเงิน เช่น "500.48"
+            const depositKey = detectedAmountStr.replace('.', '_'); // แปลงเป็น "500_48" เพื่อใช้ค้นหาใน Firebase
             
-            if (depositData) {
-                const targetUserId = depositData.userId;
-                const creditToDeposit = depositData.amount; // ดึงยอดเงินหลักขึ้นมาเติม (เช่น 500 บาทถ้วน ไม่รวมเศษสตางค์)
+            try {
+                // 1. วิ่งไปค้นหาข้อมูลยอดจองนี้ใน Firebase
+                const response = await axios.get(`${FIREBASE_URL}/pending_deposits/${depositKey}.json`);
+                const depositData = response.data;
                 
-                // 2. เช็กว่าผู้เล่นคนนั้นมีกระเป๋าเงินในระบบจริงไหม
-                if (usersWallets[targetUserId]) {
-                    // บวกเครดิตเข้ากระเป๋าเงินจริงของผู้เล่น
-                    usersWallets[targetUserId].balance += creditToDeposit;
+                if (depositData) {
+                    const targetUserId = depositData.userId;
+                    const creditToDeposit = depositData.amount; // ดึงยอดเงินหลักขึ้นมาเติม (เช่น 500 บาทถ้วน ไม่รวมเศษสตางค์)
                     
-                    // บันทึกเงินลง Firebase ถาวร
-                    await saveDataToFirebase(); 
-                    
-                    // เคลียร์คิวล็อกเดิมของระบบน้าออกด้วย เพื่อให้ผู้เล่นฝากครั้งต่อไปได้
-                    if (global.depositQueue && global.depositQueue[targetUserId]) {
-                        delete global.depositQueue[targetUserId];
-                    }
-                    
-                    // 3. ลบรายการยอดจองฝากนี้ออกจาก Firebase เพื่อป้องกันการวนเติมเงินซ้ำ
-                    await axios.delete(`${FIREBASE_URL}/pending_deposits/${depositKey}.json`);
-                    
-                    // 4. ส่งข้อความดีใจแจ้งเตือนกลับไปในไลน์กลุ่ม
-                    try {
-                        await axios.post('https://api.line.me/v2/bot/message/reply', {
-                            replyToken: replyToken,
-                            messages: [
-                                {
-                                    "type": "text",
-                                    "text": `✅ [ระบบออโต้] ตรวจพบเงินเข้าจำนวน ${detectedAmountStr} บาท เรียบร้อยแล้ว!\n💰 เติมเครดิตให้คุณ ${usersWallets[targetUserId].name} จำนวน +${creditToDeposit} บ. สำเร็จแล้วครับ 🏁\n💳 เครดิตคงเหลือปัจจุบัน: ${usersWallets[targetUserId].balance} บ.`
-                                }
-                            ]
-                        }, { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` } });
-                    } catch (lineErr) { console.error("Error sending auto credit success text:", lineErr); }
+                    // 2. เช็กว่าผู้เล่นคนนั้นมีกระเป๋าเงินในระบบจริงไหม
+                    if (usersWallets[targetUserId]) {
+                        // บวกเครดิตเข้ากระเป๋าเงินจริงของผู้เล่น
+                        usersWallets[targetUserId].balance += creditToDeposit;
+                        
+                        // บันทึกเงินลง Firebase ถาวร
+                        await saveDataToFirebase(); 
+                        
+                        // เคลียร์คิวล็อกเดิมของระบบน้าออกด้วย เพื่อให้ผู้เล่นฝากครั้งต่อไปได้
+                        if (global.depositQueue && global.depositQueue[targetUserId]) {
+                            delete global.depositQueue[targetUserId];
+                        }
+                        
+                        // 3. ลบรายการยอดจองฝากนี้ออกจาก Firebase เพื่อป้องกันการวนเติมเงินซ้ำ
+                        await axios.delete(`${FIREBASE_URL}/pending_deposits/${depositKey}.json`);
+                        
+                        // 4. ส่งข้อความดีใจแจ้งเตือนกลับไปในไลน์กลุ่ม
+                        try {
+                            await axios.post('https://api.line.me/v2/bot/message/reply', {
+                                replyToken: replyToken,
+                                messages: [
+                                    {
+                                        "type": "text",
+                                        "text": `✅ [ระบบออโต้] ตรวจพบเงินเข้าจำนวน ${detectedAmountStr} บาท เรียบร้อยแล้ว!\n💰 เติมเครดิตให้คุณ ${usersWallets[targetUserId].name} จำนวน +${creditToDeposit} บ. สำเร็จแล้วครับ 🏁\n💳 เครดิตคงเหลือปัจจุบัน: ${usersWallets[targetUserId].balance} บ.`
+                                    }
+                                ]
+                            }, { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` } });
+                        } catch (lineErr) { console.error("Error sending auto credit success text:", lineErr); }
 
+                    } else {
+                        console.log(`⚠️ ตรวจพบยอดโอนเงินเข้าจริง แต่อาจไม่พบประวัติกระเป๋าเงินของ UID: ${targetUserId}`);
+                    }
                 } else {
-                    console.log(`⚠️ ตรวจพบยอดโอนเงินเข้าจริง แต่อาจไม่พบประวัติกระเป๋าเงินของ UID: ${targetUserId}`);
+                    console.log(`🔍 คัดกรอง: ตรวจพบยอดเงิน ${detectedAmountStr} บาท แต่อาจเป็นยอดเก่าหรือไม่มีในระบบจอง`);
                 }
-            } else {
-                console.log(`🔍 คัดกรอง: ตรวจพบยอดเงิน ${detectedAmountStr} บาท แต่อาจเป็นยอดเก่าหรือไม่มีในระบบจอง`);
+            } catch (err) {
+                console.error("ระบบดักยอดเงินเข้าเกิดข้อผิดพลาด", err);
             }
-        } catch (err) {
-            console.error("ระบบดักยอดเงินเข้าเกิดข้อผิดพลาด", err);
         }
-    }
+    })(); // 📌 จบฟังก์ชันทำงานอัตโนมัติ
+
     return res.sendStatus(200);
 }
 
-// 📌 ตรวจสอบปีกกาปิดของฟังก์ชันรับ Webhook หลัก (ถ้ามี) ให้ปิดให้เรียบร้อย
-// } (ถ้าเมื่อกี้แก้แล้วยังมี Error ลองลบหรือเพิ่มปีกกาตัวนี้ดูครับ)
-
+// ==================== [ ส่วนท้ายไฟล์เปิดใช้งานเซิร์ฟเวอร์ ] ====================
 app.get('/', (req, res) => { res.send('ระบบลงทะเบียนรันปกติ'); });
 
 app.listen(process.env.PORT || 3000, () => { 

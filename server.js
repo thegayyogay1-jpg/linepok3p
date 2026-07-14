@@ -712,11 +712,12 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                 // --- 📊 สร้างโครงสร้างสถิติย้อนหลัง ---
                 let historyFlexContents = [];
                 if (matchHistory && matchHistory.length > 0) {
-                    // แปลงข้อความสถิติธรรมดาให้กลายเป็นโครงสร้าง Text ที่ LINE ยอมรับอย่างถูกต้อง
+                    // วนลูปแปลงค่าให้ปลอดภัย ไม่ว่าประวัติจะเป็น Object หรือ String
                     historyFlexContents = matchHistory.map(item => {
+                        let textDisplay = typeof item === 'object' ? JSON.stringify(item) : item;
                         return {
                             "type": "text",
-                            "text": item,
+                            "text": textDisplay,
                             "size": "xs",
                             "color": "#cccccc",
                             "wrap": true

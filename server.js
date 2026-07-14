@@ -1055,7 +1055,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                 }
             }
             // ==================== [ 6. ระบบสมาชิกพิมพ์ขอจั่วไพ่ เช่น 12+ ] ====================
-           else if (userMsg.endsWith('+')) {
+            else if (userMsg.endsWith('+')) {
                 if (!isDrawOpen) {
                     replyText = "⚠️ ระบบยังไม่ได้เปิดรอบจั่วไพ่ใบที่ 3 หรือ แอดมินปิดรอบจั่วไปแล้วครับ";
                 } else {
@@ -1096,7 +1096,59 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                         if (drawSuccessLegs.length > 0) {
                             const sortedLegs = drawSuccessLegs.sort((a, b) => a - b).join(', ');
                             const user = usersWallets[userId];
-                            replyText = `🃏 สมาชิกคุณ ${user.name} (ID: ${user.memberNumber})\n──────────────────\nจั่วไพ่เพิ่มที่ ➡️ ขา: ${sortedLegs} `;
+                            
+                            // 🚀 สั่งยิง Flex Message ดีไซน์ดำ-น้ำเงิน แจ้งขอจั่วไพ่ใบที่ 3 ทันทีตรงนี้
+                            try {
+                                await axios.post('https://api.line.me/v2/bot/message/reply', {
+                                    replyToken: replyToken,
+                                    messages: [{
+                                        "type": "flex",
+                                        "altText": "🃏 บันทึกการขอจั่วไพ่ใบที่ 3 สำเร็จ",
+                                        "contents": {
+                                            "type": "bubble",
+                                            "styles": { "body": { "backgroundColor": "#121620" } },
+                                            "body": {
+                                                "type": "box", "layout": "vertical", "spacing": "md",
+                                                "contents": [
+                                                    { "type": "text", "text": "🃏 ขอจั่วไพ่ใบที่ 3 สำเร็จ 🎉", "weight": "bold", "color": "#3399ff", "size": "md", "align": "center" },
+                                                    { "type": "separator", "color": "#222a3a" },
+                                                    {
+                                                        "type": "box", "layout": "horizontal",
+                                                        "contents": [
+                                                            { "type": "text", "text": "👤 ผู้จั่ว:", "size": "sm", "color": "#8894a6", "flex": 2 },
+                                                            { "type": "text", "text": `${user.name} (ID: ${user.memberNumber})`, "size": "sm", "color": "#ffffff", "flex": 5, "weight": "bold" }
+                                                        ]
+                                                    },
+                                                    { "type": "separator", "color": "#222a3a" },
+                                                    {
+                                                        "type": "box", "layout": "vertical", "spacing": "xs",
+                                                        "contents": [
+                                                            { "type": "text", "text": "📍 ขาที่ต้องการจั่วเพิ่ม", "size": "xs", "color": "#3399ff", "weight": "bold" },
+                                                            {
+                                                                "type": "box", "layout": "horizontal", "spacing": "sm", "margin": "sm",
+                                                                "contents": [
+                                                                    { "type": "text", "text": "➡️ ขาผู้เล่น:", "size": "sm", "color": "#aaa9aa", "flex": 3 },
+                                                                    { "type": "text", "text": `[ ขา ${sortedLegs} ]`, "size": "sm", "color": "#00ff00", "weight": "bold", "flex": 5 }
+                                                                ]
+                                                            }
+                                                        ]
+                                                    },
+                                                    { "type": "separator", "color": "#222a3a" },
+                                                    { "type": "text", "text": "📢 สถานะ: รอดำเนินการจั่วไพ่จากแอดมิน", "size": "xs", "color": "#aaaaaa", "align": "center" }
+                                                ]
+                                            }
+                                        }
+                                    }]
+                                }, {
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Authorization': `Bearer ${TOKEN}`
+                                    }
+                                });
+                            } catch (error) {
+                                console.error("❌ ส่ง Flex Message ขอจั่วไพ่ล้มเหลว:", error.response ? error.response.data : error.message);
+                            }
+                            return; // 🌟 ทำงานเสร็จแล้ว ตัดจบตรงนี้เลย
                         } else {
                             // ถ้าคนนั้นมีแต่โพยฝั่งเจ้ามืออย่างเดียว บอทจะแจ้งเตือนตัดสิทธิ์ทันที
                             replyText = "⚠️ คำสั่งไม่ทำงาน: เนื่องจากคุณแทงฝั่งเจ้ามือไว้ โพยฝั่งเจ้ามือไม่สามารถขอจั่วไพ่ได้ครับ";

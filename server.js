@@ -710,16 +710,16 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                 isRoundOpen = true;
                 roundBets = {}; // ล้างข้อมูลโพยเก่าออกเพื่อเริ่มรอบใหม่
                 
-                // --- 📊 สร้างโครงสร้างสถิติย้อนหลังแบบดึง Object จาก matchHistory โดยตรง ---
+                // --- 📊 สร้างโครงสร้างสถิติย้อนหลัง ---
                 let historyFlexContents = [];
                 if (matchHistory && matchHistory.length > 0) {
-                    // ดึง Object วงรีแต่ละรอบที่เซ็ตไว้จากปุ่ม OK ยัดใส่ contents ได้เลยโดยตรง ไม่ต้องวนลูปบวกข้อความเพิ่ม
-                    historyFlexContents = [...matchHistory];
+                    // ทำการ Deep Copy ป้องกัน Object อ้างอิงทับซ้อนกันใน LINE
+                    historyFlexContents = JSON.parse(JSON.stringify(matchHistory));
                 } else {
                     historyFlexContents.push({
                         "type": "text",
-                        "text": "• ยังไม่มีข้อมูลสถิติ",
-                        "size": "sm",
+                        "text": "• ยังไม่มีข้อมูลสถิติย้อนหลังในรอบนี้",
+                        "size": "xs",
                         "color": "#888888",
                         "style": "italic",
                         "align": "center"
@@ -751,7 +751,7 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                                             { "type": "text", "text": `รอบที่: ${currentRound}`, "weight": "bold", "color": "#ffffff", "size": "xl", "align": "center", "margin": "none" },
                                             { "type": "separator", "color": "#1f3a2b" },
                                             { "type": "text", "text": "📈 สถิติผลเจ้ามือ 5 รอบล่าสุด", "size": "xs", "color": "#00ff66", "weight": "bold" },
-                                            // 🔥 ใส่กล่องสถิติย้อนหลังที่เป็นแบบวงรีสีสัญญารุ่นใหม่ตรงนี้
+                                            // 🔥 นำกล่องแถวประวัติวงรีมาวางตรงนี้โดยตรง
                                             { 
                                                 "type": "box", 
                                                 "layout": "vertical", 
@@ -1973,7 +1973,9 @@ else if (userMsg === 'ok' || userMsg === 'no') {
 
             summaryPayoutText += `✨ ระบบได้ทำการคำนวณเงินและอัปเดตกระเป๋าเงินให้ทุกคนเรียบร้อยแล้วครับ 🏁`;
             
-            // 📊 [ระบบบันทึกสถิติแบบละเอียดแยกขา] 
+            // 📊 ==================== [ ส่วนประมวลผลระบบสถิติแบบวงรีสีสากลแยก 2 ใบ / 3 ใบ ] ====================
+            
+            // 1. แปลงแต้มเจ้ามือไว้เทียบผล
             let dealerDisplay = ""; 
             if (tempDealerResult.name.includes("ป๊อก 9")) dealerDisplay = "9ป";
             else if (tempDealerResult.name.includes("ป๊อก 8")) dealerDisplay = "8ป";
@@ -1981,22 +1983,102 @@ else if (userMsg === 'ok' || userMsg === 'no') {
             else if (tempDealerResult.name.includes("สเตฟฟลัช")) dealerDisplay = "สเตฟ";
             else if (tempDealerResult.name.includes("เซียน")) dealerDisplay = "เซียน";
             else if (tempDealerResult.name.includes("เรียง")) dealerDisplay = "เรียง";
-            else dealerDisplay = `${tempDealerResult.score}แต้ม`;
+            else dealerDisplay = `${tempDealerResult.score}ต`;
 
-            let legsStatusStr = ""; 
+            // 2. ฟังก์ชันตัวช่วยเลือกสีวงรี (แพ้ = แดงอ่อน, ชนะ = เขียวอ่อน, เสมอ = เหลือง)
+            const getOvalColor = (userScore, dealerScore) => {
+                if (userScore > dealerScore) return "#a3e635"; // เขียวตองอ่อนสดใส 🟢
+                if (userScore < dealerScore) return "#f87171"; // แดงอ่อนสบายตา 🔴
+                return "#facc15"; // เหลืองสว่าง 🟡
+            };
+
+            // 3. วนลูปสร้างโครงสร้างกล่องรายขาสำหรับประวัติรอบนี้
+            let historyRowContents = [
+                { 
+                    "type": "text", 
+                    "text": `ร.${currentRound} [👑 ${dealerDisplay}]`, 
+                    "size": "xxs", 
+                    "color": "#ffffff", 
+                    "gravity": "center",
+                    "weight": "bold",
+                    "flex": 2
+                }
+            ];
+
             for (let leg = 1; leg <= 6; leg++) {
+                let card2Text = "0ต", card3Text = "-";
+                let card2Bg = "#444446", card3Bg = "#444446"; // สีเทาเริ่มต้นกรณีไม่มีโพยแทงขานั้น
+                
                 if (tempRoomResults[leg]) {
                     const legRes = tempRoomResults[leg];
-                    if (tempDealerResult.score > legRes.twoCards.score) legsStatusStr += `[${leg}🔴]`; 
-                    else if (tempDealerResult.score < legRes.twoCards.score) legsStatusStr += `[${leg}🟢]`; 
-                    else legsStatusStr += `[${leg}🟡]`; 
-                } else {
-                    legsStatusStr += `[${leg}🔴]`;
+                    
+                    // --- ชุด 2 ใบแรก ---
+                    if (legRes.twoCards.name.includes("ป๊อก 9")) card2Text = "9ป";
+                    else if (legRes.twoCards.name.includes("ป๊อก 8")) card2Text = "8ป";
+                    else card2Text = `${legRes.twoCards.score}ต`;
+                    card2Bg = getOvalColor(legRes.twoCards.score, tempDealerResult.score);
+
+                    // --- ชุด 3 ใบ ---
+                    if (legRes.threeCards) {
+                        if (legRes.threeCards.name.includes("ตอง")) card3Text = "ตอง";
+                        else if (legRes.threeCards.name.includes("สเตฟ")) card3Text = "สเตฟ";
+                        else if (legRes.threeCards.name.includes("เซียน")) card3Text = "เซียน";
+                        else if (legRes.threeCards.name.includes("เรียง")) card3Text = "เรียง";
+                        else card3Text = `${legRes.threeCards.score}ต`;
+                        
+                        card3Bg = getOvalColor(legRes.threeCards.score, tempDealerResult.score);
+                    }
                 }
+
+                // โครงสร้างวงรีคู่แยก 2 ใบ | 3 ใบ ของขานั้นๆ ยัดลงแถวประวัติ
+                historyRowContents.push({
+                    "type": "box",
+                    "layout": "vertical",
+                    "spacing": "xxs",
+                    "flex": 1,
+                    "contents": [
+                        { "type": "text", "text": `ข${leg}`, "size": "xxs", "color": "#aaaaaa", "align": "center" },
+                        {
+                            "type": "box",
+                            "layout": "horizontal",
+                            "spacing": "xs",
+                            "contents": [
+                                // วงรีใบที่ 1 (2 ใบแรก)
+                                {
+                                    "type": "box",
+                                    "layout": "vertical",
+                                    "backgroundColor": card2Bg,
+                                    "cornerRadius": "md",
+                                    "contents": [
+                                        { "type": "text", "text": card2Text, "size": "xxs", "color": "#000000", "weight": "bold", "align": "center" }
+                                    ]
+                                },
+                                // วงรีใบที่ 2 (3 ใบ)
+                                {
+                                    "type": "box",
+                                    "layout": "vertical",
+                                    "backgroundColor": card3Bg,
+                                    "cornerRadius": "md",
+                                    "contents": [
+                                        { "type": "text", "text": card3Text, "size": "xxs", "color": "#000000", "weight": "bold", "align": "center" }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                });
             }
 
-            let historySummary = `รอบที่ ${currentRound}: [👑${dealerDisplay}] ⚔️${legsStatusStr}`;
-            matchHistory.push(historySummary);
+            // บันทึกตัว Object Flex Row นี้ลงอาร์เรย์สถิติย้อนหลัง
+            let targetFlexRow = {
+                "type": "box",
+                "layout": "horizontal",
+                "margin": "sm",
+                "spacing": "xs",
+                "contents": historyRowContents
+            };
+
+            matchHistory.push(targetFlexRow);
             if (matchHistory.length > 5) matchHistory.shift(); 
 
             pastRoundsData[currentRound] = {
@@ -2006,6 +2088,25 @@ else if (userMsg === 'ok' || userMsg === 'no') {
             };
             
             detailedRoundHistory[currentRound] = summaryPayoutText;
+            
+            // ล้างผลและข้อมูลรอบปัจจุบันเพื่อให้พร้อมเริ่มเกมรอบต่อไป
+            tempRoomResults = null;
+            tempDealerResult = null;
+            isRoundOpen = false;
+            isDrawOpen = false; // ปิดการควบคุมเฟสการจั่วไพ่
+            roundBets = {};
+            usersRoundCrossCheck = {};
+
+            await saveDataToFirebase(); //💾เซฟถาวรลงฐานข้อมูลคลาวด์
+
+            replyText = "🟢 ระบบทำการบันทึกประวัติวงรี และล้างสถานะเพื่อเตรียมพร้อมเริ่มรอบต่อไปเรียบร้อยครับ!";
+        } else if (userMsg === 'no') {
+            tempRoomResults = null;
+            tempDealerResult = null;
+            replyText = "❌ แอดมินยกเลิกผลการคำนวณเรียบร้อย! ข้อมูลคะแนนชั่วคราวถูกล้างแล้วครับ";
+        }
+    }
+}
 
             // ==================== [ 🚀 ยิงข้อความ Flex Message แจ้งบิลจริงแทน Text ธรรมดา ] ====================
             try {

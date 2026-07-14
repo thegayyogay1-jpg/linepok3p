@@ -2292,7 +2292,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                     replyText = "⚠️ คุณยังไม่ได้ลงทะเบียนสมาชิกในระบบครับ";
                 } 
                 else if (user.isWithdrawLocked) {
-                    replyText = `❌ ไม่สามารถทำรายการซ้ำได้ครับ!\n👤 คุณ ${user.name} มีรายการแจ้งถอนค้างอยู่จำนวน ${user.pendingWithdrawAmount} บาท อยู่ในระหว่างรอแอดมินอนุมัติครับ`;
+                    replyText = `❌ ไม่สามารถทำรายการซ้ำได้ครับ!\n👤 คุณ ${user.name} 有รายการแจ้งถอนค้างอยู่จำนวน ${user.pendingWithdrawAmount} บาท อยู่ในระหว่างรอแอดมินอนุมัติครับ`;
                 } 
                 else if (user.turnoverTarget > 0) {
                     replyText = `❌ ไม่สามารถแจ้งถอนเงินได้ครับน้า!\n👤 คุณ: ${user.name} (ID: ${user.memberNumber})\n\n🚨 เนื่องจากคุณเลือกรับโบนัสและยังทำยอดเทิร์นไม่ครบ\n📉 ยอดเทิร์นคงค้างที่ต้องเล่นเพิ่มอีก: ${user.turnoverTarget} บาท จึงจะถอนเงินได้ครับ`;
@@ -2310,21 +2310,83 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                         user.isWithdrawLocked = true;
                         user.pendingWithdrawAmount = withdrawAmount;
 
-                        // 💡 [วางโค้ดที่นี่] เพิ่มเข้าคิวตามที่แจ้งมาครับ
-            withdrawQueue.push({ 
-                memberNumber: user.memberNumber, 
-                name: user.name, 
-                amount: withdrawAmount, // ดึงจากตัวแปร withdrawAmount ที่เช็กผ่านแล้ว
-                time: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) 
-            });
-                        await saveDataToFirebase(); //เซฟถาวร
+                        // 💡 เพิ่มเข้าคิวถอนเงิน
+                        withdrawQueue.push({ 
+                            memberNumber: user.memberNumber, 
+                            name: user.name, 
+                            amount: withdrawAmount, 
+                            time: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) 
+                        });
                         
-                        replyText = `⏳ [ระบบรับเรื่องแจ้งถอน] ⏳\n` +
-                                    `👤 คุณ: ${user.name} (ID: ${user.memberNumber})\n` +
-                                    `💰 ยอดที่แจ้งถอน: ${withdrawAmount} บาท\n` +
-                                    `──────────────────\n` +
-                                    `⚠️ **สถานะบัญชี:** บัญชีของคุณถูกล็อกชั่วคราว! ระหว่างนี้จะไม่สามารถส่งโพยแทง หรือแจ้งถอนซ้ำได้ จนกว่าแอดมินจะกดยืนยันยอดโอนสำเร็จครับ\n\n` +
-                                    `📢 @Admin มีรายการแจ้งถอนเงินจาก ID: ${user.memberNumber} กรุณาตรวจสอบและอนุมัติพิมพ์: y ${user.memberNumber}`;
+                        await saveDataToFirebase(); // เซฟถาวรลง Firebase
+
+                        // 🏆 ประกอบร่างกล่อง Flex Message แจ้งถอนเงิน สีดำ-ทอง วิ่งตรงเข้าตัวแปร Global
+                        global.currentReplyFlex = {
+                            type: "flex",
+                            altText: "⏳ ระบบรับเรื่องแจ้งถอนเงินสำเร็จ",
+                            contents: {
+                                type: "bubble",
+                                styles: {
+                                    header: { backgroundColor: "#141416" },
+                                    body: { backgroundColor: "#1e1e22" }
+                                },
+                                header: {
+                                    type: "box",
+                                    layout: "vertical",
+                                    contents: [
+                                        {
+                                            type: "text",
+                                            text: "⏳ ระบบรับเรื่องแจ้งถอนเงิน",
+                                            weight: "bold",
+                                            color: "#d4af37",
+                                            size: "sm"
+                                        }
+                                    ]
+                                },
+                                body: {
+                                    type: "box",
+                                    layout: "vertical",
+                                    contents: [
+                                        {
+                                            type: "box",
+                                            layout: "horizontal",
+                                            contents: [
+                                                { type: "text", text: "👤 ชื่อลูกค้า", color: "#8e8e93", size: "xs" },
+                                                { type: "text", text: `${user.name} (ID: ${user.memberNumber})`, color: "#ffffff", size: "xs", align: "end", weight: "bold" }
+                                            ]
+                                        },
+                                        {
+                                            type: "box",
+                                            layout: "horizontal",
+                                            margin: "sm",
+                                            contents: [
+                                                { type: "text", text: "💰 ยอดที่แจ้งถอน", color: "#ffffff", size: "sm", weight: "bold" },
+                                                { type: "text", text: `${withdrawAmount.toLocaleString()} บาท`, color: "#e53e3e", size: "md", align: "end", weight: "bold" }
+                                            ]
+                                        },
+                                        { type: "separator", margin: "md", color: "#3a3a3c" },
+                                        {
+                                            type: "text",
+                                            text: "⚠️ สถานะบัญชี: ถูกล็อกชั่วคราว! ระหว่างนี้จะไม่สามารถส่งโพยแทง หรือแจ้งถอนซ้ำได้ จนกว่าแอดมินจะกดยืนยันยอดโอนสำเร็จครับ",
+                                            color: "#aaaaaa",
+                                            size: "xxs",
+                                            margin: "md",
+                                            wrap: true
+                                        },
+                                        { type: "separator", margin: "md", color: "#3a3a3c" },
+                                        {
+                                            type: "box",
+                                            layout: "vertical",
+                                            margin: "md",
+                                            contents: [
+                                                { type: "text", text: "📢 สำหรับแอดมินอนุมัติ", color: "#d4af37", size: "xxs", weight: "bold" },
+                                                { type: "text", text: `กรุณาตรวจสอบยอดโอน และพิมพ์คำสั่งนี้เพื่ออนุมัติ:\ny ${user.memberNumber}`, color: "#ffffff", size: "xs", margin: "xs", weight: "bold", wrap: true }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        };
                     }
                 }
             }

@@ -91,11 +91,11 @@ app.post('/callback', async (req, res) => {
             
             if (match) {
                 const detectedAmountStr = match[1]; // ได้ข้อความ "500.64"
-                const depositKey = detectedAmountStr.replace('.', '_'); // แปลงเป็น "500_48" เพื่อใช้ค้นหาใน Firebase
+                const depositKey = detectedAmountStr.replace('.', '_'); // แปลงเป็น "500_64" เพื่อใช้ค้นหาใน Firebase
                 
                 try {
-                    // 1. ค้นหายอดจองฝากใน Firebase
-                    const response = await axios.get(`${FIREBASE_URL}/pending_deposits/${depositKey}.json`);
+                    // 1. ค้นหายอดจองฝากใน Firebase (🛠️ ลบ / ด้านหน้า pending_deposits ออกแล้ว)
+                    const response = await axios.get(`${FIREBASE_URL}pending_deposits/${depositKey}.json`);
                     const depositData = response.data;
                     
                     if (depositData) {
@@ -112,8 +112,8 @@ app.post('/callback', async (req, res) => {
                                 delete global.depositQueue[targetUserId];
                             }
                             
-                            // 3. ลบยอดจองฝากทิ้งป้องกันการเวียนซ้ำ
-                            await axios.delete(`${FIREBASE_URL}/pending_deposits/${depositKey}.json`);
+                            // 3. ลบยอดจองฝากทิ้งป้องกันการเวียนซ้ำ (🛠️ ลบ / ด้านหน้า pending_deposits ออกแล้ว)
+                            await axios.delete(`${FIREBASE_URL}pending_deposits/${depositKey}.json`);
                             
                             // 4. แจ้งเตือนสลิปเติมสำเร็จเข้าไปในไลน์
                             try {
@@ -144,7 +144,6 @@ app.post('/callback', async (req, res) => {
 
         // 📌 ตรงนี้ปล่อยให้ระบบเดิมของน้าทำต่อได้เลยครับ เช่น:
         // if (userMsg === 'ฝาก') { ... }
-        // if (userMsg.startsWith('แทง')) { ... }
         
     } // จบ loop event
     return res.sendStatus(200);

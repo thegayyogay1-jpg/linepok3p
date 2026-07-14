@@ -2662,7 +2662,7 @@ else if (command.toLowerCase() === "y") {
                             turnStatusColor = "#ff5555";
                         }
 
-                        // 🏆 3. ประกอบร่างกล่อง Flex Message สีดำ-ทอง วิ่งตรงเข้าตัวแปร Global
+                       // 🏆 3. ประกอบร่างกล่อง Flex Message สีดำ-ทอง วิ่งตรงเข้าตัวแปร Global
                         global.currentReplyFlex = {
                             type: "flex",
                             altText: "📊 บัตรข้อมูลสมาชิกและยอดเงินของคุณ",
@@ -2678,7 +2678,7 @@ else if (command.toLowerCase() === "y") {
                                     contents: [
                                         {
                                             type: "text",
-                                            text: "👑 การ์ดข้อมูลสมาชิก",
+                                            text: "👑 การ์ดข้อมูลสมากชิก",
                                             weight: "bold",
                                             color: "#d4af37",
                                             size: "sm"
@@ -2753,7 +2753,7 @@ else if (command.toLowerCase() === "y") {
                                     ]
                                 }
                             }
-                        ];
+                        };
                     } else if (originalMsg.startsWith('C/') || originalMsg.startsWith('c/')) {
                         // 🔒 ป้องกันคนเก่าแอบพิมพ์ C/ มาเปลี่ยนชื่อหลังบ้าน
                         replyText = `❌ ไม่สามารถเปลี่ยนข้อมูลเองได้ค่ะคุณ ${user.name}!\n──────────────────\n⚠️ เนื่องจากระบบได้ผูกบัญชีธนาคารของคุณไว้ในคลังความปลอดภัยแล้ว\n\n📌 หากต้องการเปลี่ยน ชื่อ-นามสกุล หรือ เลขบัญชีธนาคาร กรุณาทักแชทติดต่อแอดมินโดยตรงเพื่อขออัปเดตข้อมูลนะคะ 🙏`;

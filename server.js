@@ -1372,7 +1372,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                     }
                 }
             }
-               // ==================== [ 8. ระบบแอดมินส่งผลสรุปคำนวณแต้ม - เวอร์ชันชำแหละ RegEx แยกฝั่งขาด (เด้ง=/ , ป๊อก=*) ] ====================
+             // ==================== [ 8. ระบบแอดมินส่งผลสรุปคำนวณแต้ม - เวอร์ชันพ่วง Flex Message ] ====================
 else if (originalMsg.startsWith('>')) {
     if (!ADMIN_IDS.includes(userId)) {
         replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งสรุปผลคะแนนครับ";
@@ -1387,7 +1387,7 @@ else if (originalMsg.startsWith('>')) {
             return res.sendStatus(200);
         }
 
-        // 🛠️ ฟังก์ชันแกะรหัสไพ่ (นับสแลชแม่นยำ ไม่โดนตัวอื่นแย่ง) - [คงเดิมไว้ 100%]
+        // 🛠️ ฟังก์ชันแกะรหัสไพ่ (นับสแลชแม่นยำ ไม่โดนตัวอื่นแย่ง)
         const parseCardStr = (str, isDealer = false, isThreeCards = false, forcePok = false) => {
             let clean = str.trim().toLowerCase();
             let isPok = forcePok; 
@@ -1431,14 +1431,14 @@ else if (originalMsg.startsWith('>')) {
             return { score: rawScore, v: clean, mult: multiplier, name: typeName };
         };
 
-        // 👑 แกะรหัสเจ้ามือ (ตัวสุดท้าย) - [คงเดิมไว้ 100%]
+        // 👑 แกะรหัสเจ้ามือ (ตัวสุดท้าย)
         const dealerRawStr = parts[parts.length - 1]; 
         const dealerResult = parseCardStr(dealerRawStr, true, false);
 
         let roomResults = {}; 
         const totalLegsToSend = Math.min(parts.length - 1, 6);
 
-        // 🔄 วนลูปแกะรหัสผู้เล่นรายขา - [คงเดิมไว้ 100%]
+        // 🔄 วนลูปแกะรหัสผู้เล่นรายขา
         for (let i = 0; i < totalLegsToSend; i++) {
             let innerContent = parts[i].trim();
             if (innerContent === "") continue;
@@ -1527,33 +1527,30 @@ else if (originalMsg.startsWith('>')) {
             }
         }
 
-        // 🚀 ยิงข้อความแพ็คคู่: [1. รูปภาพหัวข้อผลลัพธ์] + [2. Flex Message สรุปผลคะแนนแบบคาสิโน]
-        const summaryImgUrl = "https://img2.pic.in.th/-__-----4b1c38e0628ea626.jpg"; // น้าสามารถเปลี่ยนเป็นรูปสรุปคะแนนของน้าได้เลยครับ
+        // 🚀 ยิงข้อความแพ็คคู่: รูปภาพหัวข้อผลลัพธ์ + Flex Message สรุปผลคะแนน
+        const summaryImgUrl = "https://img2.pic.in.th/-__-----4b1c38e0628ea626.jpg";
 
         try {
             await axios.post('https://api.line.me/v2/bot/message/reply', {
                 replyToken: replyToken,
                 messages: [
-                    // 📸 ข้อความที่ 1: รูปภาพแสดงผลตรวจแต้ม
                     {
                         "type": "image",
                         "originalContentUrl": summaryImgUrl,
                         "previewImageUrl": summaryImgUrl
                     },
-                    // 📊 ข้อความที่ 2: Flex Message แจ้งแต้มอย่างละเอียดเป็นสีสัน
                     {
                         "type": "flex",
                         "altText": `📊 ตรวจสอบผลการเล่น รอบที่ ${currentRound}`,
                         "contents": {
                             "type": "bubble",
-                            "styles": { "body": { "backgroundColor": "#130f17" } }, // ธีมม่วงดำหรูหราคาสิโน
+                            "styles": { "body": { "backgroundColor": "#130f17" } },
                             "body": {
                                 "type": "box", "layout": "vertical", "spacing": "md",
                                 "contents": [
                                     { "type": "text", "text": "📊 ตรวจสอบผลการเล่นผลคะแนน 🎰", "weight": "bold", "color": "#b8860b", "size": "md", "align": "center" },
                                     { "type": "text", "text": `รอบที่: ${currentRound}`, "weight": "bold", "color": "#ffffff", "size": "sm", "align": "center" },
                                     { "type": "separator", "color": "#2a2233" },
-                                    // โซนแสดงแต้มเจ้ามือ
                                     {
                                         "type": "box", "layout": "horizontal", "styles": { "body": { "backgroundColor": "#221929" } }, "padding": "sm",
                                         "contents": [
@@ -1563,10 +1560,8 @@ else if (originalMsg.startsWith('>')) {
                                     },
                                     { "type": "separator", "color": "#2a2233" },
                                     { "type": "text", "text": "📝 ลำดับหน้าไพ่และผลแพ้ชนะแต่ละขา", "size": "xs", "color": "#ffaa00", "weight": "bold" },
-                                    // ใส่เนื้อหารายละเอียดแต่ละขาที่วนลูปมาเรียบร้อย
                                     { "type": "box", "layout": "vertical", "spacing": "xs", "contents": legsFlexContents },
                                     { "type": "separator", "color": "#2a2233" },
-                                    // ส่วนล่างสำหรับแจ้งแอดมินยืนยันคำสั่ง
                                     { "type": "text", "text": "🚨 กรุณาตรวจเช็คผลที่ส่ง\nหากข้อมูลถูกต้อง ให้พิมพ์: ok\nหากพิมพ์ผิดให้พิมพ์: no", "size": "xs", "color": "#ffcc00", "wrap": true, "align": "center", "weight": "bold" }
                                 ]
                             }
@@ -1582,7 +1577,7 @@ else if (originalMsg.startsWith('>')) {
         } catch (error) {
             console.error("❌ ส่งรูปภาพและ Flex ตรวจสอบผลล้มเหลว:", error.response ? error.response.data : error.message);
         }
-        return; // ตัดจบงานระบบสรุปแต้ม
+        return; 
     }
 }
 // ==================== [ 9. ระบบแอดมินยืนยันผลคำนวณเงินจริง OK / NO (Settlement Engine) ] ====================

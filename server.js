@@ -689,7 +689,7 @@ app.post('/callback', async (req, res) => {
                     }
                 }
             }    
-            // ==================== [ 2. แอดมิน เปิด/ปิดรอบแทง - เวอร์ชันป้องกันมือลั่น ] ====================
+           // ==================== [ 2. แอดมิน เปิด/ปิดรอบแทง - เวอร์ชันป้องกันมือลั่น ] ====================
 else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
     if (!ADMIN_IDS.includes(userId)) {
         replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งนี้ครับ";
@@ -710,25 +710,19 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                 isRoundOpen = true;
                 roundBets = {}; // ล้างข้อมูลโพยเก่าออกเพื่อเริ่มรอบใหม่
                 
-                // --- สร้างโครงสร้างสถิติย้อนหลัง ---
+                // --- 📊 สร้างโครงสร้างสถิติย้อนหลังแบบดึง Object จาก matchHistory โดยตรง ---
                 let historyFlexContents = [];
-                if (matchHistory.length > 0) {
-                    matchHistory.forEach((h) => {
-                        historyFlexContents.push({
-                            "type": "text",
-                            "text": `• ${h}`,
-                            "size": "sm",
-                            "color": "#dddddd",
-                            "wrap": true
-                        });
-                    });
+                if (matchHistory && matchHistory.length > 0) {
+                    // ดึง Object วงรีแต่ละรอบที่เซ็ตไว้จากปุ่ม OK ยัดใส่ contents ได้เลยโดยตรง ไม่ต้องวนลูปบวกข้อความเพิ่ม
+                    historyFlexContents = [...matchHistory];
                 } else {
                     historyFlexContents.push({
                         "type": "text",
                         "text": "• ยังไม่มีข้อมูลสถิติ",
                         "size": "sm",
                         "color": "#888888",
-                        "style": "italic"
+                        "style": "italic",
+                        "align": "center"
                     });
                 }
 
@@ -757,7 +751,13 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                                             { "type": "text", "text": `รอบที่: ${currentRound}`, "weight": "bold", "color": "#ffffff", "size": "xl", "align": "center", "margin": "none" },
                                             { "type": "separator", "color": "#1f3a2b" },
                                             { "type": "text", "text": "📈 สถิติผลเจ้ามือ 5 รอบล่าสุด", "size": "xs", "color": "#00ff66", "weight": "bold" },
-                                            { "type": "box", "layout": "vertical", "spacing": "xs", "contents": historyFlexContents },
+                                            // 🔥 ใส่กล่องสถิติย้อนหลังที่เป็นแบบวงรีสีสัญญารุ่นใหม่ตรงนี้
+                                            { 
+                                                "type": "box", 
+                                                "layout": "vertical", 
+                                                "spacing": "xs", 
+                                                "contents": historyFlexContents 
+                                            },
                                             { "type": "separator", "color": "#1f3a2b" },
                                             { "type": "text", "text": "✨ สมาชิกสามารถส่งโพยเข้ามาได้เลยครับ 🎰", "size": "sm", "color": "#ffffff", "wrap": true, "align": "center", "weight": "bold" }
                                         ]
@@ -870,7 +870,7 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
             isDrawOpen = false; // ล้างสถานะจั่วไปด้วยเลยตอนเซ็ตศูนย์
             roundBets = {};
             usersRoundCrossCheck = {};
-            matchHistory = []; // 👈 เพิ่มบรรทัดนี้เพื่อรีเซ็ตประวัติ 5 รอบย้อนหลังออกไปด้วยครับน้า
+            matchHistory = []; // รีเซ็ตประวัติ 5 รอบย้อนหลังออกไปด้วย
 
             await saveDataToFirebase(); //💾เซฟถาวร
             

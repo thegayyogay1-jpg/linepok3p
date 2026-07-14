@@ -985,10 +985,71 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                         } else {
                             const totalRefund = myBets.reduce((sum, bet) => sum + bet.holdCost, 0);
                             user.balance += totalRefund;
+                            
+                            // 🔄 [เพิ่มจุดสำคัญ] ล้างประวัติการจำฝั่งแทงสวนออกด้วยเมื่อมีการคืนโพย เพื่อให้ส่งโพยใหม่สลับฝั่งได้ทันที
+                            usersRoundCrossCheck[userId] = {};
+
                             await saveDataToFirebase(); //💾เซฟถาวร
                             roundBets[userId] = []; 
 
-                            replyText = `🗑️ ยกเลิกโพยสำเร็จเรียบร้อยแล้วครับ!\n👤 คุณ: ${user.name} (ID: ${user.memberNumber})\n💰 ระบบได้ทำการคืนเครดิตค้ำประกันให้คุณ: +${totalRefund} บาท\n✨ ยอดเครดิตปัจจุบัน: ${user.balance} บาท\n*(ตอนนี้โพยรอบนี้ของคุณกลายเป็นว่างแล้ว สามารถส่งโพยใหม่ได้ครับ)*`;
+                            // 🚀 สั่งยิง Flex Message ดีไซน์ดำ-แดง แจ้งยกเลิกโพยทันทีตรงนี้
+                            try {
+                                await axios.post('https://api.line.me/v2/bot/message/reply', {
+                                    replyToken: replyToken,
+                                    messages: [{
+                                        "type": "flex",
+                                        "altText": "🗑️ ยกเลิกโพยสำเร็จเรียบร้อยแล้ว",
+                                        "contents": {
+                                            "type": "bubble",
+                                            "styles": { "body": { "backgroundColor": "#141414" } },
+                                            "body": {
+                                                "type": "box", "layout": "vertical", "spacing": "md",
+                                                "contents": [
+                                                    { "type": "text", "text": "🗑️ ยกเลิกโพยสำเร็จเรียบร้อย 🎉", "weight": "bold", "color": "#ff3333", "size": "md", "align": "center" },
+                                                    { "type": "separator", "color": "#333333" },
+                                                    {
+                                                        "type": "box", "layout": "horizontal",
+                                                        "contents": [
+                                                            { "type": "text", "text": "👤 สมาชิก:", "size": "sm", "color": "#888888", "flex": 2 },
+                                                            { "type": "text", "text": `${user.name} (ID: ${user.memberNumber})`, "size": "sm", "color": "#ffffff", "flex": 5, "weight": "bold" }
+                                                        ]
+                                                    },
+                                                    { "type": "separator", "color": "#333333" },
+                                                    {
+                                                        "type": "box", "layout": "vertical", "spacing": "sm",
+                                                        "contents": [
+                                                            {
+                                                                "type": "box", "layout": "horizontal",
+                                                                "contents": [
+                                                                    { "type": "text", "text": "💰 คืนเครดิตค้ำประกัน:", "size": "sm", "color": "#aaa9aa" },
+                                                                    { "type": "text", "text": `+${totalRefund} บาท`, "size": "sm", "color": "#00ff00", "align": "end", "weight": "bold" }
+                                                                ]
+                                                            },
+                                                            {
+                                                                "type": "box", "layout": "horizontal",
+                                                                "contents": [
+                                                                    { "type": "text", "text": "✨ เครดิตปัจจุบัน:", "size": "sm", "color": "#aaa9aa" },
+                                                                    { "type": "text", "text": `${user.balance} บาท`, "size": "sm", "color": "#ffffff", "align": "end", "weight": "bold" }
+                                                                ]
+                                                            }
+                                                        ]
+                                                    },
+                                                    { "type": "separator", "color": "#333333" },
+                                                    { "type": "text", "text": "💡 ตอนนี้โพยรอบนี้ของคุณว่างแล้ว\nท่านสามารถส่งโพยชุดใหม่เข้ามาใหม่ได้ทันทีครับ", "size": "xs", "color": "#aaaaaa", "wrap": true, "align": "center" }
+                                                ]
+                                            }
+                                        }
+                                    }]
+                                }, {
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Authorization': `Bearer ${TOKEN}`
+                                    }
+                                });
+                            } catch (error) {
+                                console.error("❌ ส่ง Flex Message คืนโพยล้มเหลว:", error.response ? error.response.data : error.message);
+                            }
+                            return; // 🌟 ทำงานเสร็จแล้วจบคำสั่งตรงนี้เลย บอทไม่รวนแน่นอน
                         }
                     }
                 }

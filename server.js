@@ -1514,7 +1514,7 @@ else if (originalMsg.startsWith('>')) {
                             "type": "box",
                             "layout": "horizontal",
                             "contents": [
-                                { "type": "text", "text": `• [3ใบ]: ${res.threeCards.name} (${res.threeCards.mult}เด้ง)`, "size": "xs", "color": "#cccccc" },
+                                { "type": "text", "text": `• [3ใบ]: ${res.threeCards.name} (${res.threeCards.mult}เด้ng)`, "size": "xs", "color": "#cccccc" },
                                 { "type": "text", "text": status3Str, "size": "xs", "color": color3, "align": "end", "weight": "bold" }
                             ]
                         },
@@ -1577,7 +1577,7 @@ else if (originalMsg.startsWith('>')) {
                                     { "type": "text", "text": "🚨 กรุณาตรวจเช็คผลที่ส่ง\nหากข้อมูลถูกต้อง ให้พิมพ์: ok\nหากพิมพ์ผิดให้พิมพ์: no", "size": "xs", "color": "#ffcc00", "wrap": true, "align": "center", "weight": "bold" }
                                 ]
                             }
-                        ]
+                        }
                     }
                 ]
             }, {

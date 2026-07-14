@@ -497,19 +497,23 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
     if (!ADMIN_IDS.includes(userId)) {
         replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งนี้ครับ";
     } else {
+        // 🖼️ [ตั้งค่าลิงก์รูปภาพของน้าที่นี่] 
+        // ⚠️ น้าเอาลิงก์ URL รูปภาพเปิด/ปิดรอบของน้า (ที่ขึ้นต้นด้วย https://) มาใส่แทนที่ในเครื่องหมายคำพูดได้เลยครับ
+        const openRoundImgUrl = "https://img2.pic.in.th/-__-----4b1c38e0628ea626.jpg"; 
+        const closeRoundImgUrl = "https://img2.pic.in.th/-__-----2cccaadd8f93c70b.jpg";
+
         if (userMsg === 'o') {
             if (isRoundOpen) {
                 replyText = `⚠️ ตอนนี้ระบบกำลังเปิด "รอบที่ ${currentRound}" อยู่แล้วครับ`;
             } 
-            // 🚨 [แก้ไขจุดบั๊ก] เช็กเพียงแค่ว่าถ้ารอบจั่วยังเปิดค้างอยู่ (isDrawOpen === true) เท่านั้นค่อยบล็อก
             else if (isDrawOpen) { 
-                replyText = `❌ 不 สามารถเปิดรอบใหม่ได้ครับ!\nเนื่องจาก "รอบที่ ${currentRound}" ยังดำเนินรายการจั่วไพ่ไม่เสร็จสิ้น\n\n💡 หากต้องการเปิดรอบจั่ว ให้พิมพ์ oo\n💡 หากต้องการจบขั้นตอนจั่ว ให้พิมพ์ xx ก่อนครับ`;
+                replyText = `❌ ไม่สามารถเปิดรอบใหม่ได้ครับ!\nเนื่องจาก "รอบที่ ${currentRound}" ยังดำเนินรายการจั่วไพ่ไม่เสร็จสิ้น\n\n💡 หากต้องการเปิดรอบจั่ว ให้พิมพ์ oo\n💡 หากต้องการจบขั้นตอนจั่ว ให้พิมพ์ xx ก่อนครับ`;
             } else {
                 currentRound++;
                 isRoundOpen = true;
                 roundBets = {}; // ล้างข้อมูลโพยเก่าออกเพื่อเริ่มรอบใหม่
                 
-                // --- สร้างโครงสร้างสถิติย้อนหลังเพื่อเอาไปใส่ใน Flex Message ---
+                // --- สร้างโครงสร้างสถิติย้อนหลัง ---
                 let historyFlexContents = [];
                 if (matchHistory.length > 0) {
                     matchHistory.forEach((h) => {
@@ -531,30 +535,39 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                     });
                 }
 
-                // 🚀 ยิง Flex Message ธีมสีเขียวแจ้ง "เปิดรอบแทง"
+                // 🚀 ยิงข้อความแพ็คคู่: [1. รูปภาพเปิดรอบ] + [2. Flex Message สถิติ]
                 try {
                     await axios.post('https://api.line.me/v2/bot/message/reply', {
                         replyToken: replyToken,
-                        messages: [{
-                            "type": "flex",
-                            "altText": `🟢 เริ่มเปิดรอบแทงแล้ว! รอบที่ ${currentRound}`,
-                            "contents": {
-                                "type": "bubble",
-                                "styles": { "body": { "backgroundColor": "#0d1b15" } }, // ดีไซน์พื้นหลังเขียวเข้มแบบโต๊ะคาสิโน
-                                "body": {
-                                    "type": "box", "layout": "vertical", "spacing": "md",
-                                    "contents": [
-                                        { "type": "text", "text": "🎰 เริ่มเปิดรอบแทงแล้วครับ 🎉", "weight": "bold", "color": "#00ff66", "size": "md", "align": "center" },
-                                        { "type": "text", "text": `รอบที่: ${currentRound}`, "weight": "bold", "color": "#ffffff", "size": "xl", "align": "center", "margin": "none" },
-                                        { "type": "separator", "color": "#1f3a2b" },
-                                        { "type": "text", "text": "📈 สถิติผลเจ้ามือ 5 รอบล่าสุด", "size": "xs", "color": "#00ff66", "weight": "bold" },
-                                        { "type": "box", "layout": "vertical", "spacing": "xs", "contents": historyFlexContents },
-                                        { "type": "separator", "color": "#1f3a2b" },
-                                        { "type": "text", "text": "✨ สมาชิกสามารถส่งโพยเข้ามาได้เลยครับ 🎰", "size": "sm", "color": "#ffffff", "wrap": true, "align": "center", "weight": "bold" }
-                                    ]
+                        messages: [
+                            // 📸 ข้อความที่ 1: รูปเปิดรอบของน้า
+                            {
+                                "type": "image",
+                                "originalContentUrl": openRoundImgUrl,
+                                "previewImageUrl": openRoundImgUrl
+                            },
+                            // 📊 ข้อความที่ 2: Flex Message สรุปและสถิติ
+                            {
+                                "type": "flex",
+                                "altText": `🟢 เริ่มเปิดรอบแทงแล้ว! รอบที่ ${currentRound}`,
+                                "contents": {
+                                    "type": "bubble",
+                                    "styles": { "body": { "backgroundColor": "#0d1b15" } },
+                                    "body": {
+                                        "type": "box", "layout": "vertical", "spacing": "md",
+                                        "contents": [
+                                            { "type": "text", "text": "🎰 เริ่มเปิดรอบแทงแล้วครับ 🎉", "weight": "bold", "color": "#00ff66", "size": "md", "align": "center" },
+                                            { "type": "text", "text": `รอบที่: ${currentRound}`, "weight": "bold", "color": "#ffffff", "size": "xl", "align": "center", "margin": "none" },
+                                            { "type": "separator", "color": "#1f3a2b" },
+                                            { "type": "text", "text": "📈 สถิติผลเจ้ามือ 5 รอบล่าสุด", "size": "xs", "color": "#00ff66", "weight": "bold" },
+                                            { "type": "box", "layout": "vertical", "spacing": "xs", "contents": historyFlexContents },
+                                            { "type": "separator", "color": "#1f3a2b" },
+                                            { "type": "text", "text": "✨ สมาชิกสามารถส่งโพยเข้ามาได้เลยครับ 🎰", "size": "sm", "color": "#ffffff", "wrap": true, "align": "center", "weight": "bold" }
+                                        ]
+                                    }
                                 }
                             }
-                        }]
+                        ]
                     }, {
                         headers: {
                             'Content-Type': 'application/json',
@@ -562,9 +575,9 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                         }
                     });
                 } catch (error) {
-                    console.error("❌ ส่ง Flex Message เปิดรอบล้มเหลว:", error.response ? error.response.data : error.message);
+                    console.error("❌ ส่งรูปภาพและ Flex เปิดรอบล้มเหลว:", error.response ? error.response.data : error.message);
                 }
-                return; // จบงานเปิดรอบ
+                return; 
             }
         } else if (userMsg === 'x') {
             if (!isRoundOpen) {
@@ -610,30 +623,39 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                     });
                 }
 
-                // 🚀 ยิง Flex Message ธีมสีแดง/ส้มแจ้ง "ปิดรับโพย"
+                // 🚀 ยิงข้อความแพ็คคู่: [1. รูปภาพปิดรอบ] + [2. Flex Message รายชื่อ]
                 try {
                     await axios.post('https://api.line.me/v2/bot/message/reply', {
                         replyToken: replyToken,
-                        messages: [{
-                            "type": "flex",
-                            "altText": `🚫 ปิดรอบแทงเรียบร้อย รอบที่ ${currentRound}`,
-                            "contents": {
-                                "type": "bubble",
-                                "styles": { "body": { "backgroundColor": "#1a1111" } }, // พื้นหลังดำอมแดง ดุดัน
-                                "body": {
-                                    "type": "box", "layout": "vertical", "spacing": "md",
-                                    "contents": [
-                                        { "type": "text", "text": "🚫 ปิดรอบแทงเรียบร้อยแล้วครับ 🏁", "weight": "bold", "color": "#ff3333", "size": "md", "align": "center" },
-                                        { "type": "text", "text": `จบรอบที่: ${currentRound}`, "weight": "bold", "color": "#ffffff", "size": "sm", "align": "center" },
-                                        { "type": "separator", "color": "#3a2222" },
-                                        { "type": "text", "text": "📝 สรุปยอดแทงประจำรอบ", "size": "xs", "color": "#ffaa00", "weight": "bold" },
-                                        { "type": "box", "layout": "vertical", "spacing": "xs", "contents": summaryFlexContents },
-                                        { "type": "separator", "color": "#3a2222" },
-                                        { "type": "text", "text": "🔒 หยุดรับโพยทุกกรณี รอแอดมินสรุปผลสักครู่ครับ", "size": "xs", "color": "#aaaaaa", "wrap": true, "align": "center" }
-                                    ]
+                        messages: [
+                            // 📸 ข้อความที่ 1: รูปปิดรอบของน้า
+                            {
+                                "type": "image",
+                                "originalContentUrl": closeRoundImgUrl,
+                                "previewImageUrl": closeRoundImgUrl
+                            },
+                            // 📊 ข้อความที่ 2: Flex Message สรุปยอดโพยที่ปิดรอบ
+                            {
+                                "type": "flex",
+                                "altText": `🚫 ปิดรอบแทงเรียบร้อย รอบที่ ${currentRound}`,
+                                "contents": {
+                                    "type": "bubble",
+                                    "styles": { "body": { "backgroundColor": "#1a1111" } },
+                                    "body": {
+                                        "type": "box", "layout": "vertical", "spacing": "md",
+                                        "contents": [
+                                            { "type": "text", "text": "🚫 ปิดรอบแทงเรียบร้อยแล้วครับ 🏁", "weight": "bold", "color": "#ff3333", "size": "md", "align": "center" },
+                                            { "type": "text", "text": `จบรอบที่: ${currentRound}`, "weight": "bold", "color": "#ffffff", "size": "sm", "align": "center" },
+                                            { "type": "separator", "color": "#3a2222" },
+                                            { "type": "text", "text": "📝 สรุปยอดแทงประจำรอบ", "size": "xs", "color": "#ffaa00", "weight": "bold" },
+                                            { "type": "box", "layout": "vertical", "spacing": "xs", "contents": summaryFlexContents },
+                                            { "type": "separator", "color": "#3a2222" },
+                                            { "type": "text", "text": "🔒 หยุดรับโพยทุกกรณี รอแอดมินสรุปผลสักครู่ครับ", "size": "xs", "color": "#aaaaaa", "wrap": true, "align": "center" }
+                                        ]
+                                    }
                                 }
                             }
-                        }]
+                        ]
                     }, {
                         headers: {
                             'Content-Type': 'application/json',
@@ -641,9 +663,9 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                         }
                     });
                 } catch (error) {
-                    console.error("❌ ส่ง Flex Message ปิดรอบล้มเหลว:", error.response ? error.response.data : error.message);
+                    console.error("❌ ส่งรูปภาพและ Flex ปิดรอบล้มเหลว:", error.response ? error.response.data : error.message);
                 }
-                return; // จบงานปิดรอบ
+                return; 
             }
         } else if (userMsg === 'rst') {
             currentRound = 0;
@@ -2376,21 +2398,6 @@ if (userMsg === '3' || userMsg === '2' || userMsg === '1') {
                         sendMessages.push(global.currentReplyFlex);
                     }
 
-                    // 🌟 2. ชุดโค้ดรูปภาพเดิมของน้าทั้งหมด (คงเดิม 100% ห้ามแก้ไขลิงก์)
-                    if (userMsg === 'o') {
-                        sendMessages.unshift({
-                            type: 'image',
-                            originalContentUrl: 'https://img2.pic.in.th/-__-----4b1c38e0628ea626.jpg', 
-                            previewImageUrl: 'https://img2.pic.in.th/-__-----4b1c38e0628ea626.jpg'     
-                        });
-                    }
-                    else if (userMsg === 'x') {
-                        sendMessages.unshift({
-                            type: 'image',
-                            originalContentUrl: 'https://img2.pic.in.th/-__-----2cccaadd8f93c70b.jpg', 
-                            previewImageUrl: 'https://img2.pic.in.th/-__-----2cccaadd8f93c70b.jpg'     
-                        });
-                    }
                     else if (userMsg === 'oo') {
                         sendMessages.unshift({
                             type: 'image',

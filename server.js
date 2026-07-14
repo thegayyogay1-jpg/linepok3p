@@ -1783,8 +1783,8 @@ else if (command.toLowerCase() === "y") {
                     turnStatusColor = "#ff5555";
                 }
 
-                // 🏆 3. ประกอบร่างกล่อง Flex Message สีดำ-ทอง (ถอด letterSpacing ออกแล้ว ปลอดภัยชัวร์)
-                const replyFlex = {
+                // 🏆 3. ประกอบร่างกล่อง Flex Message สีดำ-ทอง (✏️ แก้ตรงนี้เป็น global.currentReplyFlex ไปเลย)
+                global.currentReplyFlex = {
                     type: "flex",
                     altText: "📊 บัตรข้อมูลสมาชิกและยอดเงินของคุณ",
                     contents: {
@@ -1874,10 +1874,7 @@ else if (command.toLowerCase() === "y") {
                             ]
                         }
                     }
-                };
-                
-                // ส่งต่อไปให้ท่อนยิงข้อความ
-                global.currentReplyFlex = replyFlex;
+                }; // 👈 ปิดปีกกาตรงนี้ปุ๊บ จบคำสั่ง c เลย (ลบบรรทัด global.currentReplyFlex = replyFlex; ของเก่าออกไปด้วยนะครับ)
             } else if (originalMsg.startsWith('C/') || originalMsg.startsWith('c/')) {
                         // 🔒 [แก้ไขใหม่: บล็อกเหลี่ยม!] ป้องกันคนเก่าแอบพิมพ์ C/ มาเปลี่ยนชื่อหรือเลขบัญชีเองหลังบ้าน
                         replyText = `❌ ไม่สามารถเปลี่ยนข้อมูลเองได้ค่ะคุณ ${user.name}!\n──────────────────\n⚠️ เนื่องจากระบบได้ผูกบัญชีธนาคารของคุณไว้ในคลังความปลอดภัยแล้ว\n\n📌 หากต้องการเปลี่ยน ชื่อ-นามสกุล หรือ เลขบัญชีธนาคาร กรุณาทักแชทติดต่อแอดมินโดยตรงเพื่อขออัปเดตข้อมูลนะคะ 🙏`;

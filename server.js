@@ -142,61 +142,71 @@ app.listen(process.env.PORT || 3000, () => { console.log('Server is running...')
 
     for (let event of events) {
 
-        // ==================== [ ⭐ ระบบดักเงินเข้าออโต้ วางไว้บนสุด ⭐ ] ====================
+       // ==================== [ ⭐ ระบบดักเงินเข้าออโต้ วางไว้บนสุด ⭐ ] ====================
         if (userMsg && userMsg.startsWith('KDeposit')) {
-            // ดึงตัวเลขทศนิยมออกมาจากข้อความ (เช่น 500.64)
-            const match = userMsg.match(/([0-9]+\.[0-9]{2})/);
+            console.log(`🤖 บอทได้รับข้อความ KDeposit แล้ว: "${userMsg}"`);
             
+            const match = userMsg.match(/([0-9]+\.[0-9]{2})/);
             if (match) {
-                const detectedAmountStr = match[1]; // ได้ข้อความ "500.64"
-                const depositKey = detectedAmountStr.replace('.', '_'); // แปลงเป็น "500_48" เพื่อใช้ค้นหาใน Firebase
+                const detectedAmountStr = match[1]; 
+                const depositKey = detectedAmountStr.replace('.', '_'); 
+                
+                // 🌐 วิ่งไปดึงข้อมูลที่ห้องยอดเงินตรงๆ (ซึ่งจะได้ข้อมูลที่มี UID ซ่อนอยู่ข้างใน)
+                const targetUrl = `${FIREBASE_URL}pending_deposits/${depositKey}.json`;
                 
                 try {
-                    // 1. ค้นหายอดจองฝากใน Firebase
-                    const response = await axios.get(`${FIREBASE_URL}/pending_deposits/${depositKey}.json`);
-                    const depositData = response.data;
+                    const response = await axios.get(targetUrl);
+                    const allDepositData = response.data; // ตรงนี้จะได้ก้อนข้อมูล { "U2fb9233e5c539...": { amount: 500, userId: "..." } }
                     
-                    if (depositData) {
-                        const targetUserId = depositData.userId;
-                        const creditToDeposit = depositData.amount; // ยอดเงินหลัก (เช่น 500)
+                    if (allDepositData) {
+                        // 🔑 ค้นหารหัส UID ตัวแรกที่ซ่อนอยู่ในยอดเงินนั้น
+                        const firstUserIdKey = Object.keys(allDepositData)[0];
+                        const depositData = allDepositData[firstUserIdKey]; // แกะไส้ในของคนจองออกมา
                         
-                        // 2. เติมเครดิตให้ลูกค้า
-                        if (usersWallets[targetUserId]) {
-                            usersWallets[targetUserId].balance += creditToDeposit;
-                            await saveDataToFirebase(); 
+                        if (depositData) {
+                            const targetUserId = depositData.userId;
+                            const creditToDeposit = depositData.amount; 
                             
-                            // เคลียร์คิวล็อกเดิม
-                            if (global.depositQueue && global.depositQueue[targetUserId]) {
-                                delete global.depositQueue[targetUserId];
-                            }
+                            console.log(`✅ เจอยอดจองชั้นในแล้ว! UID: ${targetUserId} | ยอดเติม: ${creditToDeposit}`);
                             
-                            // 3. ลบยอดจองฝากทิ้งป้องกันการเวียนซ้ำ
-                            await axios.delete(`${FIREBASE_URL}/pending_deposits/${depositKey}.json`);
-                            
-                            // 4. แจ้งเตือนสลิปเติมสำเร็จเข้าไปในไลน์
-                            try {
-                                await axios.post('https://api.line.me/v2/bot/message/reply', {
-                                    replyToken: replyToken,
-                                    messages: [
-                                        {
-                                            "type": "text",
-                                            "text": `✅ [ระบบออโต้] ตรวจพบเงินเข้าจำนวน ${detectedAmountStr} บาท เรียบร้อยแล้ว!\n💰 เติมเครดิตให้คุณ ${usersWallets[targetUserId].name} จำนวน +${creditToDeposit} บ. สำเร็จแล้วครับ 🏁\n💳 เครดิตคงเหลือปัจจุบัน: ${usersWallets[targetUserId].balance} บ.`
-                                        }
-                                    ]
-                                }, { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` } });
-                            } catch (lineErr) { console.error("Error sending auto credit success text:", lineErr); }
+                            // 2. เติมเครดิตให้ลูกค้า
+                            if (usersWallets[targetUserId]) {
+                                usersWallets[targetUserId].balance += creditToDeposit;
+                                await saveDataToFirebase(); 
+                                
+                                // เคลียร์คิวล็อกเดิม
+                                if (global.depositQueue && global.depositQueue[targetUserId]) {
+                                    delete global.depositQueue[targetUserId];
+                                }
+                                
+                                // 3. ลบยอดจองฝากทิ้งทั้งก้อนป้องกันการเวียนซ้ำ
+                                await axios.delete(targetUrl);
+                                
+                                // 4. แจ้งเตือนสลิปเติมสำเร็จเข้าไปในไลน์
+                                try {
+                                    await axios.post('https://api.line.me/v2/bot/message/reply', {
+                                        replyToken: replyToken,
+                                        messages: [
+                                            {
+                                                "type": "text",
+                                                "text": `✅ [ระบบออโต้] ตรวจพบเงินเข้าจำนวน ${detectedAmountStr} บาท เรียบร้อยแล้ว!\n💰 เติมเครดิตให้คุณ ${usersWallets[targetUserId].name} จำนวน +${creditToDeposit} บ. สำเร็จแล้วครับ 🏁\n💳 เครดิตคงเหลือปัจจุบัน: ${usersWallets[targetUserId].balance} บ.`
+                                            }
+                                        ]
+                                    }, { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` } });
+                                } catch (lineErr) { console.error("Error sending auto credit success text:", lineErr); }
 
-                        } else {
-                            console.log(`⚠️ ไม่พบกระเป๋าเงินสำหรับ UID: ${targetUserId}`);
+                            } else {
+                                console.log(`⚠️ ไม่พบกระเป๋าเงินสำหรับ UID: ${targetUserId}`);
+                            }
                         }
                     } else {
-                        console.log(`🔍 คัดกรอง: ไม่พบยอดเงินจองสำหรับ ${detectedAmountStr} (อาจเป็นยอดเก่าหรือกดซ้ำ)`);
+                        console.log(`🔍 ไม่พบข้อมูลยอดเงินจองบน Firebase (ข้อมูลตอบกลับเป็น null)`);
                     }
                 } catch (err) {
                     console.error("ระบบดักยอดเงินเข้าเกิดข้อผิดพลาด", err);
                 }
             }
-            continue; // ทำงานนี้เสร็จแล้วให้ข้ามไปทำข้อความถัดไปทันที ไม่ให้หลุดไปโดนระบบโพย
+            continue; 
         }
         // ===========================================================================
 

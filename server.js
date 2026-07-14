@@ -250,7 +250,7 @@ app.post('/callback', async (req, res) => {
                     }
                 }
             }
-// ==================== [ ระบบเติมเงินแบบติดโปรโบนัสคูณ 25 (B เลขสมาชิก จำนวนเงิน) ] ====================
+// ==================== [ ระบบเติมเงินแบบติดโปรโบนัสคูณ 20 (B เลขสมาชิก จำนวนเงิน) ] ====================
             else if (command === "B" || command === "b") {
                 // 🚨 เช็กว่า ID คนพิมพ์อยู่ในกล่องแอดมินไหม
                 if (!ADMIN_IDS.includes(userId)) {
@@ -281,7 +281,7 @@ app.post('/callback', async (req, res) => {
                                 user.balance += amount;
 
                                 // 🔄 คำนวณยอดเทิร์นใหม่ของบิลนี้
-                                let newTurnoverTarget = amount * 25; 
+                                let newTurnoverTarget = amount * 20; 
 
                                 // 📊 ดึงยอดเทิร์นเดิมมาเช็ก ถ้าไม่มีหรือเป็นค่าว่างให้เริ่มต้นจาก 0 แล้วบวกทบเข้าไป
                                 let currentTurnover = user.turnoverTarget;
@@ -1811,6 +1811,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                 const user = usersWallets[uId];
                 let userTotalWinLoss = 0; 
                 let totalHoldRefund = 0;   
+                let totalBetAmountThisRound = 0; // 📊 ตัวแปรเพิ่มใหม่สำหรับเก็บยอดแทงรวมแท้จริงในตานี้เพื่อเอาไปคิดเทิร์น
 
                 userBetsArray.forEach((bet) => {
                     totalHoldRefund += bet.holdCost; // ดึงเงินค้ำประกัน 3 เท่ากลับมาคืนก่อน
@@ -1824,6 +1825,9 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                     } else {
                         legsToCalculate = bet.betType.split('');
                     }
+
+                    // 🧮 สะสมยอดเดิมพันรวมจากราคารายขาคูณจำนวนขาที่เปิดสู้จริงในตานี้
+                    totalBetAmountThisRound += (bet.pricePerLeg * legsToCalculate.length);
 
                     // คำนวณเงินแยกตามรายขาในโพยใบนี้
                     legsToCalculate.forEach((leg) => {
@@ -1902,12 +1906,12 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                     });
                 }); // ปิด userBetsArray.forEach
 
-                // 🧮 อัปเดตกระเป๋าเงินจริงหลังคิดยอดสุทธิสุทธิ
+                // 🧮 อัปเดตกระเป๋าเงินจริงหลังคิดยอดสุทธิ
                 user.balance = user.balance + totalHoldRefund + userTotalWinLoss;
 
-                // 📊 [ระบบคำนวณและหักยอดเทิร์นอัตโนมัติ]
+                // 📊 [ระบบคำนวณและหักยอดเทิร์นอัตโนมัติ - เวอร์ชันสากลหักตามยอดแทงจริงที่มีผลได้เสีย]
                 if (user.turnoverTarget > 0 && userTotalWinLoss !== 0) {
-                    let currentTurnoverMade = Math.abs(userTotalWinLoss); 
+                    let currentTurnoverMade = totalBetAmountThisRound; // หักลดลงเท่ากับยอดแทงจริง ไม่สนจำนวนเด้ง
                     user.turnoverTarget -= currentTurnoverMade;
                     if (user.turnoverTarget < 0) user.turnoverTarget = 0; 
                 }

@@ -2027,8 +2027,42 @@ else if (userMsg === 'ok' || userMsg === 'no') {
             };
             
             detailedRoundHistory[currentRound] = summaryPayoutText;
-            replyText = summaryPayoutText; // ใส่ตัวแปรส่งข้อความสรุปกลับ
-        } 
+            global.currentReplyFlex = {
+                "type": "flex",
+                "altText": `💰 สรุปยอดได้/เสีย รอบที่: ${currentRound}`,
+                "contents": {
+                    "type": "bubble",
+                    "styles": {
+                        "body": { "backgroundColor": "#141419" } // พื้นหลังสีดำโทนพรีเมียม
+                    },
+                    "body": {
+                        "type": "box",
+                        "layout": "vertical",
+                        "spacing": "md",
+                        "contents": [
+                            { "type": "text", "text": "💰 สรุปยอดได้/เสีย ประจำรอบ 🎉", "weight": "bold", "color": "#ffaa00", "size": "md", "align": "center" },
+                            { "type": "text", "text": `รอบที่: ${currentRound}`, "weight": "bold", "color": "#ffffff", "size": "xl", "align": "center", "margin": "none" },
+                            { "type": "text", "text": `👑 เจ้ามือ: ${tempDealerResult.name}`, "size": "xs", "color": "#aaaaaa", "align": "center" },
+                            { "type": "separator", "color": "#2a2a35" },
+                            
+                            // 👤 รายชื่อสมาชิกทุกคนที่เล่นในรอบนี้ (ที่ดึงมาจากลูปคำนวณเงิน)
+                            {
+                                "type": "box",
+                                "layout": "vertical",
+                                "spacing": "sm",
+                                "contents": flexUserContents
+                            },
+                            
+                            { "type": "separator", "color": "#2a2a35" },
+                            { "type": "text", "text": "🏁 อัปเดตกระเป๋าเงินและเคลียร์ยอดเรียบร้อยครับ", "size": "xs", "color": "#888888", "align": "center", "style": "italic" }
+                        ]
+                    }
+                }
+            };
+
+            // กำหนดให้ส่งทั้งข้อความธรรมดา (เก็บประวัติ) และแนบกล่องดีไซน์ไปด้วยครับน้า
+            replyText = "✅ ระบบทำการเคลียร์ยอดเงินในรอบนี้เสร็จสิ้นแล้วครับ!"; 
+        }  
         else if (userMsg === 'no') {
             replyText = "❌ แอดมินยกเลิกผลคำนวณรอบนี้เรียบร้อยครับ สามารถส่งแต้มเข้ามาใหม่ได้เลย";
             tempRoomResults = null;

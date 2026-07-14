@@ -1980,7 +1980,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
 
             summaryPayoutText += `✨ ระบบได้ทำการคำนวณเงินและอัปเดตกระเป๋าเงินให้ทุกคนเรียบร้อยแล้วครับ 🏁`;
             
-            // 📊 [ระบบบันทึกสถิติแบบละเอียดแยกขา] 
+            // 📊 [ระบบบันทึกสถิติแบบละเอียดแยกขา - เวอร์ชันโชว์ไพ่ 2 ใบ และ 3 ใบ] 
             let dealerDisplay = ""; 
             if (tempDealerResult.name.includes("ป๊อก 9")) dealerDisplay = "9ป";
             else if (tempDealerResult.name.includes("ป๊อก 8")) dealerDisplay = "8ป";
@@ -1990,19 +1990,33 @@ else if (userMsg === 'ok' || userMsg === 'no') {
             else if (tempDealerResult.name.includes("เรียง")) dealerDisplay = "เรียง";
             else dealerDisplay = `${tempDealerResult.score}แต้ม`;
 
-            let legsStatusStr = ""; 
+            let historySummary = `รอบที่ ${currentRound}: [👑${dealerDisplay}] ⚔️\n`;
+            let roomRows = [];
+
             for (let leg = 1; leg <= 6; leg++) {
                 if (tempRoomResults[leg]) {
                     const legRes = tempRoomResults[leg];
-                    if (tempDealerResult.score > legRes.twoCards.score) legsStatusStr += `[${leg}🔴]`; 
-                    else if (tempDealerResult.score < legRes.twoCards.score) legsStatusStr += `[${leg}🟢]`; 
-                    else legsStatusStr += `[${leg}🟡]`; 
+
+                    // 1. เช็กไพ่ 2 ใบ ชนกับเจ้ามือ (ชนะ=🟢, แพ้=🔴, เสมอ=🟡)
+                    let dotCard2 = "🟡";
+                    if (tempDealerResult.score > legRes.twoCards.score) dotCard2 = "🔴";
+                    else if (tempDealerResult.score < legRes.twoCards.score) dotCard2 = "🟢";
+
+                    // 2. เช็กไพ่ 3 ใบ ชนกับเจ้ามือ (ชนะ=🟢, แพ้=🔴, เสมอ=🟡)
+                    let dotCard3 = "🟡";
+                    if (tempDealerResult.score > legRes.threeCards.score) dotCard3 = "🔴";
+                    else if (tempDealerResult.score < legRes.threeCards.score) dotCard3 = "🟢";
+
+                    roomRows.push(`[${leg}${dotCard2}ll${dotCard3}]`);
                 } else {
-                    legsStatusStr += `[${leg}🔴]`;
+                    // หากห้องนั้นไม่มีข้อมูล ให้ถือว่าแพ้ทั้งคู่ (🔴)
+                    roomRows.push(`[${leg}🔴I🔴]`);
                 }
             }
 
-            let historySummary = `รอบที่ ${currentRound}: [👑${dealerDisplay}] ⚔️${legsStatusStr}`;
+            // จัดหน้าแบ่งเป็น 2 แถว แถวละ 3 ห้องตามสไตล์ที่น้าต้องการ
+            historySummary += `${roomRows[0]} ${roomRows[1]} ${roomRows[2]}\n${roomRows[3]} ${roomRows[4]} ${roomRows[5]}`;
+            
             matchHistory.push(historySummary);
             if (matchHistory.length > 5) matchHistory.shift(); 
 

@@ -1603,6 +1603,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
             summaryPayoutText += `👑 เจ้ามือ: ${tempDealerResult.name}\n──────────────────\n`;
             
             let hasAnyBet = false;
+            let flexUserContents = []; // 🎨 อาเรย์สำหรับเก็บดีไซน์กล่องรายคนใน Flex Message
 
             // วนลูปสมาชิกทุกคนที่มีการแทงในรอบนี้เพื่อคิดเงิน
             for (let uId in roundBets) {
@@ -1709,33 +1710,68 @@ else if (userMsg === 'ok' || userMsg === 'no') {
 
                 // 📊 [ระบบคำนวณและหักยอดเทิร์นอัตโนมัติ]
                 if (user.turnoverTarget > 0 && userTotalWinLoss !== 0) {
-                    // คิดยอดที่มีผลได้เสียจริง (ชนะหรือแพ้กี่บาทก็นับเป็นยอดเทิร์นทั้งหมด / ส่วนผลเสมอจะเป็น 0 ไม่นับ)
                     let currentTurnoverMade = Math.abs(userTotalWinLoss); 
-                    
-                    // หักลบยอดเทิร์นค้าง
                     user.turnoverTarget -= currentTurnoverMade;
-                    if (user.turnoverTarget < 0) user.turnoverTarget = 0; // ถ้าเล่นเกินเป้าแล้วให้เซ็ตเป็น 0 (ปลดล็อก)
+                    if (user.turnoverTarget < 0) user.turnoverTarget = 0; 
                 }
 
                 await saveDataToFirebase(); //เซฟถาวร
 
-                let sign = userTotalWinLoss > 0 ? "🟢 +" : (userTotalWinLoss < 0 ? "🔴 " : "🟡 ");
+                let sign = userTotalWinLoss > 0 ? "+" : "";
+                let displayColor = userTotalWinLoss > 0 ? "#00ff66" : (userTotalWinLoss < 0 ? "#ff3333" : "#ffcc00");
                 
-                // ตรวจสอบว่าในรอบนี้ยูสเซอร์แทงฝั่งเจ้ามือหรือไม่ เพื่อความสวยงามในการแสดงข้อความท้ายรายงาน
                 let isUserBettingOnDealer = userBetsArray.some(b => b.betType === "มจ" || b.betType.startsWith('จ'));
-                let feeNote = (isUserBettingOnDealer && userTotalWinLoss !== 0) ? " \n(หักต๋งขาเจ้ามือที่ชนะแล้ว)" : "";
-                
-                let turnNote = user.turnoverTarget > 0 ? ` ⚠️ (เหลือเทิร์น: ${user.turnoverTarget} บ.)` : " 🟢 (เทิร์นครบแล้ว)";
-                summaryPayoutText += `👤 ${user.name} (ID: ${user.memberNumber})\n  ยอดสุทธิ: ${sign}${userTotalWinLoss} บาท${feeNote}\n เครดิตคงเหลือ: ${user.balance} บ.\n──────────────────\n`;
+                let feeNote = (isUserBettingOnDealer && userTotalWinLoss !== 0) ? " (หักต๋งแล้ว)" : "";
+                let turnNote = user.turnoverTarget > 0 ? `⚠️ ค้าง: ${user.turnoverTarget} บ.` : "🟢 เทิร์นครบ";
+
+                // 🛠️ ประกอบร่างดีไซน์ Flex รายบุคคล
+                flexUserContents.push({
+                    "type": "box",
+                    "layout": "vertical",
+                    "margin": "md",
+                    "spacing": "xs",
+                    "contents": [
+                        { "type": "text", "text": `👤 ${user.name} (ID: ${user.memberNumber})`, "weight": "bold", "color": "#ffffff", "size": "sm" },
+                        {
+                            "type": "box",
+                            "layout": "horizontal",
+                            "contents": [
+                                { "type": "text", "text": `• ยอดสุทธิ:${feeNote}`, "size": "xs", "color": "#cccccc" },
+                                { "type": "text", "text": `${sign}${userTotalWinLoss} บาท`, "size": "xs", "color": displayColor, "align": "end", "weight": "bold" }
+                            ]
+                        },
+                        {
+                            "type": "box",
+                            "layout": "horizontal",
+                            "contents": [
+                                { "type": "text", "text": `• เครดิตคงเหลือ:`, "size": "xs", "color": "#cccccc" },
+                                { "type": "text", "text": `${user.balance} บ.`, "size": "xs", "color": "#ffffff", "align": "end" }
+                            ]
+                        },
+                        { "type": "separator", "color": "#2a2233", "margin": "xs" }
+                    ]
+                });
+
+                // เก็บลงตัวแปร text ระบบเดิมด้วยเพื่อไม่ให้ระบบหลังบ้านรวน
+                let oldSign = userTotalWinLoss > 0 ? "🟢 +" : (userTotalWinLoss < 0 ? "🔴 " : "🟡 ");
+                let oldFeeNote = (isUserBettingOnDealer && userTotalWinLoss !== 0) ? " \n(หักต๋งขาเจ้ามือที่ชนะแล้ว)" : "";
+                summaryPayoutText += `👤 ${user.name} (ID: ${user.memberNumber})\n  ยอดสุทธิ: ${oldSign}${userTotalWinLoss} บาท${oldFeeNote}\n เครดิตคงเหลือ: ${user.balance} บ.\n──────────────────\n`;
             } // ปิดลูป for (let uId in roundBets)
 
             if (!hasAnyBet) {
                 summaryPayoutText += "📝 รอบนี้ไม่มีสมาชิกส่งโพยเดิมพันเข้ามาครับ\n";
+                flexUserContents.push({
+                    "type": "text",
+                    "text": "📝 รอบนี้ไม่มีสมาชิกส่งโพยเดิมพันเข้ามาครับ",
+                    "size": "xs",
+                    "color": "#888888",
+                    "style": "italic",
+                    "align": "center"
+                });
             }
 
             summaryPayoutText += `✨ ระบบได้ทำการคำนวณเงินและอัปเดตกระเป๋าเงินให้ทุกคนเรียบร้อยแล้วครับ 🏁`;
-            replyText = summaryPayoutText;
-
+            
             // 📊 [ระบบบันทึกสถิติแบบละเอียดแยกขา] 
             let dealerDisplay = ""; 
             if (tempDealerResult.name.includes("ป๊อก 9")) dealerDisplay = "9ป";
@@ -1750,13 +1786,9 @@ else if (userMsg === 'ok' || userMsg === 'no') {
             for (let leg = 1; leg <= 6; leg++) {
                 if (tempRoomResults[leg]) {
                     const legRes = tempRoomResults[leg];
-                    if (tempDealerResult.score > legRes.twoCards.score) {
-                        legsStatusStr += `[${leg}🔴]`; 
-                    } else if (tempDealerResult.score < legRes.twoCards.score) {
-                        legsStatusStr += `[${leg}🟢]`; 
-                    } else {
-                        legsStatusStr += `[${leg}🟡]`; 
-                    }
+                    if (tempDealerResult.score > legRes.twoCards.score) legsStatusStr += `[${leg}🔴]`; 
+                    else if (tempDealerResult.score < legRes.twoCards.score) legsStatusStr += `[${leg}🟢]`; 
+                    else legsStatusStr += `[${leg}🟡]`; 
                 } else {
                     legsStatusStr += `[${leg}🔴]`;
                 }
@@ -1764,19 +1796,62 @@ else if (userMsg === 'ok' || userMsg === 'no') {
 
             let historySummary = `รอบที่ ${currentRound}: [👑${dealerDisplay}] ⚔️${legsStatusStr}`;
             matchHistory.push(historySummary);
-            if (matchHistory.length > 5) {
-                matchHistory.shift(); 
-            }
+            if (matchHistory.length > 5) matchHistory.shift(); 
 
-            // 💾 [ฝังชิปแอบจำ] วางอยู่ตรงนี้ ก่อนโดนเคลียร์ค่า!
             pastRoundsData[currentRound] = {
                 dealer: JSON.parse(JSON.stringify(tempDealerResult)),
                 rooms: JSON.parse(JSON.stringify(tempRoomResults)),
                 bets: JSON.parse(JSON.stringify(roundBets))
             };
             
-            // 💾 [เพิ่มคำสั่งนี้] บันทึกรายงานสรุปยอดของรอบปัจจุบันเก็บไว้ในระบบก่อนล้างสมองบอท
             detailedRoundHistory[currentRound] = summaryPayoutText;
+
+            // ==================== [ 🚀 ยิงข้อความ Flex Message แจ้งบิลจริงแทน Text ธรรมดา ] ====================
+            try {
+                await axios.post('https://api.line.me/v2/bot/message/reply', {
+                    replyToken: replyToken,
+                    messages: [
+                        {
+                            "type": "flex",
+                            "altText": `💰 บิลสรุปยอดได้/เสีย รอบที่ ${currentRound}`,
+                            "contents": {
+                                "type": "bubble",
+                                "styles": { "body": { "backgroundColor": "#130f17" } },
+                                "body": {
+                                    "type": "box",
+                                    "layout": "vertical",
+                                    "spacing": "md",
+                                    "contents": [
+                                        { "type": "text", "text": "💰 สรุปยอดได้/เสีย เงินเครดิต 💸", "weight": "bold", "color": "#ffcc00", "size": "md", "align": "center" },
+                                        { "type": "text", "text": `รอบที่: ${currentRound}`, "weight": "bold", "color": "#ffffff", "size": "sm", "align": "center" },
+                                        { "type": "separator", "color": "#2a2233" },
+                                        {
+                                            "type": "box",
+                                            "layout": "horizontal",
+                                            "backgroundColor": "#221929",
+                                            "contents": [
+                                                { "type": "text", "text": "👑 ผลไพ่เจ้ามือ:", "weight": "bold", "color": "#ffaa00", "size": "sm" },
+                                                { "type": "text", "text": `${tempDealerResult.name}`, "weight": "bold", "color": "#ffffff", "size": "sm", "align": "end" }
+                                            ]
+                                        },
+                                        { "type": "separator", "color": "#2a2233" },
+                                        { "type": "text", "text": "📊 บิลรายงานผลได้-เสียรายบุคคล", "size": "xs", "color": "#ffaa00", "weight": "bold" },
+                                        { "type": "box", "layout": "vertical", "spacing": "xs", "contents": flexUserContents },
+                                        { "type": "text", "text": "🏁 ระบบอัปเดตกระเป๋าเงินให้ทุกคนเรียบร้อยแล้วครับ", "size": "xs", "color": "#a8a8a8", "align": "center", "style": "italic" }
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                }, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${TOKEN}`
+                    }
+                });
+            } catch (error) {
+                console.error("❌ ส่ง Flex สรุปยอดเงินล้มเหลว:", error.response ? error.response.data : error.message);
+            }
 
             // ล้างสมองบอทหลังคิดเงินเสร็จเพื่อเริ่มตาใหม่
             tempRoomResults = null;
@@ -1785,6 +1860,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
             roundBets = {}; 
 
             await saveDataToFirebase(); //เซฟถาวร
+            return res.sendStatus(200); // จบการทำงานตรงนี้เลยเนื่องจากใช้ส่งแบบ async ไปแล้ว
 
         } else if (userMsg === 'no') {
             tempRoomResults = null;

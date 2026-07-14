@@ -1387,7 +1387,7 @@ else if (originalMsg.startsWith('>')) {
             return res.sendStatus(200);
         }
 
-        // 🛠️ ฟังก์ชันแกะรหัสไพ่ (นับสแลชแม่นยำ ไม่โดนตัวอื่นแย่ง)
+        // 🛠️ ฟังก์ชันแกะรหัสไพ่ (นับสแลชแม่นยำ ไม่โดนตัวอื่นแย่ง) - [คงเดิมไว้ 100%]
         const parseCardStr = (str, isDealer = false, isThreeCards = false, forcePok = false) => {
             let clean = str.trim().toLowerCase();
             let isPok = forcePok; 
@@ -1431,14 +1431,14 @@ else if (originalMsg.startsWith('>')) {
             return { score: rawScore, v: clean, mult: multiplier, name: typeName };
         };
 
-        // 👑 แกะรหัสเจ้ามือ (ตัวสุดท้าย)
+        // 👑 แกะรหัสเจ้ามือ (ตัวสุดท้าย) - [คงเดิมไว้ 100%]
         const dealerRawStr = parts[parts.length - 1]; 
         const dealerResult = parseCardStr(dealerRawStr, true, false);
 
         let roomResults = {}; 
         const totalLegsToSend = Math.min(parts.length - 1, 6);
 
-        // 🔄 วนลูปแกะรหัสผู้เล่นรายขา
+        // 🔄 วนลูปแกะรหัสผู้เล่นรายขา - [คงเดิมไว้ 100%]
         for (let i = 0; i < totalLegsToSend; i++) {
             let innerContent = parts[i].trim();
             if (innerContent === "") continue;
@@ -1448,7 +1448,6 @@ else if (originalMsg.startsWith('>')) {
             let result3Cards = null;
 
             // 🔥 [ใช้ระบบ RegEx ชำแหละข้อความขั้นสูง] แยกกลุ่มตัวเลขและเครื่องหมายสแลชออกจากกัน
-            // มองหาโครงสร้าง: (แต้มตัวแรก+สแลชฝั่งซ้าย) ตามด้วย (แต้มตัวหลัง+สแลชฝั่งขวา)
             const match = innerContent.match(/^([0-9tshfตร]\/*)([0-9tshfตร]\/*)$/i);
 
             if (match) {
@@ -1481,33 +1480,109 @@ else if (originalMsg.startsWith('>')) {
         tempRoomResults = roomResults;
         tempDealerResult = dealerResult;
 
-        // --- พ่นรายงานสรุปผลกระดานให้ตรวจสอบพร้อมสถานะ 🟢🔴 ---
-        let checkText = `📊 ตรวจสอบผลการเล่น รอบที่: ${currentRound}\n──────────────────\n`;
-        checkText += `👑 เจ้ามือ: ${dealerResult.name} (${dealerResult.mult} เด้ง)\n──────────────────\n`;
-        checkText += `📝 ลำดับหน้าไพ่และผลแพ้ชนะ:\n──────────────────\n`;
+        // --- 📊 [ส่วนสร้างโครงสร้างข้อมูลจัดระเบียบส่งเข้า Flex Message] ---
+        let legsFlexContents = [];
 
         for (let leg = 1; leg <= 6; leg++) {
             if (roomResults[leg]) {
                 const res = roomResults[leg];
                 
-                let status2Str = "🟡 เสมอ";
-                if (res.twoCards.score > dealerResult.score) status2Str = "🟢 ชนะ";
-                else if (res.twoCards.score < dealerResult.score) status2Str = "🔴 แพ้";
+                let status2Str = "เสมอ 🟡"; let color2 = "#ffcc00";
+                if (res.twoCards.score > dealerResult.score) { status2Str = "ชนะ 🟢"; color2 = "#00ff66"; }
+                else if (res.twoCards.score < dealerResult.score) { status2Str = "แพ้ 🔴"; color2 = "#ff3333"; }
 
-                let status3Str = "🟡 เสมอ";
-                if (res.threeCards.score > dealerResult.score) status3Str = "🟢 ชนะ";
-                else if (res.threeCards.score < dealerResult.score) status3Str = "🔴 แพ้";
+                let status3Str = "เสมอ 🟡"; let color3 = "#ffcc00";
+                if (res.threeCards.score > dealerResult.score) { status3Str = "ชนะ 🟢"; color3 = "#00ff66"; }
+                else if (res.threeCards.score < dealerResult.score) { status3Str = "แพ้ 🔴"; color3 = "#ff3333"; }
 
-                checkText += `• ขา ${leg}:\n`;
-                checkText += `    - [2ใบ]: ${res.twoCards.name} (${res.twoCards.mult}เด้ง) ${status2Str}\n`;
-                checkText += `    - [3ใบ]: ${res.threeCards.name} (${res.threeCards.mult}เด้ง) ${status3Str}\n──────────────────\n`;
+                legsFlexContents.push({
+                    "type": "box", "layout": "vertical", "margin": "md", "spacing": "xs",
+                    "contents": [
+                        { "type": "text", "text": `🃏 ขาที่ ${leg}`, "weight": "bold", "color": "#ffffff", "size": "sm" },
+                        {
+                            "type": "box", "layout": "horizontal",
+                            "contents": [
+                                { "type": "text", "text": `• [2ใบ]: ${res.twoCards.name} (${res.twoCards.mult}เด้ง)`, "size": "xs", "color": "#cccccc" },
+                                { "type": "text", "text": status2Str, "size": "xs", "color": color2, "align": "end", "weight": "bold" }
+                            ]
+                        },
+                        {
+                            "type": "box", "layout": "horizontal",
+                            "contents": [
+                                { "type": "text", "text": `• [3ใบ]: ${res.threeCards.name} (${res.threeCards.mult}เด้ง)`, "size": "xs", "color": "#cccccc" },
+                                { "type": "text", "text": status3Str, "size": "xs", "color": color3, "align": "end", "weight": "bold" }
+                            ]
+                        },
+                        { "type": "separator", "color": "#2a2233", "margin": "xs" }
+                    ]
+                });
             } else {
-                checkText += `• ขา ${leg} -> ⚠️ ไม่มีผลไพ่ (ระบบตีเป็นบอด แพ้เจ้ามือ 🔴)\n`;
+                legsFlexContents.push({
+                    "type": "box", "layout": "horizontal", "margin": "xs",
+                    "contents": [
+                        { "type": "text", "text": `🃏 ขาที่  ${leg}: ⚠️ ไม่มีผลไพ่`, "size": "xs", "color": "#888888", "style": "italic" },
+                        { "type": "text", "text": "แพ้ 🔴", "size": "xs", "color": "#ff3333", "align": "end", "weight": "bold" }
+                    ]
+                });
             }
         }
-        
-        checkText += `🚨 กรุณาตรวจเช็คผลที่ส่ง\n หากข้อมูลถูกต้อง ให้พิมพ์: ok\nหากพิมพ์ผิดให้พิมพ์: no`;
-        replyText = checkText;
+
+        // 🚀 ยิงข้อความแพ็คคู่: [1. รูปภาพหัวข้อผลลัพธ์] + [2. Flex Message สรุปผลคะแนนแบบคาสิโน]
+        const summaryImgUrl = "https://img2.pic.in.th/-__-----4b1c38e0628ea626.jpg"; // น้าสามารถเปลี่ยนเป็นรูปสรุปคะแนนของน้าได้เลยครับ
+
+        try {
+            await axios.post('https://api.line.me/v2/bot/message/reply', {
+                replyToken: replyToken,
+                messages: [
+                    // 📸 ข้อความที่ 1: รูปภาพแสดงผลตรวจแต้ม
+                    {
+                        "type": "image",
+                        "originalContentUrl": summaryImgUrl,
+                        "previewImageUrl": summaryImgUrl
+                    },
+                    // 📊 ข้อความที่ 2: Flex Message แจ้งแต้มอย่างละเอียดเป็นสีสัน
+                    {
+                        "type": "flex",
+                        "altText": `📊 ตรวจสอบผลการเล่น รอบที่ ${currentRound}`,
+                        "contents": {
+                            "type": "bubble",
+                            "styles": { "body": { "backgroundColor": "#130f17" } }, // ธีมม่วงดำหรูหราคาสิโน
+                            "body": {
+                                "type": "box", "layout": "vertical", "spacing": "md",
+                                "contents": [
+                                    { "type": "text", "text": "📊 ตรวจสอบผลการเล่นผลคะแนน 🎰", "weight": "bold", "color": "#b8860b", "size": "md", "align": "center" },
+                                    { "type": "text", "text": `รอบที่: ${currentRound}`, "weight": "bold", "color": "#ffffff", "size": "sm", "align": "center" },
+                                    { "type": "separator", "color": "#2a2233" },
+                                    // โซนแสดงแต้มเจ้ามือ
+                                    {
+                                        "type": "box", "layout": "horizontal", "styles": { "body": { "backgroundColor": "#221929" } }, "padding": "sm",
+                                        "contents": [
+                                            { "type": "text", "text": "👑 แต้มเจ้ามือ:", "weight": "bold", "color": "#ffaa00", "size": "sm" },
+                                            { "type": "text", "text": `${dealerResult.name} (${dealerResult.mult} เด้ง)`, "weight": "bold", "color": "#ffffff", "size": "sm", "align": "end" }
+                                        ]
+                                    },
+                                    { "type": "separator", "color": "#2a2233" },
+                                    { "type": "text", "text": "📝 ลำดับหน้าไพ่และผลแพ้ชนะแต่ละขา", "size": "xs", "color": "#ffaa00", "weight": "bold" },
+                                    // ใส่เนื้อหารายละเอียดแต่ละขาที่วนลูปมาเรียบร้อย
+                                    { "type": "box", "layout": "vertical", "spacing": "xs", "contents": legsFlexContents },
+                                    { "type": "separator", "color": "#2a2233" },
+                                    // ส่วนล่างสำหรับแจ้งแอดมินยืนยันคำสั่ง
+                                    { "type": "text", "text": "🚨 กรุณาตรวจเช็คผลที่ส่ง\nหากข้อมูลถูกต้อง ให้พิมพ์: ok\nหากพิมพ์ผิดให้พิมพ์: no", "size": "xs", "color": "#ffcc00", "wrap": true, "align": "center", "weight": "bold" }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            }, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${TOKEN}`
+                }
+            });
+        } catch (error) {
+            console.error("❌ ส่งรูปภาพและ Flex ตรวจสอบผลล้มเหลว:", error.response ? error.response.data : error.message);
+        }
+        return; // ตัดจบงานระบบสรุปแต้ม
     }
 }
 // ==================== [ 9. ระบบแอดมินยืนยันผลคำนวณเงินจริง OK / NO (Settlement Engine) ] ====================

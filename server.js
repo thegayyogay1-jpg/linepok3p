@@ -322,6 +322,71 @@ app.post('/callback', async (req, res) => {
             let replyText = ""; 
             const args = originalMsg.split(/\s+/); 
             const command = args[0]; // ดึงคำแรก เช่น เติม หรือ ลบ
+        }
+        // ==================== [ 🤖 ระบบดักจับแจ้งเตือนธนาคารและอัปยอดออโต้ ] ====================
+        if (userMsg.startsWith('KDeposit')) {
+            console.log(`🤖 บอทได้รับแจ้งเตือนธนาคารจาก MacroDroid: "${userMsg}"`);
+            
+            // 🔍 แกะตัวเลขทศนิยมออกมา เช่น 10.68
+            const match = userMsg.match(/([0-9]+\.[0-9]{2})/);
+            if (match) {
+                const bankAmount = parseFloat(match[1]); // จะได้เลข 10.68 เป็นทศนิยม
+                console.log(`🔍 ค้นหาในคิวระบบ (global.depositQueue) ยอดที่ตรงกับ: ${bankAmount} บาท...`);
+
+                // ค้นหาคิวยูสเซอร์ที่มีสถานะรอโอน และยอดตรงกับเศษสตางค์
+                let foundUserId = null;
+                for (let uId in global.depositQueue) {
+                    const queue = global.depositQueue[uId];
+                    if (queue.status === 'WAITING_ADMIN' && parseFloat(queue.displayAmount) === bankAmount) {
+                        foundUserId = uId;
+                        break;
+                    }
+                }
+
+                if (foundUserId) {
+                    const matchedQueue = global.depositQueue[foundUserId];
+                    
+                    // 💰 1. เติมเครดิตเข้ากระเป๋าของลูกค้า (ดึงกระเป๋าจริงจากโค้ดหลักของน้า)
+                    if (usersWallets[foundUserId]) {
+                        usersWallets[foundUserId].balance += matchedQueue.rawAmount;
+                        
+                        console.log(`✅ [จับคู่สำเร็จ] เติมเงินให้สมาชิกที่ ${usersWallets[foundUserId].memberNumber} จำนวน ${matchedQueue.rawAmount} บาท!`);
+
+                        // 🧼 2. ล้างคิวฝากเงินชิ้นนี้ทิ้ง ป้องกันสลิปซ้ำ
+                        delete global.depositQueue[foundUserId];
+
+                        // 💾 3. บันทึกลง Firebase ถาวรทันที (ใช้ฟังก์ชันเดิมของน้า)
+                        await saveDataToFirebase();
+
+                        // 💬 4. ยิงข้อความประกาศความยินดีเข้ากลุ่มไลน์
+                        try {
+                            await axios.post('https://api.line.me/v2/bot/message/push', {
+                                to: "Cxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", // 👈 ใส่ไอดีกลุ่ม LINE ของน้าตรงนี้ครับ
+                                messages: [
+                                    {
+                                        "type": "text",
+                                        "text": `🎉 ระบบฝากเงินออโต้สำเร็จ!\n👤 คุณ ${usersWallets[foundUserId].name} (สมาชิกที่ ${usersWallets[foundUserId].memberNumber})\n💰 เติมเครดิต: +${matchedQueue.rawAmount} บาท\n──────────────────\n💳 ยอดเครดิตปัจจุบัน: ${usersWallets[foundUserId].balance} บาท\n🏁 ขอให้สนุกกับการเล่นค่ะ!`
+                                    }
+                                ]
+                            }, {
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${TOKEN}`
+                                }
+                            });
+                        } catch (pushErr) {
+                            console.error("❌ ส่งข้อความแจ้งเตือนฝากออโต้ล้มเหลว:", pushErr.message);
+                        }
+                    } else {
+                        console.log(`⚠️ พบยอดโอนตรงในคิว แต่ยูสเซอร์ ${foundUserId} ไม่มีกระเป๋าเงินในระบบ`);
+                    }
+                } else {
+                    console.log(`❌ ไม่พบใบสั่งฝากเงินในระบบที่ตรงกับยอด ${bankAmount} บาท (คิวอาจจะหมดอายุ หรือยอดฝากไม่ตรงคิว)`);
+                }
+            }
+            continue; // ทำงานตรงนี้เสร็จให้ข้ามไปรับ Event อื่นทันที ไม่ให้รันคำสั่งอื่นต่อเบื้องหลัง
+        }
+        // ===================================================================================
 
             // ==================== [ 1. ระบบเติมเงิน/ลบเงิน ] ====================
             if (command === "เติม" || command === "ลบ") {
@@ -785,61 +850,7 @@ app.post('/callback', async (req, res) => {
                         }
                     }
                 }
-            }
-                // ==================== [ 🤖 เพิ่มระบบดักจับแจ้งเตือนฝากเงินออโต้ ] ====================
-if (userMsg.startsWith('KDeposit')) {
-    console.log(`🤖 บอทได้รับแจ้งเตือนธนาคารจากมือถือน้า: "${userMsg}"`);
-    
-    // ดึงตัวเลขเงินรวมเศษสตางค์ออกมา
-    const match = userMsg.match(/([0-9]+\.[0-9]{2})/);
-    if (match) {
-        const bankAmount = parseFloat(match[1]); // ยอดเงินจริง เช่น 500.32
-        console.log(`🔍 กำลังตรวจสอบยอดโอน ${bankAmount} บาท กับคิวในระบบ...`);
-
-        // ค้นหาใน depositQueue ของโค้ดหลักน้า ว่ามียูสเซอร์คนไหนมียอดตรงกันไหม
-        let foundUserId = null;
-        for (let userId in global.depositQueue) {
-            if (parseFloat(global.depositQueue[userId].displayAmount) === bankAmount && global.depositQueue[userId].status === 'WAITING_ADMIN') {
-                foundUserId = userId;
-                break;
-            }
-        }
-
-        if (foundUserId) {
-            const queueData = global.depositQueue[foundUserId];
-            
-            // 💰 1. เติมเครดิตเข้ากระเป๋าในโค้ดหลักของน้า
-            usersWallets[foundUserId].balance += queueData.rawAmount;
-            
-            // 🧼 2. ล้างคิวฝากเงินทิ้ง
-            delete global.depositQueue[foundUserId];
-            
-            // 💾 3. เซฟลง Firebase ถาวร (ใช้ฟังก์ชันเดิมของน้า)
-            await saveDataToFirebase();
-
-            console.log(`✅ [จับคู่สำเร็จ] เติมเงินให้สมาชิกเรียบร้อย ยอด ${bankAmount} บาท`);
-
-            // 💬 4. สั่งให้บอทพ่นแจ้งเตือนยินดีต้อนรับลง "กลุ่มหลัก" ทันที
-            try {
-                await axios.post('https://api.line.me/v2/bot/message/push', {
-                    to: "Cbf8eb92a5bcfbaa418b3c49bf14c2ac7", // 👈 ไอดีกลุ่มตัว C ที่น้าขอมาได้ เอามาใส่ตรงนี้เลยครับ
-                    messages: [{
-                        type: 'text',
-                        text: `🎉 ระบบฝากเงินออโต้สำเร็จ!\n👤 คุณ ${usersWallets[foundUserId].name} (สมาชิกที่ ${usersWallets[foundUserId].memberNumber})\n💰 เติมเครดิต: +${queueData.rawAmount} บาท\n──────────────────\n💳 ยอดเครดิตสุทธิ: ${usersWallets[foundUserId].balance} บาท\n🏁 ขอให้สนุกกับการเล่นค่ะ!`
-                    }]
-                }, {
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` }
-                });
-            } catch (pushErr) {
-                console.error("❌ พ่นแจ้งเตือนเข้ากลุ่มล้มเหลว:", pushErr.message);
-            }
-
-        } else {
-            console.log(`❌ ไม่พบยอดฝากตรงกับคิว ${bankAmount} บาท ในระบบตอนนี้`);
-        }
-    }
-    return res.sendStatus(200); // บอก LINE ว่าระบบทำงานเสร็จแล้ว
-}
+            }                
 
                 // ==================== [ คำสั่งแอดมิน: ชถ (เช็กรายการรอถอนเงินทั้งหมด) ] ====================
             else if (userMsg.trim() === 'ชถ') {

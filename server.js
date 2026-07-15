@@ -156,10 +156,9 @@ app.post('/callback', async (req, res) => {
         if (userMsg === 'ฝาก') {
             // โค้ดสร้างใบสั่งฝากเงินเดิมของน้า...
         }
-        
-    } // จบ loop event
+        } // จบ loop event
     return res.sendStatus(200);
-});
+        
 
         if (event.type === 'message' && event.message.type === 'image') {
             const replyToken = event.replyToken;
@@ -267,10 +266,11 @@ app.post('/callback', async (req, res) => {
                     console.error("❌ ระบบแจ้งเตือนรูปสลิปล้มเหลว:", err.message);
                 }
                 return res.sendStatus(200); 
-            }
+            }       
+}
             
             return res.sendStatus(200);
-        }
+        });
         if (event.type === 'message' && event.message.type === 'text') {
             const replyToken = event.replyToken;
             const userId = event.source.userId; 

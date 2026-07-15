@@ -7,33 +7,33 @@ const app = express();
 app.use(express.json());
 global.currentReplyFlex = null; 
 
-// 💡 ไม่ต้องใส่ Token ในนี้แล้ว ระบบจะดึงจากตัวแปรบน Render อัตโนมัติ
+// 💡 ดึง Token จาก Environment Variables บน Render
 const TOKEN = process.env.CHANNEL_ACCESS_TOKEN;
 
-// 👥 [กล่องรวม ID แอดมินกลาง] มีแอดมินเพิ่มมาใส่เพิ่มตรงนี้ที่เดียวจบเลยครับน้า!
+// 👥 กล่องรวม ID แอดมินกลาง
 const ADMIN_IDS = [
-    "U2fb9233e5c539ae3970cbd698e2e18db", // แอดมินคนที่ 1
-    "Uf48148ba5a3bfd14d4e81213daf56ef4" // แอดมินคนที่ 2
+    "U2fb9233e5c539ae3970cbd698e2e18db", 
+    "Uf48148ba5a3bfd14d4e81213daf56ef4" 
 ];
 
-// 📡 ลิงก์เชื่อมโยงไปยังฐานข้อมูล Firebase ถาวร 
+// 📡 ลิงก์ฐานข้อมูล Firebase
 const FIREBASE_URL = "https://my-pokdeng-bot-default-rtdb.asia-southeast1.firebasedatabase.app/"; 
 
 let usersWallets = {};
 let nextMemberId = 1;
-let isRoundOpen = false; // ตัวแปรจำสถานะ เปิด/ปิด รอบ
-let roundBets = {};      // ตัวแปรสำหรับจำโพยแทงในแต่ละรอบ
-let currentRound = 0;    // บรรทัดนี้เพื่อจำลำดับรอบปัจจุบัน
-let isDrawOpen = false;  // บรรทัดนี้เพื่อเช็กสถานะรอบจั่วไพ่
-let tempRoomResults = null; // ใช้พักข้อมูลผลแต้มชั่วคราวที่แอดมินพึ่งพิมพ์ส่งมา
-let tempDealerResult = null; // ใช้พักข้อมูลผลแต้มของเจ้ามือชั่วคราว
-let matchHistory = []; // เก็บประวัติสถิติย้อนหลังสูงสุด 5 รอบ
-let detailedRoundHistory = {}; // ตัวแปรเก็บข้อมูลสำหรับแอดมินดึงย้อนหลัง
-let pastRoundsData = {}; //  ถังเก็บประวัติโพยและผลไพ่แยกรายรอบ (สำหรับดึง v,m)
-let withdrawQueue = []; // 📦 ถังสำหรับเก็บคิวสมาชิกที่แจ้งถอนเงิน
-let usersRoundCrossCheck = {}; // 🌟 เพิ่มบรรทัดนี้ไว้บนสุดของไฟล์
+let isRoundOpen = false; 
+let roundBets = {};      
+let currentRound = 0;    
+let isDrawOpen = false;  
+let tempRoomResults = null; 
+let tempDealerResult = null; 
+let matchHistory = []; 
+let detailedRoundHistory = {}; 
+let pastRoundsData = {}; 
+let withdrawQueue = []; 
+let usersRoundCrossCheck = {}; 
 
-// 🔄 ฟังก์ชันอัตโนมัติ: ดึงข้อมูลจาก Firebase มาอัปเดตลงในบอททันทีที่เปิดเครื่อง
+// 🔄 ฟังก์ชันอัตโนมัติ: ดึงข้อมูลจาก Firebase
 async function loadDataFromFirebase() {
     try {
         const response = await axios.get(`${FIREBASE_URL}system_data.json`);
@@ -54,22 +54,22 @@ async function loadDataFromFirebase() {
         console.error("❌ ไม่สามารถดึงข้อมูลจาก Firebase ได้:", error.message);
     }
 }
-loadDataFromFirebase(); // สั่งให้ทำงานทันทีที่บอทรัน
+loadDataFromFirebase();
 
-// 💾 ฟังก์ชันอัตโนมัติ: สั่งบันทึกข้อมูลปัจจุบันยิงกลับไปเก็บที่ตึก Firebase
+// 💾 ฟังก์ชันอัตโนมัติ: บันทึกข้อมูลลง Firebase
 async function saveDataToFirebase() {
     try {
         await axios.put(`${FIREBASE_URL}system_data.json`, {
             usersWallets: usersWallets,
             nextMemberId: nextMemberId,
-            isRoundOpen: isRoundOpen,         // 💾 จำสถานะ เปิด/ปิด รอบ
-            roundBets: roundBets,             // 💾 จำโพยแทงในแต่ละรอบ
-            currentRound: currentRound,       // 💾 จำลำดับรอบปัจจุบัน
-            isDrawOpen: isDrawOpen,           // 💾 จำสถานะรอบจั่วไพ่
-            matchHistory: matchHistory,       // 💾 จำประวัติสถิติย้อนหลัง 5 รอบ
-            detailedRoundHistory: detailedRoundHistory, // 💾 จำข้อมูลแอดมินดึงย้อนหลัง
-            pastRoundsData: pastRoundsData,   // 💾 จำประวัติโพยและผลไพ่แยกรายรอบ (v,m)
-            withdrawQueue: withdrawQueue       // 💾 จำคิวสมาชิกที่แจ้งถอนเงิน
+            isRoundOpen: isRoundOpen,         
+            roundBets: roundBets,             
+            currentRound: currentRound,       
+            isDrawOpen: isDrawOpen,           
+            matchHistory: matchHistory,       
+            detailedRoundHistory: detailedRoundHistory, 
+            pastRoundsData: pastRoundsData,   
+            withdrawQueue: withdrawQueue       
         });
         console.log("💾 บันทึกข้อมูลลง Firebase เรียบร้อย!");
     } catch (error) {
@@ -83,12 +83,11 @@ app.post('/callback', async (req, res) => {
     if (!events) return res.sendStatus(200);
 
     for (let event of events) {
-        // ดึงข้อความและ Token ออกมาเตรียมใช้งาน
         const userMsg = event.message && event.message.text ? event.message.text.trim() : null;
         const replyToken = event.replyToken;
         const userId = event.source.userId;
 
-        // ==================== [ ⭐ ระบบดักเงินเข้าออโต้ (แกะไส้ UID) ⭐ ] ====================
+        // ==================== [ ⭐ ระบบดักเงินเข้าออโต้ ] ====================
         if (userMsg && userMsg.startsWith('KDeposit')) {
             console.log(`🤖 บอทได้รับข้อความ KDeposit แล้ว: "${userMsg}"`);
             
@@ -103,7 +102,6 @@ app.post('/callback', async (req, res) => {
                     const allDepositData = response.data; 
                     
                     if (allDepositData) {
-                        // 🔑 ค้นหารหัส UID ตัวแรกที่ซ่อนอยู่ในยอดเงินนั้นตามที่เห็นบนจอ Firebase
                         const firstUserIdKey = Object.keys(allDepositData)[0];
                         const depositData = allDepositData[firstUserIdKey]; 
                         
@@ -121,7 +119,7 @@ app.post('/callback', async (req, res) => {
                                     delete global.depositQueue[targetUserId];
                                 }
                                 
-                                await axios.delete(targetUrl); // ลบยอดจองทิ้งทั้งก้อนกันเวียนซ้ำ
+                                await axios.delete(targetUrl); 
                                 
                                 try {
                                     await axios.post('https://api.line.me/v2/bot/message/reply', {
@@ -146,24 +144,17 @@ app.post('/callback', async (req, res) => {
                     console.error("ระบบดักยอดเงินเข้าเกิดข้อผิดพลาด", err);
                 }
             }
-            continue; // จบงานนี้ให้ข้ามไปทำข้อความถัดไปทันที
+            continue; 
         }
 
-        // =================================================================
-        // 📸 [ระบบฟิวชั่น ร่างอัปเกรดเตือนภัย] ดักจับรูปภาพสลิป
-        // =================================================================
+        // ==================== [ 📸 ระบบดักจับรูปภาพสลิป ] ====================
         if (event.message && event.message.type === 'image') {
             console.log("📸 ผู้เล่นส่งรูปภาพเข้ามาในห้องแชท");
-            // น้าสามารถเขียนโค้ดดาวน์โหลดรูปสลิป หรือยิงแจ้งเตือนแอดมินตรงนี้ได้เลยครับ
         }
 
-        // 📌 ตรงนี้ปล่อยให้ระบบเดิมของน้าทำต่อได้เลยครับ
+        // 📌 ระบบตรวจโพยเดิมของน้า
         if (userMsg === 'ฝาก') {
-            // โค้ดสร้างใบสั่งฝากเงิน/สร้าง QR Code ของน้า...
-        }
-        
-        if (userMsg && userMsg.startsWith('แทง')) {
-            // โค้ดระบบแทงของน้า...
+            // โค้ดสร้างใบสั่งฝากเงินเดิมของน้า...
         }
         
     } // จบ loop event
@@ -173,6 +164,7 @@ app.post('/callback', async (req, res) => {
 // ส่วนเปิดพอร์ตท้ายไฟล์
 app.get('/', (req, res) => { res.send('ระบบลงทะเบียนรันปกติ'); });
 app.listen(process.env.PORT || 3000, () => { console.log('Server is running...'); });
+
         if (event.type === 'message' && event.message.type === 'image') {
             const replyToken = event.replyToken;
             const userId = event.source.userId;

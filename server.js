@@ -359,16 +359,80 @@ app.post('/callback', async (req, res) => {
                         // 💾 3. บันทึกลง Firebase ถาวรทันที
                         await saveDataToFirebase();
 
-                        // 💬 4. ยิงข้อความประกาศความยินดีเข้ากลุ่มไลน์ (แบบ Push Message ปลอดภัยไม่ใช้ replyToken)
+                       // 💬 4. ยิง Flex Message ประกาศความยินดีเข้ากลุ่มไลน์ (แบบหรูหรา ธีมเขียวนีออน-ดำ)
                         try {
-                            await axios.post('https://api.line.me/v2/bot/message/push', {
-                                to: "Cbf8eb92a5bcfbaa418b3c49bf14c2ac7", // 👈 ไอดีกลุ่มไลน์น้า
-                                messages: [
-                                    {
-                                        "type": "text",
-                                        "text": `🎉 ระบบฝากเงินออโต้สำเร็จ!\n👤 คุณ ${usersWallets[foundUserId].name} (สมาชิกที่ ${usersWallets[foundUserId].memberNumber})\n💰 เติมเครดิต: +${matchedQueue.rawAmount} บาท\n──────────────────\n💳 ยอดเครดิตปัจจุบัน: ${usersWallets[foundUserId].balance} บาท\n🏁 ขอให้สนุกกับการเล่นค่ะ!`
+                            const depositSuccessFlex = {
+                                "type": "flex",
+                                "altText": `🎉 ฝากเงินออโต้สำเร็จ +${matchedQueue.rawAmount} บาท`,
+                                "contents": {
+                                    "type": "bubble",
+                                    "styles": {
+                                        "body": { "backgroundColor": "#0d1b15" },
+                                        "footer": { "backgroundColor": "#09120e" }
+                                    },
+                                    "body": {
+                                        "type": "box",
+                                        "layout": "vertical",
+                                        "spacing": "md",
+                                        "contents": [
+                                            { "type": "text", "text": "🎉 ฝากเงินออโต้สำเร็จ!", "weight": "bold", "color": "#00ff88", "size": "md", "align": "center" },
+                                            { "type": "separator", "color": "#183327" },
+                                            {
+                                                "type": "box",
+                                                "layout": "vertical",
+                                                "spacing": "sm",
+                                                "contents": [
+                                                    {
+                                                        "type": "box",
+                                                        "layout": "horizontal",
+                                                        "contents": [
+                                                            { "type": "text", "text": "👤 ลูกค้า:", "size": "sm", "color": "#8caf9c" },
+                                                            { "type": "text", "text": `คุณ ${usersWallets[foundUserId].name}`, "size": "sm", "color": "#ffffff", "weight": "bold", "align": "end" }
+                                                        ]
+                                                    },
+                                                    {
+                                                        "type": "box",
+                                                        "layout": "horizontal",
+                                                        "contents": [
+                                                            { "type": "text", "text": "🆔 สมาชิกเลขที่:", "size": "sm", "color": "#8caf9c" },
+                                                            { "type": "text", "text": `${usersWallets[foundUserId].memberNumber}`, "size": "sm", "color": "#ffffff", "weight": "bold", "align": "end" }
+                                                        ]
+                                                    },
+                                                    {
+                                                        "type": "box",
+                                                        "layout": "horizontal",
+                                                        "contents": [
+                                                            { "type": "text", "text": "💰 เติมเครดิต:", "size": "sm", "color": "#8caf9c" },
+                                                            { "type": "text", "text": `+${matchedQueue.rawAmount} บาท`, "size": "md", "color": "#00ff88", "weight": "bold", "align": "end" }
+                                                        ]
+                                                    }
+                                                ]
+                                            },
+                                            { "type": "separator", "color": "#183327" },
+                                            {
+                                                "type": "box",
+                                                "layout": "horizontal",
+                                                "contents": [
+                                                    { "type": "text", "text": "💳 เครดิตสุทธิ:", "size": "sm", "color": "#ffffff" },
+                                                    { "type": "text", "text": `${usersWallets[foundUserId].balance} บาท`, "size": "md", "color": "#00ff88", "weight": "bold", "align": "end" }
+                                                ]
+                                            }
+                                        ]
+                                    },
+                                    "footer": {
+                                        "type": "box",
+                                        "layout": "vertical",
+                                        "contents": [
+                                            { "type": "text", "text": "🏁 เครดิตเข้าแล้ว ขอให้สนุกกับการเดิมพันค่ะ! 🃏", "size": "xs", "color": "#aaaaaa", "align": "center" }
+                                        ]
                                     }
-                                ]
+                                }
+                            };
+
+                            // ยิงประกาศเข้ากลุ่มหลักของน้า
+                            await axios.post('https://api.line.me/v2/bot/message/push', {
+                                to: "Cbf8eb92a5bcfbaa418b3c49bf14c2ac7", // ไอดีกลุ่ม LINE ของน้า
+                                messages: [depositSuccessFlex]
                             }, {
                                 headers: {
                                     'Content-Type': 'application/json',
@@ -376,7 +440,7 @@ app.post('/callback', async (req, res) => {
                                 }
                             });
                         } catch (pushErr) {
-                            console.error("❌ ส่งข้อความแจ้งเตือนฝากออโต้ล้มเหลว:", pushErr.message);
+                            console.error("❌ ส่ง Flex ฝากออโต้ลงกลุ่มล้มเหลว:", pushErr.message);
                         }
                     } else {
                         console.log(`⚠️ พบยอดโอนตรงในคิว แต่ยูสเซอร์ ${foundUserId} ไม่มีกระเป๋าเงินในระบบ`);

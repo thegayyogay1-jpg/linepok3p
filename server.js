@@ -361,7 +361,7 @@ app.post('/callback', async (req, res) => {
                         // 💬 4. ยิงข้อความประกาศความยินดีเข้ากลุ่มไลน์
                         try {
                             await axios.post('https://api.line.me/v2/bot/message/push', {
-                                to: "Cxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", // 👈 ใส่ไอดีกลุ่ม LINE ของน้าตรงนี้ครับ
+                                to: "Cbf8eb92a5bcfbaa418b3c49bf14c2ac7", // 👈 ใส่ไอดีกลุ่ม LINE ของน้าตรงนี้ครับ
                                 messages: [
                                     {
                                         "type": "text",

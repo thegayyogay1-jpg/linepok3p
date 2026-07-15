@@ -37,35 +37,6 @@ app.post('/callback', async (req, res) => {
 
         if (!userMsg) continue;
 
-        // ==================== [ 🛠️ คำสั่งพิเศษสำหรับขอ ID กลุ่ม และ UID ] ====================
-        if (userMsg === "ขอไอดี") {
-            let replyText = "";
-            
-            // 1. เช็กว่าพิมพ์ในกลุ่มไหม ถ้าพิมพ์ในกลุ่มให้ดึง Group ID ออกมา
-            if (event.source.type === 'group') {
-                replyText += `👥 ไอดีกลุ่มนี้คือ:\n👉 ${event.source.groupId}\n\n`;
-            } else {
-                replyText += `👤 อันนี้พิมพ์ในแชทส่วนตัว ไม่ใช่กลุ่มจ้า\n\n`;
-            }
-            
-            // 2. แถม UID ส่วนตัวของน้าไปให้ด้วยเลย
-            replyText += `👤 ไอดีของคุณ (UID):\n👉 ${userId}`;
-
-            // 3. สั่งให้บอทยิงตอบกลับ
-            try {
-                await axios.post('https://api.line.me/v2/bot/message/reply', {
-                    replyToken: replyToken,
-                    messages: [{ "type": "text", "text": replyText }]
-                }, {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${TOKEN}`
-                    }
-                });
-            } catch (e) { console.error("❌ ส่งข้อความคำสั่งขอไอดีล้มเหลว:", e.message); }
-            continue; // ทำงานจบแล้วข้ามไปอีเวนต์ถัดไป
-        }
-
         // ==================== [ 🌟 สเต็ปที่ 1: ลูกค้าพิมพ์ "ฝาก XXX" ] ====================
         if (userMsg.startsWith('ฝาก')) {
             const amountMatch = userMsg.match(/ฝาก\s*([0-9]+)/);
@@ -149,7 +120,7 @@ app.post('/callback', async (req, res) => {
                         // 💬 ส่งข้อความยินดีด้วยไปที่กลุ่มหลัก
                         try {
                             await axios.post('https://api.line.me/v2/bot/message/push', {
-                                to: "Cxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", // 👈 พอน้าได้ไอดีกลุ่มตัว C มาแล้ว เอามาเปลี่ยนตรงนี้แทนเลยครับน้า!
+                                to: "Cbf8eb92a5bcfbaa418b3c49bf14c2ac7", // 👈 พอน้าได้ไอดีกลุ่มตัว C มาแล้ว เอามาเปลี่ยนตรงนี้แทนเลยครับน้า!
                                 messages: [
                                     {
                                         "type": "text",

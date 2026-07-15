@@ -2,10 +2,10 @@ const express = require('express');
 const promptPayQr = require('promptpay-qr');
 const QRCode = require('qrcode');
 const axios = require('axios');
-const fs = require('fs'); // 📁 เติมตรงนี้เพื่อให้ระบบรู้จักการเขียนไฟล์ลงเครื่องครับน้า
+const fs = require('fs'); 
 const app = express();
 app.use(express.json());
-global.currentReplyFlex = null; // 👈 แทรกบรรทัดนี้ลงไปตรงนี้ครับ
+global.currentReplyFlex = null; 
 
 // 💡 ไม่ต้องใส่ Token ในนี้แล้ว ระบบจะดึงจากตัวแปรบน Render อัตโนมัติ
 const TOKEN = process.env.CHANNEL_ACCESS_TOKEN;
@@ -33,7 +33,7 @@ let pastRoundsData = {}; //  ถังเก็บประวัติโพย
 let withdrawQueue = []; // 📦 ถังสำหรับเก็บคิวสมาชิกที่แจ้งถอนเงิน
 let usersRoundCrossCheck = {}; // 🌟 เพิ่มบรรทัดนี้ไว้บนสุดของไฟล์
 
-// 🔄 ฟังก์ชันอัตโนมัติ: ดึงข้อมูลจาก Firebase มาอัปเดตลงในบอททันทีที่เปิดเครื่อง (แก้ไขดึงครบทุกกล่องแล้ว)
+// 🔄 ฟังก์ชันอัตโนมัติ: ดึงข้อมูลจาก Firebase มาอัปเดตลงในบอททันทีที่เปิดเครื่อง
 async function loadDataFromFirebase() {
     try {
         const response = await axios.get(`${FIREBASE_URL}system_data.json`);
@@ -76,84 +76,19 @@ async function saveDataToFirebase() {
         console.error("❌ บันทึกข้อมูลลง Firebase ล้มเหลว:", error.message);
     }
 }
-// ตรวจดูให้ชัวร์ว่าตรงนี้สะกดแบบนี้ app.post('/callback', async (req, res) => {
+
+// 📡 LINE Webhook Endpoint
 app.post('/callback', async (req, res) => {
     const events = req.body.events;
     if (!events) return res.sendStatus(200);
 
     for (let event of events) {
-        // ดึงข้อความมาเตรียมใช้งาน
+        // ดึงข้อความและ Token ออกมาเตรียมใช้งาน
         const userMsg = event.message && event.message.text ? event.message.text.trim() : null;
         const replyToken = event.replyToken;
         const userId = event.source.userId;
 
-        // ==================== [ ⭐ ระบบดักเงินเข้าออโต้ (วางไว้ในลูป) ⭐ ] ====================
-        if (userMsg && userMsg.startsWith('KDeposit')) {
-            const match = userMsg.match(/([0-9]+\.[0-9]{2})/);
-            if (match) {
-                const detectedAmountStr = match[1]; 
-                const depositKey = detectedAmountStr.replace('.', '_'); 
-                const targetUrl = `${FIREBASE_URL}pending_deposits/${depositKey}.json`;
-                
-                try {
-                    // ดึงข้อมูลยอดฝาก (รอบนี้ใช้ await ได้แน่นอนเพราะอยู่ใน async ฟังก์ชันแล้ว)
-                    const response = await axios.get(targetUrl);
-                    const allDepositData = response.data;
-                    
-                    if (allDepositData) {
-                        // แกะไส้ในดึง UID ของลูกค้าตามโครงสร้าง Firebase ของน้า
-                        const firstUserIdKey = Object.keys(allDepositData)[0];
-                        const depositData = allDepositData[firstUserIdKey];
-                        
-                        if (depositData) {
-                            const targetUserId = depositData.userId;
-                            const creditToDeposit = depositData.amount; 
-                            
-                            if (usersWallets[targetUserId]) {
-                                usersWallets[targetUserId].balance += creditToDeposit;
-                                await saveDataToFirebase(); 
-                                
-                                if (global.depositQueue && global.depositQueue[targetUserId]) {
-                                    delete global.depositQueue[targetUserId];
-                                }
-                                
-                                await axios.delete(targetUrl); // ลบยอดจองทิ้ง
-                                
-                                // ตอบกลับเข้าไปใน LINE
-                                await axios.post('https://api.line.me/v2/bot/message/reply', {
-                                    replyToken: replyToken,
-                                    messages: [{
-                                        "type": "text",
-                                        "text": `✅ [ระบบออโต้] เติมเครดิตให้คุณ ${usersWallets[targetUserId].name} จำนวน +${creditToDeposit} บ. สำเร็จแล้วครับ!`
-                                    }]
-                                }, { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` } });
-                            }
-                        }
-                    }
-                } catch (err) {
-                    console.error("ระบบดักยอดเงินเกิดข้อผิดพลาด", err);
-                }
-            }
-            continue; // 🟢 จบงานนี้ ให้ข้ามไปอีเวนต์ถัดไป ไม่ให้ไหลลงไปโดนโค้ดตรวจโพยข้างล่าง
-        }
-        // ===========================================================================
-
-        // 📌 [โค้ดเดิมของน้า] ระบบตรวจโพย หรือ พิมพ์คำว่า 'ฝาก' จะอยู่ต่อตรงนี้
-        if (userMsg === 'ฝาก') {
-            // โค้ดสร้างใบสั่งฝากเงินเดิมของน้า...
-        }
-
-    } // 🟢 ปิดลูปสำหรับ event (for)
-    return res.sendStatus(200);
-}); // 🟢 ปิดแอป callback
-
-// 3. ส่วนเปิดพอร์ตท้ายไฟล์
-app.get('/', (req, res) => { res.send('ระบบลงทะเบียนรันปกติ'); });
-app.listen(process.env.PORT || 3000, () => { console.log('Server is running...'); });
-
-    for (let event of events) {
-
-       // ==================== [ ⭐ ระบบดักเงินเข้าออโต้ วางไว้บนสุด ⭐ ] ====================
+        // ==================== [ ⭐ ระบบดักเงินเข้าออโต้ (แกะไส้ UID) ⭐ ] ====================
         if (userMsg && userMsg.startsWith('KDeposit')) {
             console.log(`🤖 บอทได้รับข้อความ KDeposit แล้ว: "${userMsg}"`);
             
@@ -161,18 +96,16 @@ app.listen(process.env.PORT || 3000, () => { console.log('Server is running...')
             if (match) {
                 const detectedAmountStr = match[1]; 
                 const depositKey = detectedAmountStr.replace('.', '_'); 
-                
-                // 🌐 วิ่งไปดึงข้อมูลที่ห้องยอดเงินตรงๆ (ซึ่งจะได้ข้อมูลที่มี UID ซ่อนอยู่ข้างใน)
                 const targetUrl = `${FIREBASE_URL}pending_deposits/${depositKey}.json`;
                 
                 try {
                     const response = await axios.get(targetUrl);
-                    const allDepositData = response.data; // ตรงนี้จะได้ก้อนข้อมูล { "U2fb9233e5c539...": { amount: 500, userId: "..." } }
+                    const allDepositData = response.data; 
                     
                     if (allDepositData) {
-                        // 🔑 ค้นหารหัส UID ตัวแรกที่ซ่อนอยู่ในยอดเงินนั้น
+                        // 🔑 ค้นหารหัส UID ตัวแรกที่ซ่อนอยู่ในยอดเงินนั้นตามที่เห็นบนจอ Firebase
                         const firstUserIdKey = Object.keys(allDepositData)[0];
-                        const depositData = allDepositData[firstUserIdKey]; // แกะไส้ในของคนจองออกมา
+                        const depositData = allDepositData[firstUserIdKey]; 
                         
                         if (depositData) {
                             const targetUserId = depositData.userId;
@@ -180,20 +113,16 @@ app.listen(process.env.PORT || 3000, () => { console.log('Server is running...')
                             
                             console.log(`✅ เจอยอดจองชั้นในแล้ว! UID: ${targetUserId} | ยอดเติม: ${creditToDeposit}`);
                             
-                            // 2. เติมเครดิตให้ลูกค้า
                             if (usersWallets[targetUserId]) {
                                 usersWallets[targetUserId].balance += creditToDeposit;
                                 await saveDataToFirebase(); 
                                 
-                                // เคลียร์คิวล็อกเดิม
                                 if (global.depositQueue && global.depositQueue[targetUserId]) {
                                     delete global.depositQueue[targetUserId];
                                 }
                                 
-                                // 3. ลบยอดจองฝากทิ้งทั้งก้อนป้องกันการเวียนซ้ำ
-                                await axios.delete(targetUrl);
+                                await axios.delete(targetUrl); // ลบยอดจองทิ้งทั้งก้อนกันเวียนซ้ำ
                                 
-                                // 4. แจ้งเตือนสลิปเติมสำเร็จเข้าไปในไลน์
                                 try {
                                     await axios.post('https://api.line.me/v2/bot/message/reply', {
                                         replyToken: replyToken,
@@ -217,24 +146,33 @@ app.listen(process.env.PORT || 3000, () => { console.log('Server is running...')
                     console.error("ระบบดักยอดเงินเข้าเกิดข้อผิดพลาด", err);
                 }
             }
-            continue; 
+            continue; // จบงานนี้ให้ข้ามไปทำข้อความถัดไปทันที
         }
-        // ===========================================================================
 
-        // 📌 ตรงนี้ปล่อยให้ระบบเดิมของน้าทำต่อได้เลยครับ เช่น:
-        // if (userMsg === 'ฝาก') { ... }
-        // if (userMsg.startsWith('แทง')) { ... }
+        // =================================================================
+        // 📸 [ระบบฟิวชั่น ร่างอัปเกรดเตือนภัย] ดักจับรูปภาพสลิป
+        // =================================================================
+        if (event.message && event.message.type === 'image') {
+            console.log("📸 ผู้เล่นส่งรูปภาพเข้ามาในห้องแชท");
+            // น้าสามารถเขียนโค้ดดาวน์โหลดรูปสลิป หรือยิงแจ้งเตือนแอดมินตรงนี้ได้เลยครับ
+        }
+
+        // 📌 ตรงนี้ปล่อยให้ระบบเดิมของน้าทำต่อได้เลยครับ
+        if (userMsg === 'ฝาก') {
+            // โค้ดสร้างใบสั่งฝากเงิน/สร้าง QR Code ของน้า...
+        }
+        
+        if (userMsg && userMsg.startsWith('แทง')) {
+            // โค้ดระบบแทงของน้า...
+        }
         
     } // จบ loop event
     return res.sendStatus(200);
 });
 
-// ส่วนเปิดพอร์ตของน้าตอนท้ายไฟล์
+// ส่วนเปิดพอร์ตท้ายไฟล์
 app.get('/', (req, res) => { res.send('ระบบลงทะเบียนรันปกติ'); });
 app.listen(process.env.PORT || 3000, () => { console.log('Server is running...'); });
-      // =================================================================
-        // 📸 [ระบบฟิวชั่น ร่างอัปเกรดเตือนภัย] ดักจับรูปภาพสลิป + เตือนแอดมินถ้าส่งช้าเกิน 5 นาที
-        // =================================================================
         if (event.type === 'message' && event.message.type === 'image') {
             const replyToken = event.replyToken;
             const userId = event.source.userId;

@@ -7,7 +7,7 @@ const TOKEN = process.env.CHANNEL_ACCESS_TOKEN;
 
 // 👥 1. กระเป๋าเงินจำลอง
 let mockUsersWallets = {
-    "U2fb9233e5c539ae3970cbd698e2e18db": { // 👈 ใส่ UID จริงของน้าตรงนี้ครับ
+    "U2fb9233e5c539ae3970cbd698e2e18db": { // 👈 อย่าลืมเปลี่ยนเป็น UID ของน้าหากต้องการเพิ่มเครดิตเข้าไอดีนี้
         name: "น้า (ผู้ทดสอบ)",
         balance: 100
     }
@@ -36,32 +36,35 @@ app.post('/callback', async (req, res) => {
         const userId = event.source.userId;
 
         if (!userMsg) continue;
-        // คำสั่งพิเศษสำหรับขอ ID กลุ่มและ UID ของคนพิมพ์
-if (userMessage === "ขอไอดี") {
-    let replyText = "";
-    
-    // 1. เช็กว่าพิมพ์ในกลุ่มไหม ถ้าพิมพ์ในกลุ่มให้ดึง Group ID ออกมา
-    if (event.source.type === 'group') {
-        replyText += `👥 ไอดีกลุ่มนี้คือ:\n👉 ${event.source.groupId}\n\n`;
-    } else {
-        replyText += `👤 อันนี้พิมพ์ในแชทส่วนตัว ไม่ใช่กลุ่มจ้า\n\n`;
-    }
-    
-    // 2. แถม UID ส่วนตัวของน้าไปให้ด้วยเลย
-    replyText += `👤 ไอดีของคุณ (UID):\n👉 ${event.source.userId}`;
 
-    // 3. สั่งให้บอทยิงตอบกลับหาคนที่พิมพ์ในแชทนั้นทันที
-    await axios.post('https://api.line.me/v2/bot/message/reply', {
-        replyToken: event.replyToken,
-        messages: [{ "type": "text", "text": replyText }]
-    }, {
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${process.env.CHANNEL_ACCESS_TOKEN}` // ใส่โทเค็นบอทของน้า
+        // ==================== [ 🛠️ คำสั่งพิเศษสำหรับขอ ID กลุ่ม และ UID ] ====================
+        if (userMsg === "ขอไอดี") {
+            let replyText = "";
+            
+            // 1. เช็กว่าพิมพ์ในกลุ่มไหม ถ้าพิมพ์ในกลุ่มให้ดึง Group ID ออกมา
+            if (event.source.type === 'group') {
+                replyText += `👥 ไอดีกลุ่มนี้คือ:\n👉 ${event.source.groupId}\n\n`;
+            } else {
+                replyText += `👤 อันนี้พิมพ์ในแชทส่วนตัว ไม่ใช่กลุ่มจ้า\n\n`;
+            }
+            
+            // 2. แถม UID ส่วนตัวของน้าไปให้ด้วยเลย
+            replyText += `👤 ไอดีของคุณ (UID):\n👉 ${userId}`;
+
+            // 3. สั่งให้บอทยิงตอบกลับ
+            try {
+                await axios.post('https://api.line.me/v2/bot/message/reply', {
+                    replyToken: replyToken,
+                    messages: [{ "type": "text", "text": replyText }]
+                }, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${TOKEN}`
+                    }
+                });
+            } catch (e) { console.error("❌ ส่งข้อความคำสั่งขอไอดีล้มเหลว:", e.message); }
+            continue; // ทำงานจบแล้วข้ามไปอีเวนต์ถัดไป
         }
-    });
-    return;
-}
 
         // ==================== [ 🌟 สเต็ปที่ 1: ลูกค้าพิมพ์ "ฝาก XXX" ] ====================
         if (userMsg.startsWith('ฝาก')) {
@@ -71,7 +74,6 @@ if (userMessage === "ขอไอดี") {
                 const baseAmount = parseInt(amountMatch[1]); // ยอดเงินหลัก เช่น 500
                 
                 if (baseAmount < 10) {
-                    // ป้องกันโอนต่ำเกินไป
                     try {
                         await axios.post('https://api.line.me/v2/bot/message/reply', {
                             replyToken: replyToken,
@@ -114,7 +116,6 @@ if (userMessage === "ขอไอดี") {
                 }
 
             } else {
-                // ลูกค้าพิมพ์ฝากลอย ๆ ไม่มีตัวเลข
                 try {
                     await axios.post('https://api.line.me/v2/bot/message/reply', {
                         replyToken: replyToken,
@@ -131,27 +132,25 @@ if (userMessage === "ขอไอดี") {
             
             const match = userMsg.match(/([0-9]+\.[0-9]{2})/);
             if (match) {
-                const bankAmount = parseFloat(match[1]); // ยอดที่ธนาคารแจ้งโอนเข้า เช่น 500.12
+                const bankAmount = parseFloat(match[1]); // ยอดที่ธนาคารแจ้งโอนเข้า
                 console.log(`🔍 ค้นหาใบสั่งฝากในแรมที่ตรงกับยอด: ${bankAmount} บาท...`);
 
-                // ค้นหาใบสั่งฝากที่มียอดเงินตรงกันในแรม
                 const orderIndex = depositOrders.findIndex(order => order.amount === bankAmount);
 
                 if (orderIndex !== -1) {
                     const matchedOrder = depositOrders[orderIndex];
                     const targetUserId = matchedOrder.userId;
 
-                    // 💳 ทำการเติมเครดิตในแรมทันที!
+                    // 💳 ทำการเติมเครดิตในแรม
                     if (mockUsersWallets[targetUserId]) {
                         mockUsersWallets[targetUserId].balance += bankAmount;
                         console.log(`✅ [จับคู่สำเร็จ] เติมเงินให้คุณ ${mockUsersWallets[targetUserId].name} จำนวน ${bankAmount} บาท!`);
 
-                        // 💬 ส่งข้อความยินดีด้วยไปหาลูกค้าคนนั้น
+                        // 💬 ส่งข้อความยินดีด้วยไปที่กลุ่มหลัก
                         try {
-                            // ใช้การส่งแบบ Push Message (ส่งหาลูกค้าโดยตรง ไม่ต้องรอ Reply Token เพราะนี่คือแจ้งเตือนธนาคารวิ่งมาชน)
                             await axios.post('https://api.line.me/v2/bot/message/push', {
-    to: "Cxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", // 👈 เอา Group ID (ที่ขึ้นต้นด้วยตัว C) มาใส่ตรงนี้แทนครับ
-    messages: [
+                                to: "Cxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", // 👈 พอน้าได้ไอดีกลุ่มตัว C มาแล้ว เอามาเปลี่ยนตรงนี้แทนเลยครับน้า!
+                                messages: [
                                     {
                                         "type": "text",
                                         "text": `🎉 ระบบได้รับยอดเงินโอน ${bankAmount} บาท เรียบร้อยแล้วค่ะ!\n👤 เติมเครดิตให้คุณ: ${mockUsersWallets[targetUserId].name}\n💳 เครดิตคงเหลือปัจจุบัน: ${mockUsersWallets[targetUserId].balance} บาท`
@@ -162,14 +161,14 @@ if (userMessage === "ขอไอดี") {
                             console.error("❌ ส่งข้อความ Push ยินดีด้วยล้มเหลว:", err.message);
                         }
 
-                        // 🗑️ ลบใบสั่งฝากชิ้นนี้ออกจากแรม เพื่อป้องกันการเติมเงินซ้ำซ้อน
+                        // 🗑️ ลบใบสั่งฝากชิ้นนี้ออกจากแรม
                         depositOrders.splice(orderIndex, 1);
 
                     } else {
                         console.log(`⚠️ พบยอดโอนตรง แต่ UID ${targetUserId} ไม่มีกระเป๋าเงินจำลองรองรับ`);
                     }
                 } else {
-                    console.log(`❌ ไม่พบใบสั่งฝากเงินในระบบที่ตรงกับยอด ${bankAmount} บาท (อาจจะหมดอายุ หรือโอนมาไม่ตรงเศษสตางค์)`);
+                    console.log(`❌ ไม่พบใบสั่งฝากเงินในระบบที่ตรงกับยอด ${bankAmount} บาท`);
                 }
             }
             continue;

@@ -322,7 +322,7 @@ app.post('/callback', async (req, res) => {
             let replyText = ""; 
             const args = originalMsg.split(/\s+/); 
             const command = args[0]; // ดึงคำแรก เช่น เติม หรือ ลบ
-        }
+        
         // ==================== [ 🤖 ระบบดักจับแจ้งเตือนธนาคารและอัปยอดออโต้ ] ====================
         if (userMsg.startsWith('KDeposit')) {
             console.log(`🤖 บอทได้รับแจ้งเตือนธนาคารจาก MacroDroid: "${userMsg}"`);

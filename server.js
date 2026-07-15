@@ -98,6 +98,32 @@ app.post('/callback', async (req, res) => {
             }
             continue;
         }
+        // คำสั่งพิเศษสำหรับขอ ID กลุ่มและ UID ของคนพิมพ์
+if (userMessage === "ขอไอดี") {
+    let replyText = "";
+    
+    // 1. เช็กว่าพิมพ์ในกลุ่มไหม ถ้าพิมพ์ในกลุ่มให้ดึง Group ID ออกมา
+    if (event.source.type === 'group') {
+        replyText += `👥 ไอดีกลุ่มนี้คือ:\n👉 ${event.source.groupId}\n\n`;
+    } else {
+        replyText += `👤 อันนี้พิมพ์ในแชทส่วนตัว ไม่ใช่กลุ่มจ้า\n\n`;
+    }
+    
+    // 2. แถม UID ส่วนตัวของน้าไปให้ด้วยเลย
+    replyText += `👤 ไอดีของคุณ (UID):\n👉 ${event.source.userId}`;
+
+    // 3. สั่งให้บอทยิงตอบกลับหาคนที่พิมพ์ในแชทนั้นทันที
+    await axios.post('https://api.line.me/v2/bot/message/reply', {
+        replyToken: event.replyToken,
+        messages: [{ "type": "text", "text": replyText }]
+    }, {
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.CHANNEL_ACCESS_TOKEN}` // ใส่โทเค็นบอทของน้า
+        }
+    });
+    return;
+}
 
         // ==================== [ 🌟 สเต็ปที่ 2: ดักแจ้งเตือนธนาคาร (KDeposit) และตรวจคู่ยอด ] ====================
         if (userMsg.startsWith('KDeposit')) {
@@ -124,8 +150,8 @@ app.post('/callback', async (req, res) => {
                         try {
                             // ใช้การส่งแบบ Push Message (ส่งหาลูกค้าโดยตรง ไม่ต้องรอ Reply Token เพราะนี่คือแจ้งเตือนธนาคารวิ่งมาชน)
                             await axios.post('https://api.line.me/v2/bot/message/push', {
-                                to: targetUserId,
-                                messages: [
+    to: "Cxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", // 👈 เอา Group ID (ที่ขึ้นต้นด้วยตัว C) มาใส่ตรงนี้แทนครับ
+    messages: [
                                     {
                                         "type": "text",
                                         "text": `🎉 ระบบได้รับยอดเงินโอน ${bankAmount} บาท เรียบร้อยแล้วค่ะ!\n👤 เติมเครดิตให้คุณ: ${mockUsersWallets[targetUserId].name}\n💳 เครดิตคงเหลือปัจจุบัน: ${mockUsersWallets[targetUserId].balance} บาท`

@@ -3,99 +3,155 @@ const axios = require('axios');
 const app = express();
 app.use(express.json());
 
-// 💡 ดึง Token จาก Environment Variables บน Render ของน้า
 const TOKEN = process.env.CHANNEL_ACCESS_TOKEN;
 
-// 👥 จำลองกระเป๋าเงินจำลอง (ไม่ต้องเชื่อม Firebase สำหรับทดสอบ)
+// 👥 1. กระเป๋าเงินจำลอง
 let mockUsersWallets = {
-    // ใส่ User ID LINE ของน้าตรงนี้เพื่อทดสอบเติมเงินเข้าตัวเองได้เลยครับ
-    "U2fb9233e5c539ae3970cbd698e2e18db": {
+    "Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx": { // 👈 ใส่ UID จริงของน้าตรงนี้ครับ
         name: "น้า (ผู้ทดสอบ)",
         balance: 100
     }
 };
 
-// 📡 LINE Webhook Endpoint สำหรับทดสอบดักจับแจ้งเตือน
+// 📝 2. กล่องเก็บรายการใบสั่งฝากเงินจำลอง (ในแรม)
+let depositOrders = []; 
+
+// ฟังก์ชันล้างใบสั่งฝากเงินที่หมดอายุ (เกิน 5 นาที)
+function cleanExpiredOrders() {
+    const now = Date.now();
+    depositOrders = depositOrders.filter(order => order.expireAt > now);
+}
+
+// 📡 LINE Webhook
 app.post('/callback', async (req, res) => {
     const events = req.body.events;
     if (!events) return res.sendStatus(200);
 
+    // ล้างใบฝากหมดอายุก่อนเริ่มทำงาน
+    cleanExpiredOrders();
+
     for (let event of events) {
-        // ดึงข้อความแชท
         const userMsg = event.message && event.message.text ? event.message.text.trim() : null;
         const replyToken = event.replyToken;
         const userId = event.source.userId;
 
-        // ==================== [ ⭐ ระบบดักเงินเข้า KDeposit ⭐ ] ====================
-        if (userMsg && userMsg.startsWith('KDeposit')) {
-            console.log(`🤖 บอททดสอบได้รับข้อความแจ้งเตือน: "${userMsg}"`);
-            
-            // ดักจับตัวเลขยอดเงิน เช่น KDeposit: 50.00 หรือ ยอดเงินเข้า 50.00 บาท
-            const match = userMsg.match(/([0-9]+\.[0-9]{2})/);
-            
-            if (match) {
-                const detectedAmount = parseFloat(match[1]); // แปลงข้อความเป็นตัวเลขทศนิยม เช่น 50.00
-                console.log(`💰 ตรวจพบยอดเงินโอนเข้าจำนวน: ${detectedAmount} บาท`);
+        if (!userMsg) continue;
 
-                // 🎯 [ระบบเทส] เนื่องจากยังไม่ต่อ Firebase จะถือว่าเติมเครดิตให้คนที่พิมพ์หรือส่งข้อความเข้ามาโดยตรง
-                if (mockUsersWallets[userId]) {
-                    // ทำการบวกเครดิตในตัวแปรจำลอง
-                    mockUsersWallets[userId].balance += detectedAmount;
-                    
-                    console.log(`✅ เติมเงินจำลองสำเร็จ! บัญชี: ${mockUsersWallets[userId].name} | ยอดเดิม: ${mockUsersWallets[userId].balance - detectedAmount} | ยอดใหม่: ${mockUsersWallets[userId].balance}`);
-
-                    // ยิงข้อความตอบกลับเข้า LINE ทันทีเพื่อทดสอบว่าระบบตอบสนองไหม
+        // ==================== [ 🌟 สเต็ปที่ 1: ลูกค้าพิมพ์ "ฝาก XXX" ] ====================
+        if (userMsg.startsWith('ฝาก')) {
+            const amountMatch = userMsg.match(/ฝาก\s*([0-9]+)/);
+            
+            if (amountMatch) {
+                const baseAmount = parseInt(amountMatch[1]); // ยอดเงินหลัก เช่น 500
+                
+                if (baseAmount < 10) {
+                    // ป้องกันโอนต่ำเกินไป
                     try {
                         await axios.post('https://api.line.me/v2/bot/message/reply', {
                             replyToken: replyToken,
-                            messages: [
-                                {
-                                    "type": "text",
-                                    "text": `🤖 [บอททดสอบออโต้]\n✅ ตรวจพบยอดโอนเงินจำนวน: ${detectedAmount} บาท!\n👤 เติมให้คุณ: ${mockUsersWallets[userId].name}\n💳 เครดิตจำลองปัจจุบันของคุณคือ: ${mockUsersWallets[userId].balance} บาท`
-                                }
-                            ]
-                        }, { 
-                            headers: { 
-                                'Content-Type': 'application/json', 
-                                'Authorization': `Bearer ${TOKEN}` 
-                            } 
-                        });
-                        console.log("✉️ ยิงข้อความทดสอบกลับเข้า LINE สำเร็จแล้ว!");
-                    } catch (lineErr) {
-                        console.error("❌ ส่งข้อความทดสอบกลับ LINE ล้มเหลว:", lineErr.response ? lineErr.response.data : lineErr.message);
+                            messages: [{ "type": "text", "text": "❌ ระบบฝากขั้นต่ำ 10 บาทค่ะ" }]
+                        }, { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` } });
+                    } catch (e) { console.error(e); }
+                    continue;
+                }
+
+                // 🎲 สุ่มเศษสตางค์ .01 ถึง .99
+                const randomSatang = Math.floor(Math.random() * 99) + 1; 
+                const finalAmount = parseFloat(`${baseAmount}.${randomSatang < 10 ? '0' + randomSatang : randomSatang}`);
+
+                // 🕒 สร้างเวลาหมดอายุ (5 นาทีนับจากนี้)
+                const expireMinutes = 5;
+                const expireAt = Date.now() + (expireMinutes * 60 * 1000);
+
+                // 💾 บันทึกใบสั่งฝากชั่วคราวลงในแรม
+                depositOrders.push({
+                    userId: userId,
+                    amount: finalAmount,
+                    expireAt: expireAt
+                });
+
+                console.log(`📝 สร้างใบฝากเงินสำเร็จ: ยอด ${finalAmount} บาท สำหรับ UID: ${userId}`);
+
+                // 💬 ยิงข้อความบอกยอดเศษสตางค์ให้ลูกค้าโอน
+                try {
+                    await axios.post('https://api.line.me/v2/bot/message/reply', {
+                        replyToken: replyToken,
+                        messages: [
+                            {
+                                "type": "text",
+                                "text": `💰 โอนเงินฝากเครดิต 💰\n\n⚠️ กรุณาโอนยอดเงินตรงเป๊ะ:\n👉 ${finalAmount} บาท 👈\n\n(ระบบจะเติมเครดิตให้อัตโนมัติทันที)\n⏳ ต้องโอนภายใน ${expireMinutes} นาทีเท่านั้นนะคะ!`
+                            }
+                        ]
+                    }, { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` } });
+                } catch (lineErr) {
+                    console.error("❌ ยิงข้อความแจ้งยอดโอนล้มเหลว:", lineErr.message);
+                }
+
+            } else {
+                // ลูกค้าพิมพ์ฝากลอย ๆ ไม่มีตัวเลข
+                try {
+                    await axios.post('https://api.line.me/v2/bot/message/reply', {
+                        replyToken: replyToken,
+                        messages: [{ "type": "text", "text": "💡 กรุณาระบุจำนวนเงินที่ต้องการฝาก เช่น พิมพ์ว่า: ฝาก 500" }]
+                    }, { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` } });
+                } catch (e) { console.error(e); }
+            }
+            continue;
+        }
+
+        // ==================== [ 🌟 สเต็ปที่ 2: ดักแจ้งเตือนธนาคาร (KDeposit) และตรวจคู่ยอด ] ====================
+        if (userMsg.startsWith('KDeposit')) {
+            console.log(`🤖 บอทได้รับแจ้งเตือนธนาคาร: "${userMsg}"`);
+            
+            const match = userMsg.match(/([0-9]+\.[0-9]{2})/);
+            if (match) {
+                const bankAmount = parseFloat(match[1]); // ยอดที่ธนาคารแจ้งโอนเข้า เช่น 500.12
+                console.log(`🔍 ค้นหาใบสั่งฝากในแรมที่ตรงกับยอด: ${bankAmount} บาท...`);
+
+                // ค้นหาใบสั่งฝากที่มียอดเงินตรงกันในแรม
+                const orderIndex = depositOrders.findIndex(order => order.amount === bankAmount);
+
+                if (orderIndex !== -1) {
+                    const matchedOrder = depositOrders[orderIndex];
+                    const targetUserId = matchedOrder.userId;
+
+                    // 💳 ทำการเติมเครดิตในแรมทันที!
+                    if (mockUsersWallets[targetUserId]) {
+                        mockUsersWallets[targetUserId].balance += bankAmount;
+                        console.log(`✅ [จับคู่สำเร็จ] เติมเงินให้คุณ ${mockUsersWallets[targetUserId].name} จำนวน ${bankAmount} บาท!`);
+
+                        // 💬 ส่งข้อความยินดีด้วยไปหาลูกค้าคนนั้น
+                        try {
+                            // ใช้การส่งแบบ Push Message (ส่งหาลูกค้าโดยตรง ไม่ต้องรอ Reply Token เพราะนี่คือแจ้งเตือนธนาคารวิ่งมาชน)
+                            await axios.post('https://api.line.me/v2/bot/message/push', {
+                                to: targetUserId,
+                                messages: [
+                                    {
+                                        "type": "text",
+                                        "text": `🎉 ระบบได้รับยอดเงินโอน ${bankAmount} บาท เรียบร้อยแล้วค่ะ!\n👤 เติมเครดิตให้คุณ: ${mockUsersWallets[targetUserId].name}\n💳 เครดิตคงเหลือปัจจุบัน: ${mockUsersWallets[targetUserId].balance} บาท`
+                                    }
+                                ]
+                            }, { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` } });
+                        } catch (err) {
+                            console.error("❌ ส่งข้อความ Push ยินดีด้วยล้มเหลว:", err.message);
+                        }
+
+                        // 🗑️ ลบใบสั่งฝากชิ้นนี้ออกจากแรม เพื่อป้องกันการเติมเงินซ้ำซ้อน
+                        depositOrders.splice(orderIndex, 1);
+
+                    } else {
+                        console.log(`⚠️ พบยอดโอนตรง แต่ UID ${targetUserId} ไม่มีกระเป๋าเงินจำลองรองรับ`);
                     }
                 } else {
-                    console.log(`⚠️ ไม่พบประวัติบัญชีทดสอบสำหรับ UserId: ${userId} (กรุณาเอา UID นี้ไปใส่ใน mockUsersWallets ด้านบน)`);
-                    
-                    // แจ้งเตือนบอก UID ให้แอดมินรู้เพื่อเอาไปลงทะเบียนเทส
-                    try {
-                        await axios.post('https://api.line.me/v2/bot/message/reply', {
-                            replyToken: replyToken,
-                            messages: [
-                                {
-                                    "type": "text",
-                                    "text": `⚠️ ไม่พบกระเป๋าเงินทดสอบของคุณในระบบ\nรหัส UID ของคุณคือ:\n${userId}\n\n(ให้น้าก๊อปรหัสนี้ไปแปะในตัวแปร mockUsersWallets แถวบรรทัดที่ 11 ในโค้ดก่อนนะครับถึงจะทดสอบเติมเข้าตัวเองได้)`
-                                }
-                            ]
-                        }, { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` } });
-                    } catch (err) { console.error(err); }
+                    console.log(`❌ ไม่พบใบสั่งฝากเงินในระบบที่ตรงกับยอด ${bankAmount} บาท (อาจจะหมดอายุ หรือโอนมาไม่ตรงเศษสตางค์)`);
                 }
-            } else {
-                console.log("🔍 ตรวจสอบข้อความ KDeposit แล้ว แต่ไม่พบตัวเลขยอดทศนิยมที่ถูกต้อง");
             }
-            continue; // ทำงานนี้เสร็จ ข้ามไปวนลูปข้อความถัดไปทันที
+            continue;
         }
-        // ===========================================================================
-        
+
     } // จบลูป event
     return res.sendStatus(200);
 });
 
-// 🌐 ส่วนเปิดพอร์ตเชื่อมต่อ (วางไว้ล่างสุดของไฟล์เสมอ)
-app.get('/', (req, res) => { 
-    res.send('บอททดสอบระบบฝากเงินออโต้วิ่งปกติจ้า'); 
-});
-
-app.listen(process.env.PORT || 3000, () => { 
-    console.log('Test Server is running...'); 
-});
+app.get('/', (req, res) => { res.send('บอททดสอบระบบฝากเงินแบบเช็กเศษสตางค์ รันปกติจ้า'); });
+app.listen(process.env.PORT || 3000, () => { console.log('Full-Flow Test Server is running...'); });

@@ -161,10 +161,6 @@ app.post('/callback', async (req, res) => {
     return res.sendStatus(200);
 });
 
-// ส่วนเปิดพอร์ตท้ายไฟล์
-app.get('/', (req, res) => { res.send('ระบบลงทะเบียนรันปกติ'); });
-app.listen(process.env.PORT || 3000, () => { console.log('Server is running...'); });
-
         if (event.type === 'message' && event.message.type === 'image') {
             const replyToken = event.replyToken;
             const userId = event.source.userId;
@@ -3279,9 +3275,6 @@ if (userMsg === '3' || userMsg === '2' || userMsg === '1') {
 });
 
 app.get('/', (req, res) => { res.send('ระบบลงทะเบียนรันปกติ'); });
-
-app.listen(process.env.PORT || 3000, () => { 
-    console.log('Server is running...'); 
-});
+app.listen(process.env.PORT || 3000, () => { console.log('Server is running...'); });
 // เปิดทางให้เข้าถึงไฟล์รูปภาพสลิปที่เซฟไว้ในเครื่องได้ตรงๆ
 app.use(express.static(__dirname));

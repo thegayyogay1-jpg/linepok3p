@@ -7,7 +7,7 @@ const TOKEN = process.env.CHANNEL_ACCESS_TOKEN;
 
 // 👥 1. กระเป๋าเงินจำลอง
 let mockUsersWallets = {
-    "Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx": { // 👈 ใส่ UID จริงของน้าตรงนี้ครับ
+    "U2fb9233e5c539ae3970cbd698e2e18db": { // 👈 ใส่ UID จริงของน้าตรงนี้ครับ
         name: "น้า (ผู้ทดสอบ)",
         balance: 100
     }

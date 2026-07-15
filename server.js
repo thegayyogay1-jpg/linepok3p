@@ -270,7 +270,7 @@ app.post('/callback', async (req, res) => {
 }
             
             return res.sendStatus(200);
-        });
+}
         if (event.type === 'message' && event.message.type === 'text') {
             const replyToken = event.replyToken;
             const userId = event.source.userId; 

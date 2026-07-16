@@ -2576,12 +2576,12 @@ else if (userMsg === 'คส' || userMsg === 'กต' || userMsg === 'บช' ||
                         
                         await saveDataToFirebase(); // เซฟถาวรลง Firebase
 
-                        // 🔔 [เพิ่มใหม่] ส่งการ์ดแจ้งถอนเงิน+ปุ่มลัด เข้าแชทส่วนตัวของแอดมินโดยตรง
-                        const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db"; // 👈 ใส่ไอดีไลน์ส่วนตัวของน้าตรงนี้ครับ
+                       // 🔔 [อัปเดตการ์ดแจ้งถอน] ดึงข้อมูลธนาคารและเลขบัญชีขึ้นโชว์ในการ์ดแอดมินทันที
+                        const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db"; // ไอดีไลน์ส่วนตัวของน้า
                         
                         const adminWithdrawAlertFlex = {
                             "type": "flex",
-                            "altText": `🚨 มีรายการแจ้งถอนใหม่! สมาชิกที่ ${user.memberNumber}`,
+                            "altText": `🚨 แจ้งถอนใหม่! คุณ ${user.name} ยอด ${withdrawAmount} บาท`,
                             "contents": {
                                 "type": "bubble",
                                 "styles": {
@@ -2593,7 +2593,7 @@ else if (userMsg === 'คส' || userMsg === 'กต' || userMsg === 'บช' ||
                                     "type": "box",
                                     "layout": "vertical",
                                     "contents": [
-                                        { "type": "text", "text": "🔔 มีรายการแจ้งถอนเงินใหม่!", "weight": "bold", "color": "#d4af37", "size": "md", "align": "center" }
+                                        { "type": "text", "text": "🚨 มีรายการแจ้งถอนเงินใหม่!", "weight": "bold", "color": "#ff3b47", "size": "md", "align": "center" }
                                     ]
                                 },
                                 "body": {
@@ -2621,12 +2621,29 @@ else if (userMsg === 'คส' || userMsg === 'กต' || userMsg === 'บช' ||
                                             "type": "box",
                                             "layout": "horizontal",
                                             "contents": [
-                                                { "type": "text", "text": "💰 ยอดเงินในคิว:", "size": "sm", "color": "#ffffff", "weight": "bold" },
-                                                { "type": "text", "text": `${withdrawAmount.toLocaleString()} บาท`, "size": "md", "color": "#00ff88", "weight": "bold", "align": "end" }
+                                                { "type": "text", "text": "🏦 ธนาคาร:", "size": "sm", "color": "#8e8e93" },
+                                                { "type": "text", "text": `${user.bankName || "ไม่ได้ระบุ"}`, "size": "sm", "color": "#ffffff", "weight": "bold", "align": "end" }
                                             ]
                                         },
-                                        { "type": "separator", "margin": "md", "color": "#3a3a3c" },
-                                        { "type": "text", "text": "💡 แอดมินตรวจสอบยอดเงินในแอปธนาคารแล้วโอนเงินให้สมาชิก จากนั้นกดปุ่มลัดด้านล่างเพื่อทำการอนุมัติรายการได้ทันทีครับ", "color": "#aaaaaa", "size": "xs", "wrap": true, "margin": "sm" }
+                                        {
+                                            "type": "box",
+                                            "layout": "horizontal",
+                                            "contents": [
+                                                { "type": "text", "text": "💳 เลขบัญชี:", "size": "sm", "color": "#8e8e93" },
+                                                { "type": "text", "text": `${user.bankAccount || "ไม่ได้ระบุ"}`, "size": "sm", "color": "#00bfff", "weight": "bold", "align": "end" }
+                                            ]
+                                        },
+                                        { "type": "separator", "margin": "sm", "color": "#3a3a3c" },
+                                        {
+                                            "type": "box",
+                                            "layout": "horizontal",
+                                            "contents": [
+                                                { "type": "text", "text": "💰 ยอดเงินที่ถอน:", "size": "sm", "color": "#ffffff", "weight": "bold" },
+                                                { "type": "text", "text": `${withdrawAmount.toLocaleString()} บาท`, "size": "md", "color": "#ff3b47", "weight": "bold", "align": "end" }
+                                            ]
+                                        },
+                                        { "type": "separator", "margin": "sm", "color": "#3a3a3c" },
+                                        { "type": "text", "text": "💡 น้าก๊อปปี้เลขบัญชีด้านบนไปโอนเงินได้เลยครับ โอนเสร็จแล้วกดปุ่มลัดด้าน bawah เพื่ออนุมัติรายการตัดยอดได้ทันที!", "color": "#aaaaaa", "size": "xs", "wrap": true, "margin": "sm" }
                                     ]
                                 },
                                 "footer": {
@@ -2642,7 +2659,7 @@ else if (userMsg === 'คส' || userMsg === 'กต' || userMsg === 'บช' ||
                                             "action": {
                                                 "type": "message",
                                                 "label": "✅ อนุมัติโอนเงินสำเร็จ (y)",
-                                                "text": `y ${user.memberNumber}` // 🎯 เมื่อกดปุ่มนี้ บอทจะพิมพ์คำสั่งอนุมัติให้ระบบน้าทำงานทันที
+                                                "text": `y ${user.memberNumber}`
                                             }
                                         }
                                     ]

@@ -2576,7 +2576,7 @@ else if (userMsg === 'คส' || userMsg === 'กต' || userMsg === 'บช' ||
                         
                         await saveDataToFirebase(); // เซฟถาวรลง Firebase
 
-                       // 🔔 [อัปเดตการ์ดแจ้งถอน] ดึงข้อมูลธนาคารและเลขบัญชีขึ้นโชว์ในการ์ดแอดมินทันที
+                       // 🔔 [อัปเดตขั้นสุด] ดึงข้อมูลธนาคาร เลขบัญชี และเครดิตสุทธิคงเหลือในระบบขึ้นโชว์ในการ์ดแอดมิน
                         const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db"; // ไอดีไลน์ส่วนตัวของน้า
                         
                         const adminWithdrawAlertFlex = {
@@ -2633,17 +2633,25 @@ else if (userMsg === 'คส' || userMsg === 'กต' || userMsg === 'บช' ||
                                                 { "type": "text", "text": `${user.bankAccount || "ไม่ได้ระบุ"}`, "size": "sm", "color": "#00bfff", "weight": "bold", "align": "end" }
                                             ]
                                         },
-                                        { "type": "separator", "margin": "sm", "color": "#3a3a3c" },
+                                        { "type": "separator", "margin": "xs", "color": "#3a3a3c" },
                                         {
                                             "type": "box",
                                             "layout": "horizontal",
                                             "contents": [
-                                                { "type": "text", "text": "💰 ยอดเงินที่ถอน:", "size": "sm", "color": "#ffffff", "weight": "bold" },
+                                                { "type": "text", "text": "💰 เงินรวมในระบบ:", "size": "sm", "color": "#ffaa00", "weight": "bold" },
+                                                { "type": "text", "text": `${user.balance.toLocaleString()} บาท`, "size": "sm", "color": "#ffaa00", "weight": "bold", "align": "end" }
+                                            ]
+                                        },
+                                        {
+                                            "type": "box",
+                                            "layout": "horizontal",
+                                            "contents": [
+                                                { "type": "text", "text": "💸 ยอดที่แจ้งถอน:", "size": "sm", "color": "#ffffff", "weight": "bold" },
                                                 { "type": "text", "text": `${withdrawAmount.toLocaleString()} บาท`, "size": "md", "color": "#ff3b47", "weight": "bold", "align": "end" }
                                             ]
                                         },
-                                        { "type": "separator", "margin": "sm", "color": "#3a3a3c" },
-                                        { "type": "text", "text": "💡 น้าก๊อปปี้เลขบัญชีด้านบนไปโอนเงินได้เลยครับ โอนเสร็จแล้วกดปุ่มลัดด้าน bawah เพื่ออนุมัติรายการตัดยอดได้ทันที!", "color": "#aaaaaa", "size": "xs", "wrap": true, "margin": "sm" }
+                                        { "type": "separator", "margin": "xs", "color": "#3a3a3c" },
+                                        { "type": "text", "text": "💡 ตรวจสอบยอด 'เงินรวมในระบบ' เทียบกับ 'ยอดที่แจ้งถอน' ให้เรียบร้อยก่อนกดอนุมัตินะครับน้า", "color": "#aaaaaa", "size": "xs", "wrap": true, "margin": "sm" }
                                     ]
                                 },
                                 "footer": {

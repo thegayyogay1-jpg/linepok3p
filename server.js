@@ -2576,6 +2576,92 @@ else if (userMsg === 'คส' || userMsg === 'กต' || userMsg === 'บช' ||
                         
                         await saveDataToFirebase(); // เซฟถาวรลง Firebase
 
+                        // 🔔 [เพิ่มใหม่] ส่งการ์ดแจ้งถอนเงิน+ปุ่มลัด เข้าแชทส่วนตัวของแอดมินโดยตรง
+                        const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db"; // 👈 ใส่ไอดีไลน์ส่วนตัวของน้าตรงนี้ครับ
+                        
+                        const adminWithdrawAlertFlex = {
+                            "type": "flex",
+                            "altText": `🚨 มีรายการแจ้งถอนใหม่! สมาชิกที่ ${user.memberNumber}`,
+                            "contents": {
+                                "type": "bubble",
+                                "styles": {
+                                    "header": { "backgroundColor": "#141416" },
+                                    "body": { "backgroundColor": "#1e1e22" },
+                                    "footer": { "backgroundColor": "#141416" }
+                                },
+                                "header": {
+                                    "type": "box",
+                                    "layout": "vertical",
+                                    "contents": [
+                                        { "type": "text", "text": "🔔 มีรายการแจ้งถอนเงินใหม่!", "weight": "bold", "color": "#d4af37", "size": "md", "align": "center" }
+                                    ]
+                                },
+                                "body": {
+                                    "type": "box",
+                                    "layout": "vertical",
+                                    "spacing": "sm",
+                                    "contents": [
+                                        {
+                                            "type": "box",
+                                            "layout": "horizontal",
+                                            "contents": [
+                                                { "type": "text", "text": "🆔 สมาชิกเด่น:", "size": "sm", "color": "#8e8e93" },
+                                                { "type": "text", "text": `ลำดับที่ ${user.memberNumber}`, "size": "sm", "color": "#ffffff", "weight": "bold", "align": "end" }
+                                            ]
+                                        },
+                                        {
+                                            "type": "box",
+                                            "layout": "horizontal",
+                                            "contents": [
+                                                { "type": "text", "text": "👤 ชื่อลูกค้า:", "size": "sm", "color": "#8e8e93" },
+                                                { "type": "text", "text": `คุณ ${user.name}`, "size": "sm", "color": "#ffffff", "weight": "bold", "align": "end" }
+                                            ]
+                                        },
+                                        {
+                                            "type": "box",
+                                            "layout": "horizontal",
+                                            "contents": [
+                                                { "type": "text", "text": "💰 ยอดเงินในคิว:", "size": "sm", "color": "#ffffff", "weight": "bold" },
+                                                { "type": "text", "text": `${withdrawAmount.toLocaleString()} บาท`, "size": "md", "color": "#00ff88", "weight": "bold", "align": "end" }
+                                            ]
+                                        },
+                                        { "type": "separator", "margin": "md", "color": "#3a3a3c" },
+                                        { "type": "text", "text": "💡 แอดมินตรวจสอบยอดเงินในแอปธนาคารแล้วโอนเงินให้สมาชิก จากนั้นกดปุ่มลัดด้านล่างเพื่อทำการอนุมัติรายการได้ทันทีครับ", "color": "#aaaaaa", "size": "xs", "wrap": true, "margin": "sm" }
+                                    ]
+                                },
+                                "footer": {
+                                    "type": "box",
+                                    "layout": "vertical",
+                                    "spacing": "sm",
+                                    "contents": [
+                                        {
+                                            "type": "button",
+                                            "style": "primary",
+                                            "color": "#00aa5b",
+                                            "height": "sm",
+                                            "action": {
+                                                "type": "message",
+                                                "label": "✅ อนุมัติโอนเงินสำเร็จ (y)",
+                                                "text": `y ${user.memberNumber}` // 🎯 เมื่อกดปุ่มนี้ บอทจะพิมพ์คำสั่งอนุมัติให้ระบบน้าทำงานทันที
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        };
+
+                        // ยิงการ์ดตรงเข้าแชทส่วนตัวแอดมิน
+                        try {
+                            await axios.post('https://api.line.me/v2/bot/message/push', {
+                                to: ADMIN_ID,
+                                messages: [adminWithdrawAlertFlex]
+                            }, {
+                                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` }
+                            });
+                        } catch (err) {
+                            console.error("❌ ส่งแจ้งถอนเข้าแชทส่วนตัวแอดมินล้มเหลว:", err.message);
+                        }
+
                         // 🏆 ประกอบร่างกล่อง Flex Message แจ้งถอนเงิน สีดำ-ทอง วิ่งตรงเข้าตัวแปร Global
                         global.currentReplyFlex = {
                             type: "flex",

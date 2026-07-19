@@ -1892,7 +1892,7 @@ else if (originalMsg.startsWith('>')) {
         const dealerResult = parseCardStr(dealerRawStr, true, false);
 
         let roomResults = {}; 
-        const totalLegsToSend = Math.min(parts.length - 1, 6);
+        const totalLegsToSend = Math.min(parts.length - 1, 4);
 
         // 🔄 วนลูปแกะรหัสผู้เล่นรายขา
         for (let i = 0; i < totalLegsToSend; i++) {
@@ -1939,7 +1939,7 @@ else if (originalMsg.startsWith('>')) {
         // --- 📊 [ส่วนสร้างโครงสร้างข้อมูลจัดระเบียบส่งเข้า Flex Message] ---
         let legsFlexContents = [];
 
-        for (let leg = 1; leg <= 6; leg++) {
+        for (let leg = 1; leg <= 4; leg++) {
             if (roomResults[leg]) {
                 const res = roomResults[leg];
                 

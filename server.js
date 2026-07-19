@@ -1383,7 +1383,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                         }
                         let betTracker = usersRoundCrossCheck[userId];
 
-                        const allowedLegs = ['1', '2', '3', '4', '5', '6'];
+                        const allowedLegs = ['1', '2', '3', '4'];
                         const MIN_BET = 10;
                         const MAX_BET = 2500;
 
@@ -1417,9 +1417,9 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                             let betTypeDetail = "";
 
                             if (targetStr === "มข") {
-                                legsCount = 6;
-                                betTypeDetail = `เหมาขาผู้เล่นสู้เจ้ามือ (6 ขา) ขาละ ${price} บาท`;
-                                for (let c = 1; c <= 6; c++) {
+                                legsCount = 4;
+                                betTypeDetail = `เหมาขาผู้เล่นสู้เจ้ามือ (4 ขา) ขาละ ${price} บาท`;
+                                for (let c = 1; c <= 4; c++) {
                                     if (betTracker[c] && betTracker[c] === 'dealer') {
                                         hasError = true;
                                         errorMsg = `❌ แทง มข ไม่ได้! ขา ${c} มีการแทงฝั่งเจ้ามือค้างไว้แล้วในรอบนี้`;
@@ -1427,12 +1427,12 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                                     }
                                 }
                                 if (hasError) break; 
-                                for (let c = 1; c <= 6; c++) { betTracker[c] = 'player'; }
+                                for (let c = 1; c <= 4; c++) { betTracker[c] = 'player'; }
                                 
                             } else if (targetStr === "มจ") {
-                                legsCount = 6;
-                                betTypeDetail = `แทงเจ้ามือสู้ทุกขา (6 ขา) ขาละ ${price} บาท`;
-                                for (let c = 1; c <= 6; c++) {
+                                legsCount = 4;
+                                betTypeDetail = `แทงเจ้ามือสู้ทุกขา (4 ขา) ขาละ ${price} บาท`;
+                                for (let c = 1; c <= 4; c++) {
                                     if (betTracker[c] && betTracker[c] === 'player') {
                                         hasError = true;
                                         errorMsg = `❌ แทง มจ ไม่ได้! ขา ${c} มีการแทงฝั่งผู้เล่นค้างไว้แล้วในรอบนี้`;
@@ -1440,7 +1440,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                                     }
                                 }
                                 if (hasError) break; 
-                                for (let c = 1; c <= 6; c++) { betTracker[c] = 'dealer'; }
+                                for (let c = 1; c <= 4; c++) { betTracker[c] = 'dealer'; }
                             } else if (targetStr.startsWith('จ')) {
                                 const legs = targetStr.substring(1);
                                 if (legs === "") { 
@@ -1452,7 +1452,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                                 let isLegsValid = legs.split('').every(char => allowedLegs.includes(char));
                                 if (!isLegsValid) {
                                     hasError = true;
-                                    errorMsg = `❌ บันทึกโพยล้มเหลว! ห้องนี้มีแค่ ขา 1 ถึง ขา 6 เท่านั้นครับ\n(พบข้อผิดพลาดที่ขาเจ้ามือ: "${line}")`;
+                                    errorMsg = `❌ บันทึกโพยล้มเหลว! ห้องนี้มีแค่ ขา 1 ถึง ขา 4 เท่านั้นครับ\n(พบข้อผิดพลาดที่ขาเจ้ามือ: "${line}")`;
                                     break;
                                 }
                                 
@@ -1473,7 +1473,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                                 let isLegsValid = targetStr.split('').every(char => allowedLegs.includes(char));
                                 if (!isLegsValid) {
                                     hasError = true;
-                                    errorMsg = `❌ บันทึกโพยล้มเหลว! ห้องนี้มีแค่ ขา 1 ถึง ขา 6 เท่านั้นครับ\n(พบข้อผิดพลาดที่ขาผู้เล่น: "${line}")`;
+                                    errorMsg = `❌ บันทึกโพยล้มเหลว! ห้องนี้มีแค่ ขา 1 ถึง ขา 4 เท่านั้นครับ\n(พบข้อผิดพลาดที่ขาผู้เล่น: "${line}")`;
                                     break;
                                 }
                                 legsCount = targetStr.length;
@@ -1751,7 +1751,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                             legsToDraw.forEach((leg) => {
                                 let hasThisLeg = false;
                                 if (bet.betType === "มข") {
-                                    hasThisLeg = ['1', '2', '3', '4', '5', '6'].includes(leg);
+                                    hasThisLeg = ['1', '2', '3', '4'].includes(leg);
                                 } else {
                                     hasThisLeg = bet.betType.includes(leg);
                                 }
@@ -2078,7 +2078,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                     // แกะข้อมูลตามประเภทโพย (เช่น "1", "มข", "จ12")
                     let legsToCalculate = [];
                     if (bet.betType === "มข" || bet.betType === "มจ") {
-                        legsToCalculate = ['1', '2', '3', '4', '5', '6'];
+                        legsToCalculate = ['1', '2', '3', '4'];
                     } else if (bet.betType.startsWith('จ')) {
                         legsToCalculate = bet.betType.substring(1).split('');
                     } else {

@@ -2873,6 +2873,7 @@ else if (command.toLowerCase() === "y") {
                     if (userMsg === 'สมัคร' || originalMsg.startsWith('C/') || originalMsg.startsWith('c/')) {
                         
                         // 🔗 ลิงก์ที่แก้ตัวแปร userId ให้ส่งค่าไอดีจริงไปหน้าเว็บเรียบร้อยครับน้า
+                        const userId = event.source.userId;
                         const registerUrl = `https://liff.line.me/2010761995-NNRUGId3?botUid=${userId}`;
 
                         try {

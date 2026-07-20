@@ -2864,6 +2864,7 @@ else if (command.toLowerCase() === "y") {
                     }
                 }
             }
+        }
           // ==================== [ 7. ระบบลงทะเบียน / เช็กบัตรสมาชิก (กรณีทั่วไป) ] ====================
 else {
     const senderUserId = event.source.userId;

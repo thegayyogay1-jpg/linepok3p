@@ -2945,7 +2945,7 @@ else {
             return res.sendStatus(200);
         }
         
-        // 📥 3. [เพิ่มใหม่เพื่ออุดรอยรั่ว] ถ้าคนยังไม่สมัครพิมพ์อย่างอื่นที่ไม่ใช่โค้ดและคำว่าสมัคร
+        // 📥 3. ถ้าคนยังไม่สมัครพิมพ์อย่างอื่นที่ไม่ใช่โค้ดและคำว่าสมัคร
         else {
             await axios.post('https://api.line.me/v2/bot/message/reply', {
                 replyToken: replyToken,

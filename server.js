@@ -1900,7 +1900,7 @@ else if (originalMsg.startsWith('>')) {
             let result3Cards = null;
 
             // 🔥 [ใช้ระบบ RegEx ชำแหละข้อความขั้นสูง] แยกกลุ่มตัวเลขและเครื่องหมายสแลชออกจากกัน
-            const match = innerContent.match(/^([0-9tshfตร]\/*)([0-9tshfตร]\/*)$/i);
+            const match = innerContent.match(/^([0-9tshfตร]+(?:\/*))([0-9tshfตร]+(?:\/*))$/i);
 
             if (match) {
                 // ผ่าแยกฝั่งซ้าย (2 ใบ) และ ฝั่งขวา (3 ใบ) ออกจากกันแบบเด็ดขาดร้อยเปอร์เซ็นต์!

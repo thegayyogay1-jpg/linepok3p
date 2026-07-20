@@ -2864,114 +2864,126 @@ else if (command.toLowerCase() === "y") {
                     }
                 }
             }
-          // ==================== [ 7. ระบบลงทะเบียน / เช็กบัตรสมาชิก (กรณีทั่วไป) ] ====================
-else {
-    const senderUserId = event.source.userId;
-    const isRegistered = usersWallets[senderUserId] ? true : false;
+       // ==================== [ 7. ระบบเปิดใช้งานบัญชีผ่านโค้ดยืนยันจากหน้าเว็บ ] ====================
+            else if (originalMsg.toLowerCase().startsWith('c/')) {
+                // 🛡️ เช็กก่อนว่าคนกดมีกระเป๋าเงินในบอทหลักหรือยัง
+                const isRegistered = usersWallets[userId] ? true : false;
 
-    // 🎯 กรณีคนพิมพ์ยังไม่ได้เป็นสมาชิกถาวรในระบบออโต้
-    if (!isRegistered) {
-        
-        // 📥 1. ดักจับถ้าคนพิมพ์ส่งรหัสยืนยันเข้ามา (เช่น c/931728)
-        if (originalMsg.startsWith('C/') || originalMsg.startsWith('c/')) {
-            const dbCodePath = originalMsg.trim().replace('/', '_');
-
-            try {
-                const pendingRef = db.ref('pending_verify/' + dbCodePath);
-                const snapshot = await pendingRef.once('value');
-
-                // 🟢 A. ถ้ารหัสถูกต้องและมีข้อมูลในถังพักชั่วคราว
-                if (snapshot.exists()) {
-                    const tempUserData = snapshot.val();
-
-                    // บันทึกเข้ากระเป๋าถาวร
-                    const walletRef = db.ref('system_data/usersWallets/' + senderUserId);
-                    await walletRef.set({
-                        name: tempUserData.name,
-                        bankName: tempUserData.bankName,
-                        bankAccount: tempUserData.bankAccount,
-                        credit: 0,
-                        registeredAt: tempUserData.registeredAt,
-                        activatedAt: new Date().toISOString()
-                    });
-
-                    // ล็อกไอดีฝั่งเว็บ
-                    const mappingRef = db.ref('liff_mapping/' + senderUserId);
-                    await mappingRef.set({
-                        isMapped: true,
-                        mappedAt: new Date().toISOString()
-                    });
-
-                    // 🔥 ลบโค้ดชั่วคราวทิ้งทันที
-                    await pendingRef.remove();
-
-                    // 💬 ส่งข้อความยินดีต้อนรับกลับไปหาผู้ใช้ทันที
-                    await axios.post('https://api.line.me/v2/bot/message/reply', {
-                        replyToken: replyToken,
-                        messages: [
-                            { "type": "text", "text": `🎉 ยินดีต้อนรับคุณ ${tempUserData.name}!\n──────────────────\n🟢 ระบบทำการเปิดบัญชีออโต้และผูก Line ID ของคุณเรียบร้อยแล้วค่ะ! สมาชิกสามารถพิมพ์ [c] เพื่อเช็กยอดเงินได้ทันทีครับน้า 🎰` }
-                        ]
-                    }, { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` } });
-                    
-                    return res.sendStatus(200); // จบการทำงานทันที
-
-                } else {
-                    // 🔴 B. ถ้ารหัสผิดหรือหมดอายุ
-                    await axios.post('https://api.line.me/v2/bot/message/reply', {
-                        replyToken: replyToken,
-                        messages: [
-                            { "type": "text", "text": `❌ รหัสยืนยันไม่ถูกต้อง หรือหมดอายุแล้ว!\n──────────────────\n⚠️ กรุณาตรวจสอบรหัสอีกครั้ง หรือลงทะเบียนใหม่อีกรอบเพื่อรับรหัสใหม่ค่ะน้า 🙏` }
-                        ]
-                    }, { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` } });
-                    
+                if (isRegistered) {
+                    try {
+                        await axios.post('https://api.line.me/v2/bot/message/reply', {
+                            replyToken: replyToken,
+                            messages: [{ "type": "text", "text": "⚠️ คุณได้เปิดใช้งานบัญชีสมาชิกเรียบร้อยแล้วครับน้า ไม่ต้องส่งโค้ดซ้ำแล้วจ้า" }]
+                        }, { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` } });
+                    } catch (err) { console.error("Error sending already registered msg:", err); }
                     return res.sendStatus(200);
                 }
 
-            } catch (err) {
-                console.error("Error processing verify code:", err);
-                return res.sendStatus(500);
-            }
-        } 
-        
-        // 📥 2. ถ้าพิมพ์คำว่า 'สมัคร' มาในกลุ่ม (บอกนโยบายใหม่)
-        else if (userMsg === 'สมัคร') {
-            await axios.post('https://api.line.me/v2/bot/message/reply', {
-                replyToken: replyToken,
-                messages: [
-                    { "type": "text", "text": `📢 ระบบสมัครผ่านบอทในกลุ่มปิดให้บริการแล้วค่ะ\n──────────────────\n⚠️ ตอนนี้เปลี่ยนระบบใหม่เป็นแบบออโต้ รบกวนติดต่อแอดมินส่วนตัวเพื่อขอลิงก์ลงทะเบียนลงระบบที่ถูกต้องนะคะน้า 🙏` }
-                ]
-            }, { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` } });
-            
-            return res.sendStatus(200);
-        }
-        
-        // 📥 3. ถ้าคนยังไม่สมัครพิมพ์อย่างอื่นที่ไม่ใช่โค้ดและคำว่าสมัคร
-        else {
-            await axios.post('https://api.line.me/v2/bot/message/reply', {
-                replyToken: replyToken,
-                messages: [
-                    { "type": "text", "text": `⚠️ บัญชี LINE ของคุณยังไม่ได้ลงทะเบียนในระบบออโต้ค่ะ\n──────────────────\nรบกวนแจ้งแอดมินทางแชทส่วนตัวเพื่อขอลิงก์สมัครสมาชิกก่อนร่วมสนุกนะคะน้า 🙏` }
-                ]
-            }, { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` } });
-            
-            return res.sendStatus(200);
-        }
+                // 🔄 แปลงรูปแบบจาก c/123456 เป็น c_123456 ให้ตรงกับคีย์ที่หน้าเว็บเซ็ตไว้ใน pending_verify
+                const inviteCode = originalMsg.trim().toLowerCase().replace('/', '_');
+                
+                try {
+                    // 🔍 1. วิ่งไปเช็กในคลังชั่วคราวที่บอทเว็บสมัครบันทึกไว้
+                    const pendingRef = db.ref('pending_verify/' + inviteCode);
+                    const snapshot = await pendingRef.once('value');
+                    const tempData = snapshot.val();
 
-    // 🎯 กรณีคนพิมพ์เป็นสมาชิกถาวรอยู่แล้ว แต่ยังอุตส่าห์ส่งรหัสมั่วหรือพิมพ์สมัครซ้ำ
-    } else {
-        const user = usersWallets[senderUserId];
-        if (originalMsg.startsWith('C/') || originalMsg.startsWith('c/') || userMsg === 'สมัคร') {
-            await axios.post('https://api.line.me/v2/bot/message/reply', {
-                replyToken: replyToken,
-                messages: [
-                    { "type": "text", "text": `❌ ไม่สามารถลงทะเบียนซ้ำได้ค่ะคุณ ${user.name}!\n──────────────────\n⚠️ บัญชีของคุณผูกกับระบบออโต้เรียบร้อยแล้ว พิมพ์ [c] เช็กเงินได้เลยครับน้า` }
-                ]
-            }, { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` } });
-            
-            return res.sendStatus(200);
-        }
-    }
-}
+                    // ❌ ถ้าไม่พบข้อมูลรหัสนี้ในระบบ
+                    if (!tempData) {
+                        await axios.post('https://api.line.me/v2/bot/message/reply', {
+                            replyToken: replyToken,
+                            messages: [{ "type": "text", "text": "❌ ไม่พบรหัสสมัครนี้ หรือรหัสหมดอายุแล้วครับน้า กรุณาตรวจสอบรหัสอีกครั้ง หรือกดสมัครใหม่ผ่านลิงก์ของบอทค่ะ" }]
+                        }, { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` } });
+                        return res.sendStatus(200);
+                    }
+
+                    // 🟢 2. พบข้อมูล! ดึงค่าจากหน้าเว็บมาสร้างกระเป๋าเงินถาวรในบอทหลักทันที
+                    usersWallets[userId] = {
+                        memberNumber: nextMemberId,
+                        name: tempData.name,
+                        balance: 0, 
+                        turnoverTarget: 0,           // รองรับระบบลดเทิร์นโอเวอร์สะสม
+                        turnoverCount: 0,            
+                        isWithdrawLocked: false,     
+                        pendingWithdrawAmount: 0,    
+                        currentBonusType: "none",    
+                        bankName: tempData.bankName,          // ดึงธนาคารที่เลือกจากหน้าเว็บมาเก็บหลังบ้าน
+                        bankAccount: tempData.bankAccount,    // ดึงเลขบัญชีจากหน้าเว็บมาเก็บหลังบ้าน
+                        registerDate: new Date().toISOString()
+                    };
+
+                    // 🔒 3. ส่งข้อมูลกลับไปล็อกที่ liff_mapping เพื่อให้หน้าเว็บ (บอท2) รู้ว่าไอดีนี้สมัครแล้ว ห้ามสมัครซ้ำ
+                    await db.ref('liff_mapping/' + userId).set({
+                        memberNumber: nextMemberId,
+                        status: "activated",
+                        activatedAt: new Date().toISOString()
+                    });
+
+                    // 🧼 4. เคลียร์ถังพักชั่วคราวลบทิ้งทันที ข้อมูลจะได้ไม่ค้างและป้องกันการเอาโค้ดเดิมมาใช้ซ้ำ
+                    await pendingRef.remove();
+
+                    // 🚀 5. ยิง Flex Message แจ้งสมาชิกในกลุ่มว่าเปิดพอร์ตออโต้สำเร็จ
+                    await axios.post('https://api.line.me/v2/bot/message/reply', {
+                        replyToken: replyToken,
+                        messages: [
+                            {
+                                "type": "flex",
+                                "altText": "🎉 เปิดใช้งานระบบออโต้สำเร็จ! 🎉",
+                                "contents": {
+                                    "type": "bubble",
+                                    "styles": { "body": { "backgroundColor": "#0c1921" } },
+                                    "body": {
+                                        "type": "box",
+                                        "layout": "vertical",
+                                        "spacing": "md",
+                                        "contents": [
+                                            { "type": "text", "text": "🎉 ดึงข้อมูลสมัครสมาชิกสำเร็จ! 🎉", "weight": "bold", "color": "#00ffcc", "size": "md", "align": "center" },
+                                            { "type": "separator", "color": "#183242" },
+                                            {
+                                                "type": "box",
+                                                "layout": "vertical",
+                                                "spacing": "xs",
+                                                "contents": [
+                                                    {
+                                                        "type": "box", "layout": "horizontal", "contents": [
+                                                            { "type": "text", "text": "🆔 รหัสสมาชิก:", "size": "xs", "color": "#8ab4cd" },
+                                                            { "type": "text", "text": `${nextMemberId}`, "size": "xs", "color": "#ffffff", "align": "end", "weight": "bold" }
+                                                        ]
+                                                    },
+                                                    {
+                                                        "type": "box", "layout": "horizontal", "contents": [
+                                                            { "type": "text", "text": "👤 ชื่อระบบ:", "size": "xs", "color": "#8ab4cd" },
+                                                            { "type": "text", "text": `${tempData.name}`, "size": "xs", "color": "#ffffff", "align": "end" }
+                                                        ]
+                                                    },
+                                                    {
+                                                        "type": "box", "layout": "horizontal", "contents": [
+                                                            { "type": "text", "text": "💰 เครดิตเริ่มต้น:", "size": "xs", "color": "#8ab4cd" },
+                                                            { "type": "text", "text": "0 บาท", "size": "xs", "color": "#00ff66", "align": "end", "weight": "bold" }
+                                                        ]
+                                                    }
+                                                ]
+                                            },
+                                            { "type": "separator", "color": "#183242" },
+                                            { "type": "text", "text": "🔒 ผูกบัญชีธนาคารออโต้หลังบ้านเรียบร้อย ปลอดภัย 100% ครับน้า", "size": "10px", "color": "#a2c1d4", "wrap": true },
+                                            { "type": "separator", "color": "#183242" },
+                                            { "type": "text", "text": "💡 เปิดใช้งานระบบเสร็จสิ้น พิมพ์ [ฝาก จำนวนเงิน] เพื่อเติมเครดิตได้เลยครับ", "size": "xs", "color": "#00ffcc", "wrap": true, "style": "italic" }
+                                        ]
+                                    }
+                                }
+                            }
+                        ]
+                    }, { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` } });
+
+                    // อัปเดตรันนิ่งนัมเบอร์ไอดี และเซฟคลังข้อมูลฝั่งบอทหลัก
+                    nextMemberId++;
+                    await saveDataToFirebase();
+
+                } catch (dbError) {
+                    console.error("Firebase sync error:", dbError);
+                }
+                return res.sendStatus(200);
+            }
                     
                    // ==================== [ คำสั่งเช็กยอด c เวอร์ชันการ์ดดำทอง ] ====================
                     if (userMsg === 'c') {

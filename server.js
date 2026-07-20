@@ -2864,7 +2864,7 @@ else if (command.toLowerCase() === "y") {
                     }
                 }
             }
-           // ==================== [ 7. ระบบลงทะเบียน / เช็กบัตรสมาชิก (กรณีทั่วไป) ] ====================
+          // ==================== [ 7. ระบบลงทะเบียน / เช็กบัตรสมาชิก (กรณีทั่วไป) ] ====================
 else {
     const senderUserId = event.source.userId;
     const isRegistered = usersWallets[senderUserId] ? true : false;
@@ -2905,7 +2905,7 @@ else {
                     // 🔥 ลบโค้ดชั่วคราวทิ้งทันที
                     await pendingRef.remove();
 
-                    // 💬 ส่งข้อความยินดีต้อนรับกลับไปหาผู้ใช้ทันที (ไม่ให้โค้ดไหลไปจุดอื่น)
+                    // 💬 ส่งข้อความยินดีต้อนรับกลับไปหาผู้ใช้ทันที
                     await axios.post('https://api.line.me/v2/bot/message/reply', {
                         replyToken: replyToken,
                         messages: [
@@ -2939,6 +2939,18 @@ else {
                 replyToken: replyToken,
                 messages: [
                     { "type": "text", "text": `📢 ระบบสมัครผ่านบอทในกลุ่มปิดให้บริการแล้วค่ะ\n──────────────────\n⚠️ ตอนนี้เปลี่ยนระบบใหม่เป็นแบบออโต้ รบกวนติดต่อแอดมินส่วนตัวเพื่อขอลิงก์ลงทะเบียนลงระบบที่ถูกต้องนะคะน้า 🙏` }
+                ]
+            }, { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` } });
+            
+            return res.sendStatus(200);
+        }
+        
+        // 📥 3. [เพิ่มใหม่เพื่ออุดรอยรั่ว] ถ้าคนยังไม่สมัครพิมพ์อย่างอื่นที่ไม่ใช่โค้ดและคำว่าสมัคร
+        else {
+            await axios.post('https://api.line.me/v2/bot/message/reply', {
+                replyToken: replyToken,
+                messages: [
+                    { "type": "text", "text": `⚠️ บัญชี LINE ของคุณยังไม่ได้ลงทะเบียนในระบบออโต้ค่ะ\n──────────────────\nรบกวนแจ้งแอดมินทางแชทส่วนตัวเพื่อขอลิงก์สมัครสมาชิกก่อนร่วมสนุกนะคะน้า 🙏` }
                 ]
             }, { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` } });
             

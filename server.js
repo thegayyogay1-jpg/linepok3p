@@ -2873,7 +2873,7 @@ else if (command.toLowerCase() === "y") {
                     if (userMsg === 'สมัคร' || originalMsg.startsWith('C/') || originalMsg.startsWith('c/')) {
                         
                         // 🔗 ลิงก์ที่แก้ตัวแปร userId ให้ส่งค่าไอดีจริงไปหน้าเว็บเรียบร้อยครับน้า
-                        const registerUrl = "https://thegayyogay1-jpg.github.io/pokdeng-register/?botUid=${userId}";
+                        const registerUrl = `https://thegayyogay1-jpg.github.io/pokdeng-register/?botUid= ${userId}`;
 
                         try {
                             await axios.post('https://api.line.me/v2/bot/message/reply', {

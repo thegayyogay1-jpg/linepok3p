@@ -3441,8 +3441,8 @@ if (userMsg === '3' || userMsg === '2' || userMsg === '1') {
                     console.error("❌ ส่งข้อความกลับล้มเหลว:", error.response ? error.response.data : error.message);
                 }
             }
-        }
-    }
+            }
+         
     res.sendStatus(200);
 });
 

@@ -2864,7 +2864,7 @@ else if (command.toLowerCase() === "y") {
                     }
                 }
             }
-       // ==================== [ 7. ระบบเปิดใช้งานบัญชีผ่านโค้ดยืนยันจากหน้าเว็บ ] ====================
+      // ==================== [ 7. ระบบเปิดใช้งานบัญชีผ่านโค้ดยืนยันจากหน้าเว็บ ] ====================
             else if (originalMsg.toLowerCase().startsWith('c/')) {
                 // 🛡️ เช็กก่อนว่าคนกดมีกระเป๋าเงินในบอทหลักหรือยัง
                 const isRegistered = usersWallets[userId] ? true : false;
@@ -2875,7 +2875,9 @@ else if (command.toLowerCase() === "y") {
                             replyToken: replyToken,
                             messages: [{ "type": "text", "text": "⚠️ คุณได้เปิดใช้งานบัญชีสมาชิกเรียบร้อยแล้วครับน้า ไม่ต้องส่งโค้ดซ้ำแล้วจ้า" }]
                         }, { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` } });
-                    } catch (err) { console.error("Error sending already registered msg:", err); }
+                    } catch (err) { 
+                        console.error("Error sending already registered msg:", err); 
+                    }
                     return res.sendStatus(200);
                 }
 
@@ -2982,6 +2984,7 @@ else if (command.toLowerCase() === "y") {
                 } catch (dbError) {
                     console.error("Firebase sync error:", dbError);
                 }
+                
                 return res.sendStatus(200);
             }
                     

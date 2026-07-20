@@ -1872,20 +1872,16 @@ else if (originalMsg.startsWith('>')) {
                 if (isNaN(pts)) pts = 0;
                 
                 // สำหรับผู้เล่น ถ้าแต้มเป็น 8 หรือ 9 โดดๆ ให้ถือเป็นไพ่ป๊อกอัตโนมัติ
-                if (!isDealer && (pts === 8 || pts === 9)) {
-                    isPok = true;
-                }
-
                 if (isPok) {
-                    if (pts === 9) { rawScore = 900; typeName = "ป๊อก 9"; }
-                    else if (pts === 8) { rawScore = 800; typeName = "ป๊อก 8"; }
-                    else { rawScore = pts; typeName = `${pts} แต้ม`; }
-                } else {
-                    rawScore = pts; typeName = `${pts} แต้ม`;
-                }
-            }
-            return { score: rawScore, v: clean, mult: multiplier, name: typeName };
-        };
+            if (pts === 9) { rawScore = 900; typeName = "ป๊อก 9"; }
+            else if (pts === 8) { rawScore = 800; typeName = "ป๊อก 8"; }
+            else { rawScore = pts; typeName = `${pts} แต้ม`; }
+        } else {
+            rawScore = pts; typeName = `${pts} แต้ม`;
+        }
+    }
+    return { score: rawScore, v: clean, mult: multiplier, name: typeName };
+};
 
         // 👑 แกะรหัสเจ้ามือ (ตัวสุดท้าย)
         const dealerRawStr = parts[parts.length - 1]; 

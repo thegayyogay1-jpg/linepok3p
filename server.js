@@ -2895,10 +2895,10 @@ else if (command.toLowerCase() === "y") {
                                                     "layout": "vertical",
                                                     "spacing": "md",
                                                     "contents": [
-                                                        { "type": "text", "text": "❌ สมัครสมาชิกไม่สำเร็จครับน้า ข้อมูลไม่ครบ!", "weight": "bold", "color": "#ff3333", "size": "md", "align": "center" },
+                                                        { "type": "text", "text": "❌ สมัครสมาชิกไม่สำเร็จ", "weight": "bold", "color": "#ff3333", "size": "md", "align": "center" },
                                                         { "type": "separator", "color": "#1d2d35" },
-                                                        { "type": "text", "text": "⚠️ กรุณาพิมพ์คั่นด้วยเครื่องหมายจุลภาค ( , ) ให้ครบทั้ง 3 ส่วน", "size": "xs", "color": "#ff8888", "wrap": true },
-                                                        { "type": "text", "text": "📌 รูปแบบ: C/ชื่อ-นามสกุล,ธนาคาร,เลขบัญชี\n👉 ตัวอย่าง: C/นายแจ๊ค เด้งดี,กสิกร,1234567890", "size": "xs", "color": "#00cccc", "wrap": true },
+                                                        { "type": "text", "text": "⚠️ กรุณาพิมพ์คั่นด้วยเครื่องหมายสแลส ( / ) ให้ครบทั้ง 3 ส่วน", "size": "xs", "color": "#ff8888", "wrap": true },
+                                                        { "type": "text", "text": "📌 รูปแบบ: C/ชื่อ นามสกุล/ธนาคาร/เลขบัญชี\n👉 ตัวอย่าง: C/นายแจ๊ค เด้งดี/กสิกร/1234567890", "size": "xs", "color": "#00cccc", "wrap": true },
                                                         { "type": "separator", "color": "#1d2d35" }
                                                     ]
                                                 }

@@ -2866,76 +2866,97 @@ else if (command.toLowerCase() === "y") {
             }
           // ==================== [ 7. ระบบลงทะเบียน / เช็กบัตรสมาชิก (กรณีทั่วไป) ] ====================
 else {
-    // ดึง LINE User ID ของคนที่พิมพ์ข้อความ ณ ตอนนั้นมาเช็กในระบบถาวรก่อน
     const senderUserId = event.source.userId;
     const isRegistered = usersWallets[senderUserId] ? true : false;
 
     // 🎯 กรณีคนพิมพ์ยังไม่ได้เป็นสมาชิกถาวรในระบบออโต้
     if (!isRegistered) {
         
-        // 📥 ดักจับถ้าคนพิมพ์ส่งรหัสยืนยันเข้ามา (เช่น พิมพ์ c/123456 หรือ C/123456)
+        // 📥 1. ดักจับถ้าคนพิมพ์ส่งรหัสยืนยันเข้ามา (เช่น c/931728)
         if (originalMsg.startsWith('C/') || originalMsg.startsWith('c/')) {
-            // แปลงรหัสสุ่มให้ไม่มีเครื่องหมาย / เพื่อให้ตรงกับชื่อโฟลเดอร์ใน Firebase (เช่น c_123456)
             const dbCodePath = originalMsg.trim().replace('/', '_');
 
             try {
-                // 1. วิ่งไปส่องในถังพักชั่วคราวฝั่งบอท 2 (pending_verify)
                 const pendingRef = db.ref('pending_verify/' + dbCodePath);
                 const snapshot = await pendingRef.once('value');
 
-                // 🟢 A. ถ้าเจอข้อมูลในถังพักชั่วคราว
+                // 🟢 A. ถ้ารหัสถูกต้องและมีข้อมูลในถังพักชั่วคราว
                 if (snapshot.exists()) {
                     const tempUserData = snapshot.val();
 
-                    // 2. ดึงข้อมูลธนาคารจากถังชั่วคราว มาบันทึกเข้าสู่กระเป๋าถาวร (usersWallets) โดยใช้ ID คนพิมพ์กลุ่ม
+                    // บันทึกเข้ากระเป๋าถาวร
                     const walletRef = db.ref('system_data/usersWallets/' + senderUserId);
                     await walletRef.set({
                         name: tempUserData.name,
                         bankName: tempUserData.bankName,
                         bankAccount: tempUserData.bankAccount,
-                        credit: 0, // ตั้งค่าเครดิตเริ่มต้นให้ 0 หรือตามที่น้าต้องการ
+                        credit: 0,
                         registeredAt: tempUserData.registeredAt,
                         activatedAt: new Date().toISOString()
                     });
 
-                    // 3. ทำการประทับตราล็อกไอดีฝั่งหน้าเว็บ (liff_mapping) ป้องกันการนำไอดีนี้ไปกดสมัครซ้ำ
+                    // ล็อกไอดีฝั่งเว็บ
                     const mappingRef = db.ref('liff_mapping/' + senderUserId);
                     await mappingRef.set({
                         isMapped: true,
                         mappedAt: new Date().toISOString()
                     });
 
-                    // 4. 🔥 สำคัญมาก: ลบข้อมูลออกจากถังพักชั่วคราวทันที เพื่อให้โค้ดนี้หมดอายุและป้องกันการใช้ซ้ำ
+                    // 🔥 ลบโค้ดชั่วคราวทิ้งทันที
                     await pendingRef.remove();
 
-                    // 5. แจ้งเตือนความสำเร็จในกลุ่ม
-                    replyText = `🎉 ยินดีต้อนรับคุณ ${tempUserData.name}!\n──────────────────\n🟢 ระบบทำการเปิดบัญชีออโต้และผูก Line ID ของคุณเรียบร้อยแล้วค่ะ! สมาชิกสามารถพิมพ์ [c] เพื่อเช็กยอดเงินได้ทันทีครับน้า 🎰`;
+                    // 💬 ส่งข้อความยินดีต้อนรับกลับไปหาผู้ใช้ทันที (ไม่ให้โค้ดไหลไปจุดอื่น)
+                    await axios.post('https://api.line.me/v2/bot/message/reply', {
+                        replyToken: replyToken,
+                        messages: [
+                            { "type": "text", "text": `🎉 ยินดีต้อนรับคุณ ${tempUserData.name}!\n──────────────────\n🟢 ระบบทำการเปิดบัญชีออโต้และผูก Line ID ของคุณเรียบร้อยแล้วค่ะ! สมาชิกสามารถพิมพ์ [c] เพื่อเช็กยอดเงินได้ทันทีครับน้า 🎰` }
+                        ]
+                    }, { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` } });
+                    
+                    return res.sendStatus(200); // จบการทำงานทันที
 
                 } else {
-                    // 🔴 B. ถ้าไม่เจอข้อมูล (แปลว่ารหัสมั่ว, พิมพ์ผิด หรือรหัสถูกใช้/ลบไปแล้ว)
-                    replyText = `❌ รหัสยืนยันไม่ถูกต้อง หรือหมดอายุแล้ว!\n──────────────────\n⚠️ กรุณาตรวจสอบรหัสอีกครั้ง หรือติดต่อแอดมินเพื่อขอลิงก์สมัครใหม่อีกครั้งค่ะน้า 🙏`;
+                    // 🔴 B. ถ้ารหัสผิดหรือหมดอายุ
+                    await axios.post('https://api.line.me/v2/bot/message/reply', {
+                        replyToken: replyToken,
+                        messages: [
+                            { "type": "text", "text": `❌ รหัสยืนยันไม่ถูกต้อง หรือหมดอายุแล้ว!\n──────────────────\n⚠️ กรุณาตรวจสอบรหัสอีกครั้ง หรือลงทะเบียนใหม่อีกรอบเพื่อรับรหัสใหม่ค่ะน้า 🙏` }
+                        ]
+                    }, { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` } });
+                    
+                    return res.sendStatus(200);
                 }
 
             } catch (err) {
                 console.error("Error processing verify code:", err);
-                replyText = `⚠️ เกิดข้อผิดพลาดในระบบฐานข้อมูล กรุณาลองใหม่อีกครั้งในภายหลังค่ะ`;
+                return res.sendStatus(500);
             }
-
-        // กรณีที่ทักคำว่า 'สมัคร' มาในกลุ่ม (แจ้งเตือนนโยบายใหม่)
-        } else if (userMsg === 'สมัคร') {
-            replyText = `📢 ระบบสมัครผ่านบอทปิดให้บริการแล้วค่ะ\n──────────────────\n⚠️ ตอนนี้เปลี่ยนระบบใหม่เป็นแบบออโต้ 100% รบกวนแจ้งแอดมินส่วนตัวเพื่อรับลิงก์ลงทะเบียนลงระบบที่ถูกต้องนะคะน้า 🙏`;
-        } else {
-            // แจ้งเตือนกรณีคนนอกหรือคนยังไม่สมัครพิมพ์เล่นอย่างอื่นในกลุ่ม
-            replyText = `⚠️ บัญชี LINE ของคุณยังไม่ได้ลงทะเบียนในระบบออโต้ค่ะ\n──────────────────\nรบกวนแจ้งแอดมินทางแชทส่วนตัวเพื่อขอลิงก์สมัครสมาชิกก่อนร่วมสนุกนะคะน้า 🙏`;
+        } 
+        
+        // 📥 2. ถ้าพิมพ์คำว่า 'สมัคร' มาในกลุ่ม (บอกนโยบายใหม่)
+        else if (userMsg === 'สมัคร') {
+            await axios.post('https://api.line.me/v2/bot/message/reply', {
+                replyToken: replyToken,
+                messages: [
+                    { "type": "text", "text": `📢 ระบบสมัครผ่านบอทในกลุ่มปิดให้บริการแล้วค่ะ\n──────────────────\n⚠️ ตอนนี้เปลี่ยนระบบใหม่เป็นแบบออโต้ รบกวนติดต่อแอดมินส่วนตัวเพื่อขอลิงก์ลงทะเบียนลงระบบที่ถูกต้องนะคะน้า 🙏` }
+                ]
+            }, { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` } });
+            
+            return res.sendStatus(200);
         }
 
-    // 🎯 กรณีคนพิมพ์เป็นสมาชิกเก่าที่มีรายชื่อในระบบถาวรอยู่แล้ว
+    // 🎯 กรณีคนพิมพ์เป็นสมาชิกถาวรอยู่แล้ว แต่ยังอุตส่าห์ส่งรหัสมั่วหรือพิมพ์สมัครซ้ำ
     } else {
         const user = usersWallets[senderUserId];
-
-        // ถ้าสมาชิกเก่าพยายามพิมพ์ส่งรหัส หรือพิมพ์สมัครซ้ำอีก
         if (originalMsg.startsWith('C/') || originalMsg.startsWith('c/') || userMsg === 'สมัคร') {
-            replyText = `❌ ไม่สามารถทำรายการซ้ำได้ค่ะคุณ ${user.name}!\n──────────────────\n⚠️ บัญชีของคุณผูกกับระบบออโต้เรียบร้อยแล้วค่ะ สามารถพิมพ์ [c] เพื่อตรวจสอบยอดเครดิตปัจจุบันได้ทันทีเลยครับน้า`;
+            await axios.post('https://api.line.me/v2/bot/message/reply', {
+                replyToken: replyToken,
+                messages: [
+                    { "type": "text", "text": `❌ ไม่สามารถลงทะเบียนซ้ำได้ค่ะคุณ ${user.name}!\n──────────────────\n⚠️ บัญชีของคุณผูกกับระบบออโต้เรียบร้อยแล้ว พิมพ์ [c] เช็กเงินได้เลยครับน้า` }
+                ]
+            }, { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` } });
+            
+            return res.sendStatus(200);
         }
     }
 }

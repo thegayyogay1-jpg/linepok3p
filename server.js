@@ -2873,7 +2873,7 @@ else if (command.toLowerCase() === "y") {
                         const registerData = originalMsg.substring(2).trim();
                         
                         // ตัดแบ่งข้อความด้วยเครื่องหมายจุลภาค ( , ) เพื่อแยก ชื่อ, ธนาคาร, เลขบัญชี
-                        const dataParts = registerData.split(',');
+                        const dataParts = registerData.split(/\n|\//);
                         const fullName = dataParts[0] ? dataParts[0].trim() : "";
                         const bankName = dataParts[1] ? dataParts[1].trim() : "";
                         const bankAccount = dataParts[2] ? dataParts[2].trim() : "";
@@ -3014,8 +3014,8 @@ else if (command.toLowerCase() === "y") {
                                                         "backgroundColor": "#17262f",
                                                         "paddingAll": "sm",
                                                         "contents": [
-                                                            { "type": "text", "text": "พิมพ์: C/ชื่อ นามสกุล,ธนาคาร,เลขบัญชี", "size": "xs", "color": "#ffffff", "weight": "bold" },
-                                                            { "type": "text", "text": "ตัวอย่าง: C/นายแจ๊ค เด้งดี,กสิกร,1234567890", "size": "xs", "color": "#8ab4cd" }
+                                                            { "type": "text", "text": "พิมพ์: C/ชื่อ นามสกุล/ธนาคาร/เลขบัญชี", "size": "xs", "color": "#ffffff", "weight": "bold" },
+                                                            { "type": "text", "text": "ตัวอย่าง: C/นายแจ๊ค เด้งดี/กสิกร/1234567890", "size": "xs", "color": "#8ab4cd" }
                                                         ]
                                                     },
                                                     { "type": "separator", "color": "#1d2d35" },

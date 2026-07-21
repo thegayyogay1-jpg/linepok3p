@@ -970,7 +970,7 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                             "type": "text",
                             "text": textDisplay,
                             "size": "xs",
-                            "color": "#cccccc",
+                            "color": "#22031F",
                             "wrap": true
                         };
                     });
@@ -979,7 +979,7 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                         "type": "text",
                         "text": "• ยังไม่มีข้อมูลสถิติย้อนหลังในรอบนี้",
                         "size": "xs",
-                        "color": "#888888",
+                        "color": "#22031F",
                         "style": "italic",
                         "align": "center"
                     });

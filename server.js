@@ -2141,7 +2141,10 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                             // 🧮 ตรรกะคิดเงินของฝั่งคนแทงเจ้ามือ (หักต๋ง 10% เฉพาะขาที่ได้กำไร)
                             if (tempDealerResult.score > finalCard.score) {
         let winMultiplier = tempDealerResult.mult; // ไม่ต้องเอา bet.maxMultiplier มาล็อคแล้ว
-        
+                                
+                                if (tempDealerResult.rawMult) {
+        winMultiplier = tempDealerResult.rawMult;
+    }
                                 let grossWin = betPrice * winMultiplier; // กำไรเต็มก่อนหัก
                                 
                                 // 🔥 หักต๋งรายขาทันที 10% (เหลือจ่ายจริง 90%)

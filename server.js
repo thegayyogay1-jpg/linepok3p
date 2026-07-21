@@ -946,8 +946,8 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
     } else {
         // 🖼️ [ตั้งค่าลิงก์รูปภาพของน้าที่นี่] 
         // ⚠️ น้าเอาลิงก์ URL รูปภาพเปิด/ปิดรอบของน้า (ที่ขึ้นต้นด้วย https://) มาใส่แทนที่ในเครื่องหมายคำพูดได้เลยครับ
-        const openRoundImgUrl = "https://img2.pic.in.th/-__-----4b1c38e0628ea626.jpg"; 
-        const closeRoundImgUrl = "https://img2.pic.in.th/-__-----2cccaadd8f93c70b.jpg";
+        const openRoundImgUrl = ""; 
+        const closeRoundImgUrl = "";
 
         if (userMsg === 'o') {
             if (isRoundOpen) {
@@ -1163,8 +1163,8 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
     } else {
         // 🖼️ [ตั้งค่าลิงก์รูปภาพของน้าที่นี่]
         // ⚠️ น้าเอาลิงก์ URL รูปภาพเปิดจั่ว/ปิดจั่วของน้า (ที่ขึ้นต้นด้วย https://) มาใส่แทนที่ได้เลยครับ
-        const openDrawImgUrl = "https://img2.pic.in.th/-__-----7fcbb7b1eadadfe1.jpg";
-        const closeDrawImgUrl = "https://img2.pic.in.th/-__-----17ded3ef1c297156.jpg";
+        const openDrawImgUrl = "";
+        const closeDrawImgUrl = "";
 
         // 🟢 [ฝั่งเปิดรอบจั่ว oo]
         if (userMsg === 'oo') {

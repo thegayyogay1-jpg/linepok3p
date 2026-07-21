@@ -1900,16 +1900,25 @@ else if (originalMsg.startsWith('>')) {
             let result3Cards = null;
 
             // 🔥 [ใช้ระบบ RegEx ชำแหละข้อความขั้นสูง] แยกกลุ่มตัวเลขและเครื่องหมายสแลชออกจากกัน
-            const match = innerContent.match(/^([0-9tshfตร]+(?:\/*))([0-9tshfตร]+(?:\/*))$/i);
-
-            if (match) {
-                // ผ่าแยกฝั่งซ้าย (2 ใบ) และ ฝั่งขวา (3 ใบ) ออกจากกันแบบเด็ดขาดร้อยเปอร์เซ็นต์!
-                const part1 = match[1]; 
-                const part2 = match[2]; 
-                
-                result2Cards = parseCardStr(part1, false, false);
-                result3Cards = parseCardStr(part2, false, true);
-            } 
+           if (innerContent.includes(',')) {
+    // 1. ถ้าแอดมินพิมพ์แบบมีคอมม่าคั่น เช่น 5,sf หรือ 1,s
+    const splitParts = innerContent.split(',');
+    const part1 = splitParts[0].trim();
+    const part2 = splitParts[1].trim();
+    
+    result2Cards = parseCardStr(part1, false, false);
+    result3Cards = parseCardStr(part2, false, true);
+} else {
+    // 2. ถ้าพิมพ์ติดกันแบบปกติ ไม่มีคอมม่า ให้ใช้ RegEx ช่วยผ่าแยก
+    const match = innerContent.match(/^([0-9tshfตร]+(?:\/*))([0-9tshfตร]+(?:\/*))$/i);
+    
+    if (match) {
+        const part1 = match[1]; 
+        const part2 = match[2]; 
+        
+        result2Cards = parseCardStr(part1, false, false);
+        result3Cards = parseCardStr(part2, false, true);
+    } else {
             // กรณีพิมพ์ตัวเดียวโดดๆ
             else {
                 let pts = parseInt(innerContent);

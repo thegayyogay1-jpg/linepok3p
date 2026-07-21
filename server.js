@@ -3318,7 +3318,6 @@ else if (userMsg === 'oball' || userMsg === 'Oball' || userMsg === 'OBALL') {
     const totalMembers = memberKeys.length;
 
     if (totalMembers === 0) {
-        // กรณีไม่มีสมาชิก ใช้ replyText เดิม
         replyText = "📭 ปัจจุบันยังไม่มีสมาชิกสมัครเข้ามาในระบบเลยครับ";
     } else {
         // 1. แปลงข้อมูลสมาชิกทุกคนให้อยู่ในรูปแบบ Flex Box Component
@@ -3328,6 +3327,18 @@ else if (userMsg === 'oball' || userMsg === 'Oball' || userMsg === 'OBALL') {
             // 💸 เช็กสถานะการแจ้งถอนเงิน
             const isWithdrawing = global.withdrawQueue && global.withdrawQueue[key];
             const withdrawAmount = isWithdrawing ? global.withdrawQueue[key].amount : 0;
+
+            // ปรับแต่ง Text Object ของสถานะถอนเงินให้ถูกหลัก LINE API 100%
+            const withdrawStatusTextObj = {
+                "type": "text", 
+                "text": isWithdrawing ? `❌ ถอน ${withdrawAmount.toLocaleString()} ฿` : "ปกติ (ไม่ถอน)", 
+                "color": isWithdrawing ? "#ff4d4d" : "#aaaaaa", 
+                "size": "xs", 
+                "align": "end"
+            };
+            if (isWithdrawing) {
+                withdrawStatusTextObj.weight = "bold"; // ใส่ weight เฉพาะตอนถอนเงิน (ที่เป็น bold) เท่านั้น
+            }
 
             return {
                 "type": "box",
@@ -3360,14 +3371,7 @@ else if (userMsg === 'oball' || userMsg === 'Oball' || userMsg === 'OBALL') {
                         "margin": "xs",
                         "contents": [
                             { "type": "text", "text": "• สถานะถอน:", "color": "#aaaaaa", "size": "xs" },
-                            { 
-                                "type": "text", 
-                                "text": isWithdrawing ? `❌ ถอน ${withdrawAmount.toLocaleString()} ฿` : "ปกติ (ไม่ถอน)", 
-                                "color": isWithdrawing ? "#ff4d4d" : "#aaaaaa", 
-                                "size": "xs", 
-                                "align": "end", 
-                                "weight": isWithdrawing ? "bold" : "normal" 
-                            }
+                            withdrawStatusTextObj
                         ]
                     },
                     {
@@ -3423,7 +3427,7 @@ else if (userMsg === 'oball' || userMsg === 'Oball' || userMsg === 'OBALL') {
             }
         }));
 
-        // 4. กำหนด Flex ใส่ตัวแปร global.currentReplyFlex (ให้ตรงกับสไตล์ระบบของน้า)
+        // 4. กำหนด Flex ใส่ตัวแปร global.currentReplyFlex
         global.currentReplyFlex = {
             "type": "flex",
             "altText": `📊 รายงานข้อมูลสมาชิกทั้งหมด (${totalMembers} คน)`,

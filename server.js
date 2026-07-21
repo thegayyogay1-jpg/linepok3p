@@ -1920,7 +1920,6 @@ else if (originalMsg.startsWith('>')) {
         result3Cards = parseCardStr(part2, false, true);
     } else {
             // กรณีพิมพ์ตัวเดียวโดดๆ
-           
                 let pts = parseInt(innerContent);
                 if (!isNaN(pts) && (pts === 8 || pts === 9)) {
                     result2Cards = parseCardStr(innerContent, false, false, true);
@@ -1930,7 +1929,7 @@ else if (originalMsg.startsWith('>')) {
                     result3Cards = parseCardStr(innerContent, false, true, false);
                 }
             }
-
+           }
             roomResults[currentLeg] = {
                 leg: currentLeg,
                 twoCards: result2Cards,

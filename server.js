@@ -1106,7 +1106,7 @@ try {
                 { "type": "text", "text": "📝 สรุปยอดแทงประจำรอบ", "size": "xs", "color": "#22031F", "weight": "bold" },
                 { "type": "box", "layout": "vertical", "spacing": "xs", "contents": pageContents },
                 { "type": "separator", "color": "#3a2222" },
-                { "type": "text", "text": "🔒 หยุดรับโพยทุกกรณี รอแอดมินเปิดรอบจั่ว", "size": "xs", "color": "#E9100F", "wrap": true, "align": "center" }
+                { "type": "text", "text": "🔒 หยุดรับโพยทุกกรณี รอแอดมินเปิดรอบจั่ว", "size": "md", "color": "#E9100F", "wrap": true, "align": "center" }
             ]
         }
     }));
@@ -1201,7 +1201,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                                             { "type": "separator", "color": "#1b2a47" },
                                             { "type": "text", "text": "💡 สำหรับสมาชิกที่ต้องการจั่วไพ่เพิ่ม\nให้พิมพ์เลขขาตามด้วยเครื่องหมายบวก (+)\nเช่น พิมพ์ \"1+\" หรือ \"12+\"", "size": "sm", "color": "#22031F", "wrap": true, "align": "center" },
                                             { "type": "separator", "color": "#1b2a47" },
-                                            { "type": "text", "text": "⚠️ หากขาไหนต้องการอยู่ (ไม่จั่ว) ไม่ต้องพิมพ์อะไรส่งมาครับ", "size": "xs", "color": "#E9100F", "wrap": true, "align": "center" }
+                                            { "type": "text", "text": "⚠️ หากขาไหนต้องการอยู่ (ไม่จั่ว) ไม่ต้องพิมพ์อะไรส่งมาครับ", "size": "md", "color": "#E9100F", "wrap": true, "align": "center" }
                                         ]
                                     }
                                 }

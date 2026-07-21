@@ -1156,7 +1156,7 @@ return;
         }
     }
 }
-           // ==================== [ 3. แอดมิน เปิด/ปิดรอบจั่วไพ่ - เวอร์ชันบล็อกพิมพ์ซ้ำ ] ====================
+            // ==================== [ 3. แอดมิน เปิด/ปิดรอบจั่วไพ่ - เวอร์ชันบล็อกพิมพ์ซ้ำ ] ====================
 else if (userMsg === 'oo' || userMsg === 'xx') {
     if (!ADMIN_IDS.includes(userId)) {
         replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งนี้ครับ";
@@ -1186,55 +1186,39 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                                 "originalContentUrl": openDrawImgUrl,
                                 "previewImageUrl": openDrawImgUrl
                             },
-                           // 📊 ข้อความที่ 2: Flex Message เปิดจั่ว
-{
-    "type": "flex",
-    "altText": `🃏 เปิดรอบขอจั่วไพ่ใบที่ 3 (รอบที่ ${currentRound})`,
-    "contents": {
-        "type": "bubble",
-        "styles": { 
-            "header": { "backgroundColor": "#000000" }, // 🎨 ส่วนบน: สีดำ
-            "body": { "backgroundColor": "#3a3c40" }    // 🎨 ส่วนล่าง: สีเทาเข้ม
-        },
-        // 1. กล่องส่วนบน (Header)
-        "header": {
-            "type": "box",
-            "layout": "vertical",
-            "spacing": "xs",
-            "contents": [
-                { "type": "text", "text": "🃏 เปิดรอบขอจั่วไพ่ใบที่ 3 แล้ว", "weight": "bold", "color": "#FFCC33", "size": "md", "align": "center" },
-                { "type": "text", "text": `รอบที่: ${currentRound}`, "weight": "bold", "color": "#ffffff", "size": "lg", "align": "center" }
-            ]
-        },
-        // 2. กล่องส่วนล่าง (Body)
-        "body": {
-            "type": "box",
-            "layout": "vertical",
-            "spacing": "md",
-            "contents": [
-                { "type": "separator", "color": "#55585e" },
-                { 
-                    "type": "text", 
-                    "text": "💡 สำหรับสมาชิกที่ต้องการจั่วไพ่เพิ่ม\nให้พิมพ์เลขขาตามด้วยเครื่องหมายบวก (+)\nเช่น พิมพ์ \"1+\" หรือ \"12+\"", 
-                    "size": "sm", 
-                    "color": "#ffffff", 
-                    "wrap": true, 
-                    "align": "center" 
-                },
-                { "type": "separator", "color": "#55585e" },
-                { 
-                    "type": "text", 
-                    "text": "⚠️ หากขาไหนต้องการอยู่ (ไม่จั่ว) ไม่ต้องพิมพ์อะไรส่งมาครับ", 
-                    "size": "md", 
-                    "color": "#ff4d4d", 
-                    "wrap": true, 
-                    "align": "center",
-                    "weight": "bold"
+                            // 📊 ข้อความที่ 2: Flex Message เปิดจั่ว
+                            {
+                                "type": "flex",
+                                "altText": `🃏 เปิดรอบขอจั่วไพ่ใบที่ 3 (รอบที่ ${currentRound})`,
+                                "contents": {
+                                    "type": "bubble",
+                                    "styles": { "body": { "backgroundColor": "#0b1528" } }, // ธีมน้ำเงินเข้มคาสิโน
+                                    "body": {
+                                        "type": "box", "layout": "vertical", "spacing": "md",
+                                        "contents": [
+                                            { "type": "text", "text": "🃏 เปิดรอบขอจั่วไพ่ใบที่ 3 แล้วครับ 🎉", "weight": "bold", "color": "#3399ff", "size": "md", "align": "center" },
+                                            { "type": "text", "text": `รอบที่: ${currentRound}`, "weight": "bold", "color": "#ffffff", "size": "lg", "align": "center", "margin": "none" },
+                                            { "type": "separator", "color": "#1b2a47" },
+                                            { "type": "text", "text": "💡 สำหรับสมาชิกที่ต้องการจั่วไพ่เพิ่ม\nให้พิมพ์เลขขาตามด้วยเครื่องหมายบวก (+)\nเช่น พิมพ์ \"1+\" หรือ \"12+\"", "size": "sm", "color": "#dddddd", "wrap": true, "align": "center" },
+                                            { "type": "separator", "color": "#1b2a47" },
+                                            { "type": "text", "text": "⚠️ หากขาไหนต้องการอยู่ (ไม่จั่ว) ไม่ต้องพิมพ์อะไรส่งมาครับ", "size": "xs", "color": "#ffcc00", "wrap": true, "align": "center" }
+                                        ]
+                                    }
+                                }
+                            }
+                        ]
+                    }, {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${TOKEN}`
+                        }
+                    });
+                } catch (error) {
+                    console.error("❌ ส่งรูปภาพและ Flex เปิดจั่วล้มเหลว:", error.response ? error.response.data : error.message);
                 }
-            ]
-        }
-    }
-}
+                return; // จบกระบวนการเปิดจั่วอย่างสมบูรณ์ บอทไม่ทำงานซ้ำซ้อน
+            }
+        } 
         // 🔴 [ฝั่งปิดรอบจั่ว xx + สรุปรายละเอียดรายบุคคล]
         else if (userMsg === 'xx') {
             if (!isDrawOpen) {
@@ -1324,68 +1308,48 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                     });
                 }
 
-               // 🚀 ยิงข้อความแพ็คคู่: [1. รูปภาพปิดจั่วของน้า] + [2. Flex Message สไลด์ carousel สรุปโพยและการจั่ว]
-try {
-    // 1. ฟังก์ชันช่วยเหลือสำหรับตัดแบ่ง array ออกเป็นหน้าๆ (Chunking)
-    const chunkSize = 5; // แบ่งหน้าละ 5 รายชื่อ
-    const flexPages = [];
-    for (let i = 0; i < summaryFlexContents.length; i += chunkSize) {
-        flexPages.push(summaryFlexContents.slice(i, i + chunkSize));
-    }
-
-    // 2. ถ้าไม่มีคนแทงเลย ให้สร้างการ์ดเปล่าป้องกันโค้ดรวน
-    if (flexPages.length === 0) {
-        flexPages.push([{ "type": "text", "text": "ไม่มีรายการแทงในรอบนี้", "color": "#aaaaaa", "size": "xs", "align": "center" }]);
-    }
-
-    // 3. วนลูปสร้างการ์ด Bubble แต่ละหน้าสำหรับ Carousel
-    const carouselBubbles = flexPages.map((pageContents, index) => ({
-        "type": "bubble",
-        "styles": { "body": { "backgroundColor": "#333333" } }, // ธีมดำอมน้ำตาลทองคาสิโนเดิมของน้า
-        "body": {
-            "type": "box", "layout": "vertical", "spacing": "sm",
-            "contents": [
-                { "type": "text", "text": "🔒 ปิดรอบขอจั่วไพ่เรียบร้อยแล้วครับ 🏁", "weight": "bold", "color": "#E9100F", "size": "md", "align": "center" },
-                { "type": "text", "text": `🎰 ล็อกสถานะไพ่ 2 ใบ/ 3 ใบแล้ว (หน้า ${index + 1}/${flexPages.length})`, "size": "xs", "color": "#ffffff", "align": "center" },
-                { "type": "separator", "color": "#3a2d1f" },
-                { "type": "text", "text": "📋 รายงานสรุปโพยและยอดแทงในรอบนี้", "size": "xs", "color": "#ffb310", "weight": "bold" },
-                { "type": "box", "layout": "vertical", "spacing": "xs", "contents": pageContents },
-                { "type": "separator", "color": "#3a2d1f" },
-                { "type": "text", "text": "ℹ️ รอสรุปผลและคิดเงินสักครู่ครับ", "size": "xs", "color": "#ffb310", "align": "center", "margin": "sm" }
-            ]
-        }
-    }));
-
-    // 4. ส่ง API ไปยัง LINE
-    await axios.post('https://api.line.me/v2/bot/message/reply', {
-        replyToken: replyToken,
-        messages: [
-            // 📸 ข้อความที่ 1: รูปปิดจั่วของน้า
-            {
-                "type": "image",
-                "originalContentUrl": closeDrawImgUrl,
-                "previewImageUrl": closeDrawImgUrl
-            },
-            // 📊 ข้อความที่ 2: Flex Message Carousel สรุปโพยแบบสไลด์ข้าง
-            {
-                "type": "flex",
-                "altText": `🚫 ปิดรอบขอจั่วไพ่เรียบร้อยแล้ว (รอบที่ ${currentRound})`,
-                "contents": {
-                    "type": "carousel", // 👈 สลับเป็น carousel สไลด์ข้าง
-                    "contents": carouselBubbles
+                // 🚀 ยิงข้อความแพ็คคู่: [1. รูปภาพปิดจั่วของน้า] + [2. Flex Message สรุปโพยและการจั่วรายบุคคล]
+                try {
+                    await axios.post('https://api.line.me/v2/bot/message/reply', {
+                        replyToken: replyToken,
+                        messages: [
+                            // 📸 ข้อความที่ 1: รูปปิดจั่วของน้า
+                            {
+                                "type": "image",
+                                "originalContentUrl": closeDrawImgUrl,
+                                "previewImageUrl": closeDrawImgUrl
+                            },
+                            // 📊 ข้อความที่ 2: Flex Message สรุปข้อมูลทั้งหมด (ดึงลอจิกจากของเดิมน้ามาแสดงผลสวยงาม)
+                            {
+                                "type": "flex",
+                                "altText": `🚫 ปิดรอบขอจั่วไพ่เรียบร้อยแล้ว (รอบที่ ${currentRound})`,
+                                "contents": {
+                                    "type": "bubble",
+                                    "styles": { "body": { "backgroundColor": "#1a140d" } }, // ธีมดำอมน้ำตาลทองคาสิโน
+                                    "body": {
+                                        "type": "box", "layout": "vertical", "spacing": "sm",
+                                        "contents": [
+                                            { "type": "text", "text": "🔒 ปิดรอบขอจั่วไพ่เรียบร้อยแล้วครับ 🏁", "weight": "bold", "color": "#ffaa00", "size": "md", "align": "center" },
+                                            { "type": "text", "text": "🎰 ล็อกสถานะไพ่ 2 ใบ/ 3 ใบของทุกขาแล้ว", "size": "xs", "color": "#ffffff", "align": "center" },
+                                            { "type": "separator", "color": "#3a2d1f" },
+                                            { "type": "text", "text": "📋 รายงานสรุปโพยและยอดแทงในรอบนี้", "size": "xs", "color": "#ffaa00", "weight": "bold" },
+                                            { "type": "box", "layout": "vertical", "spacing": "xs", "contents": summaryFlexContents },
+                                            { "type": "text", "text": "ℹ️ รอสรุปผลและคิดเงินสักครู่ครับ", "size": "xs", "color": "#aaaaaa", "align": "center", "margin": "sm" }
+                                        ]
+                                    }
+                                }
+                            }
+                        ]
+                    }, {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${TOKEN}`
+                        }
+                    });
+                } catch (error) {
+                    console.error("❌ ส่งรูปภาพและ Flex ปิดจั่วล้มเหลว:", error.response ? error.response.data : error.message);
                 }
-            }
-        ]
-    }, {
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${TOKEN}`
-        }
-    });
-} catch (error) {
-    console.error("❌ ส่งรูปภาพและ Flex ปิดจั่วล้มเหลว:", error.response ? error.response.data : error.message);
-}
-return; // จบงานปิดจั่วและสรุปผล
+                return; // จบงานปิดจั่วและสรุปผล
             }
         }
     }

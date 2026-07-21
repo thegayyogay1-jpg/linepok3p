@@ -2110,15 +2110,11 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                             const isUserDrawn = (bet.drawStatus && bet.drawStatus[leg] === "จั่ว");
                             finalCard = isUserDrawn ? matchResult.threeCards : matchResult.twoCards;
 
-                            // คำนวณผลได้เสียของฝั่งผู้เล่นปกติ
-                            if (finalCard.score > tempDealerResult.score) {
-                                let winMultiplier = finalCard.mult;
-                                // 🌟 [จุดเปลี่ยนที่ 1]: ดักเพดานเด้งฝั่งผู้เล่นชนะตามจริงที่มีการค้ำประกันไว้ (x2 หรือ x3)
-                                if (bet.maxMultiplier && winMultiplier > bet.maxMultiplier) {
-                                    winMultiplier = finalCard.mult;
-                                }
-                                userTotalWinLoss += (betPrice * winMultiplier);
-                            } 
+                           // 🟢 ฝั่งผู้เล่นชนะ: ได้เต็มตามเด้งจริงของไพ่ (ชนะ 5 เด้งได้ 5 เท่าเต็ม!)
+    if (finalCard.score > tempDealerResult.score) {
+        let winMultiplier = finalCard.mult; // ไม่ต้องเอา bet.maxMultiplier มาล็อคแล้ว
+        userTotalWinLoss += (betPrice * winMultiplier);
+        }
                             else if (finalCard.score < tempDealerResult.score) {
                                 let loseMultiplier = tempDealerResult.mult;
                                 if (loseMultiplier > 3) {
@@ -2145,12 +2141,8 @@ else if (userMsg === 'ok' || userMsg === 'no') {
 
                             // 🧮 ตรรกะคิดเงินของฝั่งคนแทงเจ้ามือ (หักต๋ง 10% เฉพาะขาที่ได้กำไร)
                             if (tempDealerResult.score > finalCard.score) {
-                                // เจ้ามือชนะขาผู้เล่นคนนั้น = คนแทงฝั่งเจ้าได้กำไร!
-                                let winMultiplier = tempDealerResult.mult;
-                                // 🌟 [จุดเปลี่ยนที่ 3]: ดักเพดานเด้งฝั่งคนแทงเจ้าชนะตามสิทธิ์ที่ค้ำประกันไว้
-                                if (bet.maxMultiplier && winMultiplier > bet.maxMultiplier) {
-                                    winMultiplier = finalCard.mult;
-                                }
+        let winMultiplier = tempDealerResult.mult; // ไม่ต้องเอา bet.maxMultiplier มาล็อคแล้ว
+        
                                 let grossWin = betPrice * winMultiplier; // กำไรเต็มก่อนหัก
                                 
                                 // 🔥 หักต๋งรายขาทันที 10% (เหลือจ่ายจริง 90%)

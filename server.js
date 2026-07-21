@@ -2315,40 +2315,59 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                 bets: JSON.parse(JSON.stringify(roundBets))
             };
             
-            detailedRoundHistory[currentRound] = summaryPayoutText;
-            global.currentReplyFlex = {
-                "type": "flex",
-                "altText": `💰 สรุปยอดได้/เสีย รอบที่: ${currentRound}`,
-                "contents": {
-                    "type": "bubble",
-                    "styles": {
-                        "body": { "backgroundColor": "#141419" } // พื้นหลังสีดำโทนพรีเมียม
-                    },
-                    "body": {
-                        "type": "box",
-                        "layout": "vertical",
-                        "spacing": "md",
-                        "contents": [
-                            { "type": "text", "text": "💰 สรุปยอดได้/เสีย ประจำรอบ 🎉", "weight": "bold", "color": "#ffaa00", "size": "md", "align": "center" },
-                            { "type": "text", "text": `รอบที่: ${currentRound}`, "weight": "bold", "color": "#ffffff", "size": "xl", "align": "center", "margin": "none" },
-                            { "type": "text", "text": `👑 เจ้ามือ: ${tempDealerResult.name}`, "size": "xs", "color": "#aaaaaa", "align": "center" },
-                            { "type": "separator", "color": "#2a2a35" },
-                            
-                            // 👤 รายชื่อสมาชิกทุกคนที่เล่นในรอบนี้ (ที่ดึงมาจากลูปคำนวณเงิน)
-                            {
-                                "type": "box",
-                                "layout": "vertical",
-                                "spacing": "sm",
-                                "contents": flexUserContents
-                            },
-                            
-                            { "type": "separator", "color": "#2a2a35" },
-                            { "type": "text", "text": "🏁 อัปเดตกระเป๋าเงินและเคลียร์ยอดเรียบร้อยครับ", "size": "xs", "color": "#888888", "align": "center", "style": "italic" }
-                        ]
-                    }
-                }
-            };
+           // ==================== [ส่วนแปลงเป็น CAROUSEL สไลด์ข้าง] ====================
+// 1. ตัดแบ่ง flexUserContents ออกเป็นหน้าๆ (แนะนำหน้าละ 3 คนเพื่อให้เห็นยอดคงเหลือชัดเจน)
+const chunkSize = 3; 
+const userPages = [];
+for (let i = 0; i < flexUserContents.length; i += chunkSize) {
+    userPages.push(flexUserContents.slice(i, i + chunkSize));
+}
 
+// ป้องกันกรณีไม่มีผู้เล่นในรอบ
+if (userPages.length === 0) {
+    userPages.push([{ "type": "text", "text": "ไม่มีรายการคำนวณในรอบนี้", "color": "#aaaaaa", "size": "xs", "align": "center" }]);
+}
+
+// 2. สร้างการ์ด Carousel
+const winLossBubbles = userPages.map((pageContents, index) => ({
+    "type": "bubble",
+    "styles": {
+        "body": { "backgroundColor": "#141419" }
+    },
+    "body": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "md",
+        "contents": [
+            { "type": "text", "text": "💰 สรุปยอดได้/เสีย ประจำรอบ 🎉", "weight": "bold", "color": "#ffaa00", "size": "md", "align": "center" },
+            { "type": "text", "text": `รอบที่: ${currentRound} (หน้า ${index + 1}/${userPages.length})`, "weight": "bold", "color": "#ffffff", "size": "xl", "align": "center", "margin": "none" },
+            { "type": "text", "text": `👑 เจ้ามือ: ${tempDealerResult.name}`, "size": "xs", "color": "#aaaaaa", "align": "center" },
+            { "type": "separator", "color": "#2a2a35" },
+            
+            // 👤 รายชื่อพร้อมยอดสุทธิ/เครดิตคงเหลือ (ดึงจาก flexUserContents ของน้าโดยตรง)
+            {
+                "type": "box",
+                "layout": "vertical",
+                "spacing": "sm",
+                "contents": pageContents
+            },
+            
+            { "type": "separator", "color": "#2a2a35" },
+            { "type": "text", "text": "🏁 อัปเดตกระเป๋าเงินและเคลียร์ยอดเรียบร้อยครับ", "size": "xs", "color": "#888888", "align": "center", "style": "italic" }
+        ]
+    }
+}));
+
+// 3. กำหนดค่า Carousel Flex
+global.currentReplyFlex = {
+    "type": "flex",
+    "altText": `💰 สรุปยอดได้/เสีย รอบที่: ${currentRound}`,
+    "contents": {
+        "type": "carousel",
+        "contents": winLossBubbles
+    }
+};
+// =========================================================================
             // กำหนดให้ส่งทั้งข้อความธรรมดา (เก็บประวัติ) และแนบกล่องดีไซน์ไปด้วยครับน้า
             replyText = "✅ ระบบทำการเคลียร์ยอดเงินในรอบนี้เสร็จสิ้นแล้วครับ!"; 
         }  

@@ -2327,7 +2327,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
             
            // ==================== [ส่วนแปลงเป็น CAROUSEL สไลด์ข้าง] ====================
 // 1. ตัดแบ่ง flexUserContents ออกเป็นหน้าๆ (แนะนำหน้าละ 3 คนเพื่อให้เห็นยอดคงเหลือชัดเจน)
-const chunkSize = 3; 
+const chunkSize = 7; 
 const userPages = [];
 for (let i = 0; i < flexUserContents.length; i += chunkSize) {
     userPages.push(flexUserContents.slice(i, i + chunkSize));

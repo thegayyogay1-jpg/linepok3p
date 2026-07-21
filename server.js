@@ -2369,7 +2369,7 @@ const winLossBubbles = userPages.map((pageContents, index) => {
                         "action": {
                             "type": "message",
                             "label": "🚀 เปิดรอบแทงถัดไป",
-                            "text": "เปิดรอบ" // 👈 เปลี่ยนเป็นคำสั่งเปิดรอบของน้าได้เลยครับ
+                            "text": "o" // 👈 เปลี่ยนเป็นคำสั่งเปิดรอบของน้าได้เลยครับ
                         }
                     }
                 ] : [])

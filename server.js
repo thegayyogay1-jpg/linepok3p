@@ -1308,48 +1308,68 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                     });
                 }
 
-                // 🚀 ยิงข้อความแพ็คคู่: [1. รูปภาพปิดจั่วของน้า] + [2. Flex Message สรุปโพยและการจั่วรายบุคคล]
-                try {
-                    await axios.post('https://api.line.me/v2/bot/message/reply', {
-                        replyToken: replyToken,
-                        messages: [
-                            // 📸 ข้อความที่ 1: รูปปิดจั่วของน้า
-                            {
-                                "type": "image",
-                                "originalContentUrl": closeDrawImgUrl,
-                                "previewImageUrl": closeDrawImgUrl
-                            },
-                            // 📊 ข้อความที่ 2: Flex Message สรุปข้อมูลทั้งหมด (ดึงลอจิกจากของเดิมน้ามาแสดงผลสวยงาม)
-                            {
-                                "type": "flex",
-                                "altText": `🚫 ปิดรอบขอจั่วไพ่เรียบร้อยแล้ว (รอบที่ ${currentRound})`,
-                                "contents": {
-                                    "type": "bubble",
-                                    "styles": { "body": { "backgroundColor": "#1a140d" } }, // ธีมดำอมน้ำตาลทองคาสิโน
-                                    "body": {
-                                        "type": "box", "layout": "vertical", "spacing": "sm",
-                                        "contents": [
-                                            { "type": "text", "text": "🔒 ปิดรอบขอจั่วไพ่เรียบร้อยแล้วครับ 🏁", "weight": "bold", "color": "#ffaa00", "size": "md", "align": "center" },
-                                            { "type": "text", "text": "🎰 ล็อกสถานะไพ่ 2 ใบ/ 3 ใบของทุกขาแล้ว", "size": "xs", "color": "#ffffff", "align": "center" },
-                                            { "type": "separator", "color": "#3a2d1f" },
-                                            { "type": "text", "text": "📋 รายงานสรุปโพยและยอดแทงในรอบนี้", "size": "xs", "color": "#ffaa00", "weight": "bold" },
-                                            { "type": "box", "layout": "vertical", "spacing": "xs", "contents": summaryFlexContents },
-                                            { "type": "text", "text": "ℹ️ รอสรุปผลและคิดเงินสักครู่ครับ", "size": "xs", "color": "#aaaaaa", "align": "center", "margin": "sm" }
-                                        ]
-                                    }
-                                }
-                            }
-                        ]
-                    }, {
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${TOKEN}`
-                        }
-                    });
-                } catch (error) {
-                    console.error("❌ ส่งรูปภาพและ Flex ปิดจั่วล้มเหลว:", error.response ? error.response.data : error.message);
+               // 🚀 ยิงข้อความแพ็คคู่: [1. รูปภาพปิดจั่วของน้า] + [2. Flex Message สไลด์ carousel สรุปโพยและการจั่ว]
+try {
+    // 1. ฟังก์ชันช่วยเหลือสำหรับตัดแบ่ง array ออกเป็นหน้าๆ (Chunking)
+    const chunkSize = 5; // แบ่งหน้าละ 5 รายชื่อ
+    const flexPages = [];
+    for (let i = 0; i < summaryFlexContents.length; i += chunkSize) {
+        flexPages.push(summaryFlexContents.slice(i, i + chunkSize));
+    }
+
+    // 2. ถ้าไม่มีคนแทงเลย ให้สร้างการ์ดเปล่าป้องกันโค้ดรวน
+    if (flexPages.length === 0) {
+        flexPages.push([{ "type": "text", "text": "ไม่มีรายการแทงในรอบนี้", "color": "#aaaaaa", "size": "xs", "align": "center" }]);
+    }
+
+    // 3. วนลูปสร้างการ์ด Bubble แต่ละหน้าสำหรับ Carousel
+    const carouselBubbles = flexPages.map((pageContents, index) => ({
+        "type": "bubble",
+        "styles": { "body": { "backgroundColor": "#1a140d" } }, // ธีมดำอมน้ำตาลทองคาสิโนเดิมของน้า
+        "body": {
+            "type": "box", "layout": "vertical", "spacing": "sm",
+            "contents": [
+                { "type": "text", "text": "🔒 ปิดรอบขอจั่วไพ่เรียบร้อยแล้วครับ 🏁", "weight": "bold", "color": "#ffaa00", "size": "md", "align": "center" },
+                { "type": "text", "text": `🎰 ล็อกสถานะไพ่ 2 ใบ/ 3 ใบแล้ว (หน้า ${index + 1}/${flexPages.length})`, "size": "xs", "color": "#ffffff", "align": "center" },
+                { "type": "separator", "color": "#3a2d1f" },
+                { "type": "text", "text": "📋 รายงานสรุปโพยและยอดแทงในรอบนี้", "size": "xs", "color": "#ffaa00", "weight": "bold" },
+                { "type": "box", "layout": "vertical", "spacing": "xs", "contents": pageContents },
+                { "type": "separator", "color": "#3a2d1f" },
+                { "type": "text", "text": "ℹ️ รอสรุปผลและคิดเงินสักครู่ครับ", "size": "xs", "color": "#aaaaaa", "align": "center", "margin": "sm" }
+            ]
+        }
+    }));
+
+    // 4. ส่ง API ไปยัง LINE
+    await axios.post('https://api.line.me/v2/bot/message/reply', {
+        replyToken: replyToken,
+        messages: [
+            // 📸 ข้อความที่ 1: รูปปิดจั่วของน้า
+            {
+                "type": "image",
+                "originalContentUrl": closeDrawImgUrl,
+                "previewImageUrl": closeDrawImgUrl
+            },
+            // 📊 ข้อความที่ 2: Flex Message Carousel สรุปโพยแบบสไลด์ข้าง
+            {
+                "type": "flex",
+                "altText": `🚫 ปิดรอบขอจั่วไพ่เรียบร้อยแล้ว (รอบที่ ${currentRound})`,
+                "contents": {
+                    "type": "carousel", // 👈 สลับเป็น carousel สไลด์ข้าง
+                    "contents": carouselBubbles
                 }
-                return; // จบงานปิดจั่วและสรุปผล
+            }
+        ]
+    }, {
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${TOKEN}`
+        }
+    });
+} catch (error) {
+    console.error("❌ ส่งรูปภาพและ Flex ปิดจั่วล้มเหลว:", error.response ? error.response.data : error.message);
+}
+return; // จบงานปิดจั่วและสรุปผล
             }
         }
     }

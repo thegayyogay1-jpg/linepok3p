@@ -1079,49 +1079,68 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                     });
                 }
 
-                // 🚀 ยิงข้อความแพ็คคู่: [1. รูปภาพปิดรอบ] + [2. Flex Message รายชื่อ]
-                try {
-                    await axios.post('https://api.line.me/v2/bot/message/reply', {
-                        replyToken: replyToken,
-                        messages: [
-                            // 📸 ข้อความที่ 1: รูปปิดรอบของน้า
-                            {
-                                "type": "image",
-                                "originalContentUrl": closeRoundImgUrl,
-                                "previewImageUrl": closeRoundImgUrl
-                            },
-                            // 📊 ข้อความที่ 2: Flex Message สรุปยอดโพยที่ปิดรอบ
-                            {
-                                "type": "flex",
-                                "altText": `🚫 ปิดรอบแทงเรียบร้อย รอบที่ ${currentRound}`,
-                                "contents": {
-                                    "type": "bubble",
-                                    "styles": { "body": { "backgroundColor": "#1a1111" } },
-                                    "body": {
-                                        "type": "box", "layout": "vertical", "spacing": "md",
-                                        "contents": [
-                                            { "type": "text", "text": "🚫 ปิดรอบแทงเรียบร้อยแล้วครับ 🏁", "weight": "bold", "color": "#ff3333", "size": "md", "align": "center" },
-                                            { "type": "text", "text": `จบรอบที่: ${currentRound}`, "weight": "bold", "color": "#ffffff", "size": "sm", "align": "center" },
-                                            { "type": "separator", "color": "#3a2222" },
-                                            { "type": "text", "text": "📝 สรุปยอดแทงประจำรอบ", "size": "xs", "color": "#ffaa00", "weight": "bold" },
-                                            { "type": "box", "layout": "vertical", "spacing": "xs", "contents": summaryFlexContents },
-                                            { "type": "separator", "color": "#3a2222" },
-                                            { "type": "text", "text": "🔒 หยุดรับโพยทุกกรณี รอแอดมินสรุปผลสักครู่ครับ", "size": "xs", "color": "#aaaaaa", "wrap": true, "align": "center" }
-                                        ]
-                                    }
-                                }
-                            }
-                        ]
-                    }, {
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${TOKEN}`
-                        }
-                    });
-                } catch (error) {
-                    console.error("❌ ส่งรูปภาพและ Flex ปิดรอบล้มเหลว:", error.response ? error.response.data : error.message);
+               // 🚀 ยิงข้อความแพ็คคู่: [1. รูปภาพปิดรอบ] + [2. Flex Message สไลด์ carousel รายชื่อ]
+try {
+    // 1. ฟังก์ชันช่วยเหลือสำหรับตัดแบ่ง array ออกเป็นหน้าๆ (Chunking)
+    const chunkSize = 5; // กำหนดให้อยู่หน้าละ 5 รายชื่อกำลังสวย ไม่แน่นเกินไป
+    const flexPages = [];
+    for (let i = 0; i < summaryFlexContents.length; i += chunkSize) {
+        flexPages.push(summaryFlexContents.slice(i, i + chunkSize));
+    }
+
+    // 2. ถ้าไม่มีคนแทงเลย ให้สร้างการ์ดเปล่าป้องกันโค้ดรวน
+    if (flexPages.length === 0) {
+        flexPages.push([{ "type": "text", "text": "ไม่มีรายการแทงในรอบนี้", "color": "#aaaaaa", "size": "xs", "align": "center" }]);
+    }
+
+    // 3. วนลูปสร้างการ์ด Bubble แต่ละหน้าสำหรับ Carousel
+    const carouselBubbles = flexPages.map((pageContents, index) => ({
+        "type": "bubble",
+        "styles": { "body": { "backgroundColor": "#1a1111" } },
+        "body": {
+            "type": "box", "layout": "vertical", "spacing": "md",
+            "contents": [
+                { "type": "text", "text": "🚫 ปิดรอบแทงเรียบร้อยแล้วครับ 🏁", "weight": "bold", "color": "#ff3333", "size": "md", "align": "center" },
+                { "type": "text", "text": `จบรอบที่: ${currentRound} (หน้า ${index + 1}/${flexPages.length})`, "weight": "bold", "color": "#ffffff", "size": "sm", "align": "center" },
+                { "type": "separator", "color": "#3a2222" },
+                { "type": "text", "text": "📝 สรุปยอดแทงประจำรอบ", "size": "xs", "color": "#ffaa00", "weight": "bold" },
+                { "type": "box", "layout": "vertical", "spacing": "xs", "contents": pageContents },
+                { "type": "separator", "color": "#3a2222" },
+                { "type": "text", "text": "🔒 หยุดรับโพยทุกกรณี รอแอดมินสรุปผลสักครู่ครับ", "size": "xs", "color": "#aaaaaa", "wrap": true, "align": "center" }
+            ]
+        }
+    }));
+
+    // 4. ส่ง API ไปยัง LINE
+    await axios.post('https://api.line.me/v2/bot/message/reply', {
+        replyToken: replyToken,
+        messages: [
+            // 📸 ข้อความที่ 1: รูปปิดรอบของน้า
+            {
+                "type": "image",
+                "originalContentUrl": closeRoundImgUrl,
+                "previewImageUrl": closeRoundImgUrl
+            },
+            // 📊 ข้อความที่ 2: Flex Message Carousel (สไลด์ข้าง)
+            {
+                "type": "flex",
+                "altText": `🚫 ปิดรอบแทงเรียบร้อย รอบที่ ${currentRound}`,
+                "contents": {
+                    "type": "carousel", // 👈 เปลี่ยนจาก bubble เป็น carousel ตรงนี้ครับ!
+                    "contents": carouselBubbles
                 }
-                return; 
+            }
+        ]
+    }, {
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${TOKEN}`
+        }
+    });
+} catch (error) {
+    console.error("❌ ส่งรูปภาพและ Flex ปิดรอบล้มเหลว:", error.response ? error.response.data : error.message);
+}
+return;
             }
         } else if (userMsg === 'rst') {
             currentRound = 0;

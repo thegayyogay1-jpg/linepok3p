@@ -1920,7 +1920,7 @@ else if (originalMsg.startsWith('>')) {
         result3Cards = parseCardStr(part2, false, true);
     } else {
             // กรณีพิมพ์ตัวเดียวโดดๆ
-            else {
+           
                 let pts = parseInt(innerContent);
                 if (!isNaN(pts) && (pts === 8 || pts === 9)) {
                     result2Cards = parseCardStr(innerContent, false, false, true);

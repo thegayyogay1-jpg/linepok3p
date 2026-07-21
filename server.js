@@ -3438,14 +3438,14 @@ else if (userMsg === 'oball' || userMsg === 'Oball' || userMsg === 'OBALL') {
         };
     }
 }
-    // ==================== [ คำสั่งใหม่: สรุปยอดเครดิตรวม + ยอดฝากถอนวันนี้ (พิมพ์: สรุป) ] ====================
+    // ==================== [ คำสั่งแอดมิน: เช็กยอดเครดิตรวมสมาชิกทั้งหมด (พิมพ์: สรุป) ] ====================
 else if (userMsg === 'สรุป' || userMsg === 'สรุป' || userMsg === 'สรุป') {
-    // 🚨 กรองขั้นสูงสุด: เฉพาะแอดมินสั่งในแชทส่วนตัว (1 ต่อ 1)
+    // 🚨 กรองขั้นสูงสุด: เฉพาะแอดมินสั่งในแชทส่วนตัว (1 ต่อ 1) เท่านั้น
     if (!ADMIN_IDS.includes(userId) || event.source.type !== 'user') {
         return res.sendStatus(200);
     }
 
-    // 1. คำนวณยอดเครดิตรวมสมาชิกทั้งหมด
+    // 1. วนลูปคำนวณยอดเครดิตรวม และนับจำนวนสมาชิกทั้งหมด
     let totalSystemBalance = 0;
     let totalMembers = 0;
     for (let key in usersWallets) {
@@ -3453,98 +3453,43 @@ else if (userMsg === 'สรุป' || userMsg === 'สรุป' || userMsg ===
         totalMembers++;
     }
 
-    // 2. หาวันที่ปัจจุบัน (รูปแบบ YYYY-MM-DD ตามเวลาไทย)
     const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' });
 
-    // 3. วนลูปคำนวณยอดฝาก/ถอนของวันนี้ (จาก global.transactionHistory หรือประวัติในระบบของน้า)
-    let todayDeposit = 0;
-    let todayWithdraw = 0;
-
-    // เช็กว่ามีประวัติการทำรายการเก็บไว้ใน global หรือไม่
-    if (global.transactionHistory && Array.isArray(global.transactionHistory)) {
-        global.transactionHistory.forEach(tx => {
-            // เช็กเฉพาะรายการที่เป็นของวันนี้
-            if (tx.date && tx.date.startsWith(todayStr)) {
-                if (tx.type === 'deposit') {
-                    todayDeposit += (tx.amount || 0);
-                } else if (tx.type === 'withdraw') {
-                    todayWithdraw += (tx.amount || 0);
-                }
-            }
-        });
-    }
-
-    // คำนวณส่วนต่าง ฝาก - ถอน
-    const todayProfit = todayDeposit - todayWithdraw;
-    const profitColor = todayProfit >= 0 ? "#00ff66" : "#ff4d4d"; // เขียวถ้าบวก, แดงถ้าลบ
-    const profitSign = todayProfit >= 0 ? "+" : "";
-
-    // 4. สร้าง Flex Message สรุปผลตัวเลข
+    // 2. ส่ง Flex Message สรุปผล
     global.currentReplyFlex = {
         "type": "flex",
-        "altText": `📊 สรุปรายงานบัญชีประจำวันที่ ${todayStr}`,
+        "altText": `📊 สรุปยอดเครดิตรวมในระบบ (${totalSystemBalance.toLocaleString()} บาท)`,
         "contents": {
             "type": "bubble",
-            "styles": {
-                "body": { "backgroundColor": "#121214" }
-            },
+            "styles": { "body": { "backgroundColor": "#121214" } },
             "body": {
                 "type": "box",
                 "layout": "vertical",
                 "spacing": "md",
                 "contents": [
-                    { "type": "text", "text": "📈 สรุปรายงานบัญชีระบบ", "weight": "bold", "color": "#ffaa00", "size": "md", "align": "center" },
-                    { "type": "text", "text": `📅 ประจำวันที่: ${todayStr}`, "size": "xs", "color": "#aaaaaa", "align": "center" },
+                    { "type": "text", "text": "📈 สรุปยอดเครดิตรวมระบบ", "weight": "bold", "color": "#ffaa00", "size": "md", "align": "center" },
+                    { "type": "text", "text": `📅 ข้อมูล ณ วันที่: ${todayStr}`, "size": "xs", "color": "#aaaaaa", "align": "center" },
                     { "type": "separator", "color": "#2a2a35" },
 
-                    // 💰 ยอดเครดิตค้างในระบบทั้งหมด
+                    // 💳 การ์ดแสดงยอดรวม
                     {
                         "type": "box",
                         "layout": "vertical",
                         "backgroundColor": "#1e1e24",
                         "cornerRadius": "md",
-                        "paddingAll": "md",
-                        "contents": [
-                            { "type": "text", "text": "💳 เครดิตรวมสมาชิกทั้งหมด", "color": "#ffffff", "size": "xs", "weight": "bold" },
-                            { "type": "text", "text": `${totalSystemBalance.toLocaleString()} บาท`, "color": "#ffaa00", "size": "lg", "weight": "bold", "align": "end" },
-                            { "type": "text", "text": `(จากสมาชิกทั้งหมด ${totalMembers} คน)`, "color": "#888888", "size": "xxs", "align": "end" }
-                        ]
-                    },
-
-                    // 📥 📤 รายงานฝาก/ถอน ประจำวัน
-                    {
-                        "type": "box",
-                        "layout": "vertical",
-                        "backgroundColor": "#1e1e24",
-                        "cornerRadius": "md",
-                        "paddingAll": "md",
+                        "paddingAll": "lg",
                         "spacing": "xs",
                         "contents": [
-                            { "type": "text", "text": "📊 สรุปการเคลื่อนไหววันนี้", "color": "#ffffff", "size": "xs", "weight": "bold" },
-                            { "type": "separator", "color": "#33333d", "margin": "xs" },
+                            { "type": "text", "text": "💰 เครดิตรวมสมาชิกทั้งหมด", "color": "#ffffff", "size": "xs", "weight": "bold" },
+                            { "type": "text", "text": `${totalSystemBalance.toLocaleString()} ฿`, "color": "#00ff66", "size": "xl", "weight": "bold", "align": "end" },
+                            { "type": "separator", "color": "#33333d", "margin": "sm" },
                             {
                                 "type": "box",
                                 "layout": "horizontal",
+                                "margin": "xs",
                                 "contents": [
-                                    { "type": "text", "text": "• ยอดฝากรวม:", "color": "#aaaaaa", "size": "xs" },
-                                    { "type": "text", "text": `+${todayDeposit.toLocaleString()} ฿`, "color": "#00ff66", "size": "xs", "align": "end", "weight": "bold" }
-                                ]
-                            },
-                            {
-                                "type": "box",
-                                "layout": "horizontal",
-                                "contents": [
-                                    { "type": "text", "text": "• ยอดถอนรวม:", "color": "#aaaaaa", "size": "xs" },
-                                    { "type": "text", "text": `-${todayWithdraw.toLocaleString()} ฿`, "color": "#ff4d4d", "size": "xs", "align": "end", "weight": "bold" }
-                                ]
-                            },
-                            { "type": "separator", "color": "#33333d", "margin": "xs" },
-                            {
-                                "type": "box",
-                                "layout": "horizontal",
-                                "contents": [
-                                    { "type": "text", "text": "⚖️ ผลต่าง (ฝาก - ถอน):", "color": "#ffffff", "size": "xs", "weight": "bold" },
-                                    { "type": "text", "text": `${profitSign}${todayProfit.toLocaleString()} ฿`, "color": profitColor, "size": "xs", "align": "end", "weight": "bold" }
+                                    { "type": "text", "text": "• จำนวนสมาชิกทั้งหมด:", "color": "#aaaaaa", "size": "xs" },
+                                    { "type": "text", "text": `${totalMembers} คน`, "color": "#ffaa00", "size": "xs", "align": "end", "weight": "bold" }
                                 ]
                             }
                         ]

@@ -1007,8 +1007,8 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                                         "type": "box", "layout": "vertical", "spacing": "md",
                                         "contents": [
                                             { "type": "text", "text": "🎰 เริ่มเปิดรอบแทงแล้วครับ 🎉", "weight": "bold", "color": "#22031F", "size": "md", "align": "center" },
-                                            { "type": "text", "text": `รอบที่: ${currentRound}`, "weight": "bold", "color": "#ffffff", "size": "xl", "align": "center", "margin": "none" },
-                                            { "type": "separator", "color": "#1f3a2b" },
+                                            { "type": "text", "text": `รอบที่: ${currentRound}`, "weight": "bold", "color": "#22031F", "size": "xl", "align": "center", "margin": "none" },
+                                            { "type": "separator", "color": "#22031F" },
                                             { "type": "text", "text": "📈 สถิติผลเจ้ามือ 5 รอบล่าสุด", "size": "xs", "color": "#22031F", "weight": "bold" },
                                             // 🔥 นำกล่องแถวประวัติวงรีมาวางตรงนี้โดยตรง
                                             { 
@@ -2086,7 +2086,7 @@ else if (originalMsg.startsWith('>')) {
                                         "height": "sm",
                                         "action": {
                                             "type": "message",
-                                            "label": "✅ ยืนยัน (ok)",
+                                            "label": "✅ ยืนยัน",
                                             "text": "ok" // คำสั่งที่ส่งเข้าแชทเมื่อกดปุ่ม
                                         }
                                     },
@@ -2097,7 +2097,7 @@ else if (originalMsg.startsWith('>')) {
                                         "height": "sm",
                                         "action": {
                                             "type": "message",
-                                            "label": "❌ ยกเลิก (no)",
+                                            "label": "❌ ยกเลิก",
                                             "text": "no" // คำสั่งที่ส่งเข้าแชทเมื่อกดปุ่ม
                                         }
                                     }

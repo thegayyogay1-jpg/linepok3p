@@ -1192,14 +1192,14 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                                 "altText": `🃏 เปิดรอบขอจั่วไพ่ใบที่ 3 (รอบที่ ${currentRound})`,
                                 "contents": {
                                     "type": "bubble",
-                                    "styles": { "body": { "backgroundColor": "#E8A5AE" } }, // ธีมน้ำเงินเข้มคาสิโน
+                                    "styles": { "body": { "backgroundColor": "#191970" } }, // ธีมน้ำเงินเข้มคาสิโน
                                     "body": {
                                         "type": "box", "layout": "vertical", "spacing": "md",
                                         "contents": [
-                                            { "type": "text", "text": "🃏 เปิดรอบขอจั่วไพ่ใบที่ 3 แล้วครับ 🎉", "weight": "bold", "color": "#3399ff", "size": "md", "align": "center" },
+                                            { "type": "text", "text": "🃏 เปิดรอบขอจั่วไพ่ใบที่ 3 แล้ว", "weight": "bold", "color": "#FFCC33", "size": "md", "align": "center" },
                                             { "type": "text", "text": `รอบที่: ${currentRound}`, "weight": "bold", "color": "#ffffff", "size": "lg", "align": "center", "margin": "none" },
                                             { "type": "separator", "color": "#1b2a47" },
-                                            { "type": "text", "text": "💡 สำหรับสมาชิกที่ต้องการจั่วไพ่เพิ่ม\nให้พิมพ์เลขขาตามด้วยเครื่องหมายบวก (+)\nเช่น พิมพ์ \"1+\" หรือ \"12+\"", "size": "sm", "color": "#22031F", "wrap": true, "align": "center" },
+                                            { "type": "text", "text": "💡 สำหรับสมาชิกที่ต้องการจั่วไพ่เพิ่ม\nให้พิมพ์เลขขาตามด้วยเครื่องหมายบวก (+)\nเช่น พิมพ์ \"1+\" หรือ \"12+\"", "size": "sm", "color": "#dbebfa", "wrap": true, "align": "center" },
                                             { "type": "separator", "color": "#1b2a47" },
                                             { "type": "text", "text": "⚠️ หากขาไหนต้องการอยู่ (ไม่จั่ว) ไม่ต้องพิมพ์อะไรส่งมาครับ", "size": "md", "color": "#E9100F", "wrap": true, "align": "center" }
                                         ]
@@ -1325,17 +1325,17 @@ try {
     // 3. วนลูปสร้างการ์ด Bubble แต่ละหน้าสำหรับ Carousel
     const carouselBubbles = flexPages.map((pageContents, index) => ({
         "type": "bubble",
-        "styles": { "body": { "backgroundColor": "#E8A5AE" } }, // ธีมดำอมน้ำตาลทองคาสิโนเดิมของน้า
+        "styles": { "body": { "backgroundColor": "#191970" } }, // ธีมดำอมน้ำตาลทองคาสิโนเดิมของน้า
         "body": {
             "type": "box", "layout": "vertical", "spacing": "sm",
             "contents": [
                 { "type": "text", "text": "🔒 ปิดรอบขอจั่วไพ่เรียบร้อยแล้วครับ 🏁", "weight": "bold", "color": "#E9100F", "size": "md", "align": "center" },
                 { "type": "text", "text": `🎰 ล็อกสถานะไพ่ 2 ใบ/ 3 ใบแล้ว (หน้า ${index + 1}/${flexPages.length})`, "size": "xs", "color": "#ffffff", "align": "center" },
                 { "type": "separator", "color": "#3a2d1f" },
-                { "type": "text", "text": "📋 รายงานสรุปโพยและยอดแทงในรอบนี้", "size": "xs", "color": "#22031F", "weight": "bold" },
+                { "type": "text", "text": "📋 รายงานสรุปโพยและยอดแทงในรอบนี้", "size": "xs", "color": "#FFFF33", "weight": "bold" },
                 { "type": "box", "layout": "vertical", "spacing": "xs", "contents": pageContents },
                 { "type": "separator", "color": "#3a2d1f" },
-                { "type": "text", "text": "ℹ️ รอสรุปผลและคิดเงินสักครู่ครับ", "size": "xs", "color": "#22031F", "align": "center", "margin": "sm" }
+                { "type": "text", "text": "ℹ️ รอสรุปผลและคิดเงินสักครู่ครับ", "size": "xs", "color": "#FFFF33", "align": "center", "margin": "sm" }
             ]
         }
     }));

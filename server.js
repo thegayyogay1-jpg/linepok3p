@@ -2132,7 +2132,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                             let playerTwoCardMult = matchResult.twoCards.mult;
 
                             // รันกฎตายตัว: ขาผู้เล่นได้ 4 แต้มหรือต่ำกว่า (และไม่ใช่ 4 แต้มเด้ง) ให้เจ้ามือไปสู้กับผล 3 ใบ
-                            if (playerTwoCardScore <= 4 && playerTwoCardMult === 1) {
+                            if (playerTwoCardScore <= 4 || (playerTwoCardScore === 4 && playerTwoCardMult === 1)) {
                                 finalCard = matchResult.threeCards; // ชนกับผลไพ่ 3 ใบ
                             } else {
                                 finalCard = matchResult.twoCards;   // ชนกับผลไพ่ 2 ใบ (5 แต้มขึ้นไป หรือ 4 แต้มเด้ง)

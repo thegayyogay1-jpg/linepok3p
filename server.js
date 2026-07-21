@@ -1403,7 +1403,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                         let betTracker = usersRoundCrossCheck[userId];
 
                         const allowedLegs = ['1', '2', '3', '4'];
-                        const MIN_BET = 20;
+                        const MIN_BET = 10;
                         const MAX_BET = 2500;
 
                         for (let line of lines) {

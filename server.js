@@ -2115,7 +2115,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                                 let winMultiplier = finalCard.mult;
                                 // 🌟 [จุดเปลี่ยนที่ 1]: ดักเพดานเด้งฝั่งผู้เล่นชนะตามจริงที่มีการค้ำประกันไว้ (x2 หรือ x3)
                                 if (bet.maxMultiplier && winMultiplier > bet.maxMultiplier) {
-                                    winMultiplier = bet.maxMultiplier;
+                                    winMultiplier = finalCard.mult;
                                 }
                                 userTotalWinLoss += (betPrice * winMultiplier);
                             } 
@@ -2149,7 +2149,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                                 let winMultiplier = tempDealerResult.mult;
                                 // 🌟 [จุดเปลี่ยนที่ 3]: ดักเพดานเด้งฝั่งคนแทงเจ้าชนะตามสิทธิ์ที่ค้ำประกันไว้
                                 if (bet.maxMultiplier && winMultiplier > bet.maxMultiplier) {
-                                    winMultiplier = bet.maxMultiplier;
+                                    winMultiplier = finalCard.mult;
                                 }
                                 let grossWin = betPrice * winMultiplier; // กำไรเต็มก่อนหัก
                                 

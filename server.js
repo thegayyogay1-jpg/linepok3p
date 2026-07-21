@@ -1103,10 +1103,10 @@ try {
                 { "type": "text", "text": "🚫 ปิดรอบแทงเรียบร้อยแล้วครับ 🏁", "weight": "bold", "color": "#E9100F", "size": "md", "align": "center" },
                 { "type": "text", "text": `จบรอบที่: ${currentRound} (หน้า ${index + 1}/${flexPages.length})`, "weight": "bold", "color": "#ffffff", "size": "sm", "align": "center" },
                 { "type": "separator", "color": "#3a2222" },
-                { "type": "text", "text": "📝 สรุปยอดแทงประจำรอบ", "size": "xs", "color": "#ffaa00", "weight": "bold" },
+                { "type": "text", "text": "📝 สรุปยอดแทงประจำรอบ", "size": "xs", "color": "#22031F", "weight": "bold" },
                 { "type": "box", "layout": "vertical", "spacing": "xs", "contents": pageContents },
                 { "type": "separator", "color": "#3a2222" },
-                { "type": "text", "text": "🔒 หยุดรับโพยทุกกรณี รอแอดมินสรุปผลสักครู่ครับ", "size": "xs", "color": "#aaaaaa", "wrap": true, "align": "center" }
+                { "type": "text", "text": "🔒 หยุดรับโพยทุกกรณี รอแอดมินเปิดรอบจั่ว", "size": "xs", "color": "#E9100F", "wrap": true, "align": "center" }
             ]
         }
     }));
@@ -1199,9 +1199,9 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                                             { "type": "text", "text": "🃏 เปิดรอบขอจั่วไพ่ใบที่ 3 แล้วครับ 🎉", "weight": "bold", "color": "#3399ff", "size": "md", "align": "center" },
                                             { "type": "text", "text": `รอบที่: ${currentRound}`, "weight": "bold", "color": "#ffffff", "size": "lg", "align": "center", "margin": "none" },
                                             { "type": "separator", "color": "#1b2a47" },
-                                            { "type": "text", "text": "💡 สำหรับสมาชิกที่ต้องการจั่วไพ่เพิ่ม\nให้พิมพ์เลขขาตามด้วยเครื่องหมายบวก (+)\nเช่น พิมพ์ \"1+\" หรือ \"12+\"", "size": "sm", "color": "#dddddd", "wrap": true, "align": "center" },
+                                            { "type": "text", "text": "💡 สำหรับสมาชิกที่ต้องการจั่วไพ่เพิ่ม\nให้พิมพ์เลขขาตามด้วยเครื่องหมายบวก (+)\nเช่น พิมพ์ \"1+\" หรือ \"12+\"", "size": "sm", "color": "#22031F", "wrap": true, "align": "center" },
                                             { "type": "separator", "color": "#1b2a47" },
-                                            { "type": "text", "text": "⚠️ หากขาไหนต้องการอยู่ (ไม่จั่ว) ไม่ต้องพิมพ์อะไรส่งมาครับ", "size": "xs", "color": "#ffcc00", "wrap": true, "align": "center" }
+                                            { "type": "text", "text": "⚠️ หากขาไหนต้องการอยู่ (ไม่จั่ว) ไม่ต้องพิมพ์อะไรส่งมาครับ", "size": "xs", "color": "#E9100F", "wrap": true, "align": "center" }
                                         ]
                                     }
                                 }
@@ -1329,13 +1329,13 @@ try {
         "body": {
             "type": "box", "layout": "vertical", "spacing": "sm",
             "contents": [
-                { "type": "text", "text": "🔒 ปิดรอบขอจั่วไพ่เรียบร้อยแล้วครับ 🏁", "weight": "bold", "color": "#ffaa00", "size": "md", "align": "center" },
+                { "type": "text", "text": "🔒 ปิดรอบขอจั่วไพ่เรียบร้อยแล้วครับ 🏁", "weight": "bold", "color": "#E9100F", "size": "md", "align": "center" },
                 { "type": "text", "text": `🎰 ล็อกสถานะไพ่ 2 ใบ/ 3 ใบแล้ว (หน้า ${index + 1}/${flexPages.length})`, "size": "xs", "color": "#ffffff", "align": "center" },
                 { "type": "separator", "color": "#3a2d1f" },
-                { "type": "text", "text": "📋 รายงานสรุปโพยและยอดแทงในรอบนี้", "size": "xs", "color": "#ffaa00", "weight": "bold" },
+                { "type": "text", "text": "📋 รายงานสรุปโพยและยอดแทงในรอบนี้", "size": "xs", "color": "#22031F", "weight": "bold" },
                 { "type": "box", "layout": "vertical", "spacing": "xs", "contents": pageContents },
                 { "type": "separator", "color": "#3a2d1f" },
-                { "type": "text", "text": "ℹ️ รอสรุปผลและคิดเงินสักครู่ครับ", "size": "xs", "color": "#aaaaaa", "align": "center", "margin": "sm" }
+                { "type": "text", "text": "ℹ️ รอสรุปผลและคิดเงินสักครู่ครับ", "size": "xs", "color": "#22031F", "align": "center", "margin": "sm" }
             ]
         }
     }));

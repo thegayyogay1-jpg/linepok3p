@@ -1002,7 +1002,7 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                                 "altText": `🟢 เริ่มเปิดรอบแทงแล้ว! รอบที่ ${currentRound}`,
                                 "contents": {
                                     "type": "bubble",
-                                    "styles": { "body": { "backgroundColor": "#F9DEC9" } },
+                                    "styles": { "body": { "backgroundColor": "#581908" } },
                                     "body": {
                                         "type": "box", "layout": "vertical", "spacing": "md",
                                         "contents": [
@@ -1096,7 +1096,7 @@ try {
     // 3. วนลูปสร้างการ์ด Bubble แต่ละหน้าสำหรับ Carousel
     const carouselBubbles = flexPages.map((pageContents, index) => ({
         "type": "bubble",
-        "styles": { "body": { "backgroundColor": "#1a1111" } },
+        "styles": { "body": { "backgroundColor": "#581908" } },
         "body": {
             "type": "box", "layout": "vertical", "spacing": "md",
             "contents": [
@@ -1192,7 +1192,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                                 "altText": `🃏 เปิดรอบขอจั่วไพ่ใบที่ 3 (รอบที่ ${currentRound})`,
                                 "contents": {
                                     "type": "bubble",
-                                    "styles": { "body": { "backgroundColor": "#0b1528" } }, // ธีมน้ำเงินเข้มคาสิโน
+                                    "styles": { "body": { "backgroundColor": "#A40606" } }, // ธีมน้ำเงินเข้มคาสิโน
                                     "body": {
                                         "type": "box", "layout": "vertical", "spacing": "md",
                                         "contents": [
@@ -1325,7 +1325,7 @@ try {
     // 3. วนลูปสร้างการ์ด Bubble แต่ละหน้าสำหรับ Carousel
     const carouselBubbles = flexPages.map((pageContents, index) => ({
         "type": "bubble",
-        "styles": { "body": { "backgroundColor": "#1a140d" } }, // ธีมดำอมน้ำตาลทองคาสิโนเดิมของน้า
+        "styles": { "body": { "backgroundColor": "#A40606" } }, // ธีมดำอมน้ำตาลทองคาสิโนเดิมของน้า
         "body": {
             "type": "box", "layout": "vertical", "spacing": "sm",
             "contents": [
@@ -2329,34 +2329,54 @@ if (userPages.length === 0) {
 }
 
 // 2. สร้างการ์ด Carousel
-const winLossBubbles = userPages.map((pageContents, index) => ({
-    "type": "bubble",
-    "styles": {
-        "body": { "backgroundColor": "#141419" }
-    },
-    "body": {
-        "type": "box",
-        "layout": "vertical",
-        "spacing": "md",
-        "contents": [
-            { "type": "text", "text": "💰 สรุปยอดได้/เสีย ประจำรอบ 🎉", "weight": "bold", "color": "#ffaa00", "size": "md", "align": "center" },
-            { "type": "text", "text": `รอบที่: ${currentRound} (หน้า ${index + 1}/${userPages.length})`, "weight": "bold", "color": "#ffffff", "size": "xl", "align": "center", "margin": "none" },
-            { "type": "text", "text": `👑 เจ้ามือ: ${tempDealerResult.name}`, "size": "xs", "color": "#aaaaaa", "align": "center" },
-            { "type": "separator", "color": "#2a2a35" },
-            
-            // 👤 รายชื่อพร้อมยอดสุทธิ/เครดิตคงเหลือ (ดึงจาก flexUserContents ของน้าโดยตรง)
-            {
-                "type": "box",
-                "layout": "vertical",
-                "spacing": "sm",
-                "contents": pageContents
-            },
-            
-            { "type": "separator", "color": "#2a2a35" },
-            { "type": "text", "text": "🏁 อัปเดตกระเป๋าเงินและเคลียร์ยอดเรียบร้อยครับ", "size": "xs", "color": "#888888", "align": "center", "style": "italic" }
-        ]
-    }
-}));
+const winLossBubbles = userPages.map((pageContents, index) => {
+    const isLastPage = index === userPages.length - 1;
+
+    return {
+        "type": "bubble",
+        "styles": {
+            "body": { "backgroundColor": "#191424" } // 🎨 ใช้สีม่วงดำสำหรับสรุปผล
+        },
+        "body": {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "md",
+            "contents": [
+                { "type": "text", "text": "💰 สรุปยอดได้/เสีย ประจำรอบ 🎉", "weight": "bold", "color": "#ffaa00", "size": "md", "align": "center" },
+                { "type": "text", "text": `รอบที่: ${currentRound} (หน้า ${index + 1}/${userPages.length})`, "weight": "bold", "color": "#ffffff", "size": "xl", "align": "center", "margin": "none" },
+                { "type": "text", "text": `👑 เจ้ามือ: ${tempDealerResult.name}`, "size": "xs", "color": "#aaaaaa", "align": "center" },
+                { "type": "separator", "color": "#2a2a35" },
+                
+                // 👤 รายชื่อสมาชิก
+                {
+                    "type": "box",
+                    "layout": "vertical",
+                    "spacing": "sm",
+                    "contents": pageContents
+                },
+                
+                { "type": "separator", "color": "#2a2a35" },
+                { "type": "text", "text": "✅ ระบบทำการเคลียร์ยอดเงินในรอบนี้เสร็จสิ้นแล้วครับ!", "size": "xs", "color": "#00ff66", "align": "center", "weight": "bold" },
+                
+                // 🔘 ถ้าเป็นหน้าสุดท้าย ให้แสดงปุ่มกดเปิดรอบถัดไปได้ทันที
+                ...(isLastPage ? [
+                    {
+                        "type": "button",
+                        "style": "primary",
+                        "color": "#ffaa00",
+                        "height": "sm",
+                        "margin": "md",
+                        "action": {
+                            "type": "message",
+                            "label": "🚀 เปิดรอบแทงถัดไป",
+                            "text": "เปิดรอบ" // 👈 เปลี่ยนเป็นคำสั่งเปิดรอบของน้าได้เลยครับ
+                        }
+                    }
+                ] : [])
+            ]
+        }
+    };
+});
 
 // 3. กำหนดค่า Carousel Flex
 global.currentReplyFlex = {
@@ -2369,7 +2389,7 @@ global.currentReplyFlex = {
 };
 // =========================================================================
             // กำหนดให้ส่งทั้งข้อความธรรมดา (เก็บประวัติ) และแนบกล่องดีไซน์ไปด้วยครับน้า
-            replyText = "✅ ระบบทำการเคลียร์ยอดเงินในรอบนี้เสร็จสิ้นแล้วครับ!"; 
+            replyText = ""; 
         }  
         else if (userMsg === 'no') {
             replyText = "❌ แอดมินยกเลิกผลคำนวณรอบนี้เรียบร้อยครับ สามารถส่งแต้มเข้ามาใหม่ได้เลย";

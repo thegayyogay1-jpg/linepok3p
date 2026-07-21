@@ -1002,14 +1002,14 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                                 "altText": `🟢 เริ่มเปิดรอบแทงแล้ว! รอบที่ ${currentRound}`,
                                 "contents": {
                                     "type": "bubble",
-                                    "styles": { "body": { "backgroundColor": "#581908" } },
+                                    "styles": { "body": { "backgroundColor": "#E2AEDD" } },
                                     "body": {
                                         "type": "box", "layout": "vertical", "spacing": "md",
                                         "contents": [
-                                            { "type": "text", "text": "🎰 เริ่มเปิดรอบแทงแล้วครับ 🎉", "weight": "bold", "color": "#00ff66", "size": "md", "align": "center" },
+                                            { "type": "text", "text": "🎰 เริ่มเปิดรอบแทงแล้วครับ 🎉", "weight": "bold", "color": "#22031F", "size": "md", "align": "center" },
                                             { "type": "text", "text": `รอบที่: ${currentRound}`, "weight": "bold", "color": "#ffffff", "size": "xl", "align": "center", "margin": "none" },
                                             { "type": "separator", "color": "#1f3a2b" },
-                                            { "type": "text", "text": "📈 สถิติผลเจ้ามือ 5 รอบล่าสุด", "size": "xs", "color": "#00ff66", "weight": "bold" },
+                                            { "type": "text", "text": "📈 สถิติผลเจ้ามือ 5 รอบล่าสุด", "size": "xs", "color": "#22031F", "weight": "bold" },
                                             // 🔥 นำกล่องแถวประวัติวงรีมาวางตรงนี้โดยตรง
                                             { 
                                                 "type": "box", 
@@ -1096,11 +1096,11 @@ try {
     // 3. วนลูปสร้างการ์ด Bubble แต่ละหน้าสำหรับ Carousel
     const carouselBubbles = flexPages.map((pageContents, index) => ({
         "type": "bubble",
-        "styles": { "body": { "backgroundColor": "#581908" } },
+        "styles": { "body": { "backgroundColor": "#E2AEDD" } },
         "body": {
             "type": "box", "layout": "vertical", "spacing": "md",
             "contents": [
-                { "type": "text", "text": "🚫 ปิดรอบแทงเรียบร้อยแล้วครับ 🏁", "weight": "bold", "color": "#ff3333", "size": "md", "align": "center" },
+                { "type": "text", "text": "🚫 ปิดรอบแทงเรียบร้อยแล้วครับ 🏁", "weight": "bold", "color": "#E9100F", "size": "md", "align": "center" },
                 { "type": "text", "text": `จบรอบที่: ${currentRound} (หน้า ${index + 1}/${flexPages.length})`, "weight": "bold", "color": "#ffffff", "size": "sm", "align": "center" },
                 { "type": "separator", "color": "#3a2222" },
                 { "type": "text", "text": "📝 สรุปยอดแทงประจำรอบ", "size": "xs", "color": "#ffaa00", "weight": "bold" },
@@ -1192,7 +1192,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                                 "altText": `🃏 เปิดรอบขอจั่วไพ่ใบที่ 3 (รอบที่ ${currentRound})`,
                                 "contents": {
                                     "type": "bubble",
-                                    "styles": { "body": { "backgroundColor": "#A40606" } }, // ธีมน้ำเงินเข้มคาสิโน
+                                    "styles": { "body": { "backgroundColor": "#E8A5AE" } }, // ธีมน้ำเงินเข้มคาสิโน
                                     "body": {
                                         "type": "box", "layout": "vertical", "spacing": "md",
                                         "contents": [
@@ -1325,7 +1325,7 @@ try {
     // 3. วนลูปสร้างการ์ด Bubble แต่ละหน้าสำหรับ Carousel
     const carouselBubbles = flexPages.map((pageContents, index) => ({
         "type": "bubble",
-        "styles": { "body": { "backgroundColor": "#A40606" } }, // ธีมดำอมน้ำตาลทองคาสิโนเดิมของน้า
+        "styles": { "body": { "backgroundColor": "#E8A5AE" } }, // ธีมดำอมน้ำตาลทองคาสิโนเดิมของน้า
         "body": {
             "type": "box", "layout": "vertical", "spacing": "sm",
             "contents": [

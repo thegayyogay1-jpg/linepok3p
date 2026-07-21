@@ -3307,44 +3307,135 @@ else if (command.toLowerCase() === "y") {
                     replyText = totalReport;
                 }
             }
-               // ==================== [ เพิ่มใหม่: คำสั่งแอดมินส่องภาพรวมสมาชิกทุกคน (พิมพ์: oball) ] ====================
-            else if (userMsg === 'oball' || userMsg === 'Oball' || userMsg === 'OBALL') {
-                // 🚨 กรองขั้นสูงสุด: ถ้าไม่ใช่แอดมิน หรือ แอดมินไม่ได้สั่งในแชทส่วนตัว (1 ต่อ 1) ให้บอทเงียบกริบไม่ตอบ
-                if (!ADMIN_IDS.includes(userId) || event.source.type !== 'user') {
-                    return res.sendStatus(200);
-                }
+               // ==================== [ คำสั่งแอดมินส่องภาพรวมสมาชิกทุกคน (พิมพ์: oball) ] ====================
+else if (userMsg === 'oball' || userMsg === 'Oball' || userMsg === 'OBALL') {
+    // 🚨 กรองขั้นสูงสุด: ถ้าไม่ใช่แอดมิน หรือ แอดมินไม่ได้สั่งในแชทส่วนตัว (1 ต่อ 1) ให้บอทเงียบกริบไม่ตอบ
+    if (!ADMIN_IDS.includes(userId) || event.source.type !== 'user') {
+        return res.sendStatus(200);
+    }
 
-                let memberListText = `📊 [ รายงานข้อมูลสมาชิกทั้งหมด ]\n──────────────────\n`;
-                let totalMembers = 0;
+    const memberKeys = Object.keys(usersWallets);
+    const totalMembers = memberKeys.length;
 
-                // วนลูปดึงข้อมูลจาก usersWallets ทั้งหมดมาต่อกัน
-                for (let key in usersWallets) {
-                    const user = usersWallets[key];
-                    totalMembers++;
+    if (totalMembers === 0) {
+        replyText = "📭 ปัจจุบันยังไม่มีสมาชิกสมัครเข้ามาในระบบเลยครับ";
+    } else {
+        // 1. แปลงข้อมูลสมาชิกทุกคนให้อยู่ในรูปแบบ Flex Box Component
+        const allMemberContents = memberKeys.map(key => {
+            const user = usersWallets[key];
 
-                    // 💸 เช็กสถานะการแจ้งถอนเงิน (เลียนแบบล็อกเดียวกับคำสั่ง m)
-                    let withdrawStatusText = "🔔 สถานะถอน: ไม่ได้แจ้งถอน";
-                    if (global.withdrawQueue && global.withdrawQueue[key]) {
-                        withdrawStatusText = `🚨 สถานะถอน: ❌ แจ้งถอนอยู่ [ ${global.withdrawQueue[key].amount.toLocaleString()} บาท ]`;
+            // 💸 เช็กสถานะการแจ้งถอนเงิน
+            const isWithdrawing = global.withdrawQueue && global.withdrawQueue[key];
+            const withdrawAmount = isWithdrawing ? global.withdrawQueue[key].amount : 0;
+
+            return {
+                "type": "box",
+                "layout": "vertical",
+                "backgroundColor": isWithdrawing ? "#2d1212" : "#1e1e24", // ถ้าแจ้งถอนใช้สีพื้นหลังอมแดงเตือนสายตา
+                "cornerRadius": "md",
+                "paddingAll": "md",
+                "margin": "md",
+                "contents": [
+                    {
+                        "type": "box",
+                        "layout": "horizontal",
+                        "contents": [
+                            { "type": "text", "text": `👤 [ ${user.memberNumber || "-"} ] คุณ ${user.name}`, "weight": "bold", "color": "#ffffff", "size": "sm", "flex": 1, "wrap": true },
+                        ]
+                    },
+                    { "type": "separator", "margin": "xs", "color": "#33333d" },
+                    {
+                        "type": "box",
+                        "layout": "horizontal",
+                        "margin": "xs",
+                        "contents": [
+                            { "type": "text", "text": "• เงินในระบบ:", "color": "#aaaaaa", "size": "xs" },
+                            { "type": "text", "text": `${(user.balance || 0).toLocaleString()} ฿`, "color": "#00ff66", "size": "xs", "align": "end", "weight": "bold" }
+                        ]
+                    },
+                    {
+                        "type": "box",
+                        "layout": "horizontal",
+                        "margin": "xs",
+                        "contents": [
+                            { "type": "text", "text": "• สถานะถอน:", "color": "#aaaaaa", "size": "xs" },
+                            { 
+                                "type": "text", 
+                                "text": isWithdrawing ? `❌ ถอน ${withdrawAmount.toLocaleString()} ฿` : "ปกติ (ไม่ถอน)", 
+                                "color": isWithdrawing ? "#ff4d4d" : "#aaaaaa", 
+                                "size": "xs", 
+                                "align": "end", 
+                                "weight": isWithdrawing ? "bold" : "normal" 
+                            }
+                        ]
+                    },
+                    {
+                        "type": "box",
+                        "layout": "horizontal",
+                        "margin": "xs",
+                        "contents": [
+                            { "type": "text", "text": "• ธนาคาร:", "color": "#aaaaaa", "size": "xs" },
+                            { "type": "text", "text": `${user.bankName || "ไม่ได้ระบุ"} (${user.bankAccount || "-"})`, "color": "#ffffff", "size": "xs", "align": "end", "wrap": true }
+                        ]
+                    },
+                    {
+                        "type": "box",
+                        "layout": "horizontal",
+                        "margin": "xs",
+                        "contents": [
+                            { "type": "text", "text": "• เป้าเทิร์น:", "color": "#aaaaaa", "size": "xs" },
+                            { "type": "text", "text": `${(user.turnoverTarget || 0).toLocaleString()} ฿`, "color": "#ffaa00", "size": "xs", "align": "end" }
+                        ]
                     }
+                ]
+            };
+        });
 
-                    memberListText += `📋 ข้อมูลสมาชิกหมายเลข [ ${user.memberNumber} ]\n` +
-                                      `👤 ชื่อ: คุณ ${user.name}\n` +
-                                      `💰 เงินในระบบ: ${user.balance.toLocaleString()} บาท\n` +
-                                      ` ${withdrawStatusText}\n` +
-                                      `🏦 ธนาคาร: ${user.bankName || "ไม่ได้ระบุ"}\n` +
-                                      `💳 เลข บช: ${user.bankAccount || "ไม่ได้ระบุ"}\n` +
-                                      `🔒 เป้าเทิร์น: ${(user.turnoverTarget || 0).toLocaleString()} บาท\n` +
-                                      `──────────────────\n`;
-                }
+        // 2. หั่นแบ่งสมาชิกออกเป็นหน้าๆ (หน้าละ 2-3 คน เพื่อให้อ่านง่าย ข้อมูลไม่แน่นเกินไป)
+        const chunkSize = 3; 
+        const memberPages = [];
+        for (let i = 0; i < allMemberContents.length; i += chunkSize) {
+            memberPages.push(allMemberContents.slice(i, i + chunkSize));
+        }
 
-                if (totalMembers === 0) {
-                    replyText = "📭 ปัจจุบันยังไม่มีสมาชิกสมัครเข้ามาในระบบเลยครับ";
-                } else {
-                    memberListText += `👥 รวมสมาชิกทั้งหมด: ${totalMembers} คน`;
-                    replyText = memberListText;
-                }
+        // 3. ประกอบเป็น Bubble แต่ละหน้า
+        const oballBubbles = memberPages.map((pageContents, index) => ({
+            "type": "bubble",
+            "styles": { "body": { "backgroundColor": "#121214" } }, // โทนดำเรียบหรูสไตล์ Dashboard
+            "body": {
+                "type": "box",
+                "layout": "vertical",
+                "spacing": "sm",
+                "contents": [
+                    { "type": "text", "text": "📊 รายงานข้อมูลสมาชิกทั้งหมด", "weight": "bold", "color": "#ffaa00", "size": "md", "align": "center" },
+                    { "type": "text", "text": `👥 สมาชิกทั้งหมด: ${totalMembers} คน (หน้า ${index + 1}/${memberPages.length})`, "size": "xs", "color": "#ffffff", "align": "center" },
+                    { "type": "separator", "color": "#2a2a35" },
+                    
+                    // รายชื่อสมาชิกในหน้านี้
+                    {
+                        "type": "box",
+                        "layout": "vertical",
+                        "spacing": "none",
+                        "contents": pageContents
+                    },
+
+                    { "type": "separator", "color": "#2a2a35", "margin": "md" },
+                    { "type": "text", "text": "⚙️ ข้อมูลอัปเดตแบบ Real-time", "size": "xs", "color": "#666666", "align": "center" }
+                ]
             }
+        }));
+
+        // 4. ตั้งค่าตัวแปรส่ง Flex แบบ Carousel
+        replyFlex = {
+            "type": "flex",
+            "altText": `📊 รายงานข้อมูลสมาชิกทั้งหมด (${totalMembers} คน)`,
+            "contents": {
+                "type": "carousel",
+                "contents": oballBubbles
+            }
+        };
+    }
+}
             // ==================== [ เพิ่มใหม่: คำสั่งแอดมินลบสมาชิกรายคนผ่านแชทส่วนตัว (del1, del2...) ] ====================
             else if (userMsg.startsWith('d') && !userMsg.includes('-') && !userMsg.endsWith('+')) {
                 if (!ADMIN_IDS.includes(userId) || event.source.type !== 'user') {

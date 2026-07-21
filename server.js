@@ -1002,14 +1002,14 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                                 "altText": `🟢 เริ่มเปิดรอบแทงแล้ว! รอบที่ ${currentRound}`,
                                 "contents": {
                                     "type": "bubble",
-                                    "styles": { "body": { "backgroundColor": "#b8860b" } },
+                                    "styles": { "body": { "backgroundColor": "#1A1A1A" } },
                                     "body": {
                                         "type": "box", "layout": "vertical", "spacing": "md",
                                         "contents": [
-                                            { "type": "text", "text": "🎰 เริ่มเปิดรอบแทงแล้วครับ 🎉", "weight": "bold", "color": "#0f2219", "size": "md", "align": "center" },
+                                            { "type": "text", "text": "🎰 เริ่มเปิดรอบแทงแล้วครับ 🎉", "weight": "bold", "color": "#66FF00", "size": "md", "align": "center" },
                                             { "type": "text", "text": `รอบที่: ${currentRound}`, "weight": "bold", "color": "#ffffff", "size": "xl", "align": "center", "margin": "none" },
                                             { "type": "separator", "color": "#22031F" },
-                                            { "type": "text", "text": "📈 สถิติผลเจ้ามือ 5 รอบล่าสุด", "size": "xs", "color": "#241a0e", "weight": "bold" },
+                                            { "type": "text", "text": "📈 สถิติผลเจ้ามือ 5 รอบล่าสุด", "size": "xs", "color": "#66FF00", "weight": "bold" },
                                             // 🔥 นำกล่องแถวประวัติวงรีมาวางตรงนี้โดยตรง
                                             { 
                                                 "type": "box", 
@@ -1096,7 +1096,7 @@ try {
     // 3. วนลูปสร้างการ์ด Bubble แต่ละหน้าสำหรับ Carousel
     const carouselBubbles = flexPages.map((pageContents, index) => ({
         "type": "bubble",
-        "styles": { "body": { "backgroundColor": "#b8860b" } },
+        "styles": { "body": { "backgroundColor": "#1A1A1A" } },
         "body": {
             "type": "box", "layout": "vertical", "spacing": "md",
             "contents": [

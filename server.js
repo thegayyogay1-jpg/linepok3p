@@ -1002,7 +1002,7 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                                 "altText": `🟢 เริ่มเปิดรอบแทงแล้ว! รอบที่ ${currentRound}`,
                                 "contents": {
                                     "type": "bubble",
-                                    "styles": { "body": { "backgroundColor": "#0d1b15" } },
+                                    "styles": { "body": { "backgroundColor": "#F9DEC9" } },
                                     "body": {
                                         "type": "box", "layout": "vertical", "spacing": "md",
                                         "contents": [

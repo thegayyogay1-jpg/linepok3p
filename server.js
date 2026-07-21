@@ -2072,22 +2072,52 @@ else if (originalMsg.startsWith('>')) {
                                     { "type": "text", "text": "📝 ลำดับหน้าไพ่และผลแพ้ชนะแต่ละขา", "size": "xs", "color": "#ffaa00", "weight": "bold" },
                                     { "type": "box", "layout": "vertical", "spacing": "xs", "contents": legsFlexContents },
                                     { "type": "separator", "color": "#2a2233" },
-                                    { "type": "text", "text": "🚨 กรุณาตรวจเช็คผลที่ส่ง\nหากข้อมูลถูกต้อง ให้พิมพ์: ok\nหากพิมพ์ผิดให้พิมพ์: no", "size": "xs", "color": "#ffcc00", "wrap": true, "align": "center", "weight": "bold" }
+                                  // 🔘 [เพิ่มใหม่]: ชุดปุ่มกด ยืนยัน (ok) / ยกเลิก (no)
+                            {
+                                "type": "box",
+                                "layout": "horizontal",
+                                "spacing": "sm",
+                                "margin": "md",
+                                "contents": [
+                                    {
+                                        "type": "button",
+                                        "style": "primary",
+                                        "color": "#00c853", // สีเขียว
+                                        "height": "sm",
+                                        "action": {
+                                            "type": "message",
+                                            "label": "✅ ยืนยัน (ok)",
+                                            "text": "ok" // คำสั่งที่ส่งเข้าแชทเมื่อกดปุ่ม
+                                        }
+                                    },
+                                    {
+                                        "type": "button",
+                                        "style": "primary",
+                                        "color": "#d32f2f", // สีแดง
+                                        "height": "sm",
+                                        "action": {
+                                            "type": "message",
+                                            "label": "❌ ยกเลิก (no)",
+                                            "text": "no" // คำสั่งที่ส่งเข้าแชทเมื่อกดปุ่ม
+                                        }
+                                    }
                                 ]
                             }
-                        }
+                        ]
                     }
-                ]
-            }, {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${TOKEN}`
                 }
-            });
-        } catch (error) {
-            console.error("❌ ส่งรูปภาพและ Flex ตรวจสอบผลล้มเหลว:", error.response ? error.response.data : error.message);
+            }
+        ]
+    }, {
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${TOKEN}`
         }
-        return res.sendStatus(200); 
+    });
+} catch (error) {
+    console.error("❌ ส่งรูปภาพและ Flex ตรวจสอบผลล้มเหลว:", error.response ? error.response.data : error.message);
+}
+return res.sendStatus(200);
     }
 }
   // ==================== [ 9. ระบบแอดมินยืนยันผลคำนวณเงินจริง OK / NO (Settlement Engine) ] ====================

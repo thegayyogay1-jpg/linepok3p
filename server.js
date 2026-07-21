@@ -1192,7 +1192,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                                 "altText": `🃏 เปิดรอบขอจั่วไพ่ใบที่ 3 (รอบที่ ${currentRound})`,
                                 "contents": {
                                     "type": "bubble",
-                                    "styles": { "body": { "backgroundColor": "#191970" } }, // ธีมน้ำเงินเข้มคาสิโน
+                                    "styles": { "body": { "backgroundColor": "#333333" } }, // ธีมน้ำเงินเข้มคาสิโน
                                     "body": {
                                         "type": "box", "layout": "vertical", "spacing": "md",
                                         "contents": [
@@ -1325,17 +1325,17 @@ try {
     // 3. วนลูปสร้างการ์ด Bubble แต่ละหน้าสำหรับ Carousel
     const carouselBubbles = flexPages.map((pageContents, index) => ({
         "type": "bubble",
-        "styles": { "body": { "backgroundColor": "#191970" } }, // ธีมดำอมน้ำตาลทองคาสิโนเดิมของน้า
+        "styles": { "body": { "backgroundColor": "#333333" } }, // ธีมดำอมน้ำตาลทองคาสิโนเดิมของน้า
         "body": {
             "type": "box", "layout": "vertical", "spacing": "sm",
             "contents": [
                 { "type": "text", "text": "🔒 ปิดรอบขอจั่วไพ่เรียบร้อยแล้วครับ 🏁", "weight": "bold", "color": "#E9100F", "size": "md", "align": "center" },
                 { "type": "text", "text": `🎰 ล็อกสถานะไพ่ 2 ใบ/ 3 ใบแล้ว (หน้า ${index + 1}/${flexPages.length})`, "size": "xs", "color": "#ffffff", "align": "center" },
                 { "type": "separator", "color": "#3a2d1f" },
-                { "type": "text", "text": "📋 รายงานสรุปโพยและยอดแทงในรอบนี้", "size": "xs", "color": "#FFFF33", "weight": "bold" },
+                { "type": "text", "text": "📋 รายงานสรุปโพยและยอดแทงในรอบนี้", "size": "xs", "color": "#ffb310", "weight": "bold" },
                 { "type": "box", "layout": "vertical", "spacing": "xs", "contents": pageContents },
                 { "type": "separator", "color": "#3a2d1f" },
-                { "type": "text", "text": "ℹ️ รอสรุปผลและคิดเงินสักครู่ครับ", "size": "xs", "color": "#FFFF33", "align": "center", "margin": "sm" }
+                { "type": "text", "text": "ℹ️ รอสรุปผลและคิดเงินสักครู่ครับ", "size": "xs", "color": "#ffb310", "align": "center", "margin": "sm" }
             ]
         }
     }));

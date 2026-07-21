@@ -1192,7 +1192,13 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                                 "altText": `🃏 เปิดรอบขอจั่วไพ่ใบที่ 3 (รอบที่ ${currentRound})`,
                                 "contents": {
                                     "type": "bubble",
-                                    "styles": { "body": { "backgroundColor": "#333333" } }, // ธีมน้ำเงินเข้มคาสิโน
+                                    "styles": { "body": { "background": {"type": "linearGradient",
+            "angle": "180deg",         // 180deg คือไล่สีจาก "บนลงล่าง"
+            "startColor": "#000000",   // สีฝั่งบน (ม่วงเข้ม)
+            "endColor": "#4d4f53"      // สีฝั่งล่าง (ดำเกือบสนิท)
+        }
+    }
+}, // ธีมน้ำเงินเข้มคาสิโน
                                     "body": {
                                         "type": "box", "layout": "vertical", "spacing": "md",
                                         "contents": [

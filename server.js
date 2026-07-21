@@ -970,7 +970,7 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                             "type": "text",
                             "text": textDisplay,
                             "size": "xs",
-                            "color": "#22031F",
+                            "color": "#E2E1E4",
                             "wrap": true
                         };
                     });
@@ -979,7 +979,7 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                         "type": "text",
                         "text": "• ยังไม่มีข้อมูลสถิติย้อนหลังในรอบนี้",
                         "size": "xs",
-                        "color": "#22031F",
+                        "color": "#E2E1E4",
                         "style": "italic",
                         "align": "center"
                     });
@@ -1002,14 +1002,14 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                                 "altText": `🟢 เริ่มเปิดรอบแทงแล้ว! รอบที่ ${currentRound}`,
                                 "contents": {
                                     "type": "bubble",
-                                    "styles": { "body": { "backgroundColor": "#E2AEDD" } },
+                                    "styles": { "body": { "backgroundColor": "#b8860b" } },
                                     "body": {
                                         "type": "box", "layout": "vertical", "spacing": "md",
                                         "contents": [
-                                            { "type": "text", "text": "🎰 เริ่มเปิดรอบแทงแล้วครับ 🎉", "weight": "bold", "color": "#22031F", "size": "md", "align": "center" },
-                                            { "type": "text", "text": `รอบที่: ${currentRound}`, "weight": "bold", "color": "#22031F", "size": "xl", "align": "center", "margin": "none" },
+                                            { "type": "text", "text": "🎰 เริ่มเปิดรอบแทงแล้วครับ 🎉", "weight": "bold", "color": "#0f2219", "size": "md", "align": "center" },
+                                            { "type": "text", "text": `รอบที่: ${currentRound}`, "weight": "bold", "color": "#ffffff", "size": "xl", "align": "center", "margin": "none" },
                                             { "type": "separator", "color": "#22031F" },
-                                            { "type": "text", "text": "📈 สถิติผลเจ้ามือ 5 รอบล่าสุด", "size": "xs", "color": "#22031F", "weight": "bold" },
+                                            { "type": "text", "text": "📈 สถิติผลเจ้ามือ 5 รอบล่าสุด", "size": "xs", "color": "#241a0e", "weight": "bold" },
                                             // 🔥 นำกล่องแถวประวัติวงรีมาวางตรงนี้โดยตรง
                                             { 
                                                 "type": "box", 
@@ -1096,14 +1096,14 @@ try {
     // 3. วนลูปสร้างการ์ด Bubble แต่ละหน้าสำหรับ Carousel
     const carouselBubbles = flexPages.map((pageContents, index) => ({
         "type": "bubble",
-        "styles": { "body": { "backgroundColor": "#E2AEDD" } },
+        "styles": { "body": { "backgroundColor": "#b8860b" } },
         "body": {
             "type": "box", "layout": "vertical", "spacing": "md",
             "contents": [
                 { "type": "text", "text": "🚫 ปิดรอบแทงเรียบร้อยแล้วครับ 🏁", "weight": "bold", "color": "#E9100F", "size": "md", "align": "center" },
                 { "type": "text", "text": `จบรอบที่: ${currentRound} (หน้า ${index + 1}/${flexPages.length})`, "weight": "bold", "color": "#ffffff", "size": "sm", "align": "center" },
                 { "type": "separator", "color": "#3a2222" },
-                { "type": "text", "text": "📝 สรุปยอดแทงประจำรอบ", "size": "xs", "color": "#22031F", "weight": "bold" },
+                { "type": "text", "text": "📝 สรุปยอดแทงประจำรอบ", "size": "xs", "color": "#FFCE00", "weight": "bold" },
                 { "type": "box", "layout": "vertical", "spacing": "xs", "contents": pageContents },
                 { "type": "separator", "color": "#3a2222" },
                 { "type": "text", "text": "🔒 หยุดรับโพยทุกกรณี รอแอดมินเปิดรอบจั่ว", "size": "md", "color": "#E9100F", "wrap": true, "align": "center" }

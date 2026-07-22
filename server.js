@@ -3218,8 +3218,6 @@ else if (command.toLowerCase() === "y") {
                             turnStatusColor = "#ff5555";
                         }
 
-                        const userDisplayName = user.nickname || user.name;
-
                        // 🏆 3. ประกอบร่างกล่อง Flex Message สีดำ-ทอง วิ่งตรงเข้าตัวแปร Global
                         global.currentReplyFlex = {
                             type: "flex",
@@ -3232,27 +3230,14 @@ else if (command.toLowerCase() === "y") {
                                 },
                                header: {
                 type: "box",
-                layout: "horizontal",
+                layout: "vertical",
                 contents: [
                     {
                         type: "text",
                         text: "👑 การ์ดข้อมูลสมาชิก",
                         weight: "bold",
                         color: "#d4af37",
-                        size: "xs",           // 👈 ย่อขนาดคำว่าการ์ดสมาชิกตามต้องการ
-                        gravity: "center",
-                        flex: 5
-                    },
-                    {
-                        type: "text",
-                        text: `[No. ${user.memberNumber}] ${userDisplayName}`, // 👈 [No. 1] ชื่อเล่น
-                        color: "#00ffcc",
-                        size: "xs",
-                        align: "end",
-                        weight: "bold",
-                        gravity: "center",
-                        flex: 5,
-                        wrap: true
+                        size: "sm"
                     }
                 ]
             },
@@ -3263,6 +3248,25 @@ else if (command.toLowerCase() === "y") {
                     {
                         type: "box",
                         layout: "horizontal",
+                        contents: [
+                            { type: "text", text: "👤 สมาชิกคนที่", color: "#8e8e93", size: "xs" },
+                            { type: "text", text: `No. ${user.memberNumber}`, color: "#ffffff", size: "xs", align: "end", weight: "bold" }
+                        ]
+                    },
+                    {
+                        type: "box",
+                        layout: "horizontal",
+                        margin: "sm",
+                        contents: [
+                            { type: "text", text: "🏷️ ชื่อเล่น", color: "#8e8e93", size: "xs" },
+                            { type: "text", text: `${user.nickname || user.name}`, color: "#00ffcc", size: "xs", align: "end", weight: "bold" } // 👈 ปรับโชว์เฉพาะชื่อเล่น
+                        ]
+                    },
+                    { type: "separator", margin: "md", color: "#3a3a3c" },
+                    {
+                        type: "box",
+                        layout: "horizontal",
+                        margin: "md",
                         contents: [
                             { type: "text", text: "💵 เครดิตกระเป๋า", color: "#ffffff", size: "sm", weight: "bold" },
                             { type: "text", text: `${user.balance.toLocaleString()} บาท`, color: "#d4af37", size: "md", align: "end", weight: "bold" }

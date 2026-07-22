@@ -2945,18 +2945,27 @@ else if (command.toLowerCase() === "y") {
                     }
                 }
             }
-            // 🚨 [จุดแก้สำคัญที่ 1 & 2] บันทึกลง Firebase หลังจากอัปเดตข้อมูลทุกอย่างครบถ้วนแล้ว
+            // 💾 4. บันทึกลง Firebase (ปลอดภัยด้วย try...catch เพื่อไม่ให้บอทเงียบ)
             if (successReports.length > 0) {
-                // บันทึกสถานะกระเป๋าเงินผู้ใช้
-                await saveDataToFirebase(); 
+                try {
+                    // เซฟกระเป๋าเงินและข้อมูลหลัก
+                    await saveDataToFirebase(); 
 
-                // เช็กคิวถอน ถ้าคิวว่างเปล่า ให้สั่งลบ node 'withdrawQueue' บน Firebase ออกให้เด็ดขาด
-                if (typeof withdrawQueue !== 'undefined') {
-                    if (withdrawQueue.length === 0) {
-                        await db.ref('withdrawQueue').remove(); // 🧹 ลบ node ทิ้งเมื่อคิวหมด
-                    } else {
-                        await db.ref('withdrawQueue').set(withdrawQueue); // 🔄 อัปเดตคิวที่เหลือลง Firebase
+                    // จัดการเคลียร์ node withdrawQueue บน Firebase
+                    if (typeof withdrawQueue !== 'undefined') {
+                        if (withdrawQueue.length === 0) {
+                            // ถ้ามี db ให้ลบ node ทิ้ง ถ้าไม่มีก็ข้ามไปไม่ให้ crash
+                            if (typeof db !== 'undefined') {
+                                await db.ref('withdrawQueue').remove().catch(e => console.log(e));
+                            }
+                        } else {
+                            if (typeof db !== 'undefined') {
+                                await db.ref('withdrawQueue').set(withdrawQueue).catch(e => console.log(e));
+                            }
+                        }
                     }
+                } catch (err) {
+                    console.error("Firebase Sync Error (แต่ระบบหักเงินทำงานแล้ว):", err);
                 }
             }
 

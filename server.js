@@ -3218,6 +3218,8 @@ else if (command.toLowerCase() === "y") {
                             turnStatusColor = "#ff5555";
                         }
 
+                        const userDisplayName = user.nickname || user.name;
+
                        // 🏆 3. ประกอบร่างกล่อง Flex Message สีดำ-ทอง วิ่งตรงเข้าตัวแปร Global
                         global.currentReplyFlex = {
                             type: "flex",

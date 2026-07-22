@@ -2132,11 +2132,18 @@ else if (userMsg === 'ok' || userMsg === 'no') {
 
             // วนลูปสมาชิกทุกคนที่มีการแทงในรอบนี้เพื่อคิดเงิน
             for (let uId in roundBets) {
-                const userBetsArray = roundBets[uId];
+                try {
+                    const userBetsArray = roundBets[uId];
                 if (!userBetsArray || userBetsArray.length === 0) continue;
-
-                hasAnyBet = true;
+                    
                 const user = usersWallets[uId];
+                // 🚨 [เพิ่มจุดนี้] ป้องกันระบบล่มถ้าหา Wallet สมาชิกไม่เจอ
+                if (!user) {
+                    console.error(`⚠️ ไม่พบข้อมูล usersWallets ของ userId: ${uId}`);
+                    continue; // ให้ข้ามไปคิดเงินคนถัดไป ไม่ให้ลูปค้าง/ดับ
+                }
+                    
+                hasAnyBet = true;
                 let userTotalWinLoss = 0; 
                 let totalHoldRefund = 0;   
                 let totalBetAmountThisRound = 0; // 📊 ตัวแปรเพิ่มใหม่สำหรับเก็บยอดแทงรวมแท้จริงในตานี้เพื่อเอาไปคิดเทิร์น
@@ -2279,7 +2286,11 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                 let oldSign = userTotalWinLoss > 0 ? "🟢 +" : (userTotalWinLoss < 0 ? "🔴 " : "🟡 ");
                 let oldFeeNote = (isUserBettingOnDealer && userTotalWinLoss !== 0) ? " \n(หักต๋งขาเจ้ามือที่ชนะแล้ว)" : "";
                 summaryPayoutText += `👤 ${user.name} (ID: ${user.memberNumber})\n  ยอดสุทธิ: ${oldSign}${userTotalWinLoss} บาท${oldFeeNote}\n เครดิตคงเหลือ: ${user.balance} บ.\n──────────────────\n`;
-            } // ปิดลูป for (let uId in roundBets)
+            } catch (error) {
+                 // 🛡️ หากเกิด Error กับคนไหน ให้พ่น Log บอก แล้วไปคิดเงินคนถัดไปทันที ลูปไม่ดับแน่นอน
+                 console.error(`❌ เกิดข้อผิดพลาดในการคิดเงินของ uId ${uId}:`, error);
+            }    
+        } // ปิดลูป for (let uId in roundBets)
 
             if (!hasAnyBet) {
                 summaryPayoutText += "📝 รอบนี้ไม่มีสมาชิกส่งโพยเดิมพันเข้ามาครับ\n";

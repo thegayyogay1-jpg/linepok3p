@@ -2997,14 +2997,15 @@ else if (command.toLowerCase() === "y") {
                     if (originalMsg.startsWith('C/') || originalMsg.startsWith('c/')) {
                         const registerData = originalMsg.substring(2).trim();
                         
-                        // ตัดแบ่งข้อความด้วยเครื่องหมายจุลภาค ( , ) เพื่อแยก ชื่อ, ธนาคาร, เลขบัญชี
+                        // ตัดแบ่งข้อความด้วยเครื่องหมายจุลภาค ( / ) เพื่อแยก ชื่อ/ ธนาคาร/ เลขบัญชี
                         const dataParts = registerData.split(/\n|\//);
                         const fullName = dataParts[0] ? dataParts[0].trim() : "";
-                        const bankName = dataParts[1] ? dataParts[1].trim() : "";
-                        const bankAccount = dataParts[2] ? dataParts[2].trim() : "";
+                        const nickname = dataParts[1] ? dataParts[1].trim() : "";
+                        const bankName = dataParts[2] ? dataParts[2].trim() : "";
+                        const bankAccount = dataParts[3] ? dataParts[3].trim() : "";
 
                         // 🚨 [เช็กความครบถ้วน] ถ้าขาดสิ่งใดสิ่งหนึ่งไป หรือลืมใส่เครื่องหมายจุลภาค บอทจะไม่ให้ผ่าน!
-                        if (fullName === "" || bankName === "" || bankAccount === "") {
+                        if (fullName === "" || nickname === "" || bankName === "" || bankAccount === "") {
                             try {
                                 await axios.post('https://api.line.me/v2/bot/message/reply', {
                                     replyToken: replyToken,
@@ -3037,6 +3038,7 @@ else if (command.toLowerCase() === "y") {
                             usersWallets[userId] = {
                                 memberNumber: nextMemberId,
                                 name: fullName,
+                                nickname: nickname,
                                 balance: 0, 
                                 turnoverTarget: 0,
                                 turnoverCount: 0,
@@ -3139,8 +3141,8 @@ else if (command.toLowerCase() === "y") {
                                                         "backgroundColor": "#17262f",
                                                         "paddingAll": "sm",
                                                         "contents": [
-                                                            { "type": "text", "text": "พิมพ์: C/ชื่อ นามสกุล/ธนาคาร/เลขบัญชี", "size": "xs", "color": "#ffffff", "weight": "bold" },
-                                                            { "type": "text", "text": "ตัวอย่าง: C/นายแจ๊ค เด้งดี/กสิกร/1234567890", "size": "xs", "color": "#8ab4cd" }
+                                                            { "type": "text", "text": "พิมพ์: C/ชื่อ นามสกุล/ชื่อเล่น/ธนาคาร/เลขบัญชี", "size": "xs", "color": "#ffffff", "weight": "bold" },
+                                                            { "type": "text", "text": "ตัวอย่าง: C/นายแจ๊ค เด้งดี/แจ๊ค/กสิกร/1234567890", "size": "xs", "color": "#8ab4cd" }
                                                         ]
                                                     },
                                                     { "type": "separator", "color": "#1d2d35" },
@@ -3256,8 +3258,8 @@ else if (command.toLowerCase() === "y") {
                                             layout: "horizontal",
                                             margin: "sm",
                                             contents: [
-                                                { type: "text", text: "👤 ชื่อลูกค้า", color: "#8e8e93", size: "xs" },
-                                                { type: "text", text: `${user.name}`, color: "#ffffff", size: "xs", align: "end", weight: "bold" }
+                                                { type: "text", text: "🏷️ ชื่อเล่น", color: "#8e8e93", size: "xs" },
+                                                { type: "text", text: `${user.nickname || user.name}`, color: "#00ffcc", size: "xs", align: "end", weight: "bold" }
                                             ]
                                         },
                                         { type: "separator", margin: "md", color: "#3a3a3c" },

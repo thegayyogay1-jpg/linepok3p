@@ -2246,8 +2246,6 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                     if (user.turnoverTarget < 0) user.turnoverTarget = 0; 
                 }
 
-                await saveDataToFirebase(); //เซฟถาวร
-
                 let sign = userTotalWinLoss > 0 ? "+" : "";
                 let displayColor = userTotalWinLoss > 0 ? "#00ff66" : (userTotalWinLoss < 0 ? "#ff3333" : "#ffcc00");
                 
@@ -2291,6 +2289,13 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                  console.error(`❌ เกิดข้อผิดพลาดในการคิดเงินของ uId ${uId}:`, error);
             }    
         } // ปิดลูป for (let uId in roundBets)
+
+            // 🛡️ เซฟลง Firebase แบบปลอดภัย หาก DB กระตุก บอทจะไม่ค้างและยังส่ง Flex สรุปยอดได้ปกติ
+        try {
+            await saveDataToFirebase();
+        } catch (dbError) {
+            console.error("❌ เกิดข้อผิดพลาดขณะเซฟลง Firebase:", dbError);
+        }
 
             if (!hasAnyBet) {
                 summaryPayoutText += "📝 รอบนี้ไม่มีสมาชิกส่งโพยเดิมพันเข้ามาครับ\n";
@@ -2426,8 +2431,14 @@ global.currentReplyFlex = {
 };
 // =========================================================================
             // กำหนดให้ส่งทั้งข้อความธรรมดา (เก็บประวัติ) และแนบกล่องดีไซน์ไปด้วยครับน้า
+            tempRoomResults = null;
+            tempDealerResult = null;
+            roundBets = {};
+
+            currentRound++;
+            
             replyText = ""; 
-        }  
+        }     
         else if (userMsg === 'no') {
             replyText = "❌ แอดมินยกเลิกผลคำนวณรอบนี้เรียบร้อยครับ สามารถส่งแต้มเข้ามาใหม่ได้เลย";
             tempRoomResults = null;

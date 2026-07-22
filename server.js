@@ -959,6 +959,7 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                 currentRound++;
                 isRoundOpen = true;
                 roundBets = {}; // ล้างข้อมูลโพยเก่าออกเพื่อเริ่มรอบใหม่
+                await saveDataToFirebase();
                 
                 // --- 📊 สร้างโครงสร้างสถิติย้อนหลัง ---
                 let historyFlexContents = [];
@@ -1040,6 +1041,7 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                 replyText = `⚠️ ระบบปิดรอบแทงอยู่แล้วครับ ไม่สามารถปิดซ้ำได้`;
             } else {
                 isRoundOpen = false;
+                await saveDataToFirebase();
                 
                 // --- 📊 [สรุปยอดแทงรายบุคคลเพื่อใส่ใน Flex] ---
                 let summaryFlexContents = [];
@@ -2447,8 +2449,6 @@ global.currentReplyFlex = {
             tempRoomResults = null;
             tempDealerResult = null;
             roundBets = {};
-
-            currentRound++;
             
             replyText = ""; 
         }     

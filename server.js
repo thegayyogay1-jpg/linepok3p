@@ -3141,7 +3141,7 @@ else if (command.toLowerCase() === "y") {
                                                         "backgroundColor": "#17262f",
                                                         "paddingAll": "sm",
                                                         "contents": [
-                                                            { "type": "text", "text": "พิมพ์: C/ชื่อ นามสกุล/ชื่อเล่น/ธนาคาร/เลขบัญชี", "size": "xs", "color": "#ffffff", "weight": "bold" },
+                                                            { "type": "text", "text": "พิมพ์: C/ชื่อ นามสกุล/ชื่อไลน์/ธนาคาร/เลขบัญชี", "size": "xs", "color": "#ffffff", "weight": "bold" },
                                                             { "type": "text", "text": "ตัวอย่าง: C/นายแจ๊ค เด้งดี/แจ๊ค/กสิกร/1234567890", "size": "xs", "color": "#8ab4cd" }
                                                         ]
                                                     },
@@ -3258,7 +3258,7 @@ else if (command.toLowerCase() === "y") {
                         layout: "horizontal",
                         margin: "sm",
                         contents: [
-                            { type: "text", text: "🏷️ ชื่อเล่น", color: "#8e8e93", size: "xs" },
+                            { type: "text", text: "🏷️ ชื่อLine", color: "#8e8e93", size: "xs" },
                             { type: "text", text: `${user.nickname || user.name}`, color: "#00ffcc", size: "xs", align: "end", weight: "bold" } // 👈 ปรับโชว์เฉพาะชื่อเล่น
                         ]
                     },

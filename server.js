@@ -3185,6 +3185,19 @@ else if (command.toLowerCase() === "y") {
                     
                    // ==================== [ คำสั่งเช็กยอด c เวอร์ชันการ์ดดำทอง ] ====================
                     if (userMsg === 'c') {
+                        // 🛡️ 1. ระบบ Anti-Spam กันสมาชิกกด c ย้ำๆ (ตั้งไว้ที่ 3 วินาทีต่อคน)
+    if (!global.cCooldowns) global.cCooldowns = new Map();
+    const now = Date.now();
+    const lastUsed = global.cCooldowns.get(userId) || 0;
+    const cooldownTime = 1500; // 1500 ms = 1.5 วินาที
+
+    if (now - lastUsed < cooldownTime) {
+        // ถ้าพิมพ์รัวเกิน 1.5 วินาที ให้ข้าม ไม่ต้องส่ง Flex Message ซ้ำเพื่อเซฟโควต้า LINE
+        replyText = null;
+        return; 
+    }
+    global.cCooldowns.set(userId, now);
+                        
                         // 🛠️ แก้ปัญหา LINE API บล็อกข้อความว่าง: บังคับให้ข้อความธรรมดาเป็น null เพื่อส่งแค่การ์ด Flex
                         replyText = null;
 

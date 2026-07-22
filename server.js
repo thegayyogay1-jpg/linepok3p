@@ -1756,6 +1756,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                     } else {
                         const legsToDraw = userMsg.replace('+', '').split('');
                         let drawSuccessLegs = [];
+                        let alreadyDrawnLegs = []; // 📌 [เพิ่มใหม่] เก็บขาที่เคยจั่วไปแล้ว เพื่อนำมาแจ้งเตือน
 
                         userBetsArray.forEach((bet) => {
                             // 👑 [จุดแก้ไขบั๊ก] เช็กว่าโพยใบนี้เป็นโพยแทงฝั่งเจ้ามือสู้ขา (จ) หรือเหมาเจ้า (มจ) หรือไม่
@@ -1776,13 +1777,22 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                                 }
 
                                 if (hasThisLeg) {
-                                    bet.drawStatus[leg] = "จั่ว";
-                                    if (!drawSuccessLegs.includes(leg)) {
-                                        drawSuccessLegs.push(leg);
-                                    }
-                                }
-                            });
-                        });
+                                   // 🚨 [จุดแก้ไขหลัก]: เช็กว่าขานี้เคยจั่วไปแล้วหรือยัง?
+                        if (bet.drawStatus[leg] === "จั่ว") {
+                            // ถ้าเคยจั่วไปแล้ว ให้เก็บบันทึกไว้ว่าส่งซ้ำ (ไม่ใส่ใน drawSuccessLegs)
+                            if (!alreadyDrawnLegs.includes(leg)) {
+                                alreadyDrawnLegs.push(leg);
+                            }
+                        } else {
+                            // 🟢 ถ้ายังไม่เคยจั่ว ให้ปรับสถานะ และบันทึกการจั่วสำเร็จ
+                            bet.drawStatus[leg] = "จั่ว";
+                            if (!drawSuccessLegs.includes(leg)) {
+                                drawSuccessLegs.push(leg);
+                            }
+                        }
+                    }
+                });
+            });
 
                         if (drawSuccessLegs.length > 0) {
                             const sortedLegs = drawSuccessLegs.sort((a, b) => a - b).join(', ');
@@ -1840,13 +1850,19 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                                 console.error("❌ ส่ง Flex Message ขอจั่วไพ่ล้มเหลว:", error.response ? error.response.data : error.message);
                             }
                             return; // 🌟 ทำงานเสร็จแล้ว ตัดจบตรงนี้เลย
-                        } else {
-                            // ถ้าคนนั้นมีแต่โพยฝั่งเจ้ามืออย่างเดียว บอทจะแจ้งเตือนตัดสิทธิ์ทันที
-                            replyText = "⚠️ คำสั่งไม่ทำงาน: เนื่องจากคุณแทงฝั่งเจ้ามือไว้ โพยฝั่งเจ้ามือไม่สามารถขอจั่วไพ่ได้ครับ";
-                        }
-                    }
-                }
+                            
+                            // 🔴 กรณีที่กดพิมพ์จั่วซ้ำ (ไม่มีขาใหม่ให้จั่วแล้ว)
+                        } else if (alreadyDrawnLegs.length > 0) {
+                const dupLegs = alreadyDrawnLegs.sort((a, b) => a - b).join(', ');
+                replyText = `⚠️ ขา [ ${dupLegs} ] ของคุณได้บันทึกการขอจั่วไปแล้วครับ ไม่สามารถจั่วซ้ำได้!`;
+            
+            // 🟡 กรณีพิมพ์ขาที่ตัวเองไม่ได้แทงไว้
+            } else {
+                replyText = "⚠️ คำสั่งไม่ทำงาน: เนื่องจากคุณไม่ได้ลงเดิมพันในขาที่คุณระบุจั่ว หรือแทงเฉพาะฝั่งเจ้ามือไว้ครับ";
             }
+        }
+    }
+}
              // ==================== [ 8. ระบบแอดมินส่งผลสรุปคำนวณแต้ม - เวอร์ชันพ่วง Flex Message ] ====================
 else if (originalMsg.startsWith('>')) {
     if (!ADMIN_IDS.includes(userId)) {

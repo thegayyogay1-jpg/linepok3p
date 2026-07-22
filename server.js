@@ -3228,89 +3228,83 @@ else if (command.toLowerCase() === "y") {
                                     header: { backgroundColor: "#141416" },
                                     body: { backgroundColor: "#1e1e22" }
                                 },
-                                header: {
-                                    type: "box",
-                                    layout: "vertical",
-                                    contents: [
-                                        {
-                                            type: "text",
-                                            text: "👑 การ์ดข้อมูลสมากชิก",
-                                            weight: "bold",
-                                            color: "#d4af37",
-                                            size: "sm"
-                                        }
-                                    ]
-                                },
-                                body: {
-                                    type: "box",
-                                    layout: "vertical",
-                                    contents: [
-                                        {
-                                            type: "box",
-                                            layout: "horizontal",
-                                            contents: [
-                                                { type: "text", text: "👤 สมาชิกคนที่", color: "#8e8e93", size: "xs" },
-                                                { type: "text", text: `No. ${user.memberNumber}`, color: "#ffffff", size: "xs", align: "end", weight: "bold" }
-                                            ]
-                                        },
-                                        {
-                                            type: "box",
-                                            layout: "horizontal",
-                                            margin: "sm",
-                                            contents: [
-                                                { type: "text", text: "🏷️ ชื่อเล่น", color: "#8e8e93", size: "xs" },
-                                                { type: "text", text: `${user.nickname || user.name}`, color: "#00ffcc", size: "xs", align: "end", weight: "bold" }
-                                            ]
-                                        },
-                                        { type: "separator", margin: "md", color: "#3a3a3c" },
-                                        {
-                                            type: "box",
-                                            layout: "horizontal",
-                                            margin: "md",
-                                            contents: [
-                                                { type: "text", text: "💵 เครดิตกระเป๋า", color: "#ffffff", size: "sm", weight: "bold" },
-                                                { type: "text", text: `${user.balance.toLocaleString()} บาท`, color: "#d4af37", size: "md", align: "end", weight: "bold" }
-                                            ]
-                                        },
-                                        {
-                                            type: "box",
-                                            layout: "horizontal",
-                                            margin: "sm",
-                                            contents: [
-                                                { type: "text", text: "📊 สถานะเทิร์น", color: "#8e8e93", size: "xs", flex: 4 },
-                                                { type: "text", text: turnStatusText, color: turnStatusColor, size: "xs", align: "end", weight: "bold", flex: 6 }
-                                            ]
-                                        },
-                                        { type: "separator", margin: "md", color: "#3a3a3c" },
-                                        {
-                                            type: "box",
-                                            layout: "vertical",
-                                            margin: "md",
-                                            contents: [
-                                                { type: "text", text: "📝 รายการโพยรอบนี้:", color: "#d4af37", size: "xs", weight: "bold", margin: "xs" },
-                                                {
-                                                    type: "box",
-                                                    layout: "vertical",
-                                                    margin: "xs",
-                                                    contents: betContents
-                                                }
-                                            ]
-                                        },
-                                        { type: "separator", margin: "md", color: "#3a3a3c" },
-                                        {
-                                            type: "box",
-                                            layout: "vertical",
-                                            margin: "md",
-                                            contents: [
-                                                { type: "text", text: "📖 คู่มือช่วยเหลือใช้งาน", color: "#8e8e93", size: "xxs", weight: "bold" },
-                                                { type: "text", text: "• พิมพ์ คส เพื่อดูคำสั่งทั้งหมด\n• พิมพ์ ฝาก [จำนวน] หรือ ถอน [จำนวน]\n• พิมพ์ กต เพื่ออ่านกฎกติกาห้อง", color: "#aaaaaa", size: "xxs", margin: "xs", wrap: true }
-                                            ]
-                                        }
-                                    ]
-                                }
+                               header: {
+                type: "box",
+                layout: "horizontal",
+                contents: [
+                    {
+                        type: "text",
+                        text: "👑 การ์ดข้อมูลสมาชิก",
+                        weight: "bold",
+                        color: "#d4af37",
+                        size: "xs",           // 👈 ย่อขนาดคำว่าการ์ดสมาชิกตามต้องการ
+                        gravity: "center",
+                        flex: 5
+                    },
+                    {
+                        type: "text",
+                        text: `[No. ${user.memberNumber}] ${userDisplayName}`, // 👈 [No. 1] ชื่อเล่น
+                        color: "#00ffcc",
+                        size: "xs",
+                        align: "end",
+                        weight: "bold",
+                        gravity: "center",
+                        flex: 5,
+                        wrap: true
+                    }
+                ]
+            },
+            body: {
+                type: "box",
+                layout: "vertical",
+                contents: [
+                    {
+                        type: "box",
+                        layout: "horizontal",
+                        contents: [
+                            { type: "text", text: "💵 เครดิตกระเป๋า", color: "#ffffff", size: "sm", weight: "bold" },
+                            { type: "text", text: `${user.balance.toLocaleString()} บาท`, color: "#d4af37", size: "md", align: "end", weight: "bold" }
+                        ]
+                    },
+                    {
+                        type: "box",
+                        layout: "horizontal",
+                        margin: "sm",
+                        contents: [
+                            { type: "text", text: "📊 สถานะเทิร์น", color: "#8e8e93", size: "xs", flex: 4 },
+                            { type: "text", text: turnStatusText, color: turnStatusColor, size: "xs", align: "end", weight: "bold", flex: 6 }
+                        ]
+                    },
+                    { type: "separator", margin: "md", color: "#3a3a3c" },
+                    {
+                        type: "box",
+                        layout: "vertical",
+                        margin: "md",
+                        contents: [
+                            { type: "text", text: "📝 รายการโพยรอบนี้:", color: "#d4af37", size: "xs", weight: "bold", margin: "xs" },
+                            {
+                                type: "box",
+                                layout: "vertical",
+                                margin: "xs",
+                                contents: betContents
                             }
-                        };
-                    } else if (originalMsg.startsWith('C/') || originalMsg.startsWith('c/')) {
+                        ]
+                    },
+                    { type: "separator", margin: "md", color: "#3a3a3c" },
+                    {
+                        type: "box",
+                        layout: "vertical",
+                        margin: "md",
+                        contents: [
+                            { type: "text", text: "📖 คู่มือช่วยเหลือใช้งาน", color: "#8e8e93", size: "xxs", weight: "bold" },
+                            { type: "text", text: "• พิมพ์ คส เพื่อดูคำสั่งทั้งหมด\n• พิมพ์ ฝาก [จำนวน] หรือ ถอน [จำนวน]\n• พิมพ์ กต เพื่ออ่านกฎกติกาห้อง", color: "#aaaaaa", size: "xxs", margin: "xs", wrap: true }
+                        ]
+                    }
+                ]
+            }
+        }
+    };
+} else if (originalMsg.startsWith('C/') || originalMsg.startsWith('c/')) {
                         // 🔒 ป้องกันคนเก่าแอบพิมพ์ C/ มาเปลี่ยนชื่อหลังบ้าน
                         replyText = `❌ ไม่สามารถเปลี่ยนข้อมูลเองได้ค่ะคุณ ${user.name}!\n──────────────────\n⚠️ เนื่องจากระบบได้ผูกบัญชีธนาคารของคุณไว้ในคลังความปลอดภัยแล้ว\n\n📌 หากต้องการเปลี่ยน ชื่อ-นามสกุล หรือ เลขบัญชีธนาคาร กรุณาทักแชทติดต่อแอดมินโดยตรงเพื่อขออัปเดตข้อมูลนะคะ 🙏`;
                     } else {

@@ -1151,6 +1151,7 @@ return;
             roundBets = {};
             usersRoundCrossCheck = {};
             matchHistory = []; // รีเซ็ตประวัติ 5 รอบย้อนหลังออกไปด้วย
+            pastRoundsData = {};
 
             await saveDataToFirebase(); //💾เซฟถาวร
             

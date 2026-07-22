@@ -2180,24 +2180,29 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                             // 👤 [ฝั่งคนแทงผู้เล่นปกติ] -> รันระบบเดิมของคุณที่สมบูรณ์แบบอยู่แล้ว 100%
                             const isUserDrawn = (bet.drawStatus && bet.drawStatus[leg] === "จั่ว");
                             finalCard = isUserDrawn ? matchResult.threeCards : matchResult.twoCards;
-
-                           // 🟢 ฝั่งผู้เล่นชนะ: ได้เต็มตามเด้งจริงของไพ่ (ชนะ 5 เด้งได้ 5 เท่าเต็ม!)
-    if (finalCard.score > tempDealerResult.score) {
-        let winMultiplier = finalCard.mult; // ไม่ต้องเอา bet.maxMultiplier มาล็อคแล้ว
-        userTotalWinLoss += (betPrice * winMultiplier);
-        }
+                            // 🟢 ฝั่งผู้เล่นชนะ:
+                            if (finalCard.score > tempDealerResult.score) {
+                                let winMultiplier = finalCard.mult;
+                                // 🛡️ ถ้าค้ำประกันมาแค่ 2 เด้ง ชนะเท่าไหร่ก็โดนแคปให้ได้ไม่เกิน 2 เด้ง (ถ้าค้ำครบ 3 เด้งจะปล่อยได้เต็ม 5 เด้ง)
+                                if (bet.maxMultiplier && bet.maxMultiplier < 3 && winMultiplier > bet.maxMultiplier) {
+                                    winMultiplier = bet.maxMultiplier;
+                                }
+                                userTotalWinLoss += (betPrice * winMultiplier);
+                            } 
+                            // 🔴 ฝั่งผู้เล่นแพ้:
                             else if (finalCard.score < tempDealerResult.score) {
                                 let loseMultiplier = tempDealerResult.mult;
+                                // ล็อกเพดานแพ้สูงสุดไม่เกิน 3 เด้งสำหรับคนค้ำครบ
                                 if (loseMultiplier > 3) {
-                                    loseMultiplier = 3;
+                                loseMultiplier = 3;
                                 }
-                                // 🌟 [จุดเปลี่ยนที่ 2]: ดักเพดานเด้งฝั่งผู้เล่นแพ้ (ถ้าเขาค้ำไว้แค่ 2 เด้ง ก็โดนหักสูงสุดแค่ 2 เด้ง)
+                                // 🛡️ ถ้าค้ำประกันมาน้อยกว่า (เช่น 2 เด้ง) ก็หักแพ้ตามเพดานค้ำจริง (ไม่เกิน 2)
                                 if (bet.maxMultiplier && loseMultiplier > bet.maxMultiplier) {
                                     loseMultiplier = bet.maxMultiplier;
                                 }
                                 userTotalWinLoss -= (betPrice * loseMultiplier);
                             }
-                        } 
+                        }
                         else {
                             // 👑 [ฝั่งคนแทงเจ้ามือ (จ หรือ มจ)] -> ใช้กฎตายตัวแยกคำนวณเด็ดขาด
                             let playerTwoCardScore = matchResult.twoCards.score;
@@ -2212,25 +2217,33 @@ else if (userMsg === 'ok' || userMsg === 'no') {
 
                             // 🧮 ตรรกะคิดเงินของฝั่งคนแทงเจ้ามือ (หักต๋ง 10% เฉพาะขาที่ได้กำไร)
                             if (tempDealerResult.score > finalCard.score) {
-        let winMultiplier = tempDealerResult.mult; // ไม่ต้องเอา bet.maxMultiplier มาล็อคแล้ว
-                                
+                                let winMultiplier = tempDealerResult.mult; // ไม่ต้องเอา bet.maxMultiplier มาล็อคแล้ว                              
                                 if (tempDealerResult.rawMult) {
-        winMultiplier = tempDealerResult.rawMult;
-    }
+                                    winMultiplier = tempDealerResult.rawMult;
+                                }
+                                // 🛡️ ถ้าค้ำประกันมาแค่ 2 เด้ง ชนะเท่าไหร่ก็โดนแคปไม่เกิน 2 เด้ง (ถ้าค้ำครบ 3 เด้งปล่อยได้เต็ม)
+                                if (bet.maxMultiplier && bet.maxMultiplier < 3 && winMultiplier > bet.maxMultiplier) {
+                                    winMultiplier = bet.maxMultiplier;
+                                 }
+                                
                                 let grossWin = betPrice * winMultiplier; // กำไรเต็มก่อนหัก
                                 
                                 // 🔥 หักต๋งรายขาทันที 10% (เหลือจ่ายจริง 90%)
                                 let netWin = Math.floor(grossWin * 0.9);
                                 userTotalWinLoss += netWin;
                             } 
-                            else if (tempDealerResult.score < finalCard.score) {
-                                // เจ้ามือแพ้ขาผู้เล่นคนนั้น = คนแทงฝั่งเจ้าเสียเต็มจำนวนตามจำนวนเด้งของขานั้นๆ
-                                let loseMultiplier = finalCard.mult;
-                                // 🌟 [จุดเปลี่ยนที่ 4]: ดักเพดานเด้งฝั่งคนแทงเจ้าเสีย (ถ้าเขาค้ำไว้ 2 เด้ง ก็ลบไม่เกิน 2 เด้ง)
-                                if (bet.maxMultiplier && loseMultiplier > bet.maxMultiplier) {
-                                    loseMultiplier = bet.maxMultiplier;
-                                }
-                                userTotalWinLoss -= (betPrice * loseMultiplier);
+                           // 🔴 ฝั่งคนแทงเจ้ามือแพ้:
+                        else if (tempDealerResult.score < finalCard.score) {
+                            let loseMultiplier = finalCard.mult;
+                            // ล็อกเพดานแพ้สูงสุดไม่เกิน 3 เด้งสำหรับคนค้ำครบ
+                            if (loseMultiplier > 3) {
+                            loseMultiplier = 3;
+                            }
+                            // 🛡️ ถ้าค้ำประกันมาน้อยกว่า (เช่น 2 เด้ง) หักแพ้ไม่เกินเพดานค้ำจริง
+                            if (bet.maxMultiplier && loseMultiplier > bet.maxMultiplier) {
+                            loseMultiplier = bet.maxMultiplier;
+                            }
+                            userTotalWinLoss -= (betPrice * loseMultiplier);
                             }
                         }
                     });

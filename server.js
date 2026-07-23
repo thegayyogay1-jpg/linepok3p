@@ -3518,14 +3518,14 @@ else if (userMsg === 'oball' || userMsg === 'Oball' || userMsg === 'OBALL') {
         });
 
         // 2. หั่นแบ่งสมาชิกออกเป็นหน้าๆ (หน้าละ 3 คน)
-        const chunkSize = 3; 
+        const chunkSize = 7; 
         const memberPages = [];
         for (let i = 0; i < allMemberContents.length; i += chunkSize) {
             memberPages.push(allMemberContents.slice(i, i + chunkSize));
         }
 
         // 3. ประกอบเป็น Bubble แต่ละหน้า
-        const oballBubbles = memberPages.map((pageContents, index) => ({
+        const oballBubbles = memberPages.slice(0, 10).map((pageContents, index) => ({
             "type": "bubble",
             "styles": { "body": { "backgroundColor": "#121214" } },
             "body": {

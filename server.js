@@ -1047,6 +1047,23 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                 let summaryFlexContents = [];
                 let hasAnyBet = false;
 
+                // 💡 ฟังก์ชันช่วยแปลง betType ให้กลายเป็นข้อความอ่านง่าย
+                const formatLegDisplay = (bet) => {
+                    if (!bet || !bet.betType) return "ไม่ระบุขา";
+                    const type = bet.betType;
+                    const price = bet.pricePerLeg || 0;
+
+                    if (type === "มข") return `เหมาขวา (${price}/ขา)`;
+                    if (type === "มจ") return `เหมาเจ้า (${price}/ขา)`;
+                    if (type.startsWith('จ')) {
+                        const legs = type.substring(1).split('').join(', ');
+                        return `แทงเจ้าสู้ขา ${legs} (${price}/ขา)`;
+                    }
+                    // กรณีแทงขาผู้เล่นปกติ เช่น "12" -> "ขา 1, 2 (20/ขา)"
+                    const legs = type.split('').join(', ');
+                    return `ขา ${legs} (${price}/ขา)`;
+                };
+
                 for (let uId in roundBets) {
                     const userBetsArray = roundBets[uId];
                     if (!userBetsArray || userBetsArray.length === 0) continue;
@@ -1060,14 +1077,14 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                     let legsList = [];
 
                     userBetsArray.forEach((b) => {
+                        // สะสมยอดค้ำ/ยอดแทงจริง
                         if (b.actualBet) {
                             userTotalBetAmt += b.actualBet;
                         }
-                        // 2. ดึงขาที่แทง (รองรับทั้ง b.leg, b.target, b.betOn หรือ b.option)
-                        const legName = b.leg || b.target || b.betOn || b.option;
-                        if (legName) {
-                            legsList.push(`${legName} (${b.actualBet || 0})`);
-                        }
+
+                        // 🛠️ แก้ไขจุดนี้: ดึงขาที่แทงจาก b.betType ผ่านฟังก์ชันจัดรูปแบบ
+                        const legDisplay = formatLegDisplay(b);
+                        legsList.push(legDisplay);
                     });
 
                     // รวมขาที่แทงเข้าด้วยกัน เช่น "ขา1 (20), ขา2 (20)"

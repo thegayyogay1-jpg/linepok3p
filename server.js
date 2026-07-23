@@ -90,24 +90,26 @@ async function checkAutoDeposit() {
 
                 console.log(`✅ [ฝากออโต้สำเร็จ] สมาชิก [${user.memberNumber || '-'}] ${user.nickname || user.name} ยอด ${queue.displayAmount} บาท เครดิตเข้าเรียบร้อย`);
                 
-               // 4. 🔔 (Optional) ส่ง LINE Notify เข้ากลุ่มแอดมิน (ฟรี ไม่กินโควตาบอท LINE)
-                /*
+               // 4. 🔔 ส่ง LINE Notify เข้ากลุ่มแอดมิน (ทำงานจริง ไม่โดน Comment)
                 try {
-                    const notifyMessage = `\n✅ [ฝากเงินออโต้สำเร็จ]\n👤 ยูสเซอร์: [${user.memberNumber}] ${user.nickname || user.name}\n💰 ยอดโอน: ${queue.displayAmount} บาท\n💳 เครดิตเข้า: +${queue.rawAmount} ฿\n📊 ยอดคงเหลือ: ${user.balance} ฿`;
+                    const notifyToken = 'TOKEN_LINE_NOTIFY_ของแอดมิน'; // ⚠️ ใส่ Token LINE Notify จริงตรงนี้
                     
-                    await axios.post('https://notify-api.line.me/api/notify', 
-                        `message=${encodeURIComponent(notifyMessage)}`, 
-                        {
-                            headers: {
-                                'Content-Type': 'application/x-www-form-urlencoded',
-                                'Authorization': `Bearer TOKEN_LINE_NOTIFY_ของแอดมิน`
+                    if (notifyToken && notifyToken !== 'TOKEN_LINE_NOTIFY_ของแอดมิน') {
+                        const notifyMessage = `\n✅ [ฝากเงินออโต้สำเร็จ]\n👤 ยูสเซอร์: [${user.memberNumber || '-'}] ${user.nickname || user.name}\n💰 ยอดโอน: ${queue.displayAmount} บาท\n💳 เครดิตเข้า: +${queue.rawAmount} ฿\n📊 ยอดคงเหลือ: ${user.balance} ฿`;
+                        
+                        await axios.post('https://notify-api.line.me/api/notify', 
+                            `message=${encodeURIComponent(notifyMessage)}`, 
+                            {
+                                headers: {
+                                    'Content-Type': 'application/x-www-form-urlencoded',
+                                    'Authorization': `Bearer ${notifyToken}`
+                                }
                             }
-                        }
-                    );
+                        );
+                    }
                 } catch (notifyErr) {
                     console.error("⚠️ ไม่สามารถส่ง LINE Notify ได้:", notifyErr.message);
                 }
-                */
             }
         }
     } catch (err) {

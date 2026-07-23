@@ -68,7 +68,7 @@ async function checkAutoDeposit() {
 
         for (let userId in global.depositQueue) {
             const queue = global.depositQueue[userId];
-            if (queue.status !== 'WAITING_ADMIN') continue;
+            if (!queue || queue.status !== 'WAITING_ADMIN') continue;
 
             // 🔍 ค้นหาในรายการโอนเงินว่ามียอดเงิน + เศษสตางค์ที่ตรงกับคิวไหม
             const matchTx = bankTransactions.find(tx => 
@@ -76,30 +76,38 @@ async function checkAutoDeposit() {
             );
 
             if (matchTx) {
-                // 💰 เติมเครดิตเข้ากระเป๋าสมาชิกทันที!
-                usersWallets[userId].balance += queue.rawAmount;
                 const user = usersWallets[userId];
+                if (!user) continue;
 
-                // 🧼 ล้างคิวฝากของยูสเซอร์รายนี้
+               // 1. 💰 เติมเครดิตเข้ากระเป๋าสมาชิกทันที!
+                user.balance = (user.balance || 0) + Number(queue.rawAmount);
+
+                // 2. 🧼 ล้างคิวฝากของยูสเซอร์รายนี้
                 delete global.depositQueue[userId];
+
+                // 3. 💾 เซฟข้อมูลลง Firebase ทันที
                 await saveDataToFirebase();
 
-                console.log(`✅ [ฝากออโต้สำเร็จ] สมาชิกที่ ${user.memberNumber} ยอด ${queue.displayAmount} บาท เครดิตเข้าแล้ว`);
-
-                // 📱 ยิงแจ้งเตือนยินดีต้อนรับเครดิตเข้าหาลูกค้าโดยตรง
+                console.log(`✅ [ฝากออโต้สำเร็จ] สมาชิก [${user.memberNumber || '-'}] ${user.nickname || user.name} ยอด ${queue.displayAmount} บาท เครดิตเข้าเรียบร้อย`);
+                
+               // 4. 🔔 (Optional) ส่ง LINE Notify เข้ากลุ่มแอดมิน (ฟรี ไม่กินโควตาบอท LINE)
+                /*
                 try {
-                    await axios.post('https://api.line.me/v2/bot/message/push', {
-                        to: userId,
-                        messages: [{
-                            type: 'text',
-                            text: `🎉 ระบบฝากเงินออโต้สำเร็จ!\n👤 คุณ ${user.name} (สมาชิกที่ ${user.memberNumber})\n💰 เติมเครดิต: +${queue.rawAmount} บาท\n──────────────────\n💳 ยอดเครดิตสุทธิ: ${user.balance} บาท\n🏁 ขอให้สนุกกับการเดิมพันค่ะ!`
-                        }]
-                    }, {
-                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` }
-                    });
-                } catch (pushErr) {
-                    console.error("❌ แจ้งยูสเซอร์ออโต้ล้มเหลว:", pushErr.message);
+                    const notifyMessage = `\n✅ [ฝากเงินออโต้สำเร็จ]\n👤 ยูสเซอร์: [${user.memberNumber}] ${user.nickname || user.name}\n💰 ยอดโอน: ${queue.displayAmount} บาท\n💳 เครดิตเข้า: +${queue.rawAmount} ฿\n📊 ยอดคงเหลือ: ${user.balance} ฿`;
+                    
+                    await axios.post('https://notify-api.line.me/api/notify', 
+                        `message=${encodeURIComponent(notifyMessage)}`, 
+                        {
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                                'Authorization': `Bearer TOKEN_LINE_NOTIFY_ของแอดมิน`
+                            }
+                        }
+                    );
+                } catch (notifyErr) {
+                    console.error("⚠️ ไม่สามารถส่ง LINE Notify ได้:", notifyErr.message);
                 }
+                */
             }
         }
     } catch (err) {

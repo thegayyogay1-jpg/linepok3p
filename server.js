@@ -3439,119 +3439,124 @@ else if (userMsg === 'oball' || userMsg === 'Oball' || userMsg === 'OBALL') {
     const totalMembers = memberKeys.length;
 
     if (totalMembers === 0) {
-        replyText = "📭 ปัจจุบันยังไม่มีสมาชิกสมัครเข้ามาในระบบเลยครับ";
+        global.currentReplyFlex = {
+            "type": "text",
+            "text": "📭 ปัจจุบันยังไม่มีสมาชิกสมัครเข้ามาในระบบเลยครับ"
+        };
     } else {
-        // 1. แปลงข้อมูลสมาชิกทุกคนให้อยู่ในรูปแบบ Flex Box Component
-        const allMemberContents = memberKeys.map(key => {
-            const user = usersWallets[key];
+        // 1. แยกหมายเลขหน้าที่แอดมินพิมพ์สั่งเข้ามา (เช่น 'oball 2' -> หน้า 2 / ถ้าพิมพ์แค่อีก 'oball' -> หน้า 1)
+        const parts = userMsg.trim().split(/\s+/);
+        let requestedPage = parseInt(parts[1], 10);
+        if (isNaN(requestedPage) || requestedPage < 1) {
+            requestedPage = 1;
+        }
 
-            // 💸 เช็กสถานะการแจ้งถอนเงิน
+        const pageSize = 30; // แสดงผลชุดละ 30 คน (3 บับเบิล บับเบิลละ 10 คน เพื่อไม่ให้เกิน 50KB)
+        const totalPages = Math.ceil(totalMembers / pageSize);
+
+        // ตรวจสอบกรณีที่แอดมินพิมพ์เลขหน้าเกินจำนวนหน้าที่มีจริง
+        if (requestedPage > totalPages) {
+            requestedPage = totalPages;
+        }
+
+        // 2. ตัดดึงเฉพาะรายชื่อสมาชิกตามหน้าที่เลือก
+        const startIndex = (requestedPage - 1) * pageSize;
+        const endIndex = startIndex + pageSize;
+        const pageMemberKeys = memberKeys.slice(startIndex, endIndex);
+
+        // 3. แปลงข้อมูลสมาชิกในหน้านั้นๆ ให้เป็น Component ความจุเบา
+        const pageMemberContents = pageMemberKeys.map(key => {
+            const user = usersWallets[key];
             const isWithdrawing = global.withdrawQueue && global.withdrawQueue[key];
             const withdrawAmount = isWithdrawing ? global.withdrawQueue[key].amount : 0;
-
-            // ปรับแต่ง Text Object ของสถานะถอนเงินให้ถูกหลัก LINE API 100%
-            const withdrawStatusTextObj = {
-                "type": "text", 
-                "text": isWithdrawing ? `❌ ถอน ${withdrawAmount.toLocaleString()} ฿` : "ปกติ (ไม่ถอน)", 
-                "color": isWithdrawing ? "#ff4d4d" : "#aaaaaa", 
-                "size": "xs", 
-                "align": "end"
-            };
-            if (isWithdrawing) {
-                withdrawStatusTextObj.weight = "bold"; // ใส่ weight เฉพาะตอนถอนเงิน (ที่เป็น bold) เท่านั้น
-            }
 
             return {
                 "type": "box",
                 "layout": "vertical",
                 "backgroundColor": isWithdrawing ? "#2d1212" : "#1e1e24",
-                "cornerRadius": "md",
-                "paddingAll": "md",
-                "margin": "md",
+                "cornerRadius": "sm",
+                "paddingAll": "sm",
+                "margin": "xs",
                 "contents": [
                     {
                         "type": "box",
                         "layout": "horizontal",
                         "contents": [
-                            { "type": "text", "text": `👤 [ ${user.memberNumber || "-"} ] คุณ ${user.name}`, "weight": "bold", "color": "#ffffff", "size": "sm", "flex": 1, "wrap": true }
-                        ]
-                    },
-                    { "type": "separator", "margin": "xs", "color": "#33333d" },
-                    {
-                        "type": "box",
-                        "layout": "horizontal",
-                        "margin": "xs",
-                        "contents": [
-                            { "type": "text", "text": "• เงินในระบบ:", "color": "#aaaaaa", "size": "xs" },
-                            { "type": "text", "text": `${(user.balance || 0).toLocaleString()} ฿`, "color": "#00ff66", "size": "xs", "align": "end", "weight": "bold" }
+                            { "type": "text", "text": `[${user.memberNumber || "-"}] ${user.name}`, "weight": "bold", "color": "#ffffff", "size": "xs", "flex": 3, "wrap": false },
+                            { "type": "text", "text": `${(user.balance || 0).toLocaleString()} ฿`, "color": "#00ff66", "size": "xs", "align": "end", "weight": "bold", "flex": 2 }
                         ]
                     },
                     {
                         "type": "box",
                         "layout": "horizontal",
-                        "margin": "xs",
                         "contents": [
-                            { "type": "text", "text": "• สถานะถอน:", "color": "#aaaaaa", "size": "xs" },
-                            withdrawStatusTextObj
-                        ]
-                    },
-                    {
-                        "type": "box",
-                        "layout": "horizontal",
-                        "margin": "xs",
-                        "contents": [
-                            { "type": "text", "text": "• ธนาคาร:", "color": "#aaaaaa", "size": "xs" },
-                            { "type": "text", "text": `${user.bankName || "ไม่ได้ระบุ"} (${user.bankAccount || "-"})`, "color": "#ffffff", "size": "xs", "align": "end", "wrap": true }
-                        ]
-                    },
-                    {
-                        "type": "box",
-                        "layout": "horizontal",
-                        "margin": "xs",
-                        "contents": [
-                            { "type": "text", "text": "• เป้าเทิร์น:", "color": "#aaaaaa", "size": "xs" },
-                            { "type": "text", "text": `${(user.turnoverTarget || 0).toLocaleString()} ฿`, "color": "#ffaa00", "size": "xs", "align": "end" }
+                            { "type": "text", "text": `🏦 ${user.bankName || "-"}: ${user.bankAccount || "-"}`, "color": "#aaaaaa", "size": "xxs", "flex": 3 },
+                            { "type": "text", "text": isWithdrawing ? `❌ ถอน ${withdrawAmount.toLocaleString()}` : "ปกติ", "color": isWithdrawing ? "#ff4d4d" : "#888888", "size": "xxs", "align": "end", "flex": 2 }
                         ]
                     }
                 ]
             };
         });
 
-        // 2. หั่นแบ่งสมาชิกออกเป็นหน้าๆ (หน้าละ 3 คน)
-        const chunkSize = 7; 
-        const memberPages = [];
-        for (let i = 0; i < allMemberContents.length; i += chunkSize) {
-            memberPages.push(allMemberContents.slice(i, i + chunkSize));
+        // 4. หั่นแบ่งสมาชิกในหน้านี้เป็น บับเบิลละ 10 คน (สูงสุด 3 บับเบิล/ชุดคำสั่ง)
+        const chunkSize = 10;
+        const memberBubblesData = [];
+        for (let i = 0; i < pageMemberContents.length; i += chunkSize) {
+            memberBubblesData.push(pageMemberContents.slice(i, i + chunkSize));
         }
 
-        // 3. ประกอบเป็น Bubble แต่ละหน้า
-        const oballBubbles = memberPages.slice(0, 10).map((pageContents, index) => ({
-            "type": "bubble",
-            "styles": { "body": { "backgroundColor": "#121214" } },
-            "body": {
-                "type": "box",
-                "layout": "vertical",
-                "spacing": "sm",
-                "contents": [
-                    { "type": "text", "text": "📊 รายงานข้อมูลสมาชิกทั้งหมด", "weight": "bold", "color": "#ffaa00", "size": "md", "align": "center" },
-                    { "type": "text", "text": `👥 สมาชิกทั้งหมด: ${totalMembers} คน (หน้า ${index + 1}/${memberPages.length})`, "size": "xs", "color": "#ffffff", "align": "center" },
-                    { "type": "separator", "color": "#2a2a35" },
-                    {
-                        "type": "box",
-                        "layout": "vertical",
-                        "spacing": "none",
-                        "contents": pageContents
-                    },
-                    { "type": "separator", "color": "#2a2a35", "margin": "md" },
-                    { "type": "text", "text": "⚙️ ข้อมูลอัปเดตแบบ Real-time", "size": "xs", "color": "#666666", "align": "center" }
-                ]
-            }
-        }));
+        // 5. ประกอบเป็น Flex Bubble
+        const oballBubbles = memberBubblesData.map((chunkContents, index) => {
+            const currentSubPage = index + 1;
+            const isLastBubble = (index === memberBubblesData.length - 1);
 
-        // 4. กำหนด Flex ใส่ตัวแปร global.currentReplyFlex
+            const bubbleObj = {
+                "type": "bubble",
+                "size": "mega",
+                "styles": { "body": { "backgroundColor": "#121214" } },
+                "body": {
+                    "type": "box",
+                    "layout": "vertical",
+                    "spacing": "xs",
+                    "paddingAll": "md",
+                    "contents": [
+                        { "type": "text", "text": "📊 รายงานข้อมูลสมาชิก", "weight": "bold", "color": "#ffaa00", "size": "sm", "align": "center" },
+                        { "type": "text", "text": `👥 รวม ${totalMembers} คน | ชุดที่ ${requestedPage}/${totalPages}`, "size": "xxs", "color": "#aaaaaa", "align": "center" },
+                        { "type": "separator", "color": "#2a2a35", "margin": "xs" },
+                        {
+                            "type": "box",
+                            "layout": "vertical",
+                            "spacing": "none",
+                            "contents": chunkContents
+                        }
+                    ]
+                }
+            };
+
+            // ถ้าเป็นการ์ดใบสุดท้ายของชุดคำสั่งนั้น ให้ใส่ข้อความแนะนำพิมพ์ดูชุดถัดไป
+            if (isLastBubble) {
+                bubbleObj.body.contents.push(
+                    { "type": "separator", "color": "#2a2a35", "margin": "sm" },
+                    { 
+                        "type": "text", 
+                        "text": requestedPage < totalPages 
+                            ? `💡 ดูชุดถัดไป พิมพ์: oball ${requestedPage + 1}` 
+                            : `✅ สิ้นสุดรายการสมาชิกทั้งหมดแล้ว`, 
+                        "size": "xxs", 
+                        "color": "#00bfff", 
+                        "align": "center",
+                        "margin": "xs"
+                    }
+                );
+            }
+
+            return bubbleObj;
+        });
+
+        // 6. บันทึกลงตัวแปรเตรียมส่งกลับ
         global.currentReplyFlex = {
             "type": "flex",
-            "altText": `📊 รายงานข้อมูลสมาชิกทั้งหมด (${totalMembers} คน)`,
+            "altText": `📊 รายงานสมาชิกทั้งหมด (ชุดที่ ${requestedPage}/${totalPages})`,
             "contents": {
                 "type": "carousel",
                 "contents": oballBubbles

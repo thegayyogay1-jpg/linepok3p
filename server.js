@@ -19,6 +19,7 @@ const FIREBASE_URL = "https://my-pokdeng-bot-default-rtdb.asia-southeast1.fireba
 
 let usersWallets = {};
 let nextMemberId = 1;
+let gameState = 'WAITING'; // สถานะเริ่มต้นคือ รอเปิดรอบ
 let isRoundOpen = false; // ตัวแปรจำสถานะ เปิด/ปิด รอบ
 let roundBets = {};      // ตัวแปรสำหรับจำโพยแทงในแต่ละรอบ
 let currentRound = 0;    // บรรทัดนี้เพื่อจำลำดับรอบปัจจุบัน
@@ -39,6 +40,7 @@ async function loadDataFromFirebase() {
         if (response.data) {
             usersWallets = response.data.usersWallets || {};
             nextMemberId = response.data.nextMemberId || 1;
+            gameState = response.data.gameState || 'WAITING';
             isRoundOpen = response.data.isRoundOpen !== undefined ? response.data.isRoundOpen : false;
             roundBets = response.data.roundBets || {};
             currentRound = response.data.currentRound || 0;
@@ -950,15 +952,33 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
         const closeRoundImgUrl = "https://img2.pic.in.th/-__-----2cccaadd8f93c70b.jpg";
 
         if (userMsg === 'o') {
-            if (isRoundOpen) {
-                replyText = `⚠️ ตอนนี้ระบบกำลังเปิด "รอบที่ ${currentRound}" อยู่แล้วครับ`;
-            } 
+            if (gameState !== 'WAITING') {
+        let warnText = "";
+        if (gameState === 'BETTING') warnText = "รอบปัจจุบันยังเปิดรับโพยอยู่ครับ (พิมพ์ x เพื่อปิดรอบ)";
+        else if (gameState === 'DRAWING') warnText = "รอบปัจจุบันกำลังเปิดจั่ว/รอส่งแต้มครับ (ยังไม่ได้ใส่ผลคำนวณ)";
+        else if (gameState === 'CALCULATING') warnText = "มีผลคำนวณค้างอยู่! กรุณาพิมพ์ ok เพื่อยืนยันคิดเงินก่อนครับ";
+        
+        replyText = `⚠️ **ไม่สามารถเปิดรอบใหม่ได้!**\n Reason: ${warnText}`;
+                
+         // 📱 ยิงข้อความเตือนแอดมินทันที
+                try {
+                    await axios.post('https://api.line.me/v2/bot/message/reply', {
+                        replyToken: replyToken,
+                        messages: [{ "type": "text", "text": replyText }]
+                    }, { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` } });
+                } catch (err) { console.error("❌ ยิงเตือนลั่นเปิดรอบล้มเหลว:", err.message); }
+                return; // เด้งออกทันที ไม่ทำงานต่อ
+            }
             else if (isDrawOpen) { 
                 replyText = `❌ ไม่สามารถเปิดรอบใหม่ได้ครับ!\nเนื่องจาก "รอบที่ ${currentRound}" ยังดำเนินรายการจั่วไพ่ไม่เสร็จสิ้น\n\n💡 หากต้องการเปิดรอบจั่ว ให้พิมพ์ oo\n💡 หากต้องการจบขั้นตอนจั่ว ให้พิมพ์ xx ก่อนครับ`;
             } else {
                 currentRound++;
                 isRoundOpen = true;
                 roundBets = {}; // ล้างข้อมูลโพยเก่าออกเพื่อเริ่มรอบใหม่
+
+                // ✨ [สำคัญ]: อัปเดตสถานะเกมเป็น "กำลังรับโพย"
+                gameState = 'BETTING';
+                
                 await saveDataToFirebase();
                 
                 // --- 📊 สร้างโครงสร้างสถิติย้อนหลัง ---
@@ -1037,10 +1057,29 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                 return; 
             }
         } else if (userMsg === 'x') {
-            if (!isRoundOpen) {
-                replyText = `⚠️ ระบบปิดรอบแทงอยู่แล้วครับ ไม่สามารถปิดซ้ำได้`;
+            // 🛡️ [ดักที่ 2]: เช็กสถานะเกม (ต้องอยู่ในสถานะ BETTING ถึงจะสั่งปิดรอบได้)
+            if (gameState !== 'BETTING') {
+                let warnText = "";
+                if (gameState === 'WAITING') warnText = "ยังไม่ได้เปิดรอบแทงครับ (พิมพ์ o เพื่อเปิดรอบ)";
+                else if (gameState === 'DRAWING') warnText = "รอบนี้ถูกปิดรับโพยไปแล้ว/กำลังอยู่ในขั้นตอนจั่วไพ่ครับ";
+                else if (gameState === 'CALCULATING') warnText = "รอบนี้ปิดไปแล้วและมีผลคำนวณค้างอยู่! กรุณาพิมพ์ ok เพื่อยืนยันคิดเงินก่อนครับ";
+
+                replyText = `⚠️ **ไม่สามารถปิดรอบได้!**\nเหตุผล: ${warnText}`;
+                
+                // 📱 ยิงข้อความเตือนแอดมินทันที
+                try {
+                    await axios.post('https://api.line.me/v2/bot/message/reply', {
+                        replyToken: replyToken,
+                        messages: [{ "type": "text", "text": replyText }]
+                    }, { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` } });
+                } catch (err) { console.error("❌ ยิงเตือนลั่นปิดรอบล้มเหลว:", err.message); }
+                return; // เด้งออกทันที ไม่ทำงานต่อ
             } else {
                 isRoundOpen = false;
+                
+                // ✨ [สำคัญ]: อัปเดตสถานะเกมเป็น "อยู่ในขั้นตอนจั่วไพ่/รอส่งแต้ม"
+                gameState = 'DRAWING';
+                
                 await saveDataToFirebase();
                 
                 // --- 📊 [สรุปยอดแทงรายบุคคลเพื่อใส่ใน Flex] ---
@@ -1171,12 +1210,27 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
 
         // 🟢 [ฝั่งเปิดรอบจั่ว oo]
         if (userMsg === 'oo') {
-            if (isRoundOpen) {
-                replyText = "⚠️ ต้องพิมพ์ปิดรอบแทง (X) ก่อน จึงจะเปิดรอบจั่วได้ครับ";
+            // 🛡️ [ดักมือลั่น]: ต้องอยู่ในสถานะ DRAWING (ปิดรับโพยแล้ว) เท่านั้นถึงจะเปิดจั่วได้
+            if (gameState !== 'DRAWING') {
+                let warnText = "";
+                if (gameState === 'WAITING') warnText = "ยังไม่ได้เปิดรอบแทงเลยครับ (พิมพ์ o เพื่อเปิดรอบ)";
+                else if (gameState === 'BETTING') warnText = "รอบนี้ยังเปิดรับโพยอยู่ครับ! กรุณาพิมพ์ x ปิดรอบก่อนเปิดจั่ว";
+                else if (gameState === 'CALCULATING') warnText = "มีผลคำนวณค้างอยู่! กรุณาพิมพ์ ok เพื่อยืนยันคิดเงินก่อนครับ";
+
+                replyText = `⚠️ **ไม่สามารถเปิดรอบจั่วไพ่ได้!**\nเหตุผล: ${warnText}`;
+                
+                try {
+                    await axios.post('https://api.line.me/v2/bot/message/reply', {
+                        replyToken: replyToken,
+                        messages: [{ "type": "text", "text": replyText }]
+                    }, { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` } });
+                } catch (err) { console.error("❌ เตือนลั่น oo ล้มเหลว:", err.message); }
+                return;
             } else if (isDrawOpen) {
                 replyText = `⚠️ ตอนนี้ระบบกำลังเปิด "รอบขอจั่วไพ่ใบที่ 3" อยู่แล้วครับ ไม่จำเป็นต้องเปิดซ้ำครับ`;
             } else {
                 isDrawOpen = true; // เปิดสิทธิ์ให้บอทรับคำสั่งเครื่องหมาย + จากสมาชิก
+                await saveDataToFirebase(); // 💾 บันทึกสถานะลง Firebase
 
                 // 🚀 ยิงข้อความแพ็คคู่: [1. รูปภาพเปิดจั่วของน้า] + [2. Flex Message เปิดจั่วอย่างเป็นทางการ]
                 try {
@@ -1229,6 +1283,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
             } else {
                 // 1. ปิดระบบรับรอบจั่วทันที
                 isDrawOpen = false;
+                await saveDataToFirebase();
 
                 // 2. ดำเนินการวนลูปดึงข้อมูลจากโค้ดหลักของน้าแบบไม่มีตกหล่น
                 let summaryFlexContents = [];
@@ -2123,6 +2178,12 @@ return res.sendStatus(200);
 else if (userMsg === 'ok' || userMsg === 'no') {
     if (!ADMIN_IDS.includes(userId)) return;
 
+    if (gameState !== 'CALCULATING' || !tempRoomResults || !tempDealerResult) {
+        replyText = "⚠️ ไม่มีข้อมูลผลแต้มค้างอยู่ในระบบครับ กรุณาส่งผลแต้มด้วยเครื่องหมาย > ก่อนครับ";
+        // ... Code ส่ง replyText กลับ LINE ...
+        return;
+    }
+
     if (!tempRoomResults || !tempDealerResult) {
         replyText = "⚠️ ไม่มีข้อมูลผลแต้มค้างอยู่ในระบบครับ กรุณาส่งผลแต้มด้วยเครื่องหมาย > ก่อนครับ";
     } else {
@@ -2302,7 +2363,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                 summaryPayoutText += `👤 ${user.name} (ID: ${user.memberNumber})\n  ยอดสุทธิ: ${oldSign}${userTotalWinLoss} บาท${oldFeeNote}\n เครดิตคงเหลือ: ${user.balance} บ.\n──────────────────\n`;
             } catch (error) {
                  // 🛡️ หากเกิด Error กับคนไหน ให้พ่น Log บอก แล้วไปคิดเงินคนถัดไปทันที ลูปไม่ดับแน่นอน
-                 console.error(`❌ เกิดข้อผิดพลาดในการคิดเงินของ uId ${uId}:`, error);
+                 console.error(`❌ คิดเงิน userId ${uId} ผิดพลาด:`, err);
             }    
         } // ปิดลูป for (let uId in roundBets)
 
@@ -2447,6 +2508,9 @@ global.currentReplyFlex = {
 };
 // =========================================================================
             // กำหนดให้ส่งทั้งข้อความธรรมดา (เก็บประวัติ) และแนบกล่องดีไซน์ไปด้วยครับน้า
+
+            gameState = 'WAITING';     // คืนสถานะห้องกลับสู่ช่วงรอเปิดรอบใหม่ (o)
+            isDrawOpen = false;
             tempRoomResults = null;
             tempDealerResult = null;
             roundBets = {};
@@ -2457,6 +2521,7 @@ global.currentReplyFlex = {
             replyText = "❌ แอดมินยกเลิกผลคำนวณรอบนี้เรียบร้อยครับ สามารถส่งแต้มเข้ามาใหม่ได้เลย";
             tempRoomResults = null;
             tempDealerResult = null;
+            gameState = 'DRAWING';
         }
     } // ปิดตัว else ของเงื่อนไขตรวจเช็กแต้มค้างคัดกรองหลัก
 }

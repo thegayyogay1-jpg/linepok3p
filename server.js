@@ -3429,7 +3429,7 @@ else if (command.toLowerCase() === "y") {
                 }
             }
                // ==================== [ คำสั่งแอดมินส่องภาพรวมสมาชิกทุกคน (พิมพ์: oball) ] ====================
-else if (userMsg === 'oball' || userMsg === 'Oball' || userMsg === 'OBALL') {
+else if (userMsg.toLowerCase().startsWith('oball')) {
     // 🚨 กรองขั้นสูงสุด: ถ้าไม่ใช่แอดมิน หรือ แอดมินไม่ได้สั่งในแชทส่วนตัว (1 ต่อ 1) ให้บอทเงียบกริบไม่ตอบ
     if (!ADMIN_IDS.includes(userId) || event.source.type !== 'user') {
         return res.sendStatus(200);
@@ -3445,12 +3445,12 @@ else if (userMsg === 'oball' || userMsg === 'Oball' || userMsg === 'OBALL') {
         };
     } else {
         // 1. แยกหมายเลขหน้าที่แอดมินพิมพ์สั่งเข้ามา (เช่น 'oball 2' -> หน้า 2 / ถ้าพิมพ์แค่อีก 'oball' -> หน้า 1)
-        const parts = userMsg.trim().split(/\s+/);
-        let requestedPage = parseInt(parts[1], 10);
+       const pageMatch = userMsg.match(/oball\s*(\d+)/i);
+        let requestedPage = pageMatch ? parseInt(pageMatch[1], 10) : 1;
         if (isNaN(requestedPage) || requestedPage < 1) {
             requestedPage = 1;
         }
-
+        
         const pageSize = 30; // แสดงผลชุดละ 30 คน (3 บับเบิล บับเบิลละ 10 คน เพื่อไม่ให้เกิน 50KB)
         const totalPages = Math.ceil(totalMembers / pageSize);
 

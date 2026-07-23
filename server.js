@@ -2822,6 +2822,7 @@ else if (userMsg === 'คส' || userMsg === 'กต' || userMsg === 'บช' ||
                             }, {
                                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` }
                             });
+                            console.log("✅ ส่งการ์ดแจ้งถอนเข้าแอดมินเรียบร้อยแล้ว");
                         } catch (err) {
                             console.error("❌ ส่งแจ้งถอนเข้าแชทส่วนตัวแอดมินล้มเหลว:", err.message);
                         }

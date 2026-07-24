@@ -64,10 +64,11 @@ async function checkAutoDeposit() {
         // const response = await axios.get('ลิงก์_API_เช็กยอดโอนของน้า');
         // const bankTransactions = response.data.transactions || [];
         
-        const bankTransactions = []; // 📝 เปลี่ยนเป็นข้อมูลสเตทเม้นท์จริงที่ดึงได้นะน้า
+        const bankTransactions = global.bankTransactions || []; // 📝 เปลี่ยนเป็นข้อมูลสเตทเม้นท์จริงที่ดึงได้นะน้า
 
         for (let userId in global.depositQueue) {
             const queue = global.depositQueue[userId];
+
             if (!queue || queue.status !== 'WAITING_ADMIN') continue;
 
             // 🔍 ค้นหาในรายการโอนเงินว่ามียอดเงิน + เศษสตางค์ที่ตรงกับคิวไหม
@@ -75,40 +76,25 @@ async function checkAutoDeposit() {
                 parseFloat(tx.amount).toFixed(2) === parseFloat(queue.displayAmount).toFixed(2)
             );
 
-            if (matchTx) {
+            // 💰 2. ถ้ามียอดโอนตรงกับเศษสตางค์ที่กำหนดไว้
+            if (matchIndex !== -1) {
                 const user = usersWallets[userId];
-                if (!user) continue;
 
-               // 1. 💰 เติมเครดิตเข้ากระเป๋าสมาชิกทันที!
-                user.balance = (user.balance || 0) + Number(queue.rawAmount);
+                if (user) {
+                    // 2.1 เติมเครดิตเข้ากระเป๋าผู้ใช้ทันที
+                    user.balance = (user.balance || 0) + Number(queue.rawAmount);
 
-                // 2. 🧼 ล้างคิวฝากของยูสเซอร์รายนี้
-                delete global.depositQueue[userId];
+                    // 2.2 เซฟข้อมูลถาวรลง Firebase
+                    await saveDataToFirebase();
 
-                // 3. 💾 เซฟข้อมูลลง Firebase ทันที
-                await saveDataToFirebase();
+                    // 2.3 ลบลายเซ็นรายการโอนนี้ออกจาก bankTransactions (กันสแกนซ้ำ)
+                    bankTransactions.splice(matchIndex, 1);
 
-                console.log(`✅ [ฝากออโต้สำเร็จ] สมาชิก [${user.memberNumber || '-'}] ${user.nickname || user.name} ยอด ${queue.displayAmount} บาท เครดิตเข้าเรียบร้อย`);
-                
-               // 4. 🔔 ส่ง LINE Notify เข้ากลุ่มแอดมิน (ทำงานจริง ไม่โดน Comment)
-                try {
-                    const notifyToken = 'TOKEN_LINE_NOTIFY_ของแอดมิน'; // ⚠️ ใส่ Token LINE Notify จริงตรงนี้
-                    
-                    if (notifyToken && notifyToken !== 'TOKEN_LINE_NOTIFY_ของแอดมิน') {
-                        const notifyMessage = `\n✅ [ฝากเงินออโต้สำเร็จ]\n👤 ยูสเซอร์: [${user.memberNumber || '-'}] ${user.nickname || user.name}\n💰 ยอดโอน: ${queue.displayAmount} บาท\n💳 เครดิตเข้า: +${queue.rawAmount} ฿\n📊 ยอดคงเหลือ: ${user.balance} ฿`;
-                        
-                        await axios.post('https://notify-api.line.me/api/notify', 
-                            `message=${encodeURIComponent(notifyMessage)}`, 
-                            {
-                                headers: {
-                                    'Content-Type': 'application/x-www-form-urlencoded',
-                                    'Authorization': `Bearer ${notifyToken}`
-                                }
-                            }
-                        );
-                    }
-                } catch (notifyErr) {
-                    console.error("⚠️ ไม่สามารถส่ง LINE Notify ได้:", notifyErr.message);
+                    // 2.4 ล้างคิวฝากของยูสเซอร์รายนี้ออก
+                    delete global.depositQueue[userId];
+
+                    // 📝 แสดง Log ใน Server ให้แอดมินรู้ว่าเติมเรียบร้อยแล้ว
+                    console.log(`✅ [เติมเงียบสำเร็จ] ยูสเซอร์ [${user.memberNumber || '-'}] ${user.nickname || user.name} | ยอด ${queue.displayAmount} ฿ -> เครดิตใหม่: ${user.balance} ฿`);
                 }
             }
         }
@@ -117,8 +103,9 @@ async function checkAutoDeposit() {
     }
 }
 
-// ⏱️ สั่งให้ระบบลูปตรวจสอบทุกๆ 30 วินาทีอัตโนมัติ
-setInterval(checkAutoDeposit, 30000);
+// ⏱️ สั่งให้ระบบลูปตรวจสอบทุกๆ 10-30 วินาทีอัตโนมัติ
+setInterval(checkAutoDeposit, 15000);
+
 
 // 💾 ฟังก์ชันอัตโนมัติ: สั่งบันทึกข้อมูลปัจจุบันยิงกลับไปเก็บที่ตึก Firebase
 async function saveDataToFirebase() {

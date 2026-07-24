@@ -3863,30 +3863,6 @@ if (userMsg === '3' || userMsg === '2' || userMsg === '1') {
                             previewImageUrl: 'https://img1.pic.in.th/images/546565.png'     
                         }];
                     }
-                    else if (userMsg === '1') {
-                        replyText = null;
-                        sendMessages = [{
-                            type: 'image',
-                            originalContentUrl: 'https://ibb.co/wZFGLt6n', 
-                            previewImageUrl: 'https://ibb.co/wZFGLt6n'     
-                        }];
-                    }
-                    else if (userMsg === '2') {
-                        replyText = null;
-                        sendMessages = [{
-                            type: 'image',
-                            originalContentUrl: 'https://ibb.co/vCn5TJZ4', 
-                            previewImageUrl: 'https://ibb.co/vCn5TJZ4'     
-                        }];
-                    }
-                    else if (userMsg === '3') {
-                        replyText = null;
-                        sendMessages = [{
-                            type: 'image',
-                            originalContentUrl: 'https://s.imgz.io/2026/07/24/389f6d0e718338066.png', 
-                            previewImageUrl: 'https://s.imgz.io/2026/07/24/389f6d0e718338066.png'     
-                        }];
-                    }
                     
                     // 🌟 3. ส่งข้อความตัวหนังสือปกติ (ดักจับ: ต้องไม่เป็นค่าว่าง ไม่เป็น null)
                     if (replyText && replyText.trim() !== "") {

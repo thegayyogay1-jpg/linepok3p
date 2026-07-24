@@ -72,7 +72,7 @@ async function checkAutoDeposit() {
             if (!queue || queue.status !== 'WAITING_ADMIN') continue;
 
             // 🔍 ค้นหาในรายการโอนเงินว่ามียอดเงิน + เศษสตางค์ที่ตรงกับคิวไหม
-            const matchTx = bankTransactions.find(tx => 
+            const matchIndex = bankTransactions.findIndex(tx => 
                 parseFloat(tx.amount).toFixed(2) === parseFloat(queue.displayAmount).toFixed(2)
             );
 

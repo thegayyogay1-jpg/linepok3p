@@ -3883,8 +3883,8 @@ if (userMsg === '3' || userMsg === '2' || userMsg === '1') {
                         replyText = null;
                         sendMessages = [{
                             type: 'image',
-                            originalContentUrl: 'https://ibb.co/qLcypkr1', 
-                            previewImageUrl: 'https://ibb.co/qLcypkr1'     
+                            originalContentUrl: 'https://s.imgz.io/2026/07/24/389f6d0e718338066.png', 
+                            previewImageUrl: 'https://s.imgz.io/2026/07/24/389f6d0e718338066.png'     
                         }];
                     }
                     

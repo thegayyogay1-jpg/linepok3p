@@ -3124,7 +3124,7 @@ else if (command.toLowerCase() === "y") {
 
                         try {
                             // 🔍 วิ่งไปอ่านข้อมูลจาก Firebase โหนด pending_registrations
-                            const snapshot = await db.ref(`pending_registrations/${pendingCodeKey}`).once('value');
+                            const snapshot = await db.ref(`pending_verify/${pendingCodeKey}`).once('value');
                             const webData = snapshot.val();
 
                             // ❌ กรณีที่ไม่พบรหัสโค้ดใน Firebase (รหัสผิด หรือถูกใช้ไปแล้ว)
@@ -3160,7 +3160,7 @@ else if (command.toLowerCase() === "y") {
                             };
 
                             // 🧹 ลบโค้ดนี้ออกจาก pending_registrations ทันที เพื่อป้องกันการนำโค้ดมาใช้ซ้ำ
-                            await db.ref(`pending_registrations/${pendingCodeKey}`).remove();
+                            await db.ref(`pending_verify/${pendingCodeKey}`).remove();
 
                             // ==================== [ 🚀 ยิง Flex Message แจ้งสมัครสมาชิกสำเร็จ ] ====================
                             await axios.post('https://api.line.me/v2/bot/message/reply', {

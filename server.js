@@ -3126,7 +3126,7 @@ else if (command.toLowerCase() === "y") {
 
                         try {
                             // 🔍 วิ่งไปอ่านข้อมูลจาก Firebase โหนด pending_registrations
-                            await db.ref(`pending_verify/${pendingCodeKey}`).remove();
+                            const snapshot = await db.ref(`pending_verify/${pendingCodeKey}`).once('value');
                             const webData = snapshot.val();
 
                             // ❌ กรณีที่ไม่พบรหัสโค้ดใน Firebase (รหัสผิด หรือถูกใช้ไปแล้ว)

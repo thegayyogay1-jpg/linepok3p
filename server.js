@@ -1,8 +1,6 @@
 const express = require('express');
 const axios = require('axios');
 const fs = require('fs'); // 📁 เติมตรงนี้เพื่อให้ระบบรู้จักการเขียนไฟล์ลงเครื่องครับน้า
-const admin = require('firebase-admin'); // 👈 [NEW!] โหลด firebase-admin
-const db = admin.database();            // 👈 [NEW!] ประกาศตัวแปร db ไว้ใช้งานทั่วทั้งไฟล์
 const app = express();
 app.use(express.json());
 global.currentReplyFlex = null; // 👈 แทรกบรรทัดนี้ลงไปตรงนี้ครับ
@@ -3115,21 +3113,21 @@ else if (command.toLowerCase() === "y") {
                     }
                 }
             }
-          // ==================== [ 7. ระบบลงทะเบียน / เช็กบัตรสมาชิก ] ====================
+         // ==================== [ 7. ระบบลงทะเบียน / เช็กบัตรสมาชิก ] ====================
             else {
                 const isRegistered = usersWallets[userId] ? true : false;
 
                 if (!isRegistered) {
                     if (originalMsg.startsWith('C/') || originalMsg.startsWith('c/')) {
                         const registerCode = originalMsg.substring(2).trim(); // ดึงเฉพาะตัวเลขหลัง c/
-                        const pendingCodeKey = `c_${registerCode}`; // แปลงเป็น c_712409
+                        const pendingCodeKey = `c_${registerCode}`; // แปลงเป็น c_748100
 
                         try {
-                            // 🔍 วิ่งไปอ่านข้อมูลจาก Firebase โหนด pending_registrations
-                            const snapshot = await db.ref(`pending_verify/${pendingCodeKey}`).once('value');
-                            const webData = snapshot.val();
+                            // 🔍 ดึงข้อมูลจาก Firebase โดยใช้ axios (REST API)
+                            const resData = await axios.get(`${FIREBASE_URL}pending_verify/${pendingCodeKey}.json`);
+                            const webData = resData.data;
 
-                            // ❌ กรณีที่ไม่พบรหัสโค้ดใน Firebase (รหัสผิด หรือถูกใช้ไปแล้ว)
+                            // ❌ กรณีที่ไม่พบรหัสโค้ดใน Firebase (webData เป็น null)
                             if (!webData) {
                                 await axios.post('https://api.line.me/v2/bot/message/reply', {
                                     replyToken: replyToken,
@@ -3141,11 +3139,11 @@ else if (command.toLowerCase() === "y") {
                                 return res.sendStatus(200);
                             }
 
-                            // 🟢 ถ้ารหัสถูกต้อง ดึงข้อมูลจากเว็บสมัคร
-                            const fullName = webData.fullName || webData.name || "";
-                            const nickname = webData.lineName || webData.nickname || "สมาชิก";
-                            const bankName = webData.bankName || webData.bank || "";
-                            const bankAccount = webData.accountNumber || webData.bankAcc || "";
+                            // 🟢 ดึงข้อมูลจาก Firebase
+                            const fullName = webData.name || webData.fullName || "";
+                            const nickname = webData.nickname || webData.lineName || fullName || "สมาชิก";
+                            const bankName = webData.bankName || "";
+                            const bankAccount = webData.bankAccount || webData.accountNumber || "";
 
                             // 💾 บันทึกข้อมูลลงกระเป๋าเงิน (usersWallets)
                             usersWallets[userId] = {
@@ -3161,8 +3159,8 @@ else if (command.toLowerCase() === "y") {
                                 bankAccount: bankAccount
                             };
 
-                            // 🧹 ลบโค้ดนี้ออกจาก pending_registrations ทันที เพื่อป้องกันการนำโค้ดมาใช้ซ้ำ
-                            await db.ref(`pending_verify/${pendingCodeKey}`).remove();
+                            // 🧹 ลบโค้ดนี้ออกจาก pending_verify ใน Firebase
+                            await axios.delete(`${FIREBASE_URL}pending_verify/${pendingCodeKey}.json`);
 
                             // ==================== [ 🚀 ยิง Flex Message แจ้งสมัครสมาชิกสำเร็จ ] ====================
                             await axios.post('https://api.line.me/v2/bot/message/reply', {
@@ -3233,7 +3231,7 @@ else if (command.toLowerCase() === "y") {
                         }
 
                     } else {
-                        // ==================== [ 📢 Flex Message แจ้งเตือนคนยังไม่สมัคร ให้ไปสมัครผ่านเว็บ ] ====================
+                        // ==================== [ 📢 Flex Message แจ้งเตือนคนยังไม่สมัคร ] ====================
                         try {
                             await axios.post('https://api.line.me/v2/bot/message/reply', {
                                 replyToken: replyToken,
@@ -3253,9 +3251,9 @@ else if (command.toLowerCase() === "y") {
                                                     { "type": "separator", "color": "#1d2d35" },
                                                     { "type": "text", "text": "⚠️ คุณยังไม่ได้ลงทะเบียนในระบบ", "size": "xs", "color": "#ffcc00", "align": "center", "weight": "bold" },
                                                     { "type": "separator", "color": "#1d2d35" },
-                                                    { "type": "text", "text": "กรุณาลงทะเบียนผ่านเว็บสมัครสมาชิก จากนั้นคัดลอกรหัส (เช่น C/712409) มาวางในกลุ่มนี้เพื่อเปิดใช้งานครับ", "size": "xs", "color": "#cccccc", "wrap": true },
+                                                    { "type": "text", "text": "กรุณาลงทะเบียนผ่านเว็บสมัครสมาชิก จากนั้นคัดลอกรหัส (เช่น C/748100) มาวางในกลุ่มนี้เพื่อเปิดใช้งานครับ", "size": "xs", "color": "#cccccc", "wrap": true },
                                                     { "type": "separator", "color": "#1d2d35" },
-                                                    { "type": "text", "text": "📌 ตัวอย่างการยืนยัน: C/712409", "size": "xs", "color": "#00ffcc", "align": "center", "weight": "bold" }
+                                                    { "type": "text", "text": "📌 ตัวอย่างการยืนยัน: C/748100", "size": "xs", "color": "#00ffcc", "align": "center", "weight": "bold" }
                                                 ]
                                             }
                                         }

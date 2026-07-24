@@ -1,6 +1,8 @@
 const express = require('express');
 const axios = require('axios');
 const fs = require('fs'); // 📁 เติมตรงนี้เพื่อให้ระบบรู้จักการเขียนไฟล์ลงเครื่องครับน้า
+const admin = require('firebase-admin'); // 👈 [NEW!] โหลด firebase-admin
+const db = admin.database();            // 👈 [NEW!] ประกาศตัวแปร db ไว้ใช้งานทั่วทั้งไฟล์
 const app = express();
 app.use(express.json());
 global.currentReplyFlex = null; // 👈 แทรกบรรทัดนี้ลงไปตรงนี้ครับ
@@ -3124,7 +3126,7 @@ else if (command.toLowerCase() === "y") {
 
                         try {
                             // 🔍 วิ่งไปอ่านข้อมูลจาก Firebase โหนด pending_registrations
-                            const snapshot = await admin.database().ref(`pending_verify/${pendingCodeKey}`).once('value');
+                            await db.ref(`pending_verify/${pendingCodeKey}`).remove();
                             const webData = snapshot.val();
 
                             // ❌ กรณีที่ไม่พบรหัสโค้ดใน Firebase (รหัสผิด หรือถูกใช้ไปแล้ว)
@@ -3160,7 +3162,7 @@ else if (command.toLowerCase() === "y") {
                             };
 
                             // 🧹 ลบโค้ดนี้ออกจาก pending_registrations ทันที เพื่อป้องกันการนำโค้ดมาใช้ซ้ำ
-                            await admin.database().ref(`pending_verify/${pendingCodeKey}`).remove();
+                            await db.ref(`pending_verify/${pendingCodeKey}`).remove();
 
                             // ==================== [ 🚀 ยิง Flex Message แจ้งสมัครสมาชิกสำเร็จ ] ====================
                             await axios.post('https://api.line.me/v2/bot/message/reply', {

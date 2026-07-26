@@ -708,11 +708,9 @@ app.post('/callback', async (req, res) => {
                 }
             }
 // ==================== [ ระบบแจ้งฝากเงินสุ่มเศษสตางค์ ] ====================
-               else if (command === "ฝาก") {
-    // 🎯 ดึงเฉพาะตัวเลขหลังคำว่า "ฝาก" ไม่ว่าจะเว้นวรรคหรือไม่ก็ตาม
-    const match = userText.match(/^ฝาก\s*(\d+)/);
-    const amount = match ? parseInt(match[1]) : (args[1] ? parseInt(args[1]) : null);
-
+               else if (command === "ฝาก" || (userText && userText.startsWith("ฝาก"))) {
+                    const amount = parseInt(args[1]);
+                   
                 if (!amount || isNaN(amount) || amount <= 0) {
                     try {
                         await axios.post('https://api.line.me/v2/bot/message/reply', {

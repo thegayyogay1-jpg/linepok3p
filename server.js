@@ -3287,18 +3287,15 @@ if (userMsg === 'c') {
                         
     replyText = null;
 
-    // 🔄 💡 [ส่วนที่เพิ่มใหม่] อ่านค่ายอดเงินสดๆ จาก Firebase Realtime DB ก่อนแสดงการ์ด!
     try {
-        if (typeof db !== 'undefined') {
-            const freshUserSnap = await db.ref(`system_data/usersWallets/${userId}`).once('value');
-            if (freshUserSnap.exists()) {
-                const freshData = freshUserSnap.val();
-                // อัปเดตข้อมูลล่าสุดเข้าตัวแปร user ทันที
-                user = { ...user, ...freshData };
-            }
+        const freshRes = await axios.get(`${FIREBASE_URL}system_data/usersWallets/${userId}.json`);
+        if (freshRes.data) {
+            // อัปเดตข้อมูลล่าสุดเข้าตัวแปร local และตัวแปร user ทันที
+            usersWallets[userId] = freshRes.data;
+            user = freshRes.data;
         }
     } catch (err) {
-        console.error("❌ Error fetching fresh user data:", err);
+        console.error("❌ ไม่สามารถดึงข้อมูล Realtime ของสมาชิกได้:", err.message);
     }
 
     // 📝 2. ดึงรายการโพยของจริงจากระบบมาจัดแถวตัวหนังสือย่อยในการ์ด

@@ -708,10 +708,11 @@ app.post('/callback', async (req, res) => {
                 }
             }
 // ==================== [ ระบบแจ้งฝากเงินสุ่มเศษสตางค์ ] ====================
-            else if (userText.startsWith("ฝาก")) {
-                // 🎯 แก้อ่านตัวเลข: ดึงเฉพาะตัวเลขหลังคำว่า "ฝาก" ไม่ว่าจะเว้นวรรคหรือไม่ก็ตาม
-                const match = userText.match(/^ฝาก\s*(\d+)/);
-                const amount = match ? parseInt(match[1]) : null;
+            else if (command === "ฝาก") {
+                else if (userText.startsWith("ฝาก")) {
+    // ดึงเฉพาะตัวเลขที่อยู่ต่อจากคำว่า "ฝาก" (ตัดช่องว่างให้อัตโนมัติ)
+    const match = userText.match(/^ฝาก\s*(\d+)/);
+    const amount = match ? parseInt(match[1]) : null;
 
                 if (!amount || isNaN(amount) || amount <= 0) {
                     try {
@@ -739,7 +740,7 @@ app.post('/callback', async (req, res) => {
                                                     "paddingAll": "sm",
                                                     "contents": [
                                                         { "type": "text", "text": "📌 รูปแบบ: ฝาก [จำนวนเงิน]", "size": "xs", "color": "#00ffcc", "weight": "bold", "align": "center" },
-                                                        { "type": "text", "text": "👉 ตัวอย่าง: ฝาก 500 หรือ ฝาก500", "size": "xs", "color": "#8abf9e", "align": "center" }
+                                                        { "type": "text", "text": "👉 ตัวอย่าง: ฝาก 500", "size": "xs", "color": "#8abf9e", "align": "center" }
                                                     ]
                                                 }
                                             ]
@@ -778,7 +779,8 @@ app.post('/callback', async (req, res) => {
                                                         "backgroundColor": "#12261d",
                                                         "paddingAll": "sm",
                                                         "contents": [
-                                                            { "type": "text", "text": "กดเปิดลิงก์เพื่อลงทะเบียนผ่านเว็บออโต้ได้เลยครับ", "size": "xs", "color": "#00ffcc", "wrap": true }
+                                                            { "type": "text", "text": "พิมพ์: C/ชื่อ-นามสกุล,ธนาคาร,เลขบัญชี", "size": "xs", "color": "#00ffcc", "wrap": true },
+                                                            { "type": "text", "text": "ตัวอย่าง: C/นายแจ๊ค เด้งดี,กสิกร,1234567890", "size": "xs", "color": "#8abf9e", "wrap": true }
                                                         ]
                                                     }
                                                 ]
@@ -912,7 +914,7 @@ app.post('/callback', async (req, res) => {
                         }
                     }
                 }
-            }
+            }                
 
                 // ==================== [ คำสั่งแอดมิน: ชถ (เช็กรายการรอถอนเงินทั้งหมด) ] ====================
             else if (userMsg.trim() === 'ชถ') {

@@ -709,8 +709,9 @@ app.post('/callback', async (req, res) => {
             }
 // ==================== [ ระบบแจ้งฝากเงินสุ่มเศษสตางค์ ] ====================
                else if (command === "ฝาก" ) {
-                   const match = userText.match(/^ฝาก\s*(\d+)/);
-                    const amount = parseInt(args[1]);
+                    const fullText = args.join('');
+                    const match = fullText.match(/\d+/);
+                    const amount = match ? parseInt(match[0]) : null;
                    
                 if (!amount || isNaN(amount) || amount <= 0) {
                     try {

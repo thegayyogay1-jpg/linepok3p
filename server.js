@@ -708,10 +708,9 @@ app.post('/callback', async (req, res) => {
                 }
             }
 // ==================== [ ระบบแจ้งฝากเงินสุ่มเศษสตางค์ ] ====================
-               else if (command === "ฝาก" ) {
-                    const fullText = args.join('');
-                    const match = fullText.match(/\d+/);
-                    const amount = match ? parseInt(match[0]) : null;
+               else if (userMsg.startsWith("ฝาก")) {
+            // 🔍 ดึงตัวเลขด้วยวิธีเดียวกับระบบถอนของน้าเป๊ะๆ เลยครับ!
+            const amount = parseInt(userMsg.replace('ฝาก', '').trim());
                    
                 if (!amount || isNaN(amount) || amount <= 0) {
                     try {

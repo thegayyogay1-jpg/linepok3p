@@ -3287,12 +3287,13 @@ if (userMsg === 'c') {
                         
     replyText = null;
 
+    // ⚡ 2. สร้างตัวแปรมารับข้อมูลล่าสุด และยิง axios ดึงสดๆ จาก Firebase ทันที
+    let currentUser = user; // ตั้งค่าเริ่มต้นจากตัวแปร user เดิมก่อน
     try {
         const freshRes = await axios.get(`${FIREBASE_URL}system_data/usersWallets/${userId}.json`);
         if (freshRes.data) {
-            // อัปเดตข้อมูลล่าสุดเข้าตัวแปร local และตัวแปร user ทันที
-            usersWallets[userId] = freshRes.data;
-            user = freshRes.data;
+            currentUser = freshRes.data; // เอาข้อมูลสดใหม่เข้า currentUser ทันที
+            usersWallets[userId] = freshRes.data; // อัปเดตคืนถังกลางด้วย
         }
     } catch (err) {
         console.error("❌ ไม่สามารถดึงข้อมูล Realtime ของสมาชิกได้:", err.message);

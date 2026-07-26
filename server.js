@@ -3289,6 +3289,20 @@ else if (command.toLowerCase() === "y") {
                         // 🛠️ แก้ปัญหา LINE API บล็อกข้อความว่าง: บังคับให้ข้อความธรรมดาเป็น null เพื่อส่งแค่การ์ด Flex
                         replyText = null;
 
+                        // 🔄 💡 [ส่วนที่เพิ่มใหม่] อ่านค่ายอดเงินสดๆ จาก Firebase Realtime DB ก่อนแสดงการ์ด!
+    try {
+        if (typeof db !== 'undefined') {
+            const freshUserSnap = await db.ref(`system_data/usersWallets/${userId}`).once('value');
+            if (freshUserSnap.exists()) {
+                const freshData = freshUserSnap.val();
+                // อัปเดตข้อมูลล่าสุดเข้าตัวแปร user ทันที
+                user = { ...user, ...freshData };
+            }
+        }
+    } catch (err) {
+        console.error("❌ Error fetching fresh user data:", err);
+    }
+
                         // 📝 1. ดึงรายการโพยของจริงจากระบบมาจัดแถวตัวหนังสือย่อยในการ์ด
                         let betContents = [];
                         const myBets = roundBets[userId] || [];

@@ -847,36 +847,34 @@ const qrCodeUrl = `https://promptpay.io/${promptpayNumber}/${displayAmount}.png`
                                 status: 'WAITING_ADMIN'
                             };
 
-                            // ==================== [ 🚀 ยิง Flex Message ใบแจ้งฝากสไตล์บิลธนาคารสีเขียวนีออน ] ====================
-                            try {
-                                await axios.post('https://api.line.me/v2/bot/message/reply', {
-                                    replyToken: replyToken,
-                                    messages: [
-                                        {
-                                            "type": "flex",
-                                            "altText": `📥 ใบสั่งฝากเครดิต ยอดโอน: ${displayAmount} บาท`,
-                                            "contents": {
-                                                "type": "bubble",
-                                                "styles": { "body": { "backgroundColor": "#09120e" } },
-                                                "body": {
-                                                    "type": "box",
-                                                    "layout": "vertical",
-                                                    "spacing": "md",
-                                                    "contents": [
-                                                        { "type": "text", "text": "📥 ใบสั่งรายการฝากเงิน", "weight": "bold", "color": "#00ff88", "size": "md", "align": "center" },
-                                                        { "type": "separator", "color": "#12251c" },
-                                                        {
-                                                            "type": "box",
-                                                            "layout": "vertical",
-                                                            "spacing": "xs",
-                                                            "contents": [
-                                                                { "type": "text", "text": "💸 กรุณาโอนเงินยอดสุทธิ:", "size": "xs", "color": "#8caf9c" },
-                                                                { "type": "text", "text": `${displayAmount} บาท`, "size": "xxl", "color": "#00ff88", "weight": "bold", "align": "center", "margin": "sm" },
-                                                                { "type": "text", "text": "(กรุณาโอนเศษสตางค์ให้ตรงเพื่ออัปยอดไวที่สุด)", "size": "10px", "color": "#ffaa00", "align": "center" }
-                                                            ]
-                                                        },
-
-                                                        // 📌 [จุดที่เพิ่มใหม่] แปะรูป QR Code สแกนจ่ายได้เลยตรงนี้
+                            // ==================== [ 🚀 ใบแจ้งฝากสไตล์บิลธนาคาร + QR Code แบบย่อ ] ====================
+try {
+    await axios.post('https://api.line.me/v2/bot/message/reply', {
+        replyToken: replyToken,
+        messages: [
+            {
+                "type": "flex",
+                "altText": `📥 ใบสั่งฝากเครดิต ยอดโอน: ${displayAmount} บาท`,
+                "contents": {
+                    "type": "bubble",
+                    "styles": { "body": { "backgroundColor": "#09120e" } },
+                    "body": {
+                        "type": "box",
+                        "layout": "vertical",
+                        "spacing": "md",
+                        "contents": [
+                            { "type": "text", "text": "📥 ใบสั่งรายการฝากเงิน", "weight": "bold", "color": "#00ff88", "size": "md", "align": "center" },
+                            { "type": "separator", "color": "#12251c" },
+                            {
+                                "type": "box",
+                                "layout": "vertical",
+                                "spacing": "xs",
+                                "contents": [
+                                    { "type": "text", "text": "💸 กรุณาโอนเงินยอดสุทธิ:", "size": "xs", "color": "#8caf9c" },
+                                    { "type": "text", "text": `${displayAmount} บาท`, "size": "xxl", "color": "#00ff88", "weight": "bold", "align": "center", "margin": "sm" },
+                                    { "type": "text", "text": "(กรุณาโอนเศษสตางค์ให้ตรงเพื่ออัปยอดไวที่สุด)", "size": "10px", "color": "#ffaa00", "align": "center" }
+                                ]
+                            },
                             {
                                 "type": "image",
                                 "url": qrCodeUrl,
@@ -885,45 +883,27 @@ const qrCodeUrl = `https://promptpay.io/${promptpayNumber}/${displayAmount}.png`
                                 "aspectMode": "fit",
                                 "margin": "md"
                             },
-                                                        { "type": "separator", "color": "#12251c" },
-                                                        { "type": "text", "text": "🏦 บัญชีสำหรับรับโอนเงิน", "size": "xs", "color": "#00ff88", "weight": "bold" },
-                                                        {
-                                                            "type": "box",
-                                                            "layout": "vertical",
-                                                            "backgroundColor": "#0f1f17",
-                                                            "paddingAll": "md",
-                                                            "spacing": "xs",
-                                                            "contents": [
-                                                                {
-                                                                    "type": "box", "layout": "horizontal", "contents": [
-                                                                        { "type": "text", "text": "ธนาคาร:", "size": "xs", "color": "#8caf9c" },
-                                                                        { "type": "text", "text": "กสิกรไทย", "size": "xs", "color": "#ffffff", "align": "end", "weight": "bold" }
-                                                                    ]
-                                                                },
-                                                                {
-                                                                    "type": "box", "layout": "horizontal", "contents": [
-                                                                        { "type": "text", "text": "เลขบัญชี:", "size": "xs", "color": "#8caf9c" },
-                                                                        { "type": "text", "text": "037-1556-125", "size": "xs", "color": "#00ff88", "align": "end", "weight": "bold" }
-                                                                    ]
-                                                                },
-                                                                {
-                                                                    "type": "box", "layout": "horizontal", "contents": [
-                                                                        { "type": "text", "text": "ชื่อบัญชี:", "size": "xs", "color": "#8caf9c" },
-                                                                        { "type": "text", "text": "นาย ภาณุวัฒก์ ก้องกุล", "size": "xs", "color": "#ffffff", "align": "end" }
-                                                                    ]
-                                                                }
-                                                            ]
-                                                        },
-                                                        { "type": "separator", "color": "#12251c" },
-                                                        { "type": "text", "text": "⚠️ สำคัญมาก: กรุณาโอนตามยอดที่มีเศษสตางค์ด้านบนให้ตรง แล้วส่งสลิปเพื่อยืนยันรายการค่ะ", "size": "11px", "color": "#ff4444", "wrap": true, "align": "center", "weight": "bold" }
-                                                    ]
-                                                }
-                                            }
-                                        }
-                                    ]
-                                }, { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` } });
-                            } catch (err) { console.error("Error sending deposit bill flex:", err); }
-                        }
+                            { "type": "separator", "color": "#12251c" },
+                            // เหลือไว้เฉพาะชื่อบัญชีตามที่ต้องการ
+                            { 
+                                "type": "text", 
+                                "text": "👤 ชื่อบัญชี: นาย ภาณุวัฒก์ ก้องกุล", 
+                                "size": "xs", 
+                                "color": "#ffffff", 
+                                "align": "center", 
+                                "weight": "bold" 
+                            },
+                            { "type": "separator", "color": "#12251c" },
+                            { "type": "text", "text": "⚠️ โอนตามยอดที่มีเศษสตางค์ แล้วส่งสลิปเพื่อยืนยันรายการได้เลยครับ", "size": "11px", "color": "#ff4444", "wrap": true, "align": "center", "weight": "bold" }
+                        ]
+                    }
+                }
+            }
+        ]
+    }, { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` } });
+} catch (err) { 
+    console.error("Error sending deposit bill flex:", err.response ? err.response.data : err.message); 
+}
                     }
                 }
             }                

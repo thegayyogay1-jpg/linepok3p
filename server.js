@@ -835,6 +835,10 @@ app.post('/callback', async (req, res) => {
                             const totalWithSatang = amount + randomSatang;
                             const displayAmount = totalWithSatang.toFixed(2);
 
+                            // 🎯 เพิ่มบรรทัดนี้: ใส่เลขพร้อมเพย์/เบอร์โทรของน้าลงไป (ตัดขีดออก)
+const promptpayNumber = "0968298687"; // เลขพร้อมเพย์ หรือ เบอร์โทรที่ผูกพร้อมเพย์
+const qrCodeUrl = `https://promptpay.io/${promptpayNumber}/${displayAmount}.png`;
+
                             global.depositQueue[userId] = {
                                 memberId: walletData.memberNumber,
                                 name: walletData.name || 'ไม่ระบุชื่อ',
@@ -871,6 +875,16 @@ app.post('/callback', async (req, res) => {
                                                                 { "type": "text", "text": "(กรุณาโอนเศษสตางค์ให้ตรงเพื่ออัปยอดไวที่สุด)", "size": "10px", "color": "#ffaa00", "align": "center" }
                                                             ]
                                                         },
+
+                                                        // 📌 [จุดที่เพิ่มใหม่] แปะรูป QR Code สแกนจ่ายได้เลยตรงนี้
+                            {
+                                "type": "image",
+                                "url": qrCodeUrl,
+                                "size": "4xl",
+                                "aspectRatio": "1:1",
+                                "aspectMode": "fit",
+                                "margin": "md"
+                            },
                                                         { "type": "separator", "color": "#12251c" },
                                                         { "type": "text", "text": "🏦 บัญชีสำหรับรับโอนเงิน", "size": "xs", "color": "#00ff88", "weight": "bold" },
                                                         {

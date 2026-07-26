@@ -55,41 +55,6 @@ async function loadDataFromFirebase() {
 }
 loadDataFromFirebase(); // สั่งให้ทำงานทันทีที่บอทรัน
 
-// ==================== [ ⚡ วางสเต็ปที่ 1 ต่อตรงนี้ครับน้า ] ====================
-const EventSource = require('eventsource');
-
-function listenFirebaseRealtime() {
-    const streamUrl = `${FIREBASE_URL}system_data/usersWallets.json`;
-    const eventSource = new EventSource(streamUrl);
-
-    eventSource.onmessage = (event) => {
-        try {
-            const data = JSON.parse(event.data);
-            if (data && data.path === '/') {
-                usersWallets = data.data || {};
-            } else if (data && data.path) {
-                const pathParts = data.path.split('/');
-                const updatedUserId = pathParts[1];
-                if (updatedUserId && data.data) {
-                    usersWallets[updatedUserId] = {
-                        ...usersWallets[updatedUserId],
-                        ...data.data
-                    };
-                    console.log(`⚡ [Realtime] ยอดเงินของ ${updatedUserId} อัปเดตล่าสุดแล้ว!`);
-                }
-            }
-        } catch (err) {
-            console.error("❌ Stream Error:", err.message);
-        }
-    };
-
-    eventSource.onerror = (err) => {
-        // หากหลุด ให้เชื่อมต่อใหม่อัตโนมัติ
-    };
-}
-
-listenFirebaseRealtime();
-
 // 🤖 [ระบบฝากออโต้] ฟังก์ชันตรวจสอบยอดเงินจากเศษสตางค์
 async function checkAutoDeposit() {
     if (!global.depositQueue) return;
@@ -3306,91 +3271,88 @@ else if (command.toLowerCase() === "y") {
                     // 🟢 กรณีที่เป็นสมาชิกเก่าที่ลงทะเบียนเรียบร้อยแล้ว
                     const user = usersWallets[userId];
                     
-                  // ==================== [ คำสั่งเช็กยอด c เวอร์ชันการ์ดดำทอง ] ====================
-if (userMsg === 'c') {
-    // 🛡️ 1. ระบบ Anti-Spam กันสมาชิกกด c ย้ำๆ
+                   // ==================== [ คำสั่งเช็กยอด c เวอร์ชันการ์ดดำทอง ] ====================
+                    if (userMsg === 'c') {
+                        // 🛡️ 1. ระบบ Anti-Spam กันสมาชิกกด c ย้ำๆ (ตั้งไว้ที่ 3 วินาทีต่อคน)
     if (!global.cCooldowns) global.cCooldowns = new Map();
     const now = Date.now();
     const lastUsed = global.cCooldowns.get(userId) || 0;
-    const cooldownTime = 1500; // 1.5 วินาที
+    const cooldownTime = 1500; // 1500 ms = 1.5 วินาที
 
     if (now - lastUsed < cooldownTime) {
+        // ถ้าพิมพ์รัวเกิน 1.5 วินาที ให้ข้าม ไม่ต้องส่ง Flex Message ซ้ำเพื่อเซฟโควต้า LINE
         replyText = null;
         return; 
     }
     global.cCooldowns.set(userId, now);
                         
-    replyText = null;
+                        // 🛠️ แก้ปัญหา LINE API บล็อกข้อความว่าง: บังคับให้ข้อความธรรมดาเป็น null เพื่อส่งแค่การ์ด Flex
+                        replyText = null;
 
-    // ⚡ 2. ดึงข้อมูลล่าสุดจาก usersWallets (ที่ตัวดักฟัง Realtime อัปเดตไว้ใน RAM ตลอดเวลา)
-    const currentUser = usersWallets[userId] || user || {};
+                        // 📝 1. ดึงรายการโพยของจริงจากระบบมาจัดแถวตัวหนังสือย่อยในการ์ด
+                        let betContents = [];
+                        const myBets = roundBets[userId] || [];
+                        
+                        if (myBets && myBets.length > 0) {
+                            myBets.forEach((bet, index) => {
+                                let betText = `${index + 1}. ${bet.detail}`;
+                                if (bet.drawStatus) {
+                                    let drawLegs = [];
+                                    for (let leg in bet.drawStatus) {
+                                        if (bet.drawStatus[leg] === "จั่ว") drawLegs.push(leg);
+                                    }
+                                    if (drawLegs.length > 0) {
+                                        betText += ` 🃏 (จั่ว: ${drawLegs.sort().join(', ')})`;
+                                    }
+                                }
+                                betContents.push({
+                                    type: "text",
+                                    text: betText,
+                                    color: "#e0e0e0",
+                                    size: "xs",
+                                    wrap: true,
+                                    margin: "xs"
+                                });
+                            });
+                            
+                            const totalHold = myBets.reduce((sum, bet) => sum + (bet.holdCost || 0), 0);
+                            betContents.push({
+                                type: "text",
+                                text: `🔒 ประกันเด้งที่ล็อก: ${totalHold} บาท`,
+                                color: "#ffaa00",
+                                size: "xs",
+                                weight: "bold",
+                                margin: "sm"
+                            });
+                        } else {
+                            betContents.push({
+                                type: "text",
+                                text: "ไม่มีโพยค้างในรอบนี้",
+                                color: "#888888",
+                                size: "xs",
+                                style: "italic"
+                            });
+                        }
 
-    // 📝 2. ดึงรายการโพยของจริงจากระบบมาจัดแถวตัวหนังสือย่อยในการ์ด
-    let betContents = [];
-    const myBets = roundBets[userId] || [];
-    
-    if (myBets && myBets.length > 0) {
-        myBets.forEach((bet, index) => {
-            let betText = `${index + 1}. ${bet.detail}`;
-            if (bet.drawStatus) {
-                let drawLegs = [];
-                for (let leg in bet.drawStatus) {
-                    if (bet.drawStatus[leg] === "จั่ว") drawLegs.push(leg);
-                }
-                if (drawLegs.length > 0) {
-                    betText += ` 🃏 (จั่ว: ${drawLegs.sort().join(', ')})`;
-                }
-            }
-            betContents.push({
-                type: "text",
-                text: betText,
-                color: "#e0e0e0",
-                size: "xs",
-                wrap: true,
-                margin: "xs"
-            });
-        });
-        
-        const totalHold = myBets.reduce((sum, bet) => sum + (bet.holdCost || 0), 0);
-        betContents.push({
-            type: "text",
-            text: `🔒 ประกันเด้งที่ล็อก: ${totalHold} บาท`,
-            color: "#ffaa00",
-            size: "xs",
-            weight: "bold",
-            margin: "sm"
-        });
-    } else {
-        betContents.push({
-            type: "text",
-            text: "ไม่มีโพยค้างในรอบนี้",
-            color: "#888888",
-            size: "xs",
-            style: "italic"
-        });
-    }
+                        // 👑 2. เช็กสถานะเทิร์นโอเวอร์
+                        let turnStatusText = "🔓 ปกติ (ไม่ติดเทิร์น)";
+                        let turnStatusColor = "#55ff55";
+                        if (user.turnoverTarget && user.turnoverTarget > 0) {
+                            turnStatusText = `🔒ติดเทิร์น (เป้า:${user.turnoverTarget} บ.)`;
+                            turnStatusColor = "#ff5555";
+                        }
 
-    // 👑 3. เช็กสถานะเทิร์นโอเวอร์
-    let turnStatusText = "🔓 ปกติ (ไม่ติดเทิร์น)";
-    let turnStatusColor = "#55ff55";
-    if (user.turnoverTarget && user.turnoverTarget > 0) {
-        turnStatusText = `🔒ติดเทิร์น (เป้า:${user.turnoverTarget} บ.)`;
-        turnStatusColor = "#ff5555";
-    }
-
-    // 🏆 4. ประกอบร่างกล่อง Flex Message สีดำ-ทอง
-    const userBalance = Number(user.balance || 0);
-
-    global.currentReplyFlex = {
-        type: "flex",
-        altText: "📊 บัตรข้อมูลสมาชิกและยอดเงินของคุณ",
-        contents: {
-            type: "bubble",
-            styles: {
-                header: { backgroundColor: "#141416" },
-                body: { backgroundColor: "#1e1e22" }
-            },
-            header: {
+                       // 🏆 3. ประกอบร่างกล่อง Flex Message สีดำ-ทอง วิ่งตรงเข้าตัวแปร Global
+                        global.currentReplyFlex = {
+                            type: "flex",
+                            altText: "📊 บัตรข้อมูลสมาชิกและยอดเงินของคุณ",
+                            contents: {
+                                type: "bubble",
+                                styles: {
+                                    header: { backgroundColor: "#141416" },
+                                    body: { backgroundColor: "#1e1e22" }
+                                },
+                               header: {
                 type: "box",
                 layout: "vertical",
                 contents: [
@@ -3412,7 +3374,7 @@ if (userMsg === 'c') {
                         layout: "horizontal",
                         contents: [
                             { type: "text", text: "👤 สมาชิกคนที่", color: "#8e8e93", size: "xs" },
-                            { type: "text", text: `No. ${user.memberNumber || user.memberId || '-'}`, color: "#ffffff", size: "xs", align: "end", weight: "bold" }
+                            { type: "text", text: `No. ${user.memberNumber}`, color: "#ffffff", size: "xs", align: "end", weight: "bold" }
                         ]
                     },
                     {
@@ -3421,7 +3383,7 @@ if (userMsg === 'c') {
                         margin: "sm",
                         contents: [
                             { type: "text", text: "🏷️ ชื่อLine", color: "#8e8e93", size: "xs" },
-                            { type: "text", text: `${user.nickname || user.name}`, color: "#00ffcc", size: "xs", align: "end", weight: "bold" }
+                            { type: "text", text: `${user.nickname || user.name}`, color: "#00ffcc", size: "xs", align: "end", weight: "bold" } // 👈 ปรับโชว์เฉพาะชื่อเล่น
                         ]
                     },
                     { type: "separator", margin: "md", color: "#3a3a3c" },
@@ -3431,7 +3393,7 @@ if (userMsg === 'c') {
                         margin: "md",
                         contents: [
                             { type: "text", text: "💵 เครดิตกระเป๋า", color: "#ffffff", size: "sm", weight: "bold" },
-                            { type: "text", text: `${userBalance.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, color: "#d4af37", size: "md", align: "end", weight: "bold" }
+                            { type: "text", text: `${user.balance.toLocaleString()} บาท`, color: "#d4af37", size: "md", align: "end", weight: "bold" }
                         ]
                     },
                     {
@@ -3473,7 +3435,7 @@ if (userMsg === 'c') {
         }
     };
 } else if (originalMsg.startsWith('C/') || originalMsg.startsWith('c/')) {
-    // 🔒 ป้องกันคนเก่าแอบพิมพ์ C/ มาเปลี่ยนชื่อหลังบ้าน
+                        // 🔒 ป้องกันคนเก่าแอบพิมพ์ C/ มาเปลี่ยนชื่อหลังบ้าน
                         replyText = `❌ ไม่สามารถเปลี่ยนข้อมูลเองได้ค่ะคุณ ${user.name}!\n──────────────────\n⚠️ เนื่องจากระบบได้ผูกบัญชีธนาคารของคุณไว้ในคลังความปลอดภัยแล้ว\n\n📌 หากต้องการเปลี่ยน ชื่อ-นามสกุล หรือ เลขบัญชีธนาคาร กรุณาทักแชทติดต่อแอดมินโดยตรงเพื่อขออัปเดตข้อมูลนะคะ 🙏`;
                     } else {
                         // ปล่อยว่างไว้เพื่อให้ข้อความทั่วไปไหลไปเข้า Settlement / แทงโพย ปกติตามธรรมชาติ

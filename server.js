@@ -708,7 +708,7 @@ app.post('/callback', async (req, res) => {
                 }
             }
 // ==================== [ ระบบแจ้งฝากเงินสุ่มเศษสตางค์ ] ====================
-                else if (userText.startsWith("ฝาก")) {
+                if (userText.startsWith("ฝาก")) {
     // ดึงเฉพาะตัวเลขที่อยู่ต่อจากคำว่า "ฝาก" (ตัดช่องว่างให้อัตโนมัติ)
     const match = userText.match(/^ฝาก\s*(\d+)/);
     const amount = match ? parseInt(match[1]) : null;

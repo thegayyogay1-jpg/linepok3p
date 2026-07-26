@@ -864,6 +864,16 @@ try {
                         "spacing": "md",
                         "contents": [
                             { "type": "text", "text": "📥 ใบสั่งรายการฝากเงิน", "weight": "bold", "color": "#00ff88", "size": "md", "align": "center" },
+                            {
+                                "type": "box",
+                                "layout": "horizontal",
+                                "backgroundColor": "#0f1f17",
+                                "paddingAll": "sm",
+                                "contents": [
+                                    { "type": "text", "text": `👤 คุณ: ${nickname}`, "size": "xs", "color": "#ffffff", "weight": "bold" },
+                                    { "type": "text", "text": `ID: ${memberId}`, "size": "xs", "color": "#00ff88", "align": "end", "weight": "bold" }
+                                ]
+                            },
                             { "type": "separator", "color": "#12251c" },
                             {
                                 "type": "box",

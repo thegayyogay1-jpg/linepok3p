@@ -55,6 +55,41 @@ async function loadDataFromFirebase() {
 }
 loadDataFromFirebase(); // สั่งให้ทำงานทันทีที่บอทรัน
 
+// ==================== [ ⚡ วางสเต็ปที่ 1 ต่อตรงนี้ครับน้า ] ====================
+const EventSource = require('eventsource');
+
+function listenFirebaseRealtime() {
+    const streamUrl = `${FIREBASE_URL}system_data/usersWallets.json`;
+    const eventSource = new EventSource(streamUrl);
+
+    eventSource.onmessage = (event) => {
+        try {
+            const data = JSON.parse(event.data);
+            if (data && data.path === '/') {
+                usersWallets = data.data || {};
+            } else if (data && data.path) {
+                const pathParts = data.path.split('/');
+                const updatedUserId = pathParts[1];
+                if (updatedUserId && data.data) {
+                    usersWallets[updatedUserId] = {
+                        ...usersWallets[updatedUserId],
+                        ...data.data
+                    };
+                    console.log(`⚡ [Realtime] ยอดเงินของ ${updatedUserId} อัปเดตล่าสุดแล้ว!`);
+                }
+            }
+        } catch (err) {
+            console.error("❌ Stream Error:", err.message);
+        }
+    };
+
+    eventSource.onerror = (err) => {
+        // หากหลุด ให้เชื่อมต่อใหม่อัตโนมัติ
+    };
+}
+
+listenFirebaseRealtime();
+
 // 🤖 [ระบบฝากออโต้] ฟังก์ชันตรวจสอบยอดเงินจากเศษสตางค์
 async function checkAutoDeposit() {
     if (!global.depositQueue) return;

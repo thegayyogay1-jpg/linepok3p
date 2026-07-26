@@ -708,7 +708,8 @@ app.post('/callback', async (req, res) => {
                 }
             }
 // ==================== [ ระบบแจ้งฝากเงินสุ่มเศษสตางค์ ] ====================
-               else if (command === "ฝาก" || (userText && userText.startsWith("ฝาก"))) {
+               else if (command === "ฝาก" ) {
+                   const match = userText.match(/^ฝาก\s*(\d+)/);
                     const amount = parseInt(args[1]);
                    
                 if (!amount || isNaN(amount) || amount <= 0) {

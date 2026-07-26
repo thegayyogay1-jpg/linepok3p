@@ -709,9 +709,9 @@ app.post('/callback', async (req, res) => {
             }
 // ==================== [ ระบบแจ้งฝากเงินสุ่มเศษสตางค์ ] ====================
             else if (userText.startsWith("ฝาก")) {
-    // ดึงเฉพาะตัวเลขที่อยู่ต่อจากคำว่า "ฝาก" (ตัดช่องว่างให้อัตโนมัติ)
-    const match = userText.match(/^ฝาก\s*(\d+)/);
-    const amount = match ? parseInt(match[1]) : null;
+                // 🎯 แก้อ่านตัวเลข: ดึงเฉพาะตัวเลขหลังคำว่า "ฝาก" ไม่ว่าจะเว้นวรรคหรือไม่ก็ตาม
+                const match = userText.match(/^ฝาก\s*(\d+)/);
+                const amount = match ? parseInt(match[1]) : null;
 
                 if (!amount || isNaN(amount) || amount <= 0) {
                     try {
@@ -739,7 +739,7 @@ app.post('/callback', async (req, res) => {
                                                     "paddingAll": "sm",
                                                     "contents": [
                                                         { "type": "text", "text": "📌 รูปแบบ: ฝาก [จำนวนเงิน]", "size": "xs", "color": "#00ffcc", "weight": "bold", "align": "center" },
-                                                        { "type": "text", "text": "👉 ตัวอย่าง: ฝาก 500", "size": "xs", "color": "#8abf9e", "align": "center" }
+                                                        { "type": "text", "text": "👉 ตัวอย่าง: ฝาก 500 หรือ ฝาก500", "size": "xs", "color": "#8abf9e", "align": "center" }
                                                     ]
                                                 }
                                             ]
@@ -778,8 +778,7 @@ app.post('/callback', async (req, res) => {
                                                         "backgroundColor": "#12261d",
                                                         "paddingAll": "sm",
                                                         "contents": [
-                                                            { "type": "text", "text": "พิมพ์: C/ชื่อ-นามสกุล,ธนาคาร,เลขบัญชี", "size": "xs", "color": "#00ffcc", "wrap": true },
-                                                            { "type": "text", "text": "ตัวอย่าง: C/นายแจ๊ค เด้งดี,กสิกร,1234567890", "size": "xs", "color": "#8abf9e", "wrap": true }
+                                                            { "type": "text", "text": "กดเปิดลิงก์เพื่อลงทะเบียนผ่านเว็บออโต้ได้เลยครับ", "size": "xs", "color": "#00ffcc", "wrap": true }
                                                         ]
                                                     }
                                                 ]
@@ -913,7 +912,7 @@ app.post('/callback', async (req, res) => {
                         }
                     }
                 }
-            }                
+            }
 
                 // ==================== [ คำสั่งแอดมิน: ชถ (เช็กรายการรอถอนเงินทั้งหมด) ] ====================
             else if (userMsg.trim() === 'ชถ') {
@@ -2567,7 +2566,7 @@ else if (userMsg === 'คส' || userMsg === 'กต' || userMsg === 'บช' ||
     }
     else if (userMsg === 'บช' || userMsg === '/บช') {
         // 🏦 บล็อกข้อความตอบกลับเรื่องบัญชีธนาคารโดยเฉพาะ
-        replyText = `🏦 [ กรุณา พิม ฝากจำนวนเงิน ] 🏦;
+        replyText = `🏦 [ กรุณา พิม ฝากจำนวนเงิน ] 🏦`;
     }
 }
                 // ==================== [ ระบบดึงโพยและผลไพ่ย้อนหลังรายบุคคล (vรอบ,mสมาชิก) ] ====================
@@ -2580,7 +2579,7 @@ else if (userMsg === 'คส' || userMsg === 'กต' || userMsg === 'บช' ||
                 if (isNaN(roundTarget) || isNaN(memberTarget)) {
                     replyText = "⚠️ รูปแบบคำสั่งไม่ถูกต้องครับน้า\nกรุณาพิมพ์ เช่น v12,m5 (เพื่อดูรอบที่ 12 ของสมาชิกคนที่ 5)";
                 } else if (!pastRoundsData[roundTarget]) {
-                    replyText = `❌ ไม่พบข้อมูลการเล่นของ "รอบที่ ${roundTarget}" ในระบบครับ (อาจจะเป็นรอบเก่าก่อนระบบเปิด หรือเซิร์ฟเวอร์เพิ่งรีสตาร์ท)`;
+                    replyText = `❌ ไม่พบข้อมูลการเล่นของ "รอบที่ ${roundTarget}" ในระบบครับ\n(อาจจะเป็นรอบเก่าก่อนระบบเปิด หรือเซิร์ฟเวอร์เพิ่งรีสตาร์ท)`;
                 } else {
                     const historicalRound = pastRoundsData[roundTarget];
                     const historicalDealer = historicalRound.dealer;

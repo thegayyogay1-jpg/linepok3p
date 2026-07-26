@@ -849,6 +849,9 @@ const qrCodeUrl = `https://promptpay.io/${promptpayNumber}/${displayAmount}.png`
 
                             // ==================== [ 🚀 ใบแจ้งฝากสไตล์บิลธนาคาร + QR Code แบบย่อ ] ====================
 try {
+    // 🔍 ดึงชื่อเล่นจากข้อมูลสมาชิก (ถ้าไม่มีให้แสดงเป็นชื่อเต็ม หรือ fallback เป็น 'สมาชิก')
+    const nickname = walletData.nickname || walletData.name || 'สมาชิก';
+    const memberId = walletData.memberNumber || walletData.memberId || '-';
     await axios.post('https://api.line.me/v2/bot/message/reply', {
         replyToken: replyToken,
         messages: [

@@ -839,9 +839,72 @@ app.post('/callback', async (req, res) => {
 const generatePayload = require('promptpay-qr');
 const promptpayNumber = "004999031203416"; // 👈 เลข 15 หลัก K PLUS ของน้า
 const payload = generatePayload(promptpayNumber, { amount: Number(displayAmount) });
-
-// 🎯 2. สร้างลิงก์รูปภาพ QR Code ชัดๆ ผ่าน API ปลอดภัย
 const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(payload)}`;
+
+// 🎯 2. ลิงก์หน้าเว็บฝาก-ถอนของน้า (อย่าลืมเปลี่ยน URL เว็บของน้าตรงนี้นะครับ)
+const webDepositUrl = `file:///C:/Users/maker/OneDrive/Desktop/%E0%B9%82%E0%B8%84%E0%B9%89%E0%B8%94%E0%B8%9B%E0%B9%8A%E0%B8%AD%E0%B8%81%E0%B9%80%E0%B8%94%E0%B9%89%E0%B8%87/%E0%B8%9D%E0%B8%B2%E0%B8%81%E0%B8%AD%E0%B8%AD%E0%B9%82%E0%B8%95%E0%B9%89/index.html=${userId}`;
+
+// 🎯 3. โครงสร้าง Flex Message พร้อมปุ่มกดเข้าเว็บแนบสลิป
+const flexDepositMessage = {
+    "type": "flex",
+    "altText": `ใบสั่งรายการฝากเงิน ${displayAmount} บาท`,
+    "contents": {
+        "type": "bubble",
+        "styles": { "body": { "backgroundColor": "#0d1b15" } },
+        "body": {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "md",
+            "contents": [
+                { "type": "text", "text": "📥 ใบสั่งรายการฝากเงิน", "weight": "bold", "color": "#00ffcc", "size": "md", "align": "center" },
+                { "type": "separator", "color": "#183226" },
+                {
+                    "type": "box",
+                    "layout": "horizontal",
+                    "contents": [
+                        { "type": "text", "text": `คุณ: ${walletData.name || 'สมาชิก'}`, "size": "xs", "color": "#cccccc" },
+                        { "type": "text", "text": `ID: ${walletData.memberNumber || '1'}`, "size": "xs", "color": "#00ffcc", "align": "end" }
+                    ]
+                },
+                { "type": "separator", "color": "#183226" },
+                { "type": "text", "text": "💸 กรุณาโอนเงินยอดสุทธิ:", "size": "xs", "color": "#8abf9e", "align": "center" },
+                { "type": "text", "text": `${displayAmount} บาท`, "size": "xl", "weight": "bold", "color": "#00ff88", "align": "center" },
+                { "type": "text", "text": "(กรุณาโอนเศษสตางค์ให้ตรงเพื่ออัปยอดไวที่สุด)", "size": "xxs", "color": "#ffcc00", "align": "center" },
+                
+                // 🖼️ กล่องแสดงรูปภาพ QR Code
+                {
+                    "type": "box",
+                    "layout": "vertical",
+                    "margin": "md",
+                    "cornerRadius": "md",
+                    "contents": [
+                        {
+                            "type": "image",
+                            "url": qrCodeUrl,
+                            "size": "5xl",
+                            "aspectMode": "cover"
+                        }
+                    ]
+                },
+                { "type": "text", "text": `ชื่อบัญชี: ${walletData.accountName || 'นาย ภาณุวัฒก์ ก้องกุล'}`, "size": "xs", "color": "#cccccc", "align": "center" },
+                { "type": "separator", "color": "#183226" },
+                
+                // 🚀 ปุ่มกดเปิดเว็บแนบสลิป
+                {
+                    "type": "button",
+                    "style": "primary",
+                    "color": "#00ff88",
+                    "height": "sm",
+                    "action": {
+                        "type": "uri",
+                        "label": "🧾 ส่งสลิปแจ้งฝากเงิน",
+                        "uri": webDepositUrl
+                    }
+                }
+            ]
+        }
+    }
+};
                             
                             global.depositQueue[userId] = {
                                 memberId: walletData.memberNumber,

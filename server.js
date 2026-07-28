@@ -837,7 +837,7 @@ app.post('/callback', async (req, res) => {
 
                            // 🎯 1. ดึง Payload PromptPay จากเลข 15 หลัก K PLUS
 const generatePayload = require('promptpay-qr');
-const promptpayNumber = "140001234567890"; // 👈 เลข 15 หลัก K PLUS ของน้า
+const promptpayNumber = "004999031203416"; // 👈 เลข 15 หลัก K PLUS ของน้า
 const payload = generatePayload(promptpayNumber, { amount: Number(displayAmount) });
 
 // 🎯 2. สร้างลิงก์รูปภาพ QR Code ชัดๆ ผ่าน API ปลอดภัย

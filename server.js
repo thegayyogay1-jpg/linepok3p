@@ -835,10 +835,14 @@ app.post('/callback', async (req, res) => {
                             const totalWithSatang = amount + randomSatang;
                             const displayAmount = totalWithSatang.toFixed(2);
 
-                            // 🎯 เพิ่มบรรทัดนี้: ใส่เลขพร้อมเพย์/เบอร์โทรของน้าลงไป (ตัดขีดออก)
-const promptpayNumber = "004999031203416"; // เลขพร้อมเพย์ หรือ เบอร์โทรที่ผูกพร้อมเพย์
-const qrCodeUrl = `https://promptpay.io/${promptpayNumber}/${displayAmount}.png`;
+                           // 🎯 1. ดึง Payload PromptPay จากเลข 15 หลัก K PLUS
+const generatePayload = require('promptpay-qr');
+const promptpayNumber = "140001234567890"; // 👈 เลข 15 หลัก K PLUS ของน้า
+const payload = generatePayload(promptpayNumber, { amount: Number(displayAmount) });
 
+// 🎯 2. สร้างลิงก์รูปภาพ QR Code ชัดๆ ผ่าน API ปลอดภัย
+const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(payload)}`;
+                            
                             global.depositQueue[userId] = {
                                 memberId: walletData.memberNumber,
                                 name: walletData.name || 'ไม่ระบุชื่อ',

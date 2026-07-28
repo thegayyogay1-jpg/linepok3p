@@ -844,7 +844,7 @@ const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data
 // 🎯 2. ลิงก์หน้าเว็บฝาก-ถอนของน้า (ต่อท้าย ?uid=${userId} เรียบร้อยแล้ว)
 const webDepositUrl = `https://thegayyogay1-jpg.github.io/up/?uid=${userId}`;
 
-// 🎯 3. โครงสร้าง Flex Message พร้อมปุ่มแจ้งฝาก
+// 🎯 โครงสร้าง Flex Message ที่มีปุ่มแจ้งฝากเงิน
 const flexDepositMessage = {
     "type": "flex",
     "altText": `ใบสั่งรายการฝากเงิน ${displayAmount} บาท`,
@@ -886,6 +886,8 @@ const flexDepositMessage = {
                 },
                 { "type": "text", "text": `ชื่อบัญชี: ${walletData.accountName || 'นาย ภาณุวัฒก์ ก้องกุล'}`, "size": "xs", "color": "#cccccc", "align": "center" },
                 { "type": "separator", "color": "#183226" },
+                
+                // 🚀 ปุ่มกดวาร์ปไปหน้าเว็บฝาก-ถอนของน้า
                 {
                     "type": "button",
                     "style": "primary",
@@ -901,6 +903,9 @@ const flexDepositMessage = {
         }
     }
 };
+
+// 🎯 อย่าลืมส่ง flexDepositMessage ตัวนี้ออกไปนะครับ
+return client.replyMessage(event.replyToken, flexDepositMessage);
 
 global.depositQueue[userId] = {
     memberId: walletData.memberNumber,

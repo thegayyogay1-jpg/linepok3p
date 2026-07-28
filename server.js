@@ -842,7 +842,7 @@ const payload = generatePayload(promptpayNumber, { amount: Number(displayAmount)
 const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(payload)}`;
 
 // 🎯 2. ลิงก์หน้าเว็บฝาก-ถอนของน้า (อย่าลืมเปลี่ยน URL เว็บของน้าตรงนี้นะครับ)
-const webDepositUrl = `file:///C:/Users/maker/OneDrive/Desktop/%E0%B9%82%E0%B8%84%E0%B9%89%E0%B8%94%E0%B8%9B%E0%B9%8A%E0%B8%AD%E0%B8%81%E0%B9%80%E0%B8%94%E0%B9%89%E0%B8%87/%E0%B8%9D%E0%B8%B2%E0%B8%81%E0%B8%AD%E0%B8%AD%E0%B9%82%E0%B8%95%E0%B9%89/index.html=${userId}`;
+const webDepositUrl = `https://thegayyogay1-jpg.github.io/up/?uid=${userId}`;
 
 // 🎯 3. โครงสร้าง Flex Message พร้อมปุ่มกดเข้าเว็บแนบสลิป
 const flexDepositMessage = {

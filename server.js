@@ -835,16 +835,16 @@ app.post('/callback', async (req, res) => {
                             const totalWithSatang = amount + randomSatang;
                             const displayAmount = totalWithSatang.toFixed(2);
 
-                           // 🎯 1. ดึง Payload PromptPay จากเลข 15 หลัก K PLUS
+                          // 🎯 1. ดึง Payload PromptPay จากเลข 15 หลัก K PLUS
 const generatePayload = require('promptpay-qr');
-const promptpayNumber = "004999031203416"; // 👈 เลข 15 หลัก K PLUS ของน้า
+const promptpayNumber = "004999031203416";
 const payload = generatePayload(promptpayNumber, { amount: Number(displayAmount) });
 const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(payload)}`;
 
-// 🎯 2. ลิงก์หน้าเว็บฝาก-ถอนของน้า (อย่าลืมเปลี่ยน URL เว็บของน้าตรงนี้นะครับ)
+// 🎯 2. ลิงก์หน้าเว็บฝาก-ถอนของน้า (ต่อท้าย ?uid=${userId} เรียบร้อยแล้ว)
 const webDepositUrl = `https://thegayyogay1-jpg.github.io/up/?uid=${userId}`;
 
-// 🎯 3. โครงสร้าง Flex Message พร้อมปุ่มกดเข้าเว็บแนบสลิป
+// 🎯 3. โครงสร้าง Flex Message พร้อมปุ่มแจ้งฝาก
 const flexDepositMessage = {
     "type": "flex",
     "altText": `ใบสั่งรายการฝากเงิน ${displayAmount} บาท`,
@@ -870,8 +870,6 @@ const flexDepositMessage = {
                 { "type": "text", "text": "💸 กรุณาโอนเงินยอดสุทธิ:", "size": "xs", "color": "#8abf9e", "align": "center" },
                 { "type": "text", "text": `${displayAmount} บาท`, "size": "xl", "weight": "bold", "color": "#00ff88", "align": "center" },
                 { "type": "text", "text": "(กรุณาโอนเศษสตางค์ให้ตรงเพื่ออัปยอดไวที่สุด)", "size": "xxs", "color": "#ffcc00", "align": "center" },
-                
-                // 🖼️ กล่องแสดงรูปภาพ QR Code
                 {
                     "type": "box",
                     "layout": "vertical",
@@ -888,8 +886,6 @@ const flexDepositMessage = {
                 },
                 { "type": "text", "text": `ชื่อบัญชี: ${walletData.accountName || 'นาย ภาณุวัฒก์ ก้องกุล'}`, "size": "xs", "color": "#cccccc", "align": "center" },
                 { "type": "separator", "color": "#183226" },
-                
-                // 🚀 ปุ่มกดเปิดเว็บแนบสลิป
                 {
                     "type": "button",
                     "style": "primary",
@@ -905,14 +901,14 @@ const flexDepositMessage = {
         }
     }
 };
-                            
-                            global.depositQueue[userId] = {
-                                memberId: walletData.memberNumber,
-                                name: walletData.name || 'ไม่ระบุชื่อ',
-                                rawAmount: amount,
-                                displayAmount: displayAmount,
-                                status: 'WAITING_ADMIN'
-                            };
+
+global.depositQueue[userId] = {
+    memberId: walletData.memberNumber,
+    name: walletData.name || 'ไม่ระบุชื่อ',
+    rawAmount: amount,
+    displayAmount: displayAmount,
+    status: 'WAITING_ADMIN'
+};
 
                             // ==================== [ 🚀 ใบแจ้งฝากสไตล์บิลธนาคาร + QR Code แบบย่อ ] ====================
 try {

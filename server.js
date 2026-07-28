@@ -836,16 +836,28 @@ app.post('/callback', async (req, res) => {
                             const displayAmount = totalWithSatang.toFixed(2);
 
                           // 🎯 1. ดึง Payload PromptPay จากเลข 15 หลัก K PLUS
-const generatePayload = require('promptpay-qr');
 const promptpayNumber = "004999031203416";
 const payload = generatePayload(promptpayNumber, { amount: Number(displayAmount) });
 const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(payload)}`;
 
-// 🎯 2. ลิงก์หน้าเว็บฝาก-ถอนของน้า (ต่อท้าย ?uid=${userId} เรียบร้อยแล้ว)
+// 🎯 2. ลิงก์หน้าเว็บฝาก-ถอน (ต่อท้าย ?uid=${userId} เรียบร้อย)
 const webDepositUrl = `https://thegayyogay1-jpg.github.io/up/?uid=${userId}`;
 
-// 🎯 โครงสร้าง Flex Message ที่มีปุ่มแจ้งฝากเงิน
-const flexDepositMessage = {
+// 🎯 3. เคลียร์ข้อความธรรมดา ไม่ให้ยิงข้อความว่าง
+replyText = null;
+
+// 🎯 4. บันทึกข้อมูลลง Queue ฝากเงินก่อนส่งข้อความ (ย้ายขึ้นมาไว้นี่)
+if (!global.depositQueue) global.depositQueue = {};
+global.depositQueue[userId] = {
+    memberId: walletData.memberNumber,
+    name: walletData.name || 'ไม่ระบุชื่อ',
+    rawAmount: amount,
+    displayAmount: displayAmount,
+    status: 'WAITING_ADMIN'
+};
+
+// 🎯 5. ประกอบ Flex Message ส่งเข้าตัวแปร Global (ใช้วิธีเดียวกับคำสั่ง c)
+global.currentReplyFlex = {
     "type": "flex",
     "altText": `ใบสั่งรายการฝากเงิน ${displayAmount} บาท`,
     "contents": {
@@ -902,17 +914,6 @@ const flexDepositMessage = {
             ]
         }
     }
-};
-
-// 🎯 อย่าลืมส่ง flexDepositMessage ตัวนี้ออกไปนะครับ
-return client.replyMessage(event.replyToken, flexDepositMessage);
-
-global.depositQueue[userId] = {
-    memberId: walletData.memberNumber,
-    name: walletData.name || 'ไม่ระบุชื่อ',
-    rawAmount: amount,
-    displayAmount: displayAmount,
-    status: 'WAITING_ADMIN'
 };
 
                             // ==================== [ 🚀 ใบแจ้งฝากสไตล์บิลธนาคาร + QR Code แบบย่อ ] ====================

@@ -2006,7 +2006,7 @@ else if (originalMsg.startsWith('>')) {
         // --- 📊 [ส่วนสร้างโครงสร้างข้อมูลจัดระเบียบส่งเข้า Flex Message] ---
         let legsFlexContents = [];
 
-        for (let leg = 1; leg <= 4; leg++) {
+        for (let leg = 1; leg <= 6; leg++) {
             if (roomResults[leg]) {
                 const res = roomResults[leg];
                 

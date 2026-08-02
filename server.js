@@ -1951,7 +1951,7 @@ else if (originalMsg.startsWith('>')) {
         const dealerResult = parseCardStr(dealerRawStr, true, false);
 
         let roomResults = {}; 
-        const totalLegsToSend = Math.min(parts.length - 1, 4);
+        const totalLegsToSend = Math.min(parts.length - 1, 6);
 
         // 🔄 วนลูปแกะรหัสผู้เล่นรายขา
         for (let i = 0; i < totalLegsToSend; i++) {

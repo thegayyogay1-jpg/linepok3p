@@ -31,6 +31,7 @@ let pastRoundsData = {}; //  ถังเก็บประวัติโพย
 let withdrawQueue = []; // 📦 ถังสำหรับเก็บคิวสมาชิกที่แจ้งถอนเงิน
 let usersRoundCrossCheck = {}; // 🌟 เพิ่มบรรทัดนี้ไว้บนสุดของไฟล์
 global.depositQueue = {}; // 👈 เพิ่มบรรทัดนี้เพื่อเตรียมถังคิวฝากเงินออโต้ไม่ให้เป็นค่าว่างครับน้า!
+if (!global.satangCounter) global.satangCounter = 0;
 
 // 🔄 ฟังก์ชันอัตโนมัติ: ดึงข้อมูลจาก Firebase มาอัปเดตลงในบอททันทีที่เปิดเครื่อง (แก้ไขดึงครบทุกกล่องแล้ว)
 async function loadDataFromFirebase() {
@@ -353,92 +354,14 @@ app.post('/callback', async (req, res) => {
                         // 🧼 2. ล้างคิวฝากเงินชิ้นนี้ทิ้ง ป้องกันสลิปซ้ำ
                         delete global.depositQueue[foundUserId];
 
+                        // 🎯 [เพิ่มจุดนี้] ถ้าระบบไม่มีคิวฝากค้างอยู่เลย ให้รีเซ็ตเศษสตางค์กลับไปเริ่ม 0.01 ใหม่
+                        if (Object.keys(global.depositQueue).length === 0) {
+                            global.satangCounter = 0;
+                        }
+
                         // 💾 3. บันทึกลง Firebase ถาวรทันที
                         await saveDataToFirebase();
-
-                       // 💬 4. ยิง Flex Message ประกาศความยินดีเข้ากลุ่มไลน์ (แบบหรูหรา ธีมเขียวนีออน-ดำ)
-                        try {
-                            const depositSuccessFlex = {
-                                "type": "flex",
-                                "altText": `🎉 ฝากเงินออโต้สำเร็จ +${matchedQueue.rawAmount} บาท`,
-                                "contents": {
-                                    "type": "bubble",
-                                    "styles": {
-                                        "body": { "backgroundColor": "#0d1b15" },
-                                        "footer": { "backgroundColor": "#09120e" }
-                                    },
-                                    "body": {
-                                        "type": "box",
-                                        "layout": "vertical",
-                                        "spacing": "md",
-                                        "contents": [
-                                            { "type": "text", "text": "🎉 ฝากเงินออโต้สำเร็จ!", "weight": "bold", "color": "#00ff88", "size": "md", "align": "center" },
-                                            { "type": "separator", "color": "#183327" },
-                                            {
-                                                "type": "box",
-                                                "layout": "vertical",
-                                                "spacing": "sm",
-                                                "contents": [
-                                                    {
-                                                        "type": "box",
-                                                        "layout": "horizontal",
-                                                        "contents": [
-                                                            { "type": "text", "text": "👤 ลูกค้า:", "size": "sm", "color": "#8caf9c" },
-                                                            { "type": "text", "text": `คุณ ${usersWallets[foundUserId].name}`, "size": "sm", "color": "#ffffff", "weight": "bold", "align": "end" }
-                                                        ]
-                                                    },
-                                                    {
-                                                        "type": "box",
-                                                        "layout": "horizontal",
-                                                        "contents": [
-                                                            { "type": "text", "text": "🆔 สมาชิกเลขที่:", "size": "sm", "color": "#8caf9c" },
-                                                            { "type": "text", "text": `${usersWallets[foundUserId].memberNumber}`, "size": "sm", "color": "#ffffff", "weight": "bold", "align": "end" }
-                                                        ]
-                                                    },
-                                                    {
-                                                        "type": "box",
-                                                        "layout": "horizontal",
-                                                        "contents": [
-                                                            { "type": "text", "text": "💰 เติมเครดิต:", "size": "sm", "color": "#8caf9c" },
-                                                            { "type": "text", "text": `+${matchedQueue.rawAmount} บาท`, "size": "md", "color": "#00ff88", "weight": "bold", "align": "end" }
-                                                        ]
-                                                    }
-                                                ]
-                                            },
-                                            { "type": "separator", "color": "#183327" },
-                                            {
-                                                "type": "box",
-                                                "layout": "horizontal",
-                                                "contents": [
-                                                    { "type": "text", "text": "💳 เครดิตสุทธิ:", "size": "sm", "color": "#ffffff" },
-                                                    { "type": "text", "text": `${usersWallets[foundUserId].balance} บาท`, "size": "md", "color": "#00ff88", "weight": "bold", "align": "end" }
-                                                ]
-                                            }
-                                        ]
-                                    },
-                                    "footer": {
-                                        "type": "box",
-                                        "layout": "vertical",
-                                        "contents": [
-                                            { "type": "text", "text": "🏁 เครดิตเข้าแล้ว ขอให้สนุกกับการเดิมพันค่ะ! 🃏", "size": "xs", "color": "#aaaaaa", "align": "center" }
-                                        ]
-                                    }
-                                }
-                            };
-
-                            // ยิงประกาศเข้ากลุ่มหลักของน้า
-                            await axios.post('https://api.line.me/v2/bot/message/push', {
-                                to: "Cbf8eb92a5bcfbaa418b3c49bf14c2ac7", // ไอดีกลุ่ม LINE ของน้า
-                                messages: [depositSuccessFlex]
-                            }, {
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'Authorization': `Bearer ${TOKEN}`
-                                }
-                            });
-                        } catch (pushErr) {
-                            console.error("❌ ส่ง Flex ฝากออโต้ลงกลุ่มล้มเหลว:", pushErr.message);
-                        }
+                        
                     } else {
                         console.log(`⚠️ พบยอดโอนตรงในคิว แต่ยูสเซอร์ ${foundUserId} ไม่มีกระเป๋าเงินในระบบ`);
                     }
@@ -482,6 +405,11 @@ app.post('/callback', async (req, res) => {
                                     
                                     // 🧼 ล้างคิวฝากทิ้งทันที
                                     delete global.depositQueue[foundUserKey]; 
+
+                                    // 🎯 [เพิ่มจุดนี้] ถ้าระบบไม่มีคิวฝากค้างอยู่เลย ให้รีเซ็ตเศษสตางค์กลับไปเริ่ม 0.01 ใหม่
+                                    if (Object.keys(global.depositQueue).length === 0) {
+                                        global.satangCounter = 0;
+                                     }
 
                                     await saveDataToFirebase(); 
                                     replyText = `💰 เติมเครดิตสมาชิกที่ ${user.memberNumber} \n คุณ ${user.name} +${amount} สำเร็จ!\n──────────────────\nยอดสุทธิ: ${user.balance} บาท`;
@@ -831,8 +759,9 @@ app.post('/callback', async (req, res) => {
                             } catch (err) { console.error("Error sending pending deposit alert flex:", err); }
                             return res.sendStatus(200);
                         } else {
-                            const randomSatang = (Math.floor(Math.random() * 99) + 1) / 100;
-                            const totalWithSatang = amount + randomSatang;
+                            global.satangCounter = (global.satangCounter % 99) + 1;
+                            const satangValue = global.satangCounter / 100;
+                            const totalWithSatang = amount + satangValue;
                             const displayAmount = totalWithSatang.toFixed(2);
 
 // 🎯 1. ดึง Payload PromptPay จากเลข 15 หลัก K PLUS

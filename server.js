@@ -992,8 +992,8 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                     const type = bet.betType;
                     const price = bet.pricePerLeg || 0;
 
-                    if (type === "มข") return `เหมาขวา (${price}/ขา)`;
-                    if (type === "มจ") return `เหมาเจ้า (${price}/ขา)`;
+                    if (type === "รข") return `เหมาขวา (${price}/ขา)`;
+                    if (type === "รจ") return `เหมาเจ้า (${price}/ขา)`;
                     if (type.startsWith('จ')) {
                         const legs = type.substring(1).split('').join(', ');
                         return `แทงเจ้าสู้ขา ${legs} (${price}/ขา)`;
@@ -1250,7 +1250,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
 
                         userBetsArray.forEach((bet) => {
                             // คำนวณเบอร์ขาฝั่งผู้เล่นปกติ
-                            if (bet.betType !== "มข" && bet.betType !== "มจ" && !bet.betType.startsWith('จ')) {
+                            if (bet.betType !== "รข" && bet.betType !== "รจ" && !bet.betType.startsWith('จ')) {
                                 const individualLegs = bet.betType.split('');
                                 individualLegs.forEach((leg) => {
                                     if (!betLegsDetail.includes(leg)) betLegsDetail.push(leg);
@@ -1261,7 +1261,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                                     }
                                 });
                             } 
-                            // สำหรับกรณีแทงพิเศษอื่นๆ (มข / มจ / ขาเจ้ามือ)
+                            // สำหรับกรณีแทงพิเศษอื่นๆ (รข / รจ / ขาเจ้ามือ)
                             else {
                                 if (!betLegsDetail.includes(bet.betType)) {
                                     betLegsDetail.push(bet.betType);
@@ -1466,12 +1466,12 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                                 for (let c = 1; c <= 6; c++) {
                                     if (betTracker[c] && betTracker[c] === 'dealer') {
                                         hasError = true;
-                                        errorMsg = `❌ แทง มข ไม่ได้! ขา ${c} มีการแทงฝั่งเจ้ามือค้างไว้แล้วในรอบนี้`;
+                                        errorMsg = `❌ แทง รข ไม่ได้! ขา ${c} มีการแทงฝั่งเจ้ามือค้างไว้แล้วในรอบนี้`;
                                         break;
                                     }
                                 }
                                 if (hasError) break; 
-                                for (let c = 1; c <= 4; c++) { betTracker[c] = 'player'; }
+                                for (let c = 1; c <= 6; c++) { betTracker[c] = 'player'; }
                                 
                             } else if (targetStr === "รจ") {
                                 legsCount = 6;
@@ -1479,7 +1479,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                                 for (let c = 1; c <= 6; c++) {
                                     if (betTracker[c] && betTracker[c] === 'player') {
                                         hasError = true;
-                                        errorMsg = `❌ แทง มจ ไม่ได้! ขา ${c} มีการแทงฝั่งผู้เล่นค้างไว้แล้วในรอบนี้`;
+                                        errorMsg = `❌ แทง รจ ไม่ได้! ขา ${c} มีการแทงฝั่งผู้เล่นค้างไว้แล้วในรอบนี้`;
                                         break;
                                     }
                                 }
@@ -1784,8 +1784,8 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                         let alreadyDrawnLegs = []; // 📌 [เพิ่มใหม่] เก็บขาที่เคยจั่วไปแล้ว เพื่อนำมาแจ้งเตือน
 
                         userBetsArray.forEach((bet) => {
-                            // 👑 [จุดแก้ไขบั๊ก] เช็กว่าโพยใบนี้เป็นโพยแทงฝั่งเจ้ามือสู้ขา (จ) หรือเหมาเจ้า (มจ) หรือไม่
-                            const isBettingOnDealer = (bet.betType === "มจ" || bet.betType.startsWith('จ'));
+                            // 👑 [จุดแก้ไขบั๊ก] เช็กว่าโพยใบนี้เป็นโพยแทงฝั่งเจ้ามือสู้ขา (จ) หรือเหมาเจ้า (รจ) หรือไม่
+                            const isBettingOnDealer = (bet.betType === "รจ" || bet.betType.startsWith('จ'));
                             
                             // 🛑 ถ้าเป็นโพยแทงฝั่งเจ้ามือ ให้ข้ามไปเลย ไม่ทำการเปิดสิทธิ์จั่วเด็ดขาด
                             if (isBettingOnDealer) return;
@@ -1795,7 +1795,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
 
                             legsToDraw.forEach((leg) => {
                                 let hasThisLeg = false;
-                                if (bet.betType === "มข") {
+                                if (bet.betType === "รข") {
                                     hasThisLeg = ['1', '2', '3', '4','5', '6'].includes(leg);
                                 } else {
                                     hasThisLeg = bet.betType.includes(leg);
@@ -2182,9 +2182,9 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                 userBetsArray.forEach((bet) => {
                     totalHoldRefund += bet.holdCost; // ดึงเงินค้ำประกัน 3 เท่ากลับมาคืนก่อน
 
-                    // แกะข้อมูลตามประเภทโพย (เช่น "1", "มข", "จ12")
+                    // แกะข้อมูลตามประเภทโพย (เช่น "1", "รข", "จ12")
                     let legsToCalculate = [];
-                    if (bet.betType === "มข" || bet.betType === "มจ") {
+                    if (bet.betType === "รข" || bet.betType === "รจ") {
                         legsToCalculate = ['1', '2', '3', '4', '5', '6'];
                     } else if (bet.betType.startsWith('จ')) {
                         legsToCalculate = bet.betType.substring(1).split('');
@@ -2202,7 +2202,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                         if (!matchResult) return; // ป้องกันกรณีขาไม่มีข้อมูลผล
                         
                         // 🔍 ตรวจสอบประเภทโพย: เป็นการแทงฝั่งเจ้ามือสู้ขาผู้เล่นใช่หรือไม่
-                        const isBettingOnDealer = (bet.betType === "มจ" || bet.betType.startsWith('จ'));
+                        const isBettingOnDealer = (bet.betType === "รจ" || bet.betType.startsWith('จ'));
 
                         let finalCard;
                         const betPrice = bet.pricePerLeg; // ยอดแทงต่อ 1 ขา
@@ -2293,7 +2293,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                 let sign = userTotalWinLoss > 0 ? "+" : "";
                 let displayColor = userTotalWinLoss > 0 ? "#00ff66" : (userTotalWinLoss < 0 ? "#ff3333" : "#ffcc00");
                 
-                let isUserBettingOnDealer = userBetsArray.some(b => b.betType === "มจ" || b.betType.startsWith('จ'));
+                let isUserBettingOnDealer = userBetsArray.some(b => b.betType === "รจ" || b.betType.startsWith('จ'));
                 let feeNote = (isUserBettingOnDealer && userTotalWinLoss !== 0) ? " (หักต๋งแล้ว)" : "";
 
                 // 🛠️ ประกอบร่างดีไซน์ Flex รายบุคคล
@@ -2496,8 +2496,8 @@ else if (userMsg === 'คส' || userMsg === 'กต' || userMsg === 'บช' ||
                     `🔹 **C** ➡️ เช็กเลขสมาชิก ยอดเครดิต และสลิปโพยค้าง + เลขบัญชี\n` +
                     `🔹 **บช** ➡️ ดูเลขบัญชีธนาคารสำหรับเติมเงิน\n` +
                     `🔹 **[เลขขา]-[จำนวนเงิน]** ➡️ ส่งโพยเดิมพัน (เช่น 123-100)\n` +
-                    `🔹 **มข-[จำนวนเงิน]** ➡️ แทงเหมาหมดทุกขา ขาละเท่าๆ กัน\n` +
-                    `🔹 **มจ-[จำนวนเงิน]** ➡️ แทงเจ้ามือชนผู้เล่นทุกขา ขาละเท่าๆ กัน\n` +
+                    `🔹 **รข-[จำนวนเงิน]** ➡️ แทงเหมาหมดทุกขา ขาละเท่าๆ กัน\n` +
+                    `🔹 **รจ-[จำนวนเงิน]** ➡️ แทงเจ้ามือชนผู้เล่นทุกขา ขาละเท่าๆ กัน\n` +
                     `🔹 **R** ➡️ ขอดึงโพยคืน/ยกเลิกโพยทั้งหมดในรอบนั้น (ตอนเปิดแทง)\n` +
                     `🔹 **[เลขขา]+** ➡️ ขอจั่วไพ่ใบที่ 3 เพิ่มเติม (เฉพาะขาผู้เล่นปกติ)\n\n` +
                     `💡 *หมายเหตุ: ทุกคำสั่งสามารถพิมพ์ได้ทั้งตัวพิมพ์เล็กและตัวพิมพ์ใหญ่ครับ*`;
@@ -2572,7 +2572,7 @@ else if (userMsg === 'คส' || userMsg === 'กต' || userMsg === 'บช' ||
                         // 3. เจาะลึกวิเคราะห์โพยและคิดเงินย้อนหลังเพื่อโชว์หลักฐานมัดตัว
                         userBets.forEach((bet) => {
                             let legsToCalc = [];
-                            if (bet.betType === "มข" || bet.betType === "มจ") {
+                            if (bet.betType === "รข" || bet.betType === "รจ") {
                                 legsToCalc = ['1', '2', '3', '4', '5', '6'];
                             } else if (bet.betType.startsWith('จ')) {
                                 legsToCalc = bet.betType.substring(1).split('');
@@ -2599,7 +2599,7 @@ else if (userMsg === 'คส' || userMsg === 'กต' || userMsg === 'บช' ||
                                 const matchResult = historicalRooms[legNum];
                                 if (!matchResult) return;
 
-                                const isBettingOnDealer = (bet.betType === "มจ" || bet.betType.startsWith('จ'));
+                                const isBettingOnDealer = (bet.betType === "รจ" || bet.betType.startsWith('จ'));
                                 let finalCard;
                                 let statusAction = "[อยู่]";
 
@@ -3378,7 +3378,7 @@ else if (command.toLowerCase() === "y") {
             } // ปิดระบบลงทะเบียน
             
             // ==================== [ แก้ไขบั๊ก m 1 2: คำสั่ง m เช็กบัญชีแยกรายคนด้วยเว้นวรรคอย่างแม่นยำ ] ====================
-            if (userMsg.startsWith('m') && !userMsg.includes('-') && !userMsg.endsWith('+') && userMsg !== 'มข' && userMsg !== 'มจ') {
+            if (userMsg.startsWith('m') && !userMsg.includes('-') && !userMsg.endsWith('+') && userMsg !== 'รข' && userMsg !== 'รจ') {
                 // 🚨 กรองขั้นสูงสุด: ถ้าไม่ใช่แอดมินในกล่องกลาง หรือ แอดมินไม่ได้สั่งในแชทส่วนตัว (1 ต่อ 1) ให้บอทเงียบกริบไม่ตอบ
                 if (!ADMIN_IDS.includes(userId) || event.source.type !== 'user') {
                     return res.sendStatus(200);

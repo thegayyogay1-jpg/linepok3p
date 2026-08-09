@@ -2702,37 +2702,33 @@ else if (userMsg === 'คส' || userMsg === 'กต' || userMsg === 'บช' ||
                     }
                 }
             }
-               // ==================== [ ระบบเช็กสิทธิ์ Firebase และแจกลิงก์ห้องเล่น ] ====================
+               // ==================== [ ระบบเช็กสิทธิ์และแจกลิงก์ห้องเล่น ] ====================
 else if (userMsg === 'ห้องเล่น' || userMsg === 'ขอลิงก์ห้อง') {
-    const MIN_BALANCE = 30; // 💰 กำหนดยอดเงินขั้นต่ำที่เข้าได้ (ปรับตามต้องการ)
-    const ROOM_LINK = "https://line.me/R/ti/g/YTsXz2pFp3"; // 🔗 ใส่ลิงก์ห้องเล่นของคุณที่นี่
+    const MIN_BALANCE = 40; // 💰 กำหนดยอดเงินขั้นต่ำเข้าห้อง (ปรับได้ตามต้องการ)
+    const ROOM_LINK = "https://line.me/R/ti/g/YTsXz2pFp3"; // 🔗 ลิงก์ห้องเล่นของคุณ
 
     try {
-        // 🔍 1. เช็กว่าผู้ใช้งานลงทะเบียนแล้วหรือยังใน registered_users
-        const regSnap = await db.ref(`registered_users/${userId}`).once('value');
-        
-        if (!regSnap.exists()) {
-            replyText = "❌ คุณยังไม่ได้ลงทะเบียนสมาชิกครับ\nกรุณาติดต่อแอดมินเพื่อลงทะเบียนก่อนนะครับ";
+        // 1. เช็กว่าผู้ใช้งานมีข้อมูลใน usersWallets หรือยัง
+        // (ถ้าระบบของคุณนับคนที่มี Wallet คือคนที่ลงทะเบียนแล้ว)
+        if (!usersWallets || !usersWallets[userId]) {
+            replyText = "❌ คุณยังไม่ได้ลงทะเบียนสมาชิกครับน้า\nกรุณาติดต่อแอดมินเพื่อลงทะเบียนก่อนนะครับ";
         } else {
-            // 💰 2. ดึงข้อมูลกระเป๋าเงินจาก system_data/usersWallets
-            const walletSnap = await db.ref(`system_data/usersWallets/${userId}`).once('value');
-            const walletData = walletSnap.val();
-
-            // ดึงยอดเงิน (รองรับการตั้งชื่อฟิลด์ balance, amount, credit หรือกรณีเก็บตัวเลขไว้ตรงๆ)
+            // 2. ดึงยอดเงินจากตัวแปร usersWallets ที่โหลดมาจาก Firebase
+            const walletData = usersWallets[userId];
+            
+            // อ่านค่ายอดเงิน (รองรับทั้งกรณีเก็บเป็นตัวเลขตรงๆ หรือเก็บเป็น object { balance: ... })
             let userBalance = 0;
-            if (walletData !== null && walletData !== undefined) {
-                if (typeof walletData === 'object') {
-                    userBalance = walletData.balance ?? walletData.amount ?? walletData.credit ?? 0;
-                } else {
-                    userBalance = parseFloat(walletData) || 0;
-                }
+            if (typeof walletData === 'object' && walletData !== null) {
+                userBalance = walletData.balance ?? walletData.amount ?? walletData.credit ?? 0;
+            } else {
+                userBalance = parseFloat(walletData) || 0;
             }
 
-            // ⚠️ เงื่อนไขมียอดเงินไม่ถึงขั้นต่ำ
+            // ⚠️ 3. เช็กยอดเงินขั้นต่ำ
             if (userBalance < MIN_BALANCE) {
                 replyText = `⚠️ คุณมียอดเงินไม่ถึงขั้นต่ำในการเข้าห้องครับ\n💰 ยอดปัจจุบัน: ${userBalance} บาท\n📌 ขั้นต่ำเข้าห้อง: ${MIN_BALANCE} บาท\n\n(เติมเงินแจ้งแอดมิน แล้วลองพิมพ์ 'ห้องเล่น' อีกครั้งนะครับ)`;
             } else {
-                // ✅ 3. ผ่านทุกเงื่อนไข ส่ง Flex Message ลิงก์ห้องเล่น
+                // ✅ 4. ผ่านเงื่อนไข ส่ง Flex Message ลิงก์ห้องเล่น
                 await axios.post('https://api.line.me/v2/bot/message/reply', {
                     replyToken: replyToken,
                     messages: [{
@@ -2773,8 +2769,8 @@ else if (userMsg === 'ห้องเล่น' || userMsg === 'ขอลิง�
             }
         }
     } catch (error) {
-        console.error("❌ เช็กสิทธิ์เข้าห้องเล่นล้มเหลว:", error);
-        replyText = "⚠️ เกิดข้อผิดพลาดในการดึงข้อมูลสมาชิก กรุณาลองใหม่อีกครั้งครับ";
+        console.error("❌ เกิดข้อผิดพลาดในระบบห้องเล่น:", error);
+        replyText = "⚠️ เกิดข้อผิดพลาดในระบบ กรุณาลองใหม่อีกครั้งครับ";
     }
 }
                 // ==================== [ ระบบสมาชิกแจ้งถอนเงิน - รูปแบบพิมติดกัน (ถอน500) ] ====================

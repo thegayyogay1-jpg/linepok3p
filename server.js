@@ -2709,6 +2709,7 @@ else if (userMsg === 'ห้องเล่น' || userMsg === 'ขอลิง�
 
     // 🔍 1. ค้นหาข้อมูลสมาชิก (สมมุติว่าเก็บไว้ในตัวแปรผู้ใช้งานชื่อ userDatabase)
     const userData = await db.ref(`system_data/usersWallets/${userId}`).once('value'); 
+    const walletData = walletSnap.val();
 
     // ❌ เงื่อนไขที่ 1: ยังไม่ได้ลงทะเบียน
     if (!userData) {

@@ -2702,21 +2702,47 @@ else if (userMsg === 'คส' || userMsg === 'กต' || userMsg === 'บช' ||
                     }
                 }
             }
-               // ==================== [ ระบบเช็กสิทธิ์และแจกลิงก์ห้องเล่น ] ====================
+               // ==================== [ ระบบเช็กสิทธิ์และแจกลิงก์ห้องเล่น - เวอร์ชัน Flex สวยงาม ] ====================
 else if (userMsg === 'ห้องเล่น' || userMsg === 'ขอลิงก์ห้อง') {
     const MIN_BALANCE = 40; // 💰 กำหนดยอดเงินขั้นต่ำเข้าห้อง (ปรับได้ตามต้องการ)
     const ROOM_LINK = "https://line.me/R/ti/g/YTsXz2pFp3"; // 🔗 ลิงก์ห้องเล่นของคุณ
 
     try {
-        // 1. เช็กว่าผู้ใช้งานมีข้อมูลใน usersWallets หรือยัง
-        // (ถ้าระบบของคุณนับคนที่มี Wallet คือคนที่ลงทะเบียนแล้ว)
+        let flexContainer = null;
+
+       // ❌ 1. กรณี: ยังไม่ได้ลงทะเบียนสมาชิก
         if (!usersWallets || !usersWallets[userId]) {
-            replyText = "❌ คุณยังไม่ได้ลงทะเบียนสมาชิกครับน้า\nกรุณาติดต่อแอดมินเพื่อลงทะเบียนก่อนนะครับ";
-        } else {
-            // 2. ดึงยอดเงินจากตัวแปร usersWallets ที่โหลดมาจาก Firebase
+            const REGISTER_LINK = "https://thegayyogay1-jpg.github.io/pokdeng-register/register.html"; // 🔗 ใส่ลิงก์หน้าเว็บสมัครของคุณที่นี่
+
+            flexContainer = {
+                "type": "bubble",
+                "styles": { "body": { "backgroundColor": "#130f17" } },
+                "body": {
+                    "type": "box",
+                    "layout": "vertical",
+                    "spacing": "md",
+                    "contents": [
+                        { "type": "text", "text": "⚠️ ยังไม่ได้ลงทะเบียน", "weight": "bold", "color": "#ff3333", "size": "md", "align": "center" },
+                        { "type": "text", "text": "คุณยังไม่ได้เป็นสมาชิกในระบบ กรุณากดปุ่มด้านล่างเพื่อทำการลงทะเบียนเข้าใช้งานครับ", "color": "#aaaaaa", "size": "xs", "align": "center", "wrap": true },
+                        { "type": "separator", "color": "#2a2233", "margin": "md" },
+                        {
+                            "type": "button",
+                            "style": "primary",
+                            "color": "#ffaa00",
+                            "height": "sm",
+                            "action": {
+                                "type": "uri",
+                                "label": "🌐 คลิกเพื่อสมัครสมาชิก",
+                                "uri": REGISTER_LINK
+                            }
+                        }
+                    ]
+                }
+            };
+        }
+        else {
+            // ดึงยอดเงินจากตัวแปร usersWallets
             const walletData = usersWallets[userId];
-            
-            // อ่านค่ายอดเงิน (รองรับทั้งกรณีเก็บเป็นตัวเลขตรงๆ หรือเก็บเป็น object { balance: ... })
             let userBalance = 0;
             if (typeof walletData === 'object' && walletData !== null) {
                 userBalance = walletData.balance ?? walletData.amount ?? walletData.credit ?? 0;
@@ -2724,54 +2750,100 @@ else if (userMsg === 'ห้องเล่น' || userMsg === 'ขอลิง�
                 userBalance = parseFloat(walletData) || 0;
             }
 
-            // ⚠️ 3. เช็กยอดเงินขั้นต่ำ
+            // ⚠️ 2. กรณี: ยอดเงินไม่ถึงขั้นต่ำ
             if (userBalance < MIN_BALANCE) {
-                replyText = `⚠️ คุณมียอดเงินไม่ถึงขั้นต่ำในการเข้าห้องครับ\n💰 ยอดปัจจุบัน: ${userBalance} บาท\n📌 ขั้นต่ำเข้าห้อง: ${MIN_BALANCE} บาท\n\n(เติมเงินแจ้งแอดมิน แล้วลองพิมพ์ 'ห้องเล่น' อีกครั้งนะครับ)`;
-            } else {
-                // ✅ 4. ผ่านเงื่อนไข ส่ง Flex Message ลิงก์ห้องเล่น
-                await axios.post('https://api.line.me/v2/bot/message/reply', {
-                    replyToken: replyToken,
-                    messages: [{
-                        "type": "flex",
-                        "altText": "🔗 ลิงก์เข้าห้องเล่นของคุณ",
-                        "contents": {
-                            "type": "bubble",
-                            "styles": { "body": { "backgroundColor": "#130f17" } },
-                            "body": {
+                flexContainer = {
+                    "type": "bubble",
+                    "styles": { "body": { "backgroundColor": "#130f17" } },
+                    "body": {
+                        "type": "box",
+                        "layout": "vertical",
+                        "spacing": "md",
+                        "contents": [
+                            { "type": "text", "text": "💳 ยอดเงินไม่เพียงพอ", "weight": "bold", "color": "#ffcc00", "size": "md", "align": "center" },
+                            { "type": "separator", "color": "#2a2233" },
+                            {
                                 "type": "box",
                                 "layout": "vertical",
-                                "spacing": "md",
+                                "spacing": "xs",
+                                "backgroundColor": "#221929",
+                                "paddingAll": "md",
+                                "cornerRadius": "md",
                                 "contents": [
-                                    { "type": "text", "text": "🎰 เข้าห้องเล่นเกม", "weight": "bold", "color": "#ffaa00", "size": "md", "align": "center" },
-                                    { "type": "text", "text": `ยอดเงินของคุณ: ${userBalance} บาท (ผ่านเกณฑ์)`, "color": "#aaaaaa", "size": "xs", "align": "center", "wrap": true },
-                                    { "type": "separator", "color": "#2a2233" },
                                     {
-                                        "type": "button",
-                                        "style": "primary",
-                                        "color": "#00c853",
-                                        "action": {
-                                            "type": "uri",
-                                            "label": "👉 คลิกเข้าห้องเล่นที่นี่",
-                                            "uri": ROOM_LINK
-                                        }
+                                        "type": "box",
+                                        "layout": "horizontal",
+                                        "contents": [
+                                            { "type": "text", "text": "💰 ยอดเงินปัจจุบัน:", "color": "#aaaaaa", "size": "xs" },
+                                            { "type": "text", "text": `${userBalance} บาท`, "color": "#ffffff", "size": "xs", "align": "end", "weight": "bold" }
+                                        ]
+                                    },
+                                    {
+                                        "type": "box",
+                                        "layout": "horizontal",
+                                        "contents": [
+                                            { "type": "text", "text": "📌 ขั้นต่ำเข้าห้อง:", "color": "#aaaaaa", "size": "xs" },
+                                            { "type": "text", "text": `${MIN_BALANCE} บาท`, "color": "#00ff66", "size": "xs", "align": "end", "weight": "bold" }
+                                        ]
                                     }
                                 ]
-                            }
-                        }
-                    }]
-                }, {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${TOKEN}`
+                            },
+                            { "type": "text", "text": "กรุณาเติมเงินแจ้งแอดมินให้เรียบร้อย แล้วพิมพ์ 'ห้องเล่น' ใหม่อีกครั้งนะครับ", "color": "#888888", "size": "xs", "align": "center", "wrap": true }
+                        ]
                     }
-                });
-                return res.sendStatus(200);
+                };
+            } 
+            // ✅ 3. กรณี: ผ่านเกณฑ์ทั้งหมด
+            else {
+                flexContainer = {
+                    "type": "bubble",
+                    "styles": { "body": { "backgroundColor": "#130f17" } },
+                    "body": {
+                        "type": "box",
+                        "layout": "vertical",
+                        "spacing": "md",
+                        "contents": [
+                            { "type": "text", "text": "🎰 เข้าห้องเล่นเกม", "weight": "bold", "color": "#ffaa00", "size": "md", "align": "center" },
+                            { "type": "text", "text": `ยินดีต้อนรับครับ ยอดเงินของคุณ ${userBalance} บาท`, "color": "#aaaaaa", "size": "xs", "align": "center", "wrap": true },
+                            { "type": "separator", "color": "#2a2233" },
+                            {
+                                "type": "button",
+                                "style": "primary",
+                                "color": "#00c853",
+                                "height": "sm",
+                                "action": {
+                                    "type": "uri",
+                                    "label": "👉 คลิกเข้าห้องเล่นที่นี่",
+                                    "uri": ROOM_LINK
+                                }
+                            }
+                        ]
+                    }
+                };
             }
         }
+
+        // 🚀 ส่ง Flex Message ออกไปตามเงื่อนไขที่เช็กได้
+        await axios.post('https://api.line.me/v2/bot/message/reply', {
+            replyToken: replyToken,
+            messages: [{
+                "type": "flex",
+                "altText": "🎰 ตรวจสอบสิทธิ์การเข้าห้องเล่น",
+                "contents": flexContainer
+            }]
+        }, {
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${TOKEN}`
+            }
+        });
+        return res.sendStatus(200);
+
     } catch (error) {
         console.error("❌ เกิดข้อผิดพลาดในระบบห้องเล่น:", error);
         replyText = "⚠️ เกิดข้อผิดพลาดในระบบ กรุณาลองใหม่อีกครั้งครับ";
     }
+}
 }
                 // ==================== [ ระบบสมาชิกแจ้งถอนเงิน - รูปแบบพิมติดกัน (ถอน500) ] ====================
             else if (userMsg.startsWith('ถอน')) {

@@ -2702,67 +2702,79 @@ else if (userMsg === 'คส' || userMsg === 'กต' || userMsg === 'บช' ||
                     }
                 }
             }
-                // ==================== [ ระบบแจกลิงก์ห้องเล่น ] ====================
+               // ==================== [ ระบบเช็กสิทธิ์ Firebase และแจกลิงก์ห้องเล่น ] ====================
 else if (userMsg === 'ห้องเล่น' || userMsg === 'ขอลิงก์ห้อง') {
-    const MIN_BALANCE = 30; // 💰 กำหนดยอดเงินขั้นต่ำที่เข้าได้ (เช่น 100 บาท)
-    const ROOM_LINK = "https://line.me/R/ti/g/YTsXz2pFp3"; // 🔗 ลิงก์ห้องเล่นของคุณ
+    const MIN_BALANCE = 30; // 💰 กำหนดยอดเงินขั้นต่ำที่เข้าได้ (ปรับตามต้องการ)
+    const ROOM_LINK = "https://line.me/R/ti/g/YTsXz2pFp3"; // 🔗 ใส่ลิงก์ห้องเล่นของคุณที่นี่
 
-    // 🔍 1. ค้นหาข้อมูลสมาชิก (สมมุติว่าเก็บไว้ในตัวแปรผู้ใช้งานชื่อ userDatabase)
-    const userData = await db.ref(`system_data/usersWallets/${userId}`).once('value'); 
-    const walletData = walletSnap.val();
+    try {
+        // 🔍 1. เช็กว่าผู้ใช้งานลงทะเบียนแล้วหรือยังใน registered_users
+        const regSnap = await db.ref(`registered_users/${userId}`).once('value');
+        
+        if (!regSnap.exists()) {
+            replyText = "❌ คุณยังไม่ได้ลงทะเบียนสมาชิกครับ\nกรุณาติดต่อแอดมินเพื่อลงทะเบียนก่อนนะครับ";
+        } else {
+            // 💰 2. ดึงข้อมูลกระเป๋าเงินจาก system_data/usersWallets
+            const walletSnap = await db.ref(`system_data/usersWallets/${userId}`).once('value');
+            const walletData = walletSnap.val();
 
-    // ❌ เงื่อนไขที่ 1: ยังไม่ได้ลงทะเบียน
-    if (!userData) {
-        replyText = "❌ คุณยังไม่ได้ลงทะเบียนสมาชิกครับ\nกรุณาติดต่อแอดมินเพื่อลงทะเบียนก่อนนะครับ";
-    } 
-    // ❌ เงื่อนไขที่ 2: ลงทะเบียนแล้ว แต่มียอดไม่ถึงขั้นต่ำ
-    else if (userData.balance < MIN_BALANCE) {
-        replyText = `⚠️ คุณมียอดสะสม/เครดิตไม่ถึงขั้นต่ำครับ\n💰 ยอดของคุณ: ${userData.balance} บาท\n📌 ขั้นต่ำเข้าห้อง: ${MIN_BALANCE} บาท\n\n(เติมเงินแจ้งแอดมินแล้วลองพิมพ์ 'ห้องเล่น' อีกครั้งนะครับ)`;
-    } 
-    // ✅ เงื่อนไขที่ 3: ผ่านทุกข้อ ส่งลิงก์ห้องให้ทันที!
-    else {
-        // ส่งแบบ Flex Message หรือ ข้อความพร้อมปุ่มกดสวยๆ
-        try {
-            await axios.post('https://api.line.me/v2/bot/message/reply', {
-                replyToken: replyToken,
-                messages: [{
-                    "type": "flex",
-                    "altText": "🔗 ลิงก์เข้าห้องเล่นของคุณ",
-                    "contents": {
-                        "type": "bubble",
-                        "styles": { "body": { "backgroundColor": "#130f17" } },
-                        "body": {
-                            "type": "box",
-                            "layout": "vertical",
-                            "spacing": "md",
-                            "contents": [
-                                { "type": "text", "text": "🎰 เข้าห้องเล่นเกม", "weight": "bold", "color": "#ffaa00", "size": "md", "align": "center" },
-                                { "type": "text", "text": "ยินดีต้อนรับครับ คุณผ่านเงื่อนไขเข้าห้องเล่นแล้ว!", "color": "#aaaaaa", "size": "xs", "align": "center", "wrap": true },
-                                { "type": "separator", "color": "#2a2233" },
-                                {
-                                    "type": "button",
-                                    "style": "primary",
-                                    "color": "#00c853",
-                                    "action": {
-                                        "type": "uri",
-                                        "label": "👉 คลิกเข้าห้องเล่นที่นี่",
-                                        "uri": ROOM_LINK
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }]
-            }, {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${TOKEN}`
+            // ดึงยอดเงิน (รองรับการตั้งชื่อฟิลด์ balance, amount, credit หรือกรณีเก็บตัวเลขไว้ตรงๆ)
+            let userBalance = 0;
+            if (walletData !== null && walletData !== undefined) {
+                if (typeof walletData === 'object') {
+                    userBalance = walletData.balance ?? walletData.amount ?? walletData.credit ?? 0;
+                } else {
+                    userBalance = parseFloat(walletData) || 0;
                 }
-            });
-            return res.sendStatus(200);
-        } catch (error) {
-            console.error("❌ ส่งลิงก์ห้องล้มเหลว:", error);
+            }
+
+            // ⚠️ เงื่อนไขมียอดเงินไม่ถึงขั้นต่ำ
+            if (userBalance < MIN_BALANCE) {
+                replyText = `⚠️ คุณมียอดเงินไม่ถึงขั้นต่ำในการเข้าห้องครับ\n💰 ยอดปัจจุบัน: ${userBalance} บาท\n📌 ขั้นต่ำเข้าห้อง: ${MIN_BALANCE} บาท\n\n(เติมเงินแจ้งแอดมิน แล้วลองพิมพ์ 'ห้องเล่น' อีกครั้งนะครับ)`;
+            } else {
+                // ✅ 3. ผ่านทุกเงื่อนไข ส่ง Flex Message ลิงก์ห้องเล่น
+                await axios.post('https://api.line.me/v2/bot/message/reply', {
+                    replyToken: replyToken,
+                    messages: [{
+                        "type": "flex",
+                        "altText": "🔗 ลิงก์เข้าห้องเล่นของคุณ",
+                        "contents": {
+                            "type": "bubble",
+                            "styles": { "body": { "backgroundColor": "#130f17" } },
+                            "body": {
+                                "type": "box",
+                                "layout": "vertical",
+                                "spacing": "md",
+                                "contents": [
+                                    { "type": "text", "text": "🎰 เข้าห้องเล่นเกม", "weight": "bold", "color": "#ffaa00", "size": "md", "align": "center" },
+                                    { "type": "text", "text": `ยอดเงินของคุณ: ${userBalance} บาท (ผ่านเกณฑ์)`, "color": "#aaaaaa", "size": "xs", "align": "center", "wrap": true },
+                                    { "type": "separator", "color": "#2a2233" },
+                                    {
+                                        "type": "button",
+                                        "style": "primary",
+                                        "color": "#00c853",
+                                        "action": {
+                                            "type": "uri",
+                                            "label": "👉 คลิกเข้าห้องเล่นที่นี่",
+                                            "uri": ROOM_LINK
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    }]
+                }, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${TOKEN}`
+                    }
+                });
+                return res.sendStatus(200);
+            }
         }
+    } catch (error) {
+        console.error("❌ เช็กสิทธิ์เข้าห้องเล่นล้มเหลว:", error);
+        replyText = "⚠️ เกิดข้อผิดพลาดในการดึงข้อมูลสมาชิก กรุณาลองใหม่อีกครั้งครับ";
     }
 }
                 // ==================== [ ระบบสมาชิกแจ้งถอนเงิน - รูปแบบพิมติดกัน (ถอน500) ] ====================

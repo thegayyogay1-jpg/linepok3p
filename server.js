@@ -1409,7 +1409,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
     }
 }
    // ==================== [ 5. ระบบรับโพยไฮโล (ขึ้นต้นด้วย z หรือ ห) ] ====================
-else if ((originalMsg.toLowerCase().startsWith('z') || originalMsg.startsWith('ห')) && originalMsg.includes('-')) {
+ if ((originalMsg.toLowerCase().startsWith('z') || originalMsg.startsWith('ห')) && originalMsg.includes('-')) {
     if (!isHiloRoundOpen) { // แยกตัวแปรเช็กรอบไฮโล
         replyText = "🚫 ตอนนี้ระบบปิดรับโพยไฮโลชั่วคราวครับ";
     } else {

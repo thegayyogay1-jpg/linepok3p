@@ -1408,158 +1408,122 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
         }
     }
 }
-    // ==================== [ 1. ตรวจสอบไฮโลก่อน (ขึ้นต้นด้วย z หรือ ห และมี -) ] ====================
-if ((originalMsg.toLowerCase().startsWith('z') || originalMsg.startsWith('ห')) && originalMsg.includes('-')) {
-    if (!isHiloRoundOpen) {
+   // ==================== [ 5. ระบบรับโพยไฮโล (ขึ้นต้นด้วย z หรือ ห) ] ====================
+else if ((originalMsg.toLowerCase().startsWith('z') || originalMsg.startsWith('ห')) && originalMsg.includes('-')) {
+    if (!isHiloRoundOpen) { // แยกตัวแปรเช็กรอบไฮโล
         replyText = "🚫 ตอนนี้ระบบปิดรับโพยไฮโลชั่วคราวครับ";
     } else {
         const user = usersWallets[userId];
         if (!user) {
             replyText = "⚠️ กรุณาลงทะเบียนสมาชิกก่อนแทงครับ";
         } else {
-            const displayName = user.nickname || user.name || "ไม่ระบุชื่อ";
+            const lines = originalMsg.split(/\r?\n/);
+            let hiloBets = [];
+            let totalHiloBet = 0;
+            let hasError = false;
+            let errorMsg = "";
 
-            if (user && user.isWithdrawLocked) {
-                replyText = `❌ คุณไม่สามารถส่งโพยแทงได้ครับ!\n👤 คุณ ${displayName} (ID: ${user.memberNumber}) อยู่ในระหว่างรออนุมัติยอดถอนครับ`;
-            } else {
-                const lines = originalMsg.split(/\r?\n/);
-                let hiloBets = [];
-                let totalHiloBet = 0;
-                let hasError = false;
-                let errorMsg = "";
+            for (let line of lines) {
+                let cleanLine = line.trim().toLowerCase();
+                if (cleanLine === "") continue;
 
-                const MIN_BET = 10;
-                const MAX_BET = 2500;
+                // ลบ z หรือ ห ออกจากส่วนหน้าเพื่อประมวลผล
+                if (cleanLine.startsWith('z')) cleanLine = cleanLine.substring(1);
+                if (cleanLine.startsWith('ห')) cleanLine = cleanLine.substring(1);
 
-                for (let line of lines) {
-                    let cleanLine = line.trim().toLowerCase();
-                    if (cleanLine === "") continue;
-
-                    if (cleanLine.startsWith('z')) cleanLine = cleanLine.substring(1).trim();
-                    if (cleanLine.startsWith('ห')) cleanLine = cleanLine.substring(1).trim();
-
-                    const parts = cleanLine.split('-');
-                    if (parts.length !== 2) {
-                        hasError = true;
-                        errorMsg = `⚠️ รูปแบบโพยไฮโลไม่ถูกต้องในบรรทัด: "${line}"\n(ตัวอย่าง: zสูง-100 หรือ ห11-50)`;
-                        break;
-                    }
-
-                    const targetStr = parts[0].trim();
-                    const price = parseFloat(parts[1].trim());
-
-                    if (isNaN(price) || price <= 0) {
-                        hasError = true;
-                        errorMsg = `⚠️ จำนวนเงินไม่ถูกต้องในบรรทัด: "${line}"`;
-                        break;
-                    }
-
-                    if (price < MIN_BET || price > MAX_BET) {
-                        hasError = true;
-                        errorMsg = `❌ แทงไม่สำเร็จ! ยอดแทงไฮโลต้องอยู่ระหว่าง ${MIN_BET} ถึง ${MAX_BET} บาทครับ`;
-                        break;
-                    }
-
-                    totalHiloBet += price;
-                    hiloBets.push({
-                        target: targetStr,
-                        price: price,
-                        detail: `แทง [${targetStr}] จำนวน ${price} บาท`
-                    });
+                const parts = cleanLine.split('-');
+                if (parts.length !== 2) {
+                    hasError = true;
+                    errorMsg = `⚠️ รูปแบบโพยไฮโลไม่ถูกต้อง: "${line}"`;
+                    break;
                 }
 
-                if (!hasError && totalHiloBet > 0) {
-                    if (user.balance < totalHiloBet) {
-                        replyText = `❌ เครดิตของคุณไม่พอสำหรับแทงไฮโลครับ!\n💸 ยอดแทงรวม: ${totalHiloBet} บาท\n💰 เครดิตคงเหลือ: ${user.balance} บาท`;
-                    } else {
-                        user.balance -= totalHiloBet;
-                        await saveDataToFirebase();
+                const target = parts[0].trim();
+                const price = parseFloat(parts[1].trim());
 
-                        if (!hiloRoundBets) hiloRoundBets = {};
-                        if (!hiloRoundBets[userId]) hiloRoundBets[userId] = [];
-
-                        let itemsFlexContents = [];
-
-                        hiloBets.forEach((bet) => {
-                            hiloRoundBets[userId].push({
-                                name: displayName,
-                                memberNumber: user.memberNumber,
-                                target: bet.target,
-                                price: bet.price,
-                                time: new Date().toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok' })
-                            });
-
-                            itemsFlexContents.push({
-                                "type": "text",
-                                "text": `• ${bet.detail}`,
-                                "size": "sm",
-                                "color": "#dddddd",
-                                "wrap": true
-                            });
-                        });
-
-                        try {
-                            await axios.post('https://api.line.me/v2/bot/message/reply', {
-                                replyToken: replyToken,
-                                messages: [{
-                                    "type": "flex",
-                                    "altText": "🎲 บันทึกโพยไฮโลสำเร็จเรียบร้อยแล้ว",
-                                    "contents": {
-                                        "type": "bubble",
-                                        "styles": { "body": { "backgroundColor": "#1a0033" } },
-                                        "body": {
-                                            "type": "box", "layout": "vertical", "spacing": "md",
-                                            "contents": [
-                                                { "type": "text", "text": "🎲 บันทึกโพยไฮโลเรียบร้อย 🎲", "weight": "bold", "color": "#ff007f", "size": "md", "align": "center" },
-                                                { "type": "separator", "color": "#444444" },
-                                                {
-                                                    "type": "box", "layout": "horizontal",
-                                                    "contents": [
-                                                        { "type": "text", "text": "👤 ผู้แทง:", "size": "sm", "color": "#aaa9aa", "flex": 2 },
-                                                        { "type": "text", "text": `${displayName} (ID: ${user.memberNumber})`, "size": "sm", "color": "#ffffff", "flex": 5, "weight": "bold" }
-                                                    ]
-                                                },
-                                                { "type": "separator", "color": "#444444" },
-                                                { "type": "text", "text": "📝 รายการแทงไฮโล", "size": "xs", "color": "#ff007f", "weight": "bold" },
-                                                { "type": "box", "layout": "vertical", "spacing": "xs", "contents": itemsFlexContents },
-                                                { "type": "separator", "color": "#444444" },
-                                                {
-                                                    "type": "box", "layout": "vertical", "spacing": "xs",
-                                                    "contents": [
-                                                        {
-                                                            "type": "box", "layout": "horizontal",
-                                                            "contents": [
-                                                                { "type": "text", "text": "💵 ยอดแทงรวม:", "size": "sm", "color": "#aaa9aa" },
-                                                                { "type": "text", "text": `${totalHiloBet} บาท`, "size": "sm", "color": "#ffffff", "align": "end", "weight": "bold" }
-                                                            ]
-                                                        },
-                                                        {
-                                                            "type": "box", "layout": "horizontal",
-                                                            "contents": [
-                                                                { "type": "text", "text": "💰 เครดิตคงเหลือ:", "size": "sm", "color": "#aaa9aa" },
-                                                                { "type": "text", "text": `${user.balance} บาท`, "size": "sm", "color": "#00ff00", "align": "end", "weight": "bold" }
-                                                            ]
-                                                        }
-                                                    ]
-                                                }
-                                            ]
-                                        }
-                                    }
-                                }]
-                            }, {
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'Authorization': `Bearer ${TOKEN}`
-                                }
-                            });
-                        } catch (error) {
-                            console.error("❌ ส่ง Flex Message โพยไฮโลล้มเหลว:", error.response ? error.response.data : error.message);
-                        }
-                        return;
-                    }
-                } else if (hasError && errorMsg !== "") {
-                    replyText = errorMsg;
+                if (isNaN(price) || price <= 0) {
+                    hasError = true;
+                    errorMsg = `⚠️ จำนวนเงินไม่ถูกต้องในบรรทัด: "${line}"`;
+                    break;
                 }
+
+                // --- 🎯 ตรวจสอบประเภทการแทงไฮโล ---
+                let betCategory = "";
+
+                // 1. ต / ส (สูง-ต่ำ)
+                if (target === 'ต' || target === 'ต่ำ') betCategory = "ต่ำ";
+                else if (target === 'ส' || target === 'สูง') betCategory = "สูง";
+
+                // 2. 11 ไฮโล
+                else if (target === '11') betCategory = "11 ไฮโล";
+
+                // 3. ตอง / ตองเจาะจง
+                else if (target === 'ตอง') betCategory = "ตองรวม (ตองใดๆ)";
+                else if (/^ตอง[1-6]$/.test(target)) betCategory = `ตอง ${target.replace('ตอง','')}`;
+
+                // 4. ต1-6 / ส1-6 (ต่ำ/สูง + เต็ง)
+                else if (/^[ตส][1-6]$/.test(target)) {
+                    const side = target[0] === 'ต' ? 'ต่ำ' : 'สูง';
+                    const num = target[1];
+                    betCategory = `${side} + เต็ง ${num}`;
+                }
+
+                // 5. เต็ง (ขึ้นต้นด้วย ง ตามด้วยเลข 1-6)
+                else if (target.startsWith('ง')) {
+                    const nums = target.substring(1).split('');
+                    const isValidNums = nums.every(n => ['1','2','3','4','5','6'].includes(n));
+                    if (!isValidNums) {
+                        hasError = true;
+                        errorMsg = `❌ เลขเต็งต้องเป็น 1-6 เท่านั้น: "${line}"`;
+                        break;
+                    }
+                    betCategory = `เต็งเลข [${nums.join(', ')}] (ขาละ ${price} บาท)`;
+                }
+
+                // 6. โต๊ด 2 ตัว (เช่น 12, 35, 46)
+                else if (/^[1-6]{2}$/.test(target)) {
+                    betCategory = `โต๊ด 2 ตัว [${target[0]}-${target[1]}]`;
+                }
+
+                // 7. โต๊ด 3 ตัว (เช่น 123, 456)
+                else if (/^[1-6]{3}$/.test(target)) {
+                    betCategory = `โต๊ด 3 ตัว [${target.split('').join('-')}]`;
+                } 
+
+                else {
+                    hasError = true;
+                    errorMsg = `❌ ไม่พบประเภทการแทงไฮโลที่ระบุในบรรทัด: "${line}"`;
+                    break;
+                }
+
+                // คำนวณยอดเงิน (กรณีเต็งหลายตัว เช่น ง12 ให้คิดเงินคูณจำนวนตัว หรือคิดแยกตามกติกา)
+                let currentLineBet = price;
+                if (target.startsWith('ง')) {
+                    currentLineBet = price * target.substring(1).length; 
+                }
+
+                totalHiloBet += currentLineBet;
+                hiloBets.push({
+                    target: target,
+                    category: betCategory,
+                    price: price,
+                    totalPrice: currentLineBet
+                });
+            }
+
+            // --- 💰 ตรวจสอบเครดิตและบันทึกโพย ---
+            if (!hasError && totalHiloBet > 0) {
+                if (user.balance < totalHiloBet) {
+                    replyText = `❌ เครดิตไม่พอสำหรับแทงไฮโล!\n💸 ยอดแทงรวม: ${totalHiloBet} บาท\n💰 เครดิตที่คุณมี: ${user.balance} บาท`;
+                } else {
+                    user.balance -= totalHiloBet;
+                    await saveDataToFirebase();
+                    
+                    // บันทึกรายการลง Array ไฮโลรอบปัจจุบัน
+                    // ... โค้ดบันทึกและยิง Flex Message แสดงโพยไฮโล ...
+                }
+            } else if (hasError) {
+                replyText = errorMsg;
             }
         }
     }
@@ -1872,126 +1836,7 @@ if ((originalMsg.toLowerCase().startsWith('z') || originalMsg.startsWith('ห'))
                     }
                 }
             }
-                // ==================== [ 5. ระบบรับโพยไฮโล (ขึ้นต้นด้วย z หรือ ห) ] ====================
-else if ((originalMsg.toLowerCase().startsWith('z') || originalMsg.startsWith('ห')) && originalMsg.includes('-')) {
-    if (!isHiloRoundOpen) { // แยกตัวแปรเช็กรอบไฮโล
-        replyText = "🚫 ตอนนี้ระบบปิดรับโพยไฮโลชั่วคราวครับ";
-    } else {
-        const user = usersWallets[userId];
-        if (!user) {
-            replyText = "⚠️ กรุณาลงทะเบียนสมาชิกก่อนแทงครับ";
-        } else {
-            const lines = originalMsg.split(/\r?\n/);
-            let hiloBets = [];
-            let totalHiloBet = 0;
-            let hasError = false;
-            let errorMsg = "";
-
-            for (let line of lines) {
-                let cleanLine = line.trim().toLowerCase();
-                if (cleanLine === "") continue;
-
-                // ลบ z หรือ ห ออกจากส่วนหน้าเพื่อประมวลผล
-                if (cleanLine.startsWith('z')) cleanLine = cleanLine.substring(1);
-                if (cleanLine.startsWith('ห')) cleanLine = cleanLine.substring(1);
-
-                const parts = cleanLine.split('-');
-                if (parts.length !== 2) {
-                    hasError = true;
-                    errorMsg = `⚠️ รูปแบบโพยไฮโลไม่ถูกต้อง: "${line}"`;
-                    break;
-                }
-
-                const target = parts[0].trim();
-                const price = parseFloat(parts[1].trim());
-
-                if (isNaN(price) || price <= 0) {
-                    hasError = true;
-                    errorMsg = `⚠️ จำนวนเงินไม่ถูกต้องในบรรทัด: "${line}"`;
-                    break;
-                }
-
-                // --- 🎯 ตรวจสอบประเภทการแทงไฮโล ---
-                let betCategory = "";
-
-                // 1. ต / ส (สูง-ต่ำ)
-                if (target === 'ต' || target === 'ต่ำ') betCategory = "ต่ำ";
-                else if (target === 'ส' || target === 'สูง') betCategory = "สูง";
-
-                // 2. 11 ไฮโล
-                else if (target === '11') betCategory = "11 ไฮโล";
-
-                // 3. ตอง / ตองเจาะจง
-                else if (target === 'ตอง') betCategory = "ตองรวม (ตองใดๆ)";
-                else if (/^ตอง[1-6]$/.test(target)) betCategory = `ตอง ${target.replace('ตอง','')}`;
-
-                // 4. ต1-6 / ส1-6 (ต่ำ/สูง + เต็ง)
-                else if (/^[ตส][1-6]$/.test(target)) {
-                    const side = target[0] === 'ต' ? 'ต่ำ' : 'สูง';
-                    const num = target[1];
-                    betCategory = `${side} + เต็ง ${num}`;
-                }
-
-                // 5. เต็ง (ขึ้นต้นด้วย ง ตามด้วยเลข 1-6)
-                else if (target.startsWith('ง')) {
-                    const nums = target.substring(1).split('');
-                    const isValidNums = nums.every(n => ['1','2','3','4','5','6'].includes(n));
-                    if (!isValidNums) {
-                        hasError = true;
-                        errorMsg = `❌ เลขเต็งต้องเป็น 1-6 เท่านั้น: "${line}"`;
-                        break;
-                    }
-                    betCategory = `เต็งเลข [${nums.join(', ')}] (ขาละ ${price} บาท)`;
-                }
-
-                // 6. โต๊ด 2 ตัว (เช่น 12, 35, 46)
-                else if (/^[1-6]{2}$/.test(target)) {
-                    betCategory = `โต๊ด 2 ตัว [${target[0]}-${target[1]}]`;
-                }
-
-                // 7. โต๊ด 3 ตัว (เช่น 123, 456)
-                else if (/^[1-6]{3}$/.test(target)) {
-                    betCategory = `โต๊ด 3 ตัว [${target.split('').join('-')}]`;
-                } 
-
-                else {
-                    hasError = true;
-                    errorMsg = `❌ ไม่พบประเภทการแทงไฮโลที่ระบุในบรรทัด: "${line}"`;
-                    break;
-                }
-
-                // คำนวณยอดเงิน (กรณีเต็งหลายตัว เช่น ง12 ให้คิดเงินคูณจำนวนตัว หรือคิดแยกตามกติกา)
-                let currentLineBet = price;
-                if (target.startsWith('ง')) {
-                    currentLineBet = price * target.substring(1).length; 
-                }
-
-                totalHiloBet += currentLineBet;
-                hiloBets.push({
-                    target: target,
-                    category: betCategory,
-                    price: price,
-                    totalPrice: currentLineBet
-                });
-            }
-
-            // --- 💰 ตรวจสอบเครดิตและบันทึกโพย ---
-            if (!hasError && totalHiloBet > 0) {
-                if (user.balance < totalHiloBet) {
-                    replyText = `❌ เครดิตไม่พอสำหรับแทงไฮโล!\n💸 ยอดแทงรวม: ${totalHiloBet} บาท\n💰 เครดิตที่คุณมี: ${user.balance} บาท`;
-                } else {
-                    user.balance -= totalHiloBet;
-                    await saveDataToFirebase();
-                    
-                    // บันทึกรายการลง Array ไฮโลรอบปัจจุบัน
-                    // ... โค้ดบันทึกและยิง Flex Message แสดงโพยไฮโล ...
-                }
-            } else if (hasError) {
-                replyText = errorMsg;
-            }
-        }
-    }
-}
+                
             // ==================== [ 5. ระบบคืนโพย / ยกเลิกโพยในรอบ ] ====================
             else if (userMsg === "r") {
                 if (!isRoundOpen) {

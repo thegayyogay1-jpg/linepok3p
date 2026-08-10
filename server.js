@@ -1243,156 +1243,166 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                 let summaryFlexContents = [];
                 let hasBets = false;
 
+                // 📌 รวบรวมรายชื่อ UID ทั้งหมดที่มีการแทง (ทั้งป๊อกเด้ง และ ไฮโล)
+        const allUserIds = Array.from(new Set([
+            ...Object.keys(roundBets || {}),
+            ...Object.keys(hiloRoundBets || {})
+        ]));
+
                 // วนลูปเช็กข้อมูลโพยของทุกคนในรอบนี้ (ตามตรรกะเดิมเป๊ะๆ)
-                for (let uid in roundBets) {
-                    const userBetsArray = roundBets[uid];
-                    if (userBetsArray && userBetsArray.length > 0) {
-                        hasBets = true;
-                        const user = usersWallets[uid] || {}; // ดึงข้อมูลโปรไฟล์สมาชิก
+                for (let uid of allUserIds) {
+                    const userBetsArray = roundBets[uid] || [];
+                    const userHiloArray = (hiloRoundBets && hiloRoundBets[uid]) ? hiloRoundBets[uid] : [];
+                    
+                   if (userBetsArray.length > 0 || userHiloArray.length > 0) {
+                hasBets = true;
+                const user = usersWallets[uid] || {}; 
+                const displayName = user.nickname || user.name || "สมาชิก";
 
-                        // 💡 ดึงชื่อเล่น (ถ้าน้าไม่ได้ตั้ง nickname ไว้ ระบบจะถอยไปใช้ user.name อัตโนมัติ)
-                        const displayName = user.nickname || user.name || "สมาชิก";
+                // --- 1. ส่วนคำนวณป๊อกเด้ง ---
+                let totalRealPlay = 0; 
+                let totalWithBounce = 0; 
+                let betLegsDetail = []; 
+                let drawLegsDetail = []; 
 
-                        let totalRealPlay = 0; // ยอดเล่นรวมจริง
-                        let totalWithBounce = 0; // ยอดค้ำประกัน (รวมค้ำเด้ง 3 เท่า)
-                        let betLegsDetail = []; // เก็บรายละเอียดเบอร์ขาที่แทง
-                        let drawLegsDetail = []; // เก็บรายละเอียดขาที่ขอจั่วเพิ่ม
-
-                        userBetsArray.forEach((bet) => {
-                            // คำนวณเบอร์ขาฝั่งผู้เล่นปกติ
-                            if (bet.betType !== "รข" && bet.betType !== "รจ" && !bet.betType.startsWith('จ')) {
-                                const individualLegs = bet.betType.split('');
-                                individualLegs.forEach((leg) => {
-                                    if (!betLegsDetail.includes(leg)) betLegsDetail.push(leg);
-                                    
-                                    // เช็กสถานะการจั่วใบที่ 3 ของขานี้
-                                    if (bet.drawStatus && bet.drawStatus[leg] === "จั่ว") {
-                                        if (!drawLegsDetail.includes(leg)) drawLegsDetail.push(leg);
-                                    }
-                                });
-                            } 
-                            // สำหรับกรณีแทงพิเศษอื่นๆ (รข / รจ / ขาเจ้ามือ)
-                            else {
-                                if (!betLegsDetail.includes(bet.betType)) {
-                                    betLegsDetail.push(bet.betType);
-                                }
+                userBetsArray.forEach((bet) => {
+                    if (bet.betType !== "รข" && bet.betType !== "รจ" && !bet.betType.startsWith('จ')) {
+                        const individualLegs = bet.betType.split('');
+                        individualLegs.forEach((leg) => {
+                            if (!betLegsDetail.includes(leg)) betLegsDetail.push(leg);
+                            if (bet.drawStatus && bet.drawStatus[leg] === "จั่ว") {
+                                if (!drawLegsDetail.includes(leg)) drawLegsDetail.push(leg);
                             }
-
-                            // คำนวณยอดเงินรวม
-                            totalRealPlay += bet.totalPrice || bet.actualBet; // รองรับโครงสร้างชื่อตัวแปรของโพย
-                            totalWithBounce += bet.holdCost; // ดึงยอดค้ำเด้ง 3 เท่าที่ระบบหักไว้จริงมาแสดง
                         });
-
-                        // จัดเรียงรายชื่อขาให้สวยงามเพื่ออ่านง่าย
-                        const legsStr = betLegsDetail.sort().join(', ');
-                        const drawStr = drawLegsDetail.length > 0 ? drawLegsDetail.sort().join(', ') : "ไม่มี (อยู่ 2 ใบ)";
-
-                        // นำข้อมูลที่ประมวลผลได้มาแพ็คใส่รูปแบบ Flex Layout เพื่อความสวยงามและแสดงผลเป็นระเบียบ
-                        summaryFlexContents.push({
-                            "type": "box", "layout": "vertical", "margin": "md", "spacing": "xs",
-                            "contents": [
-                                { "type": "text", "text": `👤 [ ${user.memberNumber || '-'} ] ${displayName}`, "weight": "bold", "color": "#ffffff", "size": "sm" },
-                                {
-                                    "type": "box", "layout": "horizontal",
-                                    "contents": [
-                                        { "type": "text", "text": `👉 แทงขา: [ ${legsStr} ]`, "size": "xs", "color": "#cccccc", "flex": 5 },
-                                        { "type": "text", "text": `🃏 จั่วเพิ่ม: [ ${drawStr} ]`, "size": "xs", "color": "#3399ff", "flex": 5, "weight": "bold", "align": "end" }
-                                    ]
-                                },
-                                {
-                                    "type": "box", "layout": "horizontal",
-                                    "contents": [
-                                        { "type": "text", "text": `💰 ยอดเล่น: ${totalRealPlay} ฿`, "size": "xs", "color": "#aaaaaa", "flex": 5 },
-                                        { "type": "text", "text": `(รวมค้ำ: ${totalWithBounce} ฿)`, "size": "xs", "color": "#00ff66", "flex": 5, "align": "end", "weight": "bold" }
-                                    ]
-                                },
-                                { "type": "separator", "color": "#2c2214", "margin": "xs" }
-                            ]
-                        });
+                    } else {
+                        if (!betLegsDetail.includes(bet.betType)) {
+                            betLegsDetail.push(bet.betType);
+                        }
                     }
-                }
+
+                    totalRealPlay += bet.totalPrice || bet.actualBet || 0; 
+                    totalWithBounce += bet.holdCost || 0; 
+                });
+
+                const legsStr = betLegsDetail.length > 0 ? betLegsDetail.sort().join(', ') : "-";
+                const drawStr = drawLegsDetail.length > 0 ? drawLegsDetail.sort().join(', ') : "ไม่มี (อยู่ 2 ใบ)";
+
+                // --- 2. ส่วนคำนวณไฮโล (แก้ไขเรื่อง uid และสร้าง ข้อความแสดงผล) ---
                 let totalHiloAmount = 0;
-let hiloDetailTexts = [];
+                let hiloDetailTexts = [];
 
-if (hiloRoundBets && hiloRoundBets[uId]) {
-    hiloRoundBets[uId].forEach(hBet => {
-        const betName = hBet.category || hBet.type || hBet.target || "ไม่ระบุ";
-        const betAmount = hBet.totalPrice || hBet.actualBet || hBet.price || 0;
-        
-        totalHiloAmount += betAmount;
-        hiloDetailTexts.push(`${betName} ${betAmount}฿`);
-    });
-}
+                userHiloArray.forEach(hBet => {
+                    const betName = hBet.category || hBet.type || hBet.target || "ไม่ระบุ";
+                    const betAmount = hBet.totalPrice || hBet.actualBet || hBet.price || 0;
+                    
+                    totalHiloAmount += betAmount;
+                    hiloDetailTexts.push(`${betName} ${betAmount}฿`);
+                });
 
-// นำ hiloDetailTexts.join(', ') ไปใส่ใน Flex Message 
-// และนำ totalHiloAmount ไปแสดงในยอดรวมไฮโล
-                           
-                if (!hasBets) {
-                    summaryFlexContents.push({
-                        "type": "text",
-                        "text": "• รอบนี้ไม่มีสมาชิกส่งโพยเดิมพันเข้ามาครับ",
-                        "size": "sm",
-                        "color": "#888888",
-                        "style": "italic",
-                        "align": "center"
-                    });
-                }
+                const hiloStr = hiloDetailTexts.length > 0 ? hiloDetailTexts.join(', ') : "ไม่ได้แทง";
 
-                // 🚀 ยิงข้อความแพ็คคู่: [1. รูปภาพปิดจั่ว/ปิดไฮโล] + [2. Flex Carousel สรุปผล]
-                try {
-                    const chunkSize = 6; 
-                    const flexPages = [];
-                    for (let i = 0; i < summaryFlexContents.length; i += chunkSize) {
-                        flexPages.push(summaryFlexContents.slice(i, i + chunkSize));
-                    }
-
-                    if (flexPages.length === 0) {
-                        flexPages.push([{ "type": "text", "text": "ไม่มีรายการแทงในรอบนี้", "color": "#aaaaaa", "size": "xs", "align": "center" }]);
-                    }
-
-                    const carouselBubbles = flexPages.map((pageContents, index) => ({
-                        "type": "bubble",
-                        "styles": { "body": { "backgroundColor": "#1a140d" } },
-                        "body": {
-                            "type": "box", "layout": "vertical", "spacing": "sm",
+                // --- 3. แพ็คใส่ Flex Layout ---
+                summaryFlexContents.push({
+                    "type": "box", "layout": "vertical", "margin": "md", "spacing": "xs",
+                    "contents": [
+                        { "type": "text", "text": `👤 [ ${user.memberNumber || '-'} ] ${displayName}`, "weight": "bold", "color": "#ffffff", "size": "sm" },
+                        
+                        // รายละเอียดป๊อกเด้ง
+                        {
+                            "type": "box", "layout": "horizontal",
                             "contents": [
-                                { "type": "text", "text": "🔒 ปิดรอบจั่ว & ปิดไฮโลเรียบร้อย 🏁", "weight": "bold", "color": "#ffaa00", "size": "md", "align": "center" },
-                                { "type": "text", "text": `รอบที่: ${currentRound} (หน้า ${index + 1}/${flexPages.length})`, "size": "xs", "color": "#ffffff", "align": "center" },
-                                { "type": "separator", "color": "#3a2d1f" },
-                                { "type": "text", "text": "📋 สรุปโพยป๊อกเด้ง & ไฮโล ประจำรอบ", "size": "xs", "color": "#ffaa00", "weight": "bold" },
-                                { "type": "box", "layout": "vertical", "spacing": "xs", "contents": pageContents },
-                                { "type": "text", "text": "ℹ️ รอแอดมินออกผลและคำนวณเงินสักครู่ครับ", "size": "xs", "color": "#aaaaaa", "align": "center", "margin": "sm" }
+                                { "type": "text", "text": `👉 แทงขา: [ ${legsStr} ]`, "size": "xs", "color": "#cccccc", "flex": 5 },
+                                { "type": "text", "text": `🃏 จั่วเพิ่ม: [ ${drawStr} ]`, "size": "xs", "color": "#3399ff", "flex": 5, "weight": "bold", "align": "end" }
                             ]
-                        }
-                    }));
+                        },
+                        {
+                            "type": "box", "layout": "horizontal",
+                            "contents": [
+                                { "type": "text", "text": `💰 ยอดเล่น: ${totalRealPlay} ฿`, "size": "xs", "color": "#aaaaaa", "flex": 5 },
+                                { "type": "text", "text": `(รวมค้ำ: ${totalWithBounce} ฿)`, "size": "xs", "color": "#00ff66", "flex": 5, "align": "end", "weight": "bold" }
+                            ]
+                        },
 
-                    await axios.post('https://api.line.me/v2/bot/message/reply', {
-                        replyToken: replyToken,
-                        messages: [
-                            {
-                                "type": "image",
-                                "originalContentUrl": closeDrawImgUrl,
-                                "previewImageUrl": closeDrawImgUrl
-                            },
-                            {
-                                "type": "flex",
-                                "altText": `🚫 ปิดรอบขอจั่วและไฮโลเรียบร้อย (รอบที่ ${currentRound})`,
-                                "contents": {
-                                    "type": "carousel",
-                                    "contents": carouselBubbles
-                                }
-                            }
-                        ]
-                    }, {
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${TOKEN}`
-                        }
-                    });
-                } catch (error) {
-                    console.error("❌ ส่งรูปภาพและ Flex ปิดจั่วล้มเหลว:", error.response ? error.response.data : error.message);
+                        // รายละเอียดไฮโล (เพิ่มเข้ามาใหม่)
+                        {
+                            "type": "box", "layout": "vertical", "margin": "xs",
+                            "contents": [
+                                { "type": "text", "text": `🎲 [ไฮโล] แทง: ${hiloStr}`, "size": "xs", "color": "#ffcc00", "wrap": true },
+                                { "type": "text", "text": `💰 ยอดรวมไฮโล: ${totalHiloAmount} ฿`, "size": "xs", "color": "#00ff66", "weight": "bold" }
+                            ]
+                        },
+                        { "type": "separator", "color": "#2c2214", "margin": "xs" }
+                    ]
+                });
+            }
+        }
+                    
+        if (!hasBets) {
+            summaryFlexContents.push({
+                "type": "text",
+                "text": "• รอบนี้ไม่มีสมาชิกส่งโพยเดิมพันเข้ามาครับ",
+                "size": "sm",
+                "color": "#888888",
+                "style": "italic",
+                "align": "center"
+            });
+        }
+
+        // 🚀 ยิงข้อความแพ็คคู่: [1. รูปภาพปิดจั่ว/ปิดไฮโล] + [2. Flex Carousel สรุปผล]
+        try {
+            const chunkSize = 6; 
+            const flexPages = [];
+            for (let i = 0; i < summaryFlexContents.length; i += chunkSize) {
+                flexPages.push(summaryFlexContents.slice(i, i + chunkSize));
+            }
+
+            if (flexPages.length === 0) {
+                flexPages.push([{ "type": "text", "text": "ไม่มีรายการแทงในรอบนี้", "color": "#aaaaaa", "size": "xs", "align": "center" }]);
+            }
+
+            const carouselBubbles = flexPages.map((pageContents, index) => ({
+                "type": "bubble",
+                "styles": { "body": { "backgroundColor": "#1a140d" } },
+                "body": {
+                    "type": "box", "layout": "vertical", "spacing": "sm",
+                    "contents": [
+                        { "type": "text", "text": "🔒 ปิดรอบจั่ว & ปิดไฮโลเรียบร้อย 🏁", "weight": "bold", "color": "#ffaa00", "size": "md", "align": "center" },
+                        { "type": "text", "text": `รอบที่: ${currentRound} (หน้า ${index + 1}/${flexPages.length})`, "size": "xs", "color": "#ffffff", "align": "center" },
+                        { "type": "separator", "color": "#3a2d1f" },
+                        { "type": "text", "text": "📋 สรุปโพยป๊อกเด้ง & ไฮโล ประจำรอบ", "size": "xs", "color": "#ffaa00", "weight": "bold" },
+                        { "type": "box", "layout": "vertical", "spacing": "xs", "contents": pageContents },
+                        { "type": "text", "text": "ℹ️ รอแอดมินออกผลและคำนวณเงินสักครู่ครับ", "size": "xs", "color": "#aaaaaa", "align": "center", "margin": "sm" }
+                    ]
                 }
-                return;
+            }));
+
+            await axios.post('https://api.line.me/v2/bot/message/reply', {
+                replyToken: replyToken,
+                messages: [
+                    {
+                        "type": "image",
+                        "originalContentUrl": closeDrawImgUrl,
+                        "previewImageUrl": closeDrawImgUrl
+                    },
+                    {
+                        "type": "flex",
+                        "altText": `🚫 ปิดรอบขอจั่วและไฮโลเรียบร้อย (รอบที่ ${currentRound})`,
+                        "contents": {
+                            "type": "carousel",
+                            "contents": carouselBubbles
+                        }
+                    }
+                ]
+            }, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${TOKEN}`
+                }
+            });
+        } catch (error) {
+            console.error("❌ ส่งรูปภาพและ Flex ปิดจั่วล้มเหลว:", error.response ? error.response.data : error.message);
+        }
+        return;
             }
         }
     }

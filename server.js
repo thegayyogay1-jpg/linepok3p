@@ -1501,7 +1501,6 @@ hiloBets.forEach((bet) => {
         time: new Date().toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok' })
     });
 });
-            }
 
             // --- 💰 ตรวจสอบเครดิตและบันทึกโพยไฮโล ---
             if (!hasError && totalHiloBet > 0) {

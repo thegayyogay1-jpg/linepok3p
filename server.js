@@ -1326,19 +1326,7 @@ if (hiloRoundBets && hiloRoundBets[uId]) {
 
 // นำ hiloDetailTexts.join(', ') ไปใส่ใน Flex Message 
 // และนำ totalHiloAmount ไปแสดงในยอดรวมไฮโล
-
-                            summaryFlexContents.push({
-                                "type": "box", "layout": "vertical", "margin": "md", "spacing": "xs",
-                                "contents": [
-                                    { "type": "text", "text": `🎲 [ไฮโล] [ ${user.memberNumber || '-'} ] ${displayName}`, "weight": "bold", "color": "#FFCE00", "size": "sm" },
-                                    { "type": "text", "text": `🎯 แทง: ${hiloDetails.join(', ')}`, "size": "xs", "color": "#cccccc", "wrap": true },
-                                    { "type": "text", "text": `💰 ยอดรวมไฮโล: ${totalHiloBet} ฿`, "size": "xs", "color": "#00ff66", "weight": "bold", "align": "end" },
-                                    { "type": "separator", "color": "#2c2214", "margin": "xs" }
-                                ]
-                            });
-                        }
-                    }
-                }
+                           
                 if (!hasBets) {
                     summaryFlexContents.push({
                         "type": "text",

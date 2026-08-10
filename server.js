@@ -897,7 +897,9 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
             } else {
                 currentRound++;
                 isRoundOpen = true;
+                isHiloRoundOpen = true;     // 🎲 เปิดไฮโล
                 roundBets = {}; // ล้างข้อมูลโพยเก่าออกเพื่อเริ่มรอบใหม่
+                hiloRoundBets = {}; // 🎲 ล้างโพยไฮโลเก่า
                 await saveDataToFirebase();
                 
                 // --- 📊 สร้างโครงสร้างสถิติย้อนหลัง ---
@@ -1147,6 +1149,9 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
             currentRound = 0;
             isRoundOpen = false;
             isDrawOpen = false; // ล้างสถานะจั่วไปด้วยเลยตอนเซ็ตศูนย์
+            // 🎲 รีเซ็ตสถานะและโพยไฮโลไปด้วยเลย
+            isHiloRoundOpen = false;
+            hiloRoundBets = {};
             roundBets = {};
             usersRoundCrossCheck = {};
             matchHistory = []; // รีเซ็ตประวัติ 5 รอบย้อนหลังออกไปด้วย
@@ -1228,6 +1233,9 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
             } else {
                 // 1. ปิดระบบรับรอบจั่วทันที
                 isDrawOpen = false;
+                isHiloRoundOpen = false; // 🎲 ปิดไฮโลอย่างเป็นทางการที่คำสั่ง xx
+
+                await saveDataToFirebase();
 
                 // 2. ดำเนินการวนลูปดึงข้อมูลจากโค้ดหลักของน้าแบบไม่มีตกหล่น
                 let summaryFlexContents = [];
@@ -1301,7 +1309,35 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                         });
                     }
                 }
+                // --- 🎲 B. วนลูปเช็กข้อมูลโพยไฮโล (เพิ่มใหม่) ---
+                if (typeof hiloRoundBets !== 'undefined') {
+                    for (let uid in hiloRoundBets) {
+                        const hiloBetsArray = hiloRoundBets[uid];
+                        if (hiloBetsArray && hiloBetsArray.length > 0) {
+                            hasBets = true;
+                            const user = usersWallets[uid] || {};
+                            const displayName = user.nickname || user.name || "สมาชิก";
 
+                            let hiloDetails = [];
+                            let totalHiloBet = 0;
+
+                            hiloBetsArray.forEach((hb) => {
+                                hiloDetails.push(`${hb.type} ${hb.amount}฿`);
+                                totalHiloBet += hb.amount || 0;
+                            });
+
+                            summaryFlexContents.push({
+                                "type": "box", "layout": "vertical", "margin": "md", "spacing": "xs",
+                                "contents": [
+                                    { "type": "text", "text": `🎲 [ไฮโล] [ ${user.memberNumber || '-'} ] ${displayName}`, "weight": "bold", "color": "#FFCE00", "size": "sm" },
+                                    { "type": "text", "text": `🎯 แทง: ${hiloDetails.join(', ')}`, "size": "xs", "color": "#cccccc", "wrap": true },
+                                    { "type": "text", "text": `💰 ยอดรวมไฮโล: ${totalHiloBet} ฿`, "size": "xs", "color": "#00ff66", "weight": "bold", "align": "end" },
+                                    { "type": "separator", "color": "#2c2214", "margin": "xs" }
+                                ]
+                            });
+                        }
+                    }
+                }
                 if (!hasBets) {
                     summaryFlexContents.push({
                         "type": "text",
@@ -1313,38 +1349,34 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                     });
                 }
 
-                // 🚀 ยิงข้อความแพ็คคู่: [1. รูปภาพปิดจั่วของน้า] + [2. Flex Message สรุปโพยและการจั่วรายบุคคล]
+                // 🚀 ยิงข้อความแพ็คคู่: [1. รูปภาพปิดจั่ว/ปิดไฮโล] + [2. Flex Carousel สรุปผล]
                 try {
-                    // 1. แบ่งกลุ่มการแสดงผล (Chunking) หน้าละ 3 รายชื่อ เพื่อไม่ให้ตัว Flex สรุปจั่วยาวจนเกินไป
-                    const chunkSize = 7; 
+                    const chunkSize = 6; 
                     const flexPages = [];
                     for (let i = 0; i < summaryFlexContents.length; i += chunkSize) {
                         flexPages.push(summaryFlexContents.slice(i, i + chunkSize));
                     }
 
-                    // 2. ป้องกันข้อผิดพลาดกรณีไม่มีการส่งโพย
                     if (flexPages.length === 0) {
                         flexPages.push([{ "type": "text", "text": "ไม่มีรายการแทงในรอบนี้", "color": "#aaaaaa", "size": "xs", "align": "center" }]);
                     }
 
-                    // 3. วนลูปสร้างหน้าการ์ด (Bubble Carousel)
                     const carouselBubbles = flexPages.map((pageContents, index) => ({
                         "type": "bubble",
                         "styles": { "body": { "backgroundColor": "#1a140d" } },
                         "body": {
                             "type": "box", "layout": "vertical", "spacing": "sm",
                             "contents": [
-                                { "type": "text", "text": "🔒 ปิดรอบขอจั่วไพ่เรียบร้อยแล้วครับ 🏁", "weight": "bold", "color": "#ffaa00", "size": "md", "align": "center" },
+                                { "type": "text", "text": "🔒 ปิดรอบจั่ว & ปิดไฮโลเรียบร้อย 🏁", "weight": "bold", "color": "#ffaa00", "size": "md", "align": "center" },
                                 { "type": "text", "text": `รอบที่: ${currentRound} (หน้า ${index + 1}/${flexPages.length})`, "size": "xs", "color": "#ffffff", "align": "center" },
                                 { "type": "separator", "color": "#3a2d1f" },
-                                { "type": "text", "text": "📋 รายงานสรุปโพยและการจั่วรายบุคคล", "size": "xs", "color": "#ffaa00", "weight": "bold" },
+                                { "type": "text", "text": "📋 สรุปโพยป๊อกเด้ง & ไฮโล ประจำรอบ", "size": "xs", "color": "#ffaa00", "weight": "bold" },
                                 { "type": "box", "layout": "vertical", "spacing": "xs", "contents": pageContents },
-                                { "type": "text", "text": "ℹ️ รอสรุปผลและคิดเงินสักครู่ครับ", "size": "xs", "color": "#aaaaaa", "align": "center", "margin": "sm" }
+                                { "type": "text", "text": "ℹ️ รอแอดมินออกผลและคำนวณเงินสักครู่ครับ", "size": "xs", "color": "#aaaaaa", "align": "center", "margin": "sm" }
                             ]
                         }
                     }));
 
-                    // 4. ยิง API ตอบกลับ
                     await axios.post('https://api.line.me/v2/bot/message/reply', {
                         replyToken: replyToken,
                         messages: [
@@ -1355,9 +1387,9 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                             },
                             {
                                 "type": "flex",
-                                "altText": `🚫 ปิดรอบขอจั่วไพ่เรียบร้อยแล้ว (รอบที่ ${currentRound})`,
+                                "altText": `🚫 ปิดรอบขอจั่วและไฮโลเรียบร้อย (รอบที่ ${currentRound})`,
                                 "contents": {
-                                    "type": "carousel", // 👈 เปลี่ยนโครงสร้างเป็น carousel แบบสไลด์ข้าง
+                                    "type": "carousel",
                                     "contents": carouselBubbles
                                 }
                             }
@@ -1684,6 +1716,126 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                     }
                 }
             }
+                // ==================== [ 5. ระบบรับโพยไฮโล (ขึ้นต้นด้วย z หรือ ห) ] ====================
+else if ((originalMsg.toLowerCase().startsWith('z') || originalMsg.startsWith('ห')) && originalMsg.includes('-')) {
+    if (!isHiloRoundOpen) { // แยกตัวแปรเช็กรอบไฮโล
+        replyText = "🚫 ตอนนี้ระบบปิดรับโพยไฮโลชั่วคราวครับ";
+    } else {
+        const user = usersWallets[userId];
+        if (!user) {
+            replyText = "⚠️ กรุณาลงทะเบียนสมาชิกก่อนแทงครับ";
+        } else {
+            const lines = originalMsg.split(/\r?\n/);
+            let hiloBets = [];
+            let totalHiloBet = 0;
+            let hasError = false;
+            let errorMsg = "";
+
+            for (let line of lines) {
+                let cleanLine = line.trim().toLowerCase();
+                if (cleanLine === "") continue;
+
+                // ลบ z หรือ ห ออกจากส่วนหน้าเพื่อประมวลผล
+                if (cleanLine.startsWith('z')) cleanLine = cleanLine.substring(1);
+                if (cleanLine.startsWith('ห')) cleanLine = cleanLine.substring(1);
+
+                const parts = cleanLine.split('-');
+                if (parts.length !== 2) {
+                    hasError = true;
+                    errorMsg = `⚠️ รูปแบบโพยไฮโลไม่ถูกต้อง: "${line}"`;
+                    break;
+                }
+
+                const target = parts[0].trim();
+                const price = parseFloat(parts[1].trim());
+
+                if (isNaN(price) || price <= 0) {
+                    hasError = true;
+                    errorMsg = `⚠️ จำนวนเงินไม่ถูกต้องในบรรทัด: "${line}"`;
+                    break;
+                }
+
+                // --- 🎯 ตรวจสอบประเภทการแทงไฮโล ---
+                let betCategory = "";
+
+                // 1. ต / ส (สูง-ต่ำ)
+                if (target === 'ต' || target === 'ต่ำ') betCategory = "ต่ำ";
+                else if (target === 'ส' || target === 'สูง') betCategory = "สูง";
+
+                // 2. 11 ไฮโล
+                else if (target === '11') betCategory = "11 ไฮโล";
+
+                // 3. ตอง / ตองเจาะจง
+                else if (target === 'ตอง') betCategory = "ตองรวม (ตองใดๆ)";
+                else if (/^ตอง[1-6]$/.test(target)) betCategory = `ตอง ${target.replace('ตอง','')}`;
+
+                // 4. ต1-6 / ส1-6 (ต่ำ/สูง + เต็ง)
+                else if (/^[ตส][1-6]$/.test(target)) {
+                    const side = target[0] === 'ต' ? 'ต่ำ' : 'สูง';
+                    const num = target[1];
+                    betCategory = `${side} + เต็ง ${num}`;
+                }
+
+                // 5. เต็ง (ขึ้นต้นด้วย ง ตามด้วยเลข 1-6)
+                else if (target.startsWith('ง')) {
+                    const nums = target.substring(1).split('');
+                    const isValidNums = nums.every(n => ['1','2','3','4','5','6'].includes(n));
+                    if (!isValidNums) {
+                        hasError = true;
+                        errorMsg = `❌ เลขเต็งต้องเป็น 1-6 เท่านั้น: "${line}"`;
+                        break;
+                    }
+                    betCategory = `เต็งเลข [${nums.join(', ')}] (ขาละ ${price} บาท)`;
+                }
+
+                // 6. โต๊ด 2 ตัว (เช่น 12, 35, 46)
+                else if (/^[1-6]{2}$/.test(target)) {
+                    betCategory = `โต๊ด 2 ตัว [${target[0]}-${target[1]}]`;
+                }
+
+                // 7. โต๊ด 3 ตัว (เช่น 123, 456)
+                else if (/^[1-6]{3}$/.test(target)) {
+                    betCategory = `โต๊ด 3 ตัว [${target.split('').join('-')}]`;
+                } 
+
+                else {
+                    hasError = true;
+                    errorMsg = `❌ ไม่พบประเภทการแทงไฮโลที่ระบุในบรรทัด: "${line}"`;
+                    break;
+                }
+
+                // คำนวณยอดเงิน (กรณีเต็งหลายตัว เช่น ง12 ให้คิดเงินคูณจำนวนตัว หรือคิดแยกตามกติกา)
+                let currentLineBet = price;
+                if (target.startsWith('ง')) {
+                    currentLineBet = price * target.substring(1).length; 
+                }
+
+                totalHiloBet += currentLineBet;
+                hiloBets.push({
+                    target: target,
+                    category: betCategory,
+                    price: price,
+                    totalPrice: currentLineBet
+                });
+            }
+
+            // --- 💰 ตรวจสอบเครดิตและบันทึกโพย ---
+            if (!hasError && totalHiloBet > 0) {
+                if (user.balance < totalHiloBet) {
+                    replyText = `❌ เครดิตไม่พอสำหรับแทงไฮโล!\n💸 ยอดแทงรวม: ${totalHiloBet} บาท\n💰 เครดิตที่คุณมี: ${user.balance} บาท`;
+                } else {
+                    user.balance -= totalHiloBet;
+                    await saveDataToFirebase();
+                    
+                    // บันทึกรายการลง Array ไฮโลรอบปัจจุบัน
+                    // ... โค้ดบันทึกและยิง Flex Message แสดงโพยไฮโล ...
+                }
+            } else if (hasError) {
+                replyText = errorMsg;
+            }
+        }
+    }
+}
             // ==================== [ 5. ระบบคืนโพย / ยกเลิกโพยในรอบ ] ====================
             else if (userMsg === "r") {
                 if (!isRoundOpen) {
@@ -1770,6 +1922,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                     }
                 }
             }
+                
             // ==================== [ 6. ระบบสมาชิกพิมพ์ขอจั่วไพ่ เช่น 12+ ] ====================
             else if (userMsg.endsWith('+')) {
                 if (!isDrawOpen) {
@@ -1895,11 +2048,22 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
 else if (originalMsg.startsWith('>')) {
     if (!ADMIN_IDS.includes(userId)) {
         replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งสรุปผลคะแนนครับ";
-    } else if (isRoundOpen) {
+    } else if (isRoundOpen || isHiloRoundOpen) {
         replyText = "⚠️ ต้องพิมพ์ปิดรอบแทง (X) และทำขั้นตอนจั่วไพ่ให้เสร็จก่อน จึงจะสรุปผลได้ครับ";
     } else {
-        let textWithoutArrow = originalMsg.substring(1).trim();
-        const parts = textWithoutArrow.split(/\s+/); // แยกชิ้นส่วนด้วยเว้นวรรคหรือขึ้นบรรทัดใหม่
+        const blocks = originalMsg.split('>').map(b => b.trim()).filter(b => b.length > 0);
+
+        if (blocks.length === 0) {
+            replyText = "⚠️ รูปแบบคำสั่งไม่ถูกต้องครับ";
+            return res.sendStatus(200);
+        }
+
+        // แยกข้อความป๊อกเด้ง และ ไฮโล
+        const pokBlockStr = blocks[0]; 
+        const hiloBlockStr = blocks.length > 1 ? blocks[1] : null;
+
+        // เอาบล็อกป๊อกเด้งมาแยก parts เหมือนเดิม
+        const parts = pokBlockStr.split(/\s+/);
         
         if (parts.length < 2) {
             replyText = "⚠️ รูปแบบผิดครับน้า! ต้องพิมพ์เรียง ขา1 ขา2 ... และตัวสุดท้ายคือเจ้ามือ (คั่นด้วยเว้นวรรค)";
@@ -2003,6 +2167,36 @@ else if (originalMsg.startsWith('>')) {
         tempRoomResults = roomResults;
         tempDealerResult = dealerResult;
 
+        // --- [ เพิ่มใหม่: ส่วนแกะผลไฮโลจากบล็อกที่ 2 ] ---
+let hiloSummaryText = "ไม่มีการส่งผลไฮโลรอบนี้";
+
+if (hiloBlockStr) {
+    let cleanHilo = hiloBlockStr.replace(/h/gi, '').trim();
+    let diceParts = [];
+
+    if (cleanHilo.length === 3 && !cleanHilo.includes(' ')) {
+        diceParts = cleanHilo.split('').map(n => parseInt(n));
+    } else {
+        diceParts = cleanHilo.split(/\s+/).map(n => parseInt(n));
+    }
+
+    if (diceParts.length === 3 && diceParts.every(d => !isNaN(d) && d >= 1 && d <= 6)) {
+        diceParts.sort((a, b) => a - b);
+        const [d1, d2, d3] = diceParts;
+        const sum = d1 + d2 + d3;
+        const isTriple = (d1 === d2 && d2 === d3);
+        let hl = isTriple ? `ตอง ${d1}` : (sum >= 12 ? "สูง 📈" : "ต่ำ 📉");
+        
+        tempHiloDiceResult = [d1, d2, d3]; // บันทึกผลเต๋าไว้รอกด ok
+        hiloSummaryText = `🎲 ลูกเต๋า: ${d1} - ${d2} - ${d3} (${sum} แต้ม | ${hl})`;
+    } else {
+        hiloSummaryText = "⚠️ รูปแบบเลขไฮโลไม่ถูกต้อง";
+        tempHiloDiceResult = null;
+    }
+} else {
+    tempHiloDiceResult = null;
+}
+        
         // --- 📊 [ส่วนสร้างโครงสร้างข้อมูลจัดระเบียบส่งเข้า Flex Message] ---
         let legsFlexContents = [];
 
@@ -2095,6 +2289,15 @@ else if (originalMsg.startsWith('>')) {
                                     { "type": "separator", "color": "#2a2233" },
                                     { "type": "text", "text": "📝 ลำดับหน้าไพ่และผลแพ้ชนะแต่ละขา", "size": "xs", "color": "#ffaa00", "weight": "bold" },
                                     { "type": "box", "layout": "vertical", "spacing": "xs", "contents": legsFlexContents },
+                                    { "type": "separator", "color": "#2a2233" },
+                                    // 🎲 แสดงผลไฮโลพ่วงมาใน Flex
+                                    {
+                                        "type": "box", "layout": "vertical", "backgroundColor": "#1a221f", "paddingAll": "sm", "cornerRadius": "sm",
+                                        "contents": [
+                                            { "type": "text", "text": "🎲 ผลไฮโล", "weight": "bold", "color": "#00ff66", "size": "xs" },
+                                            { "type": "text", "text": hiloSummaryText, "size": "xs", "color": "#ffffff", "margin": "xs" }
+                                        ]
+                                    },
                                     { "type": "separator", "color": "#2a2233" },
                                   // 🔘 [เพิ่มใหม่]: ชุดปุ่มกด ยืนยัน (ok) / ยกเลิก (no)
                             {
@@ -2279,6 +2482,83 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                         }
                     });
                 }); // ปิด userBetsArray.forEach
+
+                    // ==================== 🎲 คำนวณเงินฝั่ง "ไฮโล" (ถ้ามี) ====================
+if (roundHiLoBets && roundHiLoBets[uId]) {
+    const userHiLoBets = roundHiLoBets[uId];
+    
+    userHiLoBets.forEach((hBet) => {
+        // 1. คืนเงินค้ำประกันไฮโล (ถ้ามีกำหนดค้ำ)
+        if (hBet.holdCost) totalHoldRefund += hBet.holdCost;
+
+        // ตัวแปรผลลูกเต๋า เช่น tempHiLoResult = { dice: [4, 5, 6], total: 15, isHigh: true, isLow: false, isTriple: false }
+        if (!tempHiLoResult || !tempHiLoResult.dice) return;
+
+        const dice = tempHiLoResult.dice; // [4, 5, 6]
+        const sum = tempHiLoResult.total; // 15
+        const betAmount = hBet.amount;     // ยอดแทงต่อรายการ
+
+        totalBetAmountThisRound += betAmount; // นับยอดแทงรวมเข้าเทิร์น
+
+        // 2. ตรวจสอบเงื่อนไขตามประเภทการแทง
+        let isWin = false;
+        let payoutOdds = 1; // อัตราจ่าย (ไม่รวมทุน)
+
+        switch (hBet.type) {
+            case 'สูง': // High (11-17, ไม่รวมตอง)
+                if (sum >= 11 && sum <= 17 && !tempHiLoResult.isTriple) {
+                    isWin = true;
+                    payoutOdds = 1; // จ่าย 1 เท่า
+                }
+                break;
+
+            case 'ต่ำ': // Low (4-10, ไม่รวมตอง)
+                if (sum >= 4 && sum <= 10 && !tempHiLoResult.isTriple) {
+                    isWin = true;
+                    payoutOdds = 1; // จ่าย 1 เท่า
+                }
+                break;
+
+            case '11ไฮโล': // 11 Hi-Lo (ผลรวม = 11)
+                if (sum === 11) {
+                    isWin = true;
+                    payoutOdds = 5; // จ่าย 5 เท่า (หรือตามกฎร้าน)
+                }
+                break;
+
+            case 'เต็ง': // เต็งเลข (เช่น เต็ง 5)
+                const matchCount = dice.filter(d => d === hBet.targetNum).length;
+                if (matchCount > 0) {
+                    isWin = true;
+                    payoutOdds = matchCount; // ออก 1 ลูกจ่าย 1 เท่า, ออก 2 ลูกจ่าย 2 เท่า, ออก 3 ลูกจ่าย 3 เท่า
+                }
+                break;
+
+            case 'โต๊ด': // โต๊ดคู่เลข (เช่น 4-5)
+                const hasNum1 = dice.includes(hBet.targetNum1);
+                const hasNum2 = dice.includes(hBet.targetNum2);
+                if (hasNum1 && hasNum2) {
+                    isWin = true;
+                    payoutOdds = 5; // จ่าย 5 เท่า
+                }
+                break;
+
+            case 'ตอง': // ตองรวม (ออกเลขเหมือนกัน 3 ลูก)
+                if (tempHiLoResult.isTriple) {
+                    isWin = true;
+                    payoutOdds = 15; // จ่าย 15 เท่า
+                }
+                break;
+        }
+
+        // 3. คิดยอด ได้ / เสีย
+        if (isWin) {
+            userTotalWinLoss += (betAmount * payoutOdds);
+        } else {
+            userTotalWinLoss -= betAmount;
+        }
+    });
+}
 
                 // 🧮 อัปเดตกระเป๋าเงินจริงหลังคิดยอดสุทธิ
                 user.balance = user.balance + totalHoldRefund + userTotalWinLoss;
@@ -2477,7 +2757,9 @@ global.currentReplyFlex = {
             // กำหนดให้ส่งทั้งข้อความธรรมดา (เก็บประวัติ) และแนบกล่องดีไซน์ไปด้วยครับน้า
             tempRoomResults = null;
             tempDealerResult = null;
+            tempHiLoResult = null;   // 👈 เพิ่มจุดนี้
             roundBets = {};
+            roundHiLoBets = {};       // 👈 เพิ่มจุดนี้
             
             replyText = ""; 
         }     

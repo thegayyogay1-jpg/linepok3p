@@ -20,6 +20,7 @@ const FIREBASE_URL = "https://my-pokdeng-bot-default-rtdb.asia-southeast1.fireba
 let usersWallets = {};
 let nextMemberId = 1;
 let isRoundOpen = false; // ตัวแปรจำสถานะ เปิด/ปิด รอบ
+let isHiloRoundOpen = false; // 👈 เพิ่มบรรทัดนี้ลงไป (ตั้งเป็น true ไว้ถ้าอยากให้เปิดรับตลอด หรือ false ถ้าเปิด-ปิดตามรอบ)
 let roundBets = {};      // ตัวแปรสำหรับจำโพยแทงในแต่ละรอบ
 let currentRound = 0;    // บรรทัดนี้เพื่อจำลำดับรอบปัจจุบัน
 let isDrawOpen = false;  // บรรทัดนี้เพื่อเช็กสถานะรอบจั่วไพ่
@@ -115,6 +116,7 @@ async function saveDataToFirebase() {
             usersWallets: usersWallets,
             nextMemberId: nextMemberId,
             isRoundOpen: isRoundOpen,         // 💾 จำสถานะ เปิด/ปิด รอบ
+            isHiloRoundOpen: isHiloRoundOpen,
             roundBets: roundBets,             // 💾 จำโพยแทงในแต่ละรอบ
             currentRound: currentRound,       // 💾 จำลำดับรอบปัจจุบัน
             isDrawOpen: isDrawOpen,           // 💾 จำสถานะรอบจั่วไพ่
@@ -1409,8 +1411,8 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
     }
 }
    // ==================== [ 5. ระบบรับโพยไฮโล (ขึ้นต้นด้วย z หรือ ห) ] ====================
- if ((originalMsg.toLowerCase().startsWith('z') || originalMsg.startsWith('ห')) && originalMsg.includes('-')) {
-    if (!isHiloRoundOpen) { // แยกตัวแปรเช็กรอบไฮโล
+if ((originalMsg.toLowerCase().startsWith('z') || originalMsg.startsWith('ห')) && originalMsg.includes('-')) {
+    if (!isHiloRoundOpen) {
         replyText = "🚫 ตอนนี้ระบบปิดรับโพยไฮโลชั่วคราวครับ";
     } else {
         const user = usersWallets[userId];
@@ -1427,7 +1429,6 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                 let cleanLine = line.trim().toLowerCase();
                 if (cleanLine === "") continue;
 
-                // ลบ z หรือ ห ออกจากส่วนหน้าเพื่อประมวลผล
                 if (cleanLine.startsWith('z')) cleanLine = cleanLine.substring(1);
                 if (cleanLine.startsWith('ห')) cleanLine = cleanLine.substring(1);
 
@@ -1447,28 +1448,18 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                     break;
                 }
 
-                // --- 🎯 ตรวจสอบประเภทการแทงไฮโล ---
                 let betCategory = "";
 
-                // 1. ต / ส (สูง-ต่ำ)
                 if (target === 'ต' || target === 'ต่ำ') betCategory = "ต่ำ";
                 else if (target === 'ส' || target === 'สูง') betCategory = "สูง";
-
-                // 2. 11 ไฮโล
                 else if (target === '11') betCategory = "11 ไฮโล";
-
-                // 3. ตอง / ตองเจาะจง
                 else if (target === 'ตอง') betCategory = "ตองรวม (ตองใดๆ)";
                 else if (/^ตอง[1-6]$/.test(target)) betCategory = `ตอง ${target.replace('ตอง','')}`;
-
-                // 4. ต1-6 / ส1-6 (ต่ำ/สูง + เต็ง)
                 else if (/^[ตส][1-6]$/.test(target)) {
                     const side = target[0] === 'ต' ? 'ต่ำ' : 'สูง';
                     const num = target[1];
                     betCategory = `${side} + เต็ง ${num}`;
                 }
-
-                // 5. เต็ง (ขึ้นต้นด้วย ง ตามด้วยเลข 1-6)
                 else if (target.startsWith('ง')) {
                     const nums = target.substring(1).split('');
                     const isValidNums = nums.every(n => ['1','2','3','4','5','6'].includes(n));
@@ -1479,24 +1470,18 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                     }
                     betCategory = `เต็งเลข [${nums.join(', ')}] (ขาละ ${price} บาท)`;
                 }
-
-                // 6. โต๊ด 2 ตัว (เช่น 12, 35, 46)
                 else if (/^[1-6]{2}$/.test(target)) {
                     betCategory = `โต๊ด 2 ตัว [${target[0]}-${target[1]}]`;
                 }
-
-                // 7. โต๊ด 3 ตัว (เช่น 123, 456)
                 else if (/^[1-6]{3}$/.test(target)) {
                     betCategory = `โต๊ด 3 ตัว [${target.split('').join('-')}]`;
                 } 
-
                 else {
                     hasError = true;
                     errorMsg = `❌ ไม่พบประเภทการแทงไฮโลที่ระบุในบรรทัด: "${line}"`;
                     break;
                 }
 
-                // คำนวณยอดเงิน (กรณีเต็งหลายตัว เช่น ง12 ให้คิดเงินคูณจำนวนตัว หรือคิดแยกตามกติกา)
                 let currentLineBet = price;
                 if (target.startsWith('ง')) {
                     currentLineBet = price * target.substring(1).length; 
@@ -1511,7 +1496,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                 });
             }
 
-            // --- 💰 ตรวจสอบเครดิตและบันทึกโพย ---
+            // --- 💰 ตรวจสอบเครดิตและบันทึกโพยไฮโล ---
             if (!hasError && totalHiloBet > 0) {
                 if (user.balance < totalHiloBet) {
                     replyText = `❌ เครดิตไม่พอสำหรับแทงไฮโล!\n💸 ยอดแทงรวม: ${totalHiloBet} บาท\n💰 เครดิตที่คุณมี: ${user.balance} บาท`;
@@ -1519,8 +1504,22 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                     user.balance -= totalHiloBet;
                     await saveDataToFirebase();
                     
-                    // บันทึกรายการลง Array ไฮโลรอบปัจจุบัน
-                    // ... โค้ดบันทึกและยิง Flex Message แสดงโพยไฮโล ...
+                    if (!hiloRoundBets) hiloRoundBets = {};
+                    if (!hiloRoundBets[userId]) hiloRoundBets[userId] = [];
+
+                    hiloBets.forEach((bet) => {
+                        hiloRoundBets[userId].push({
+                            name: user.nickname || user.name || "ไม่ระบุชื่อ",
+                            memberNumber: user.memberNumber,
+                            target: bet.target,
+                            category: bet.category,
+                            price: bet.price,
+                            totalPrice: bet.totalPrice,
+                            time: new Date().toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok' })
+                        });
+                    });
+
+                    replyText = `✅ บันทึกโพยไฮโลเรียบร้อยแล้ว!\n👤 ผู้แทง: ${user.nickname || user.name}\n💵 ยอดแทงรวม: ${totalHiloBet} บาท\n💰 เครดิตคงเหลือ: ${user.balance} บาท`;
                 }
             } else if (hasError) {
                 replyText = errorMsg;

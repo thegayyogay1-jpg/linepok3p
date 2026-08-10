@@ -1311,22 +1311,21 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                         });
                     }
                 }
-                // --- 🎲 B. วนลูปเช็กข้อมูลโพยไฮโล (เพิ่มใหม่) ---
-                if (typeof hiloRoundBets !== 'undefined') {
-                    for (let uid in hiloRoundBets) {
-                        const hiloBetsArray = hiloRoundBets[uid];
-                        if (hiloBetsArray && hiloBetsArray.length > 0) {
-                            hasBets = true;
-                            const user = usersWallets[uid] || {};
-                            const displayName = user.nickname || user.name || "สมาชิก";
+                let totalHiloAmount = 0;
+let hiloDetailTexts = [];
 
-                            let hiloDetails = [];
-                            let totalHiloBet = 0;
+if (hiloRoundBets && hiloRoundBets[uId]) {
+    hiloRoundBets[uId].forEach(hBet => {
+        const betName = hBet.category || hBet.type || hBet.target || "ไม่ระบุ";
+        const betAmount = hBet.totalPrice || hBet.actualBet || hBet.price || 0;
+        
+        totalHiloAmount += betAmount;
+        hiloDetailTexts.push(`${betName} ${betAmount}฿`);
+    });
+}
 
-                            hiloBetsArray.forEach((hb) => {
-                                hiloDetails.push(`${hb.type} ${hb.amount}฿`);
-                                totalHiloBet += hb.amount || 0;
-                            });
+// นำ hiloDetailTexts.join(', ') ไปใส่ใน Flex Message 
+// และนำ totalHiloAmount ไปแสดงในยอดรวมไฮโล
 
                             summaryFlexContents.push({
                                 "type": "box", "layout": "vertical", "margin": "md", "spacing": "xs",
@@ -1487,13 +1486,23 @@ if ((originalMsg.toLowerCase().startsWith('z') || originalMsg.startsWith('ห'))
                     currentLineBet = price * target.substring(1).length; 
                 }
 
-                totalHiloBet += currentLineBet;
-                hiloBets.push({
-                    target: target,
-                    category: betCategory,
-                    price: price,
-                    totalPrice: currentLineBet
-                });
+                if (!hiloRoundBets) hiloRoundBets = {};
+if (!hiloRoundBets[userId]) hiloRoundBets[userId] = [];
+
+hiloBets.forEach((bet) => {
+    hiloRoundBets[userId].push({
+        name: user.nickname || user.name || "ไม่ระบุชื่อ",
+        memberNumber: user.memberNumber,
+        target: bet.target,
+        category: bet.category,      // 👈 เก็บประเภท
+        type: bet.category,          // 👈 ใส่ type เผื่อไว้
+        price: bet.price,            // 👈 ราคาทั้งหมด/ขา
+        pricePerLeg: bet.price,
+        actualBet: bet.totalPrice,   // 👈 ยอดเงินแทงจริง
+        totalPrice: bet.totalPrice,
+        time: new Date().toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok' })
+    });
+});
             }
 
             // --- 💰 ตรวจสอบเครดิตและบันทึกโพยไฮโล ---

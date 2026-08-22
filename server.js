@@ -1879,7 +1879,7 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
                     const side = targetStr.startsWith("ต") ? "ต่ำ" : "สูง";
                     const num = targetStr.substring(1);
                     if (['1','2','3','4','5','6'].includes(num)) {
-                        categoryName = `${side} คู่กับ ${num}`;
+                        categoryName = `(${side}${num})`;
                         isValidType = true;
                     }
                 }
@@ -1888,7 +1888,7 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
                 else if (targetStr.length === 2 && targetStr.split('').every(c => ['1','2','3','4','5','6'].includes(c))) {
                     const nums = targetStr.split('');
                     if (nums[0] !== nums[1]) {
-                        categoryName = `โต๊ด 2 ตัว (${nums[0]}-${nums[1]})`;
+                        categoryName = `(โต๊ด${nums[0]}${nums[1]})`;
                         isValidType = true;
                     }
                 }
@@ -1896,7 +1896,7 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
                 // 2.5 โต๊ด 3 ตัว (เช่น 123 - ต้องไม่ซ้ำกัน 3 เลข)
                 else if (targetStr.length === 3 && targetStr.split('').every(c => ['1','2','3','4','5','6'].includes(c)) && new Set(targetStr.split('')).size === 3) {
                     const nums = targetStr.split('');
-                    categoryName = `โต๊ด 3 ตัว (${nums.join('-')})`;
+                    categoryName = `(โต๊ด ${nums.join})`;
                     isValidType = true;
                 }
 

@@ -1280,7 +1280,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                     
                     if (userBetsArray.length === 0 && userHiloArray.length === 0) continue;
                         hasBets = true;
-                        const user = usersWallets[uid] || {}; // ดึงข้อมูลโปรไฟล์สมาชิก
+                        const user = (usersWallets && usersWallets[uid]) ? usersWallets[uid] : {}; // ดึงข้อมูลโปรไฟล์สมาชิก
                         // 💡 ดึงชื่อเล่น (ถ้าน้าไม่ได้ตั้ง nickname ไว้ ระบบจะถอยไปใช้ user.name อัตโนมัติ)
                         const displayName = user.nickname || user.name || "สมาชิก";
 

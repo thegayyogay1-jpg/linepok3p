@@ -24,6 +24,7 @@ let roundBets = {};      // ตัวแปรสำหรับจำโพย�
 let hiloUserTrackers = {}; // ตัวแปรเก็บประวัติการแทงสวน/กั๊กไฮโลของผู้เล่นแต่ละคนในรอบนั้นๆ
 let isHiloRoundOpen = false; // 🎲 ตัวแปรจำสถานะ เปิด/ปิด รับแทงไฮโล
 let hiloRoundBets = {};      // 🎲 ตัวแปรเก็บโพยแทงไฮโลประจำรอบ
+let tempHiloDices = [];
 let currentRound = 0;    // บรรทัดนี้เพื่อจำลำดับรอบปัจจุบัน
 let isDrawOpen = false;  // บรรทัดนี้เพื่อเช็กสถานะรอบจั่วไพ่
 let tempRoomResults = null; // ใช้พักข้อมูลผลแต้มชั่วคราวที่แอดมินพึ่งพิมพ์ส่งมา
@@ -2457,11 +2458,18 @@ else if (originalMsg.startsWith('>')) {
     } else if (isRoundOpen) {
         replyText = "⚠️ ต้องพิมพ์ปิดรอบแทง (X) และทำขั้นตอนจั่วไพ่ให้เสร็จก่อน จึงจะสรุปผลได้ครับ";
     } else {
-        let textWithoutArrow = originalMsg.substring(1).trim();
-        const parts = textWithoutArrow.split(/\s+/); // แยกชิ้นส่วนด้วยเว้นวรรคหรือขึ้นบรรทัดใหม่
+        // 1. แยกข้อความออกเป็น 2 ส่วนด้วยสัญลักษณ์ > (ป๊อกเด้ง และ ไฮโล)
+        const rawSections = originalMsg.split('>').map(s => s.trim()).filter(s => s.length > 0);
         
+        const pokdengRaw = rawSections[0] || ""; // ส่วนของป๊อกเด้ง
+        const hiloRaw = rawSections[1] || "";    // ส่วนของไฮโล (ถ้ามี)
+
+        // ----------------------------------------------------
+        // 🃏 [ส่วนที่ 1: แกะผลป๊อกเด้ง]
+        // ----------------------------------------------------
+        const parts = pokdengRaw.split(/\s+/);
         if (parts.length < 2) {
-            replyText = "⚠️ รูปแบบผิดครับน้า! ต้องพิมพ์เรียง ขา1 ขา2 ... และตัวสุดท้ายคือเจ้ามือ (คั่นด้วยเว้นวรรค)";
+            replyText = "⚠️ รูปแบบป๊อกเด้งผิดครับ! ต้องมีอย่างน้อย 1 ขา และตัวสุดท้ายคือเจ้ามือ";
             return res.sendStatus(200);
         }
 
@@ -2530,7 +2538,7 @@ else if (originalMsg.startsWith('>')) {
     
     result2Cards = parseCardStr(part1, false, false);
     result3Cards = parseCardStr(part2, false, true);
-} else {
+    } else {
     // 2. ถ้าพิมพ์ติดกันแบบปกติ ไม่มีคอมม่า ให้ใช้ RegEx ช่วยผ่าแยก
     const match = innerContent.match(/^([0-9tshfตร]+(?:\/*))([0-9tshfตร]+(?:\/*))$/i);
     
@@ -2558,9 +2566,36 @@ else if (originalMsg.startsWith('>')) {
                 threeCards: result3Cards
             };
         }
+        // ----------------------------------------------------
+        // 🎲 [ส่วนที่ 2: แกะผลไฮโล]
+        // ----------------------------------------------------
+        let hiloDices = [];
+        let hiloTotalScore = 0;
+        let hiloResultText = "ไม่มีการส่งผลไฮโล";
 
+        if (hiloRaw) {
+            // ดึงเฉพาะตัวเลข 3 ตัว เช่น 456
+            const diceMatches = hiloRaw.replace(/[^1-6]/g, '').slice(0, 3);
+            if (diceMatches.length === 3) {
+                hiloDices = diceMatches.split('').map(Number);
+                hiloTotalScore = hiloDices.reduce((a, b) => a + b, 0);
+                
+                // ตรวจสอบ ตอง / สูง / ต่ำ / 11 ไฮโล
+                const isTriple = (hiloDices[0] === hiloDices[1] && hiloDices[1] === hiloDices[2]);
+                let highLowText = "";
+                if (isTriple) highLowText = "ตอง 💥";
+                else if (hiloTotalScore === 11) highLowText = "11 ไฮโล 🎲";
+                else if (hiloTotalScore >= 12) highLowText = "สูง 🔴";
+                else highLowText = "ต่ำ 🔵";
+
+                hiloResultText = `🎲 ลูกเต๋า: [ ${hiloDices.join(" - ")} ] | ผล: ${hiloTotalScore} แต้ม (${highLowText})`;
+            }
+        }
+
+        // 💾 บันทึกผลไว้ในตัวแปร Temp เพื่อรอแอดมินกด "ok" ตัดเงิน
         tempRoomResults = roomResults;
         tempDealerResult = dealerResult;
+        tempHiloDices = hiloDices; // (อย่าลืมประกาศตัวแปร tempHiloDices ไว้ด้านบนสุดของไฟล์ด้วยครับ)
 
         // --- 📊 [ส่วนสร้างโครงสร้างข้อมูลจัดระเบียบส่งเข้า Flex Message] ---
         let legsFlexContents = [];
@@ -2654,55 +2689,61 @@ else if (originalMsg.startsWith('>')) {
                                     { "type": "separator", "color": "#2a2233" },
                                     { "type": "text", "text": "📝 ลำดับหน้าไพ่และผลแพ้ชนะแต่ละขา", "size": "xs", "color": "#ffaa00", "weight": "bold" },
                                     { "type": "box", "layout": "vertical", "spacing": "xs", "contents": legsFlexContents },
+                                    
+                                    // แสดงผลไฮโล (ถ้ามี)
+                                    { "type": "separator", "color": "#2a2233" },
+                                    { "type": "text", "text": "🎲 ผลการออกรางวัลไฮโล", "size": "xs", "color": "#ffaa00", "weight": "bold" },
+                                    { "type": "text", "text": hiloResultText, "size": "xs", "color": "#ffffff", "wrap": true },
+                                    
                                     { "type": "separator", "color": "#2a2233" },
                                   // 🔘 [เพิ่มใหม่]: ชุดปุ่มกด ยืนยัน (ok) / ยกเลิก (no)
-                            {
-                                "type": "box",
-                                "layout": "horizontal",
-                                "spacing": "sm",
-                                "margin": "md",
-                                "contents": [
                                     {
-                                        "type": "button",
-                                        "style": "primary",
-                                        "color": "#00c853", // สีเขียว
-                                        "height": "sm",
-                                        "action": {
-                                            "type": "message",
-                                            "label": "✅ ยืนยัน",
-                                            "text": "ok" // คำสั่งที่ส่งเข้าแชทเมื่อกดปุ่ม
-                                        }
-                                    },
-                                    {
-                                        "type": "button",
-                                        "style": "primary",
-                                        "color": "#d32f2f", // สีแดง
-                                        "height": "sm",
-                                        "action": {
-                                            "type": "message",
-                                            "label": "❌ ยกเลิก",
-                                            "text": "no" // คำสั่งที่ส่งเข้าแชทเมื่อกดปุ่ม
-                                        }
+                                        "type": "box",
+                                        "layout": "horizontal",
+                                        "spacing": "sm",
+                                        "margin": "md",
+                                        "contents": [
+                                            {
+                                                "type": "button",
+                                                "style": "primary",
+                                                "color": "#00c853", // สีเขียว
+                                                "height": "sm",
+                                                "action": {
+                                                    "type": "message",
+                                                    "label": "✅ ยืนยัน",
+                                                    "text": "ok" // คำสั่งที่ส่งเข้าแชทเมื่อกดปุ่ม
+                                                }
+                                            },
+                                            {
+                                                "type": "button",
+                                                "style": "primary",
+                                                "color": "#d32f2f", // สีแดง
+                                                "height": "sm",
+                                                "action": {
+                                                    "type": "message",
+                                                    "label": "❌ ยกเลิก",
+                                                    "text": "no" // คำสั่งที่ส่งเข้าแชทเมื่อกดปุ่ม
+                                                }
+                                            }
+                                        ]
                                     }
                                 ]
                             }
-                        ]
+                        }
                     }
+                ]
+            }, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${TOKEN}`
                 }
-            }
-        ]
-    }, {
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${TOKEN}`
+            });
+        } catch (error) {
+            console.error("❌ ส่งรูปภาพและ Flex ตรวจสอบผลล้มเหลว:", error.response ? error.response.data : error.message);
         }
-    });
-} catch (error) {
-    console.error("❌ ส่งรูปภาพและ Flex ตรวจสอบผลล้มเหลว:", error.response ? error.response.data : error.message);
-}
-return res.sendStatus(200);
-    }
-}
+        return res.sendStatus(200);
+            }
+        }
   // ==================== [ 9. ระบบแอดมินยืนยันผลคำนวณเงินจริง OK / NO (Settlement Engine) ] ====================
 else if (userMsg === 'ok' || userMsg === 'no') {
     if (!ADMIN_IDS.includes(userId)) return;

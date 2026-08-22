@@ -1310,7 +1310,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
 
                             // คำนวณยอดเงินรวม
                             totalRealPlay += bet.totalPrice || bet.actualBet; // รองรับโครงสร้างชื่อตัวแปรของโพย
-                            totalWithBounce += bet.holdCost; // ดึงยอดค้ำเด้ง 3 เท่าที่ระบบหักไว้จริงมาแสดง
+                            totalWithBounce += bet.holdCost || bet.totalPrice || (bet.actualBet ? bet.actualBet * 3 : 0); // ดึงยอดค้ำเด้ง 3 เท่าที่ระบบหักไว้จริงมาแสดง
                         });
                     
                         // --- คำนวณฝั่งไฮโล ---

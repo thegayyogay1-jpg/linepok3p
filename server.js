@@ -1051,7 +1051,7 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                         totalHiloAmt += bPrice;
                         hiloList.push(`${bName} ${bPrice}฿`);
                     });
-                    const hiloTextDisplay = hiloList.length > 0 ? hiloList.join(', ') : 'ไม่ได้แทง';
+                    const hiloTextDisplay = hiloList.length > 0 ? hiloList.join(' I ') : 'ไม่ได้แทง';
 
                    // 3. สร้าง UI Box แสดงผล (บรรทัดแรก: เลขสมาชิก + ชื่อเล่น + ยอดรวม, บรรทัดสอง: ขาที่ลง)
                     summaryFlexContents.push({
@@ -1329,7 +1329,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                         // จัดเรียงรายชื่อขาให้สวยงามเพื่ออ่านง่าย
                         const legsStr = betLegsDetail.length > 0 ? betLegsDetail.sort().join(', ') : "ไม่ได้แทง";
                         const drawStr = drawLegsDetail.length > 0 ? drawLegsDetail.sort().join(', ') : (userBetsArray.length > 0 ? "ไม่มี (อยู่ 2 ใบ)" : "-");
-                        const hiloTextDisplay = hiloList.length > 0 ? hiloList.join(', ') : 'ไม่ได้แทง';
+                        const hiloTextDisplay = hiloList.length > 0 ? hiloList.join(' I ') : 'ไม่ได้แทง';
                     
                         // นำข้อมูลที่ประมวลผลได้มาแพ็คใส่รูปแบบ Flex Layout เพื่อความสวยงามและแสดงผลเป็นระเบียบ
                         summaryFlexContents.push({

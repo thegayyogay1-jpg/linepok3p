@@ -1042,16 +1042,9 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                     // รวมขาที่แทงเข้าด้วยกัน เช่น "ขา1 (20), ขา2 (20)"
                     const legTextDisplay = legsList.length > 0 ? legsList.join(', ') : 'ไม่มีข้อมูลขา';
 
-                    // --- คำนวณไฮโล ---
-                    let totalHiloAmt = 0;
-                    let hiloList = [];
-                    userHiloArray.forEach(hb => {
-                        const bName = hb.category || hb.type || hb.target || "ไฮโล";
-                        const bPrice = hb.totalPrice || hb.actualBet || hb.price || 0;
-                        totalHiloAmt += bPrice;
-                        hiloList.push(`${bName} ${bPrice}฿`);
-                    });
-                    const hiloTextDisplay = hiloList.length > 0 ? hiloList.join(' I ') : 'ไม่ได้แทง';
+                    // 🎲 --- คำนวณและจัดกลุ่มไฮโล (ปรับแก้จุดนี้) ---
+                    let totalHiloAmt = userHiloArray.reduce((sum, hb) => sum + (hb.totalPrice || hb.actualBet || hb.price || 0), 0);
+                    const hiloTextDisplay = formatGroupedHiloBets(userHiloArray);
 
                    // 3. สร้าง UI Box แสดงผล (บรรทัดแรก: เลขสมาชิก + ชื่อเล่น + ยอดรวม, บรรทัดสอง: ขาที่ลง)
                     summaryFlexContents.push({
@@ -1314,14 +1307,8 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                         });
                     
                         // --- คำนวณฝั่งไฮโล ---
-                        let totalHiloAmt = 0;
-                        let hiloList = [];
-                        userHiloArray.forEach(hb => {
-                            const bName = hb.category || hb.type || hb.target || "ไฮโล";
-                            const bPrice = hb.totalPrice || hb.actualBet || hb.price || 0;
-                            totalHiloAmt += bPrice;
-                            hiloList.push(`${bName} ${bPrice}฿`);
-                        });
+                        let totalHiloAmt = userHiloArray.reduce((sum, hb) => sum + (hb.totalPrice || hb.actualBet || hb.price || 0), 0);
+                        const hiloTextDisplay = formatGroupedHiloBets(userHiloArray);
 
                         // 💡 คำนวณรวมทั้งหมด (เล่นป๊อก + เล่นไฮโล + ค้ำป๊อก)
                         const totalAllWithHold = totalWithBounce + totalHiloAmt;
@@ -1896,7 +1883,7 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
                 // 2.5 โต๊ด 3 ตัว (เช่น 123 - ต้องไม่ซ้ำกัน 3 เลข)
                 else if (targetStr.length === 3 && targetStr.split('').every(c => ['1','2','3','4','5','6'].includes(c)) && new Set(targetStr.split('')).size === 3) {
                     const nums = targetStr.split('');
-                    categoryName = `${nums[0]}${nums[1]}${nums[2]}`;
+                    categoryName = `โต๊ด${nums[0]}${nums[1]}${nums[2]}`;
                     isValidType = true;
                 }
 
@@ -3935,6 +3922,56 @@ else if (userMsg.toLowerCase().startsWith('oball')) {
             }
         };
     }
+}
+    // ==========================================
+// 🎲 ฟังก์ชันจัดกลุ่มและจัดฟอร์แมตการแสดงผลไฮโล
+// ==========================================
+function formatGroupedHiloBets(userHiloArray) {
+    if (!userHiloArray || userHiloArray.length === 0) return 'ไม่ได้แทง';
+
+    let groups = {
+        ten: [],    // เต็ง
+        tod: [],    // โต๊ด (2 ตัว และ 3 ตัว)
+        hl: [],     // สูง/ต่ำ ธรรมดา
+        evod: [],   // คู่/คี่ ธรรมดา
+        pair: []    // ต่ำ/สูง/เต็ง คู่กับเลข
+    };
+
+    userHiloArray.forEach(hb => {
+        let bName = hb.category || hb.type || hb.target || "ไฮโล";
+        const bPrice = hb.totalPrice || hb.actualBet || hb.price || 0;
+
+        // ทำความสะอาดชื่อรายการแทง
+        let cleanName = bName.trim()
+            .replace(/^เต็ง\s*/g, '')
+            .replace(/^โต๊ด\s*(2\s*ตัว|3\s*ตัว)?\s*/g, '')
+            .replace(/คู่กับ/g, '')
+            .replace(/\s+/g, '');
+
+        // คัดแยกเข้าหมวดหมู่ตามรูปแบบประเภทการแทง
+        if (bName.includes('โต๊ด') || /^[1-6]{2,3}$/.test(cleanName) || /^\d-\d(-\d)?$/.test(cleanName)) {
+            cleanName = cleanName.replace(/-/g, '');
+            groups.tod.push(`${cleanName}(${bPrice})`);
+        } else if (bName.includes('คู่กับ') || /^(สูง|ต่ำ|[1-6])[1-6]$/.test(cleanName)) {
+            groups.pair.push(`${cleanName}(${bPrice})`);
+        } else if (bName === 'สูง' || bName === 'ต่ำ') {
+            groups.hl.push(`${cleanName}(${bPrice})`);
+        } else if (bName === 'คู่' || bName === 'คี่') {
+            groups.evod.push(`${cleanName}(${bPrice})`);
+        } else {
+            // เต็ง หรืออื่นๆ
+            groups.ten.push(`${cleanName}(${bPrice})`);
+        }
+    });
+
+    let resultSections = [];
+    if (groups.ten.length > 0) resultSections.push(groups.ten.join(' '));
+    if (groups.tod.length > 0) resultSections.push(`โต๊ด ${groups.tod.join(' ')}`);
+    if (groups.hl.length > 0) resultSections.push(groups.hl.join(' '));
+    if (groups.evod.length > 0) resultSections.push(groups.evod.join(' '));
+    if (groups.pair.length > 0) resultSections.push(groups.pair.join(' '));
+
+    return resultSections.join(' | ');
 }
     // ==================== [ คำสั่งแอดมิน: เช็กยอดเครดิตรวมสมาชิกทั้งหมด (พิมพ์: สรุป) ] ====================
 else if (userMsg === 'สรุป' || userMsg === 'สรุป' || userMsg === 'สรุป') {

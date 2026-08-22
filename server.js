@@ -1860,7 +1860,7 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
             let hasError = false;
             let errorMsg = "";
 
-            // 💰 กำหนดอั้นไฮโลแยกตามประเภท
+            // 💰 อั้นไฮโล
             const MIN_BET = 10;
             const MAX_BET_MAP = {
                 "ส/ต": 500,        // สูง / ต่ำ
@@ -1995,29 +1995,11 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
                     betType = "เต็ง";
                     isValidType = true;
 
-                    // 🛡️ เช็คอั้นราคาของประเภทเต็ง (คิดราคาต่อขา/ต่อหน้า)
-                    const maxAllowed = MAX_BET_MAP[betType] || 200;
-                    if (price < MIN_BET || price > maxAllowed) {
-                        hasError = true;
-                        errorMsg = `❌ แทงไม่สำเร็จ! ยอดแทง [${betType}] ต้องอยู่ระหว่าง ${MIN_BET} ถึง ${maxAllowed} บาทต่อขาครับ\n(คุณพิมพ์มาขาละ ${price} บาท ในบรรทัด: "${line}")`;
-                        break;
-                    }
-
                     if (digits.length === 1) {
                         categoryName = `เต็ง ${digits[0]}`;
                     } else {
                         categoryName = `เต็ง ${digits.length} หน้า (${digits.join(', ')}) [ขาละ ${price} บ.]`;
                     }
-                    
-                    // คำนวณราคารวมกรณีแทงหลายหน้าพร้อมกัน
-                    const lineTotalPrice = price * digits.length;
-                    totalHiloBet += lineTotalPrice;
-                    processedHiloBets.push({
-                        target: targetStr,
-                        category: categoryName,
-                        price: lineTotalPrice
-                    });
-                    continue; // ข้ามตัวบวกราคาปรกติด้านล่างไป
                 }
 
                 if (!isValidType) {
@@ -2026,19 +2008,32 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
                     break;
                 }
 
-                // 🛡️ เช็คอั้นราคาสำหรับประเภทอื่นๆ (ส/ต, 11, โต๊ด2, โต๊ด3, คู่ส/ต)
-                const maxAllowed = MAX_BET_MAP[betType] || 500;
+                // ---------------- 3. ตรวจสอบอั้นจาก MAX_BET_MAP โดยอัตโนมัติ ----------------
+                const maxAllowed = MAX_BET_MAP[betType];
+                
+                if (!maxAllowed) {
+                    hasError = true;
+                    errorMsg = `⚠️ ไม่พบการตั้งค่าอั้นสำหรับประเภท [${betType}]`;
+                    break;
+                }
+
                 if (price < MIN_BET || price > maxAllowed) {
                     hasError = true;
                     errorMsg = `❌ แทงไม่สำเร็จ! ยอดแทงประเภท [${categoryName}] ต้องอยู่ระหว่าง ${MIN_BET} ถึง ${maxAllowed} บาทครับ\n(คุณพิมพ์มา ${price} บาท ในบรรทัด: "${line}")`;
                     break;
                 }
 
-                totalHiloBet += price;
+                // คำนวณราคารวมจริง (กรณีเต็งหลายหน้า)
+                let lineTotalPrice = price;
+                if (betType === "เต็ง") {
+                    lineTotalPrice = price * targetStr.length;
+                }
+
+                totalHiloBet += lineTotalPrice;
                 processedHiloBets.push({
                     target: targetStr,
                     category: categoryName,
-                    price: price
+                    price: lineTotalPrice
                 });
             }
             // 💰 บันทึกยอดเมื่อไม่มีข้อผิดพลาด

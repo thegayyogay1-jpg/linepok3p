@@ -61,6 +61,57 @@ async function loadDataFromFirebase() {
 }
 loadDataFromFirebase(); // สั่งให้ทำงานทันทีที่บอทรัน
 
+// ==========================================
+// 🎲 ฟังก์ชันจัดกลุ่มและจัดฟอร์แมตการแสดงผลไฮโล
+// ==========================================
+function formatGroupedHiloBets(userHiloArray) {
+    if (!userHiloArray || userHiloArray.length === 0) return 'ไม่ได้แทง';
+
+    let groups = {
+        ten: [],    // เต็ง
+        tod: [],    // โต๊ด (2 ตัว และ 3 ตัว)
+        hl: [],     // สูง/ต่ำ ธรรมดา
+        evod: [],   // คู่/คี่ ธรรมดา
+        pair: []    // ต่ำ/สูง/เต็ง คู่กับเลข
+    };
+
+    userHiloArray.forEach(hb => {
+        let bName = hb.category || hb.type || hb.target || "ไฮโล";
+        const bPrice = hb.totalPrice || hb.actualBet || hb.price || 0;
+
+        // ทำความสะอาดชื่อรายการแทง
+        let cleanName = bName.trim()
+            .replace(/^เต็ง\s*/g, '')
+            .replace(/^โต๊ด\s*(2\s*ตัว|3\s*ตัว)?\s*/g, '')
+            .replace(/คู่กับ/g, '')
+            .replace(/\s+/g, '');
+
+        // คัดแยกเข้าหมวดหมู่ตามรูปแบบประเภทการแทง
+        if (bName.includes('โต๊ด') || /^[1-6]{2,3}$/.test(cleanName) || /^\d-\d(-\d)?$/.test(cleanName)) {
+            cleanName = cleanName.replace(/-/g, '');
+            groups.tod.push(`${cleanName}(${bPrice})`);
+        } else if (bName.includes('คู่กับ') || /^(สูง|ต่ำ|[1-6])[1-6]$/.test(cleanName)) {
+            groups.pair.push(`${cleanName}(${bPrice})`);
+        } else if (bName === 'สูง' || bName === 'ต่ำ') {
+            groups.hl.push(`${cleanName}(${bPrice})`);
+        } else if (bName === 'คู่' || bName === 'คี่') {
+            groups.evod.push(`${cleanName}(${bPrice})`);
+        } else {
+            // เต็ง หรืออื่นๆ
+            groups.ten.push(`${cleanName}(${bPrice})`);
+        }
+    });
+
+    let resultSections = [];
+    if (groups.ten.length > 0) resultSections.push(groups.ten.join(' '));
+    if (groups.tod.length > 0) resultSections.push(`โต๊ด ${groups.tod.join(' ')}`);
+    if (groups.hl.length > 0) resultSections.push(groups.hl.join(' '));
+    if (groups.evod.length > 0) resultSections.push(groups.evod.join(' '));
+    if (groups.pair.length > 0) resultSections.push(groups.pair.join(' '));
+
+    return resultSections.join(' | ');
+}
+
 // 🤖 [ระบบฝากออโต้] ฟังก์ชันตรวจสอบยอดเงินจากเศษสตางค์
 async function checkAutoDeposit() {
     if (!global.depositQueue) return;

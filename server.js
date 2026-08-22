@@ -1324,7 +1324,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                         });
 
                         // 💡 คำนวณรวมทั้งหมด (เล่นป๊อก + เล่นไฮโล + ค้ำป๊อก)
-                        const totalAllWithHold = totalRealPlay + totalHiloAmt + totalWithBounce;
+                        const totalAllWithHold = totalRealPlay + totalHiloAmt;
 
                         // จัดเรียงรายชื่อขาให้สวยงามเพื่ออ่านง่าย
                         const legsStr = betLegsDetail.length > 0 ? betLegsDetail.sort().join(', ') : "ไม่ได้แทง";

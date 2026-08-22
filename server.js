@@ -1354,7 +1354,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                                 "contents": [
                                     { 
                                         "type": "text", 
-                                        "text": `💰 ยอดเล่น: [Hi ${totalHiloAmt}][Pok ${totalPokPlay}]`, 
+                                        "text": `💰 ยอดเล่น: [Hi ${totalHiloAmt}][Pok ${totalRealPlay}]`, 
                                         "size": "xs", 
                                         "color": "#cccccc", 
                                         "flex": 6 

@@ -901,7 +901,9 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
             } else {
                 currentRound++;
                 isRoundOpen = true;
-                roundBets = {}; // ล้างข้อมูลโพยเก่าออกเพื่อเริ่มรอบใหม่
+                isHiloRoundOpen = true; // 🎲 [จุดที่ 1] เปิดรับแทงไฮโลพร้อมป๊อกเด้ง
+                roundBets = {}; // ล้างข้อมูลโพยป๊อกเด้งเก่า
+                hiloRoundBets = {}; // 🎲 [จุดที่ 1] ล้างข้อมูลโพยไฮโลเก่า
                 await saveDataToFirebase();
                 
                 // --- 📊 สร้างโครงสร้างสถิติย้อนหลัง ---
@@ -984,6 +986,7 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                 replyText = `⚠️ ระบบปิดรอบแทงอยู่แล้วครับ ไม่สามารถปิดซ้ำได้`;
             } else {
                 isRoundOpen = false;
+                isHiloRoundOpen = false; // 🎲 [จุดที่ 2] ปิดรับแทงไฮโลทันที
                 await saveDataToFirebase();
                 
                 // --- 📊 [สรุปยอดแทงรายบุคคลเพื่อใส่ใน Flex] ---
@@ -1006,19 +1009,23 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                     const legs = type.split('').join(', ');
                     return `ขา ${legs} (${price}/ขา)`;
                 };
+                // 🎲 [จุดที่ 2] รวม UID ผู้เล่นจากทั้งป๊อกเด้งและไฮโล
+                const allUserIds = Array.from(new Set([
+                    ...Object.keys(roundBets || {}),
+                    ...Object.keys(hiloRoundBets || {})
+                ]));
 
                 for (let uId in roundBets) {
-                    const userBetsArray = roundBets[uId];
+                    const userBetsArray = roundBets[uId] || [];
+                    const userHiloArray = (hiloRoundBets && hiloRoundBets[uId]) ? hiloRoundBets[uId] : [];
                     if (!userBetsArray || userBetsArray.length === 0) continue;
 
                     hasAnyBet = true;
-                    const user = usersWallets[uId] || {};
-                    
+                    const user = usersWallets[uId] || {};    
                     const displayName = user.nickname || user.name || "สมาชิก";
                     
                     let userTotalBetAmt = 0;
                     let legsList = [];
-
                     userBetsArray.forEach((b) => {
                         // สะสมยอดค้ำ/ยอดแทงจริง
                         if (b.actualBet) {
@@ -1032,6 +1039,17 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
 
                     // รวมขาที่แทงเข้าด้วยกัน เช่น "ขา1 (20), ขา2 (20)"
                     const legTextDisplay = legsList.length > 0 ? legsList.join(', ') : 'ไม่มีข้อมูลขา';
+
+                    // --- คำนวณไฮโล ---
+                    let totalHiloAmt = 0;
+                    let hiloList = [];
+                    userHiloArray.forEach(hb => {
+                        const bName = hb.category || hb.type || hb.target || "ไฮโล";
+                        const bPrice = hb.totalPrice || hb.actualBet || hb.price || 0;
+                        totalHiloAmt += bPrice;
+                        hiloList.push(`${bName} ${bPrice}฿`);
+                    });
+                    const hiloTextDisplay = hiloList.length > 0 ? hiloList.join(', ') : 'ไม่ได้แทง';
 
                    // 3. สร้าง UI Box แสดงผล (บรรทัดแรก: เลขสมาชิก + ชื่อเล่น + ยอดรวม, บรรทัดสอง: ขาที่ลง)
                     summaryFlexContents.push({
@@ -1054,7 +1072,7 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                                     },
                                     { 
                                         "type": "text", 
-                                        "text": `${userTotalBetAmt} ฿`, 
+                                        "text": `${userTotalBetAmt + totalHiloAmt} ฿`, 
                                         "size": "sm", 
                                         "color": "#ffaa00", 
                                         "align": "end", 
@@ -1070,6 +1088,14 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                                 "color": "#aaaaaa",
                                 "wrap": true,
                                 "margin": "xs"
+                            },
+                            {
+                                "type": "text",
+                                "text": `   🎲 ไฮโล: ${hiloTextDisplay}`,
+                                "size": "xs",
+                                "color": "#ffcc00",
+                                "wrap": true,
+                                "margin": "none"
                             }
                         ]
                     });
@@ -1089,7 +1115,7 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                 // 🚀 ยิงข้อความแพ็คคู่: [1. รูปภาพปิดรอบ] + [2. Flex Message สไลด์ carousel รายชื่อ]
                 try {
                     // 1. ฟังก์ชันช่วยเหลือสำหรับตัดแบ่ง array ออกเป็นหน้าๆ (Chunking)
-                    const chunkSize = 5; // ปรับเหลือ 4 รายชื่อต่อหน้า เพื่อรองรับบรรทัดแสดงขาแทงไม่ให้ล้นการ์ด
+                    const chunkSize = 4; // ปรับเหลือ 4 รายชื่อต่อหน้า เพื่อรองรับบรรทัดแสดงขาแทงไม่ให้ล้นการ์ด
                     const flexPages = [];
                     for (let i = 0; i < summaryFlexContents.length; i += chunkSize) {
                         flexPages.push(summaryFlexContents.slice(i, i + chunkSize));
@@ -1151,7 +1177,9 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
             currentRound = 0;
             isRoundOpen = false;
             isDrawOpen = false; // ล้างสถานะจั่วไปด้วยเลยตอนเซ็ตศูนย์
+            isHiloRoundOpen = false; // 🎲 [จุดที่ 3] ล้างสถานะไฮโล
             roundBets = {};
+            hiloRoundBets = {}; // 🎲 [จุดที่ 3] ล้างโพยไฮโลทั้งหมด
             usersRoundCrossCheck = {};
             matchHistory = []; // รีเซ็ตประวัติ 5 รอบย้อนหลังออกไปด้วย
             pastRoundsData = {};

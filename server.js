@@ -1323,6 +1323,9 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                             hiloList.push(`${bName} ${bPrice}฿`);
                         });
 
+                        // 💡 คำนวณรวมทั้งหมด (เล่นป๊อก + เล่นไฮโล + ค้ำป๊อก)
+                        const totalAllWithHold = totalPokPlay + totalHiloAmt + totalWithBounce;
+
                         // จัดเรียงรายชื่อขาให้สวยงามเพื่ออ่านง่าย
                         const legsStr = betLegsDetail.length > 0 ? betLegsDetail.sort().join(', ') : "ไม่ได้แทง";
                         const drawStr = drawLegsDetail.length > 0 ? drawLegsDetail.sort().join(', ') : (userBetsArray.length > 0 ? "ไม่มี (อยู่ 2 ใบ)" : "-");
@@ -1347,10 +1350,10 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                                     ]
                                 },
                                 {
-                                    "type": "box", "layout": "horizontal",
+                                    "type": "box", "layout": "horizontal", "margin": "xs",
                                     "contents": [
-                                        { "type": "text", "text": `💰 ยอดเล่น: ${totalRealPlay} ฿`, "size": "xs", "color": "#aaaaaa", "flex": 5 },
-                                        { "type": "text", "text": `(รวมค้ำ: ${totalWithBounce} ฿)`, "size": "xs", "color": "#00ff66", "flex": 5, "align": "end", "weight": "bold" }
+                                        { "type": "text", "text": `💰 ยอดเล่น: [Hi ${totalHiloAmt}][Pok ${totalPokPlay}]`, "size": "xs", "color": "#aaaaaa", "flex": 6 },
+                                        { "type": "text", "text": `(รวม+ค้ำ: ${totalAllWithHold} ฿)`, "size": "xs", "color": "#00ff66", "flex": 4, "align": "end", "weight": "bold" }
                                     ]
                                 },
                                 { "type": "separator", "color": "#2c2214", "margin": "xs" }

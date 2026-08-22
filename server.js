@@ -1893,23 +1893,6 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
                     errorMsg = `❌ แทงไม่สำเร็จ! ยอดแทงไฮโลต่อรายการต้องอยู่ระหว่าง ${MIN_BET} ถึง ${MAX_BET} บาทครับ\n(คุณพิมพ์มา ${price} บาท ในบรรทัด: "${line}")`;
                     break;
                 }
-                // ❌ [ดักจับที่ 1] โต๊ด 2 ตัว แต่ใส่เลขซ้ำ เช่น z22(50) หรือ z2-2=50
-                if (isTod2 && hasDuplicateNumbers(targetNumbers)) {
-                    return await replyLine(replyToken, 
-                        `⚠️ ส่งโพยไม่ถูกต้อง!\n` +
-                        `❌ เลขโต๊ด 2 ตัว ต้องเป็นเลขคนละตัวกัน (เช่น z23=50)\n` +
-                        `👉 หากต้องการแทงเต็งเลขซ้ำ ให้แทงเต็งปกติครับ`
-                    );
-                }
-            
-                // ❌ [ดักจับที่ 2] โต๊ด 3 ตัว แต่ใส่เลขซ้ำ เช่น z223(50) หรือ z2-2-3=50
-                if (isTod3 && hasDuplicateNumbers(targetNumbers)) {
-                    return await replyLine(replyToken, 
-                        `⚠️ ส่งโพยไม่ถูกต้อง!\n` +
-                        `❌ เลขโต๊ด 3 ตัว ต้องเป็นเลขไม่ซ้ำกันทั้ง 3 ตัว (เช่น z234=50)\n` +
-                        `👉 หากต้องการแทงตอง/เต็ง ให้ส่งรูปแบบเต็งตามปกติครับ`
-                    );
-                }
                 let categoryName = "";
                 let isValidType = false;
 
@@ -2012,6 +1995,23 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
                     price: price
                 });
             }
+            // ❌ [ดักจับที่ 1] โต๊ด 2 ตัว แต่ใส่เลขซ้ำ เช่น z22(50) หรือ z2-2=50
+                if (isTod2 && hasDuplicateNumbers(targetNumbers)) {
+                    return await replyLine(replyToken, 
+                        `⚠️ ส่งโพยไม่ถูกต้อง!\n` +
+                        `❌ เลขโต๊ด 2 ตัว ต้องเป็นเลขคนละตัวกัน (เช่น z23=50)\n` +
+                        `👉 หากต้องการแทงเต็งเลขซ้ำ ให้แทงเต็งปกติครับ`
+                    );
+                }
+            
+                // ❌ [ดักจับที่ 2] โต๊ด 3 ตัว แต่ใส่เลขซ้ำ เช่น z223(50) หรือ z2-2-3=50
+                if (isTod3 && hasDuplicateNumbers(targetNumbers)) {
+                    return await replyLine(replyToken, 
+                        `⚠️ ส่งโพยไม่ถูกต้อง!\n` +
+                        `❌ เลขโต๊ด 3 ตัว ต้องเป็นเลขไม่ซ้ำกันทั้ง 3 ตัว (เช่น z234=50)\n` +
+                        `👉 หากต้องการแทงตอง/เต็ง ให้ส่งรูปแบบเต็งตามปกติครับ`
+                    );
+                }
 
             // 💰 บันทึกยอดเมื่อไม่มีข้อผิดพลาด
             if (!hasError && totalHiloBet > 0) {

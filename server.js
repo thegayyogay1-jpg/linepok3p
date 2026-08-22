@@ -109,7 +109,7 @@ function formatGroupedHiloBets(userHiloArray) {
     if (groups.evod.length > 0) resultSections.push(groups.evod.join(' '));
     if (groups.pair.length > 0) resultSections.push(groups.pair.join(' '));
 
-    return resultSections.join(' | ');
+    return resultSections.join('\n');
 }
 
 // 🤖 [ระบบฝากออโต้] ฟังก์ชันตรวจสอบยอดเงินจากเศษสตางค์
@@ -1135,6 +1135,10 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                                 "wrap": true,
                                 "margin": "xs"
                             },
+                            
+                            //แบ่งเส้น
+                            { "type": "separator", "color": "#33281a", "margin": "xs" },
+                            
                             {
                                 "type": "text",
                                 "text": `   🎲 ไฮโล: ${hiloTextDisplay}`,
@@ -1380,12 +1384,20 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                                         { "type": "text", "text": `🃏 จั่วเพิ่ม: [ ${drawStr} ]`, "size": "xs", "color": "#3399ff", "flex": 5, "weight": "bold", "align": "end" }
                                     ]
                                 },
+                                
+                                //แบ่งเส้น
+                                { "type": "separator", "color": "#33281a", "margin": "xs" },
+                                
                                 {
                                     "type": "box", "layout": "horizontal",
                                     "contents": [
                                         { "type": "text", "text": `🎲 ไฮโล: ${hiloTextDisplay}`, "size": "xs", "color": "#ffcc00", "flex": 1, "wrap": true }
                                     ]
                                 },
+                                
+                                //แบ่งเส้น
+                                { "type": "separator", "color": "#33281a", "margin": "xs" },
+                                
                                 {
                                 "type": "box", "layout": "horizontal", "margin": "xs",
                                 "contents": [

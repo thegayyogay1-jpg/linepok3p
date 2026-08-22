@@ -1992,6 +1992,17 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
                         break;
                     }
 
+                    betType = "เต็ง";
+                    isValidType = true;
+
+                    // 🛡️ เช็คอั้นราคาของประเภทเต็ง (คิดราคาต่อขา/ต่อหน้า)
+                    const maxAllowed = MAX_BET_MAP[betType] || 200;
+                    if (price < MIN_BET || price > maxAllowed) {
+                        hasError = true;
+                        errorMsg = `❌ แทงไม่สำเร็จ! ยอดแทง [${betType}] ต้องอยู่ระหว่าง ${MIN_BET} ถึง ${maxAllowed} บาทต่อขาครับ\n(คุณพิมพ์มาขาละ ${price} บาท ในบรรทัด: "${line}")`;
+                        break;
+                    }
+
                     if (digits.length === 1) {
                         categoryName = `เต็ง ${digits[0]}`;
                     } else {
@@ -2012,6 +2023,14 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
                 if (!isValidType) {
                     hasError = true;
                     errorMsg = `❌ ประเภทการแทงไฮโลไม่ถูกต้องในบรรทัด: "${line}"`;
+                    break;
+                }
+
+                // 🛡️ เช็คอั้นราคาสำหรับประเภทอื่นๆ (ส/ต, 11, โต๊ด2, โต๊ด3, คู่ส/ต)
+                const maxAllowed = MAX_BET_MAP[betType] || 500;
+                if (price < MIN_BET || price > maxAllowed) {
+                    hasError = true;
+                    errorMsg = `❌ แทงไม่สำเร็จ! ยอดแทงประเภท [${categoryName}] ต้องอยู่ระหว่าง ${MIN_BET} ถึง ${maxAllowed} บาทครับ\n(คุณพิมพ์มา ${price} บาท ในบรรทัด: "${line}")`;
                     break;
                 }
 

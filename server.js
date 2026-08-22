@@ -21,6 +21,7 @@ let usersWallets = {};
 let nextMemberId = 1;
 let isRoundOpen = false; // ตัวแปรจำสถานะ เปิด/ปิด รอบ
 let roundBets = {};      // ตัวแปรสำหรับจำโพยแทงในแต่ละรอบ
+let hiloUserTrackers = {}; // ตัวแปรเก็บประวัติการแทงสวน/กั๊กไฮโลของผู้เล่นแต่ละคนในรอบนั้นๆ
 let isHiloRoundOpen = false; // 🎲 ตัวแปรจำสถานะ เปิด/ปิด รับแทงไฮโล
 let hiloRoundBets = {};      // 🎲 ตัวแปรเก็บโพยแทงไฮโลประจำรอบ
 let currentRound = 0;    // บรรทัดนี้เพื่อจำลำดับรอบปัจจุบัน
@@ -903,6 +904,7 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                 isRoundOpen = true;
                 isHiloRoundOpen = true; // 🎲 [จุดที่ 1] เปิดรับแทงไฮโลพร้อมป๊อกเด้ง
                 roundBets = {}; // ล้างข้อมูลโพยป๊อกเด้งเก่า
+                hiloUserTrackers = {}; // ล้างความจำการดักแทงสวนไฮโลของทุกคนทันทีเมื่อเปิดรอบใหม่
                 hiloRoundBets = {}; // 🎲 [จุดที่ 1] ล้างข้อมูลโพยไฮโลเก่า
                 await saveDataToFirebase();
                 
@@ -1716,7 +1718,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                     }
                 }
             }
-                 // ==================== [ 4.1 ระบบรับโพยไฮโล (ขึ้นต้นด้วย z/Z) ] ====================
+                 // ==================== [ 4.1 ระบบรับโพยไฮโล (รองรับ z นำหน้า + กันแทงสวน/แทงกั๊ก) ] ====================
 else if (originalMsg.trim().toLowerCase().startsWith('z')) {
     if (!isHiloRoundOpen) {
         replyText = "🎲 ตอนนี้ระบบปิดรับโพยไฮโลชั่วคราวครับ กรุณารอแอดมินเปิดรอบใหม่";
@@ -1747,6 +1749,19 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
                 return;
             }
 
+            // 🔄 ดึงข้อมูลการแทงไฮโลในรอบปัจจุบันของผู้เล่นขึ้นมาเช็คแทงสวน/กั๊ก
+            if (!hiloUserTrackers[userId]) {
+                hiloUserTrackers[userId] = {
+                    side: null, // 'HIGH' หรือ 'LOW'
+                    singles: new Set() // เก็บเลขเต็งที่แทงไปแล้ว เช่น Set('1', '2')
+                };
+            }
+            let tracker = hiloUserTrackers[userId];
+
+            // สร้าง ตัวแปรชั่วคราว ไว้ทดลองจำลองการแทงก่อนบันทึกจริง
+            let tempSide = tracker.side;
+            let tempSingles = new Set(tracker.singles);
+
             const lines = originalMsg.split(/\r?\n/);
             let totalHiloBet = 0;
             let processedHiloBets = [];
@@ -1758,14 +1773,17 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
 
             for (let line of lines) {
                 let cleanLine = line.trim().toLowerCase();
-                if (cleanLine === "" || !cleanLine.startsWith('z')) continue;
+                if (cleanLine === "") continue;
 
-                // ตัดตัว z หน้าออกแล้วแยกด้วย -
-                const content = cleanLine.substring(1).trim();
-                const parts = content.split('-');
+                // ถ้านำหน้าด้วย z ให้ตัด z ออก
+                if (cleanLine.startsWith('z')) {
+                    cleanLine = cleanLine.substring(1).trim();
+                }
+
+                const parts = cleanLine.split('-');
                 if (parts.length !== 2) {
                     hasError = true;
-                    errorMsg = `⚠️ รูปแบบโพยไฮโลไม่ถูกต้องในบรรทัด: "${line}"\n(ตัวอย่าง: zต-100 หรือ z1-100)`;
+                    errorMsg = `⚠️ รูปแบบโพยไฮโลไม่ถูกต้องในบรรทัด: "${line}"\n(ตัวอย่าง: z1-100 หรือ ต-100 หรือ 1234-100)`;
                     break;
                 }
 
@@ -1784,16 +1802,34 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
                     break;
                 }
 
-                // 🎲 ตรวจสอบประเภทการแทงไฮโล
                 let categoryName = "";
                 let isValidType = false;
 
-                // 1. สูง / ต่ำ / 11 ไฮโล
+                // ---------------- 1. ตรวจสอบกลุ่ม สูง / ต่ำ ----------------
+                let currentLineSide = null;
+                if (targetStr === "ส" || targetStr === "สูง" || (targetStr.startsWith("ส") && targetStr.length === 2 && ['1','2','3','4','5','6'].includes(targetStr[1]))) {
+                    currentLineSide = "HIGH";
+                } else if (targetStr === "ต" || targetStr === "ต่ำ" || (targetStr.startsWith("ต") && targetStr.length === 2 && ['1','2','3','4','5','6'].includes(targetStr[1]))) {
+                    currentLineSide = "LOW";
+                }
+
+                // 🛡️ เช็คกฎการแทงสวน สูง-ต่ำ
+                if (currentLineSide) {
+                    if (tempSide && tempSide !== currentLineSide) {
+                        hasError = true;
+                        errorMsg = `❌ แทงสวนไม่ได้! คุณมีรายการแทงฝั่ง "${tempSide === 'HIGH' ? 'สูง' : 'ต่ำ'}" ไว้แล้วในรอบนี้ ห้ามแทงฝั่งตรงข้ามครับ`;
+                        break;
+                    }
+                    tempSide = currentLineSide; // บันทึกฝั่งชั่วคราว
+                }
+
+                // ---------------- 2. แปลงคำและประเภทเดิมพัน ----------------
+                // 2.1 สูง/ต่ำ และ 11 ไฮโล
                 if (targetStr === "ส" || targetStr === "สูง") { categoryName = "สูง"; isValidType = true; }
                 else if (targetStr === "ต" || targetStr === "ต่ำ") { categoryName = "ต่ำ"; isValidType = true; }
                 else if (targetStr === "11") { categoryName = "11 ไฮโล"; isValidType = true; }
 
-                // 2. ตองใดๆ / ตองระบุเลข (เช่น zตอง หรือ zตอง1)
+                // 2.2 ตอง
                 else if (targetStr === "ตอง") { categoryName = "ตองรวม (ตองใดๆ)"; isValidType = true; }
                 else if (targetStr.startsWith("ตอง") && targetStr.length === 4) {
                     const num = targetStr.substring(3);
@@ -1803,7 +1839,7 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
                     }
                 }
 
-                // 3. สูง/ต่ำ + เลขหน้า (เช่น zต1, zส6)
+                // 2.3 คู่ สูง/ต่ำ + เลข (เช่น ต1, ส6)
                 else if ((targetStr.startsWith("ต") || targetStr.startsWith("ส")) && targetStr.length === 2) {
                     const side = targetStr.startsWith("ต") ? "ต่ำ" : "สูง";
                     const num = targetStr.substring(1);
@@ -1813,13 +1849,7 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
                     }
                 }
 
-                // 4. เต็ง 1 ตัวเลข (z1 ถึง z6)
-                else if (targetStr.length === 1 && ['1','2','3','4','5','6'].includes(targetStr)) {
-                    categoryName = `เต็ง ${targetStr}`;
-                    isValidType = true;
-                }
-
-                // 5. โต๊ด 2 ตัว (เช่น z25)
+                // 2.4 โต๊ด 2 ตัว (เช่น 25)
                 else if (targetStr.length === 2 && targetStr.split('').every(c => ['1','2','3','4','5','6'].includes(c))) {
                     const nums = targetStr.split('');
                     if (nums[0] !== nums[1]) {
@@ -1828,14 +1858,40 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
                     }
                 }
 
-                // 6. โต๊ด 3 ตัว (เช่น z123)
-                else if (targetStr.length === 3 && targetStr.split('').every(c => ['1','2','3','4','5','6'].includes(c))) {
+                // 2.5 โต๊ด 3 ตัว (เช่น 123 - ต้องไม่ซ้ำกัน 3 เลข)
+                else if (targetStr.length === 3 && targetStr.split('').every(c => ['1','2','3','4','5','6'].includes(c)) && new Set(targetStr.split('')).size === 3) {
                     const nums = targetStr.split('');
-                    const unique = new Set(nums);
-                    if (unique.size === 3) {
-                        categoryName = `โต๊ด 3 ตัว (${nums.join('-')})`;
-                        isValidType = true;
+                    categoryName = `โต๊ด 3 ตัว (${nums.join('-')})`;
+                    isValidType = true;
+                }
+
+                // 2.6 แทงเต็งตัวเลข (เช่น 1 หรือแทงหลายหน้าพร้อมกัน เช่น 1234 หรือ 12345)
+                else if (targetStr.split('').every(c => ['1','2','3','4','5','6'].includes(c))) {
+                    const digits = Array.from(new Set(targetStr.split(''))); // ดึงเลขไม่ซ้ำ
+                    
+                    // 🛡️ เช็คกฎเต็งห้ามเกิน 5 หน้า
+                    digits.forEach(d => tempSingles.add(d));
+                    if (tempSingles.size > 5) {
+                        hasError = true;
+                        errorMsg = `❌ แทงกั๊กไม่ได้! ระบบอนุญาตให้แทงเต็งได้สูงสุดไม่เกิน 5 หน้าต่อรอบครับ\n(รวมของเดิม คุณแทงไปแล้ว ${tempSingles.size} หน้า)`;
+                        break;
                     }
+
+                    if (digits.length === 1) {
+                        categoryName = `เต็ง ${digits[0]}`;
+                    } else {
+                        categoryName = `เต็ง ${digits.length} หน้า (${digits.join(', ')}) [ขาละ ${price} บ.]`;
+                    }
+                    
+                    // คำนวณราคารวมกรณีแทงหลายหน้าพร้อมกัน
+                    const lineTotalPrice = price * digits.length;
+                    totalHiloBet += lineTotalPrice;
+                    processedHiloBets.push({
+                        target: targetStr,
+                        category: categoryName,
+                        price: lineTotalPrice
+                    });
+                    continue; // ข้ามตัวบวกราคาปรกติด้านล่างไป
                 }
 
                 if (!isValidType) {
@@ -1852,11 +1908,15 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
                 });
             }
 
-            // 💰 ตรวจสอบยอดเงิน และ บันทึกผล
+            // 💰 บันทึกยอดเมื่อไม่มีข้อผิดพลาด
             if (!hasError && totalHiloBet > 0) {
                 if (user.balance < totalHiloBet) {
                     replyText = `❌ เครดิตของคุณไม่พอสำหรับแทงไฮโลครับ!\n💸 ยอดแทงรวม: ${totalHiloBet} บาท\n💰 เครดิตคงเหลือของคุณ: ${user.balance} บาท`;
                 } else {
+                    // ยืนยันการลงข้อมูลป้องกันแทงสวน/กั๊ก
+                    hiloUserTrackers[userId].side = tempSide;
+                    hiloUserTrackers[userId].singles = tempSingles;
+
                     user.balance -= totalHiloBet;
                     await saveDataToFirebase();
 

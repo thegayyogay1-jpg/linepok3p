@@ -1860,8 +1860,18 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
             let hasError = false;
             let errorMsg = "";
 
+            // 💰 กำหนดอั้นไฮโลแยกตามประเภท
             const MIN_BET = 10;
-            const MAX_BET = 5000;
+            const MAX_BET_MAP = {
+                "ส/ต": 500,        // สูง / ต่ำ
+                "11": 100,         // 11 ไฮโล
+                "เต็ง": 200,        // เต็งเลข (คิดต่อ 1 หน้า)
+                "โต๊ด2": 50,       // โต๊ด 2 ตัว
+                "โต๊ด3": 200,      // โต๊ด 3 ตัว
+                "คู่ส/ต": 100,      // สูง/ต่ำ + เลข (เช่น ต1, ส6)
+                "ตองรวม": 30,      // ตองรวม / ตองใดๆ (ตอง)
+                "ตองเจาะ": 10       // ตองเจาะระบุเลข (เช่น ตอง1, ตอง6)
+            };
 
             for (let line of lines) {
                 let cleanLine = line.trim().toLowerCase();
@@ -1888,12 +1898,8 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
                     break;
                 }
 
-                if (price < MIN_BET || price > MAX_BET) {
-                    hasError = true;
-                    errorMsg = `❌ แทงไม่สำเร็จ! ยอดแทงไฮโลต่อรายการต้องอยู่ระหว่าง ${MIN_BET} ถึง ${MAX_BET} บาทครับ\n(คุณพิมพ์มา ${price} บาท ในบรรทัด: "${line}")`;
-                    break;
-                }
                 let categoryName = "";
+                let betType = ""; // เก็บหมวดหมู่ไว้เช็คยอดอั้น
                 let isValidType = false;
 
                 // ---------------- 1. ตรวจสอบกลุ่ม สูง / ต่ำ ----------------
@@ -1920,12 +1926,17 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
                 else if (targetStr === "ต" || targetStr === "ต่ำ") { categoryName = "ต่ำ"; isValidType = true; }
                 else if (targetStr === "11") { categoryName = "11 ไฮโล"; isValidType = true; }
 
-                // 2.2 ตอง
-                else if (targetStr === "ตอง") { categoryName = "ตองรวม (ตองใดๆ)"; isValidType = true; }
+                // 2.2 ตองรวม และ ตองเจาะเลข
+                else if (targetStr === "ตอง") { 
+                    categoryName = "ตองรวม (ตองใดๆ)"; 
+                    betType = "ตองรวม"; 
+                    isValidType = true; 
+                }
                 else if (targetStr.startsWith("ตอง") && targetStr.length === 4) {
                     const num = targetStr.substring(3);
                     if (['1','2','3','4','5','6'].includes(num)) {
                         categoryName = `ตอง ${num}`;
+                        betType = "ตองเจาะ";
                         isValidType = true;
                     }
                 }

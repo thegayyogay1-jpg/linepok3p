@@ -1869,8 +1869,8 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
                 "โต๊ด2": 50,       // โต๊ด 2 ตัว
                 "โต๊ด3": 200,      // โต๊ด 3 ตัว
                 "คู่ส/ต": 100,      // สูง/ต่ำ + เลข (เช่น ต1, ส6)
-                "ตองรวม": 30,      // ตองรวม / ตองใดๆ (ตอง)
-                "ตองเจาะ": 10       // ตองเจาะระบุเลข (เช่น ตอง1, ตอง6)
+                "ตองรวม": 40,      // ตองรวม / ตองใดๆ (ตอง)
+                "ตองเจาะ": 20       // ตองเจาะระบุเลข (เช่น ตอง1, ตอง6)
             };
 
             for (let line of lines) {
@@ -2236,6 +2236,99 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
                     }
                 }
             }
+                // ==================== [ 5.1 ระบบคืนโพยไฮโล (rz) ] ====================
+                else if (userMsg === "rz") {
+                    if (!isHiloRoundOpen) {
+                        replyText = "🚫 ไม่สามารถคืนโพยไฮโลได้ครับ เนื่องจากปิดรอบแทงเรียบร้อยแล้ว";
+                    } else {
+                        const isRegistered = usersWallets[userId] ? true : false;
+                        if (!isRegistered) {
+                            replyText = `📢 คุณยังไม่ได้ลงทะเบียนสมาชิกในระบบครับ`;
+                        } else {
+                            const user = usersWallets[userId];
+                            const displayName = user.nickname || user.name || "ไม่ระบุชื่อ";
+                            const myHiloBets = hiloRoundBets[userId];
+                
+                            if (!myHiloBets || myHiloBets.length === 0) {
+                                replyText = `❌ คุณ ${displayName} ไม่มีรายการโพยไฮโลค้างในรอบนี้ให้ยกเลิกครับ`;
+                            } else {
+                                // คำนวณยอดเงินรวมที่จะคืน
+                                const totalHiloRefund = myHiloBets.reduce((sum, bet) => sum + bet.price, 0);
+                                user.balance += totalHiloRefund;
+                
+                                // 🔄 ล้างประวัติการจำฝั่งแทงสวน และการนับหน้าเต็งของไฮโล
+                                hiloUserTrackers[userId] = {
+                                    side: null,
+                                    singles: new Set()
+                                };
+                
+                                // 🗑️ ล้างรายการโพยไฮโลในรอบปัจจุบัน
+                                hiloRoundBets[userId] = [];
+                
+                                await saveDataToFirebase(); // 💾 บันทึกข้อมูลลงฐานข้อมูล
+                
+                                // 🚀 ส่ง Flex Message แจ้งยกเลิกโพยไฮโล (ธีมส้ม-ดำ)
+                                try {
+                                    await axios.post('https://api.line.me/v2/bot/message/reply', {
+                                        replyToken: replyToken,
+                                        messages: [{
+                                            "type": "flex",
+                                            "altText": "🗑️ ยกเลิกโพยไฮโลสำเร็จเรียบร้อยแล้ว",
+                                            "contents": {
+                                                "type": "bubble",
+                                                "styles": { "body": { "backgroundColor": "#141414" } },
+                                                "body": {
+                                                    "type": "box", "layout": "vertical", "spacing": "md",
+                                                    "contents": [
+                                                        { "type": "text", "text": "🎲 ยกเลิกโพยไฮโลสำเร็จ 🎉", "weight": "bold", "color": "#ffaa00", "size": "md", "align": "center" },
+                                                        { "type": "separator", "color": "#333333" },
+                                                        {
+                                                            "type": "box", "layout": "horizontal",
+                                                            "contents": [
+                                                                { "type": "text", "text": "👤 สมาชิก:", "size": "sm", "color": "#888888", "flex": 2 },
+                                                                { "type": "text", "text": `${displayName} (ID: ${user.memberNumber})`, "size": "sm", "color": "#ffffff", "flex": 5, "weight": "bold" }
+                                                            ]
+                                                        },
+                                                        { "type": "separator", "color": "#333333" },
+                                                        {
+                                                            "type": "box", "layout": "vertical", "spacing": "sm",
+                                                            "contents": [
+                                                                {
+                                                                    "type": "box", "layout": "horizontal",
+                                                                    "contents": [
+                                                                        { "type": "text", "text": "💰 คืนเครดิตไฮโล:", "size": "sm", "color": "#aaa9aa" },
+                                                                        { "type": "text", "text": `+${totalHiloRefund} บาท`, "size": "sm", "color": "#00ff00", "align": "end", "weight": "bold" }
+                                                                    ]
+                                                                },
+                                                                {
+                                                                    "type": "box", "layout": "horizontal",
+                                                                    "contents": [
+                                                                        { "type": "text", "text": "✨ เครดิตปัจจุบัน:", "size": "sm", "color": "#aaa9aa" },
+                                                                        { "type": "text", "text": `${user.balance} บาท`, "size": "sm", "color": "#ffffff", "align": "end", "weight": "bold" }
+                                                                    ]
+                                                                }
+                                                            ]
+                                                        },
+                                                        { "type": "separator", "color": "#333333" },
+                                                        { "type": "text", "text": "💡 ยกเลิกโพยไฮโลเรียบร้อยแล้ว\nท่านสามารถส่งโพยไฮโลชุดใหม่เข้ามาได้ทันทีครับ", "size": "xs", "color": "#aaaaaa", "wrap": true, "align": "center" }
+                                                    ]
+                                                }
+                                            }
+                                        }]
+                                    }, {
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'Authorization': `Bearer ${TOKEN}`
+                                        }
+                                    });
+                                } catch (error) {
+                                    console.error("❌ ส่ง Flex Message คืนโพยไฮโลล้มเหลว:", error.response ? error.response.data : error.message);
+                                }
+                                return;
+                            }
+                        }
+                    }
+                }
             // ==================== [ 6. ระบบสมาชิกพิมพ์ขอจั่วไพ่ เช่น 12+ ] ====================
             else if (userMsg.endsWith('+')) {
                 if (!isDrawOpen) {

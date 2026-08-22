@@ -1001,8 +1001,8 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                     const type = bet.betType;
                     const price = bet.pricePerLeg || 0;
 
-                    if (type === "รข") return `เหมาขวา (${price}/ขา)`;
-                    if (type === "รจ") return `เหมาเจ้า (${price}/ขา)`;
+                    if (type === "รข") return `เหมาขา (${price})`;
+                    if (type === "รจ") return `เหมาเจ้า (${price})`;
                     if (type.startsWith('จ')) {
                         const legs = type.substring(1).split('').join(', ');
                         return `แทงเจ้าสู้ขา ${legs} (${price}/ขา)`;
@@ -1017,10 +1017,10 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                     ...Object.keys(hiloRoundBets || {})
                 ]));
 
-                for (let uId in roundBets) {
-                    const userBetsArray = roundBets[uId] || [];
+                for (let uId of allUserIds) {
+                    const userBetsArray = (roundBets && roundBets[uId]) ? roundBets[uId] : [];
                     const userHiloArray = (hiloRoundBets && hiloRoundBets[uId]) ? hiloRoundBets[uId] : [];
-                    if (!userBetsArray || userBetsArray.length === 0) continue;
+                    if (userBetsArray.length === 0 && userHiloArray.length === 0) continue;
 
                     hasAnyBet = true;
                     const user = usersWallets[uId] || {};    

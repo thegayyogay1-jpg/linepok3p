@@ -21,6 +21,8 @@ let usersWallets = {};
 let nextMemberId = 1;
 let isRoundOpen = false; // ตัวแปรจำสถานะ เปิด/ปิด รอบ
 let roundBets = {};      // ตัวแปรสำหรับจำโพยแทงในแต่ละรอบ
+let isHiloRoundOpen = false; // 🎲 ตัวแปรจำสถานะ เปิด/ปิด รับแทงไฮโล
+let hiloRoundBets = {};      // 🎲 ตัวแปรเก็บโพยแทงไฮโลประจำรอบ
 let currentRound = 0;    // บรรทัดนี้เพื่อจำลำดับรอบปัจจุบัน
 let isDrawOpen = false;  // บรรทัดนี้เพื่อเช็กสถานะรอบจั่วไพ่
 let tempRoomResults = null; // ใช้พักข้อมูลผลแต้มชั่วคราวที่แอดมินพึ่งพิมพ์ส่งมา
@@ -49,6 +51,8 @@ async function loadDataFromFirebase() {
             pastRoundsData = response.data.pastRoundsData || {};
             withdrawQueue = response.data.withdrawQueue || [];
             console.log("✅ ดึงข้อมูลระบบทั้งหมดจาก Firebase สำเร็จเรียบร้อย!");
+            isHiloRoundOpen = response.data.isHiloRoundOpen !== undefined ? response.data.isHiloRoundOpen : false;
+            hiloRoundBets = response.data.hiloRoundBets || {};
         }
     } catch (error) {
         console.error("❌ ไม่สามารถดึงข้อมูลจาก Firebase ได้:", error.message);

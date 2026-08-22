@@ -103,11 +103,11 @@ function formatGroupedHiloBets(userHiloArray) {
     });
 
     let resultSections = [];
-    if (groups.ten.length > 0) resultSections.push(groups.ten.join(' '));
-    if (groups.tod.length > 0) resultSections.push(`โต๊ด ${groups.tod.join(' ')}`);
-    if (groups.hl.length > 0) resultSections.push(groups.hl.join(' '));
-    if (groups.evod.length > 0) resultSections.push(groups.evod.join(' '));
-    if (groups.pair.length > 0) resultSections.push(groups.pair.join(' '));
+    if (groups.ten.length > 0) resultSections.push(groups.ten.join(' I '));
+    if (groups.tod.length > 0) resultSections.push(`โต๊ด ${groups.tod.join(' I ')}`);
+    if (groups.hl.length > 0) resultSections.push(groups.hl.join(' I '));
+    if (groups.evod.length > 0) resultSections.push(groups.evod.join(' I '));
+    if (groups.pair.length > 0) resultSections.push(groups.pair.join(' I '));
 
     return resultSections.join('\n    ');
 }

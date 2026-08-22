@@ -1267,13 +1267,20 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                 let summaryFlexContents = [];
                 let hasBets = false;
 
+                // 🎲 [จุดที่แก้] ดึง UID ผู้เล่นจากทั้งป๊อกเด้งและไฮโลมารวมกัน
+                const allUserIds = Array.from(new Set([
+                    ...Object.keys(roundBets || {}),
+                    ...Object.keys(hiloRoundBets || {})
+                ]));
+
                 // วนลูปเช็กข้อมูลโพยของทุกคนในรอบนี้ (ตามตรรกะเดิมเป๊ะๆ)
-                for (let uid in roundBets) {
-                    const userBetsArray = roundBets[uid];
-                    if (userBetsArray && userBetsArray.length > 0) {
+                for (let uid in allUserIds) {
+                    const userBetsArray = (roundBets && roundBets[uid]) ? roundBets[uid] : [];
+                    const userHiloArray = (hiloRoundBets && hiloRoundBets[uid]) ? hiloRoundBets[uid] : [];
+                    
+                    if (userBetsArray.length === 0 && userHiloArray.length === 0) continue;
                         hasBets = true;
                         const user = usersWallets[uid] || {}; // ดึงข้อมูลโปรไฟล์สมาชิก
-
                         // 💡 ดึงชื่อเล่น (ถ้าน้าไม่ได้ตั้ง nickname ไว้ ระบบจะถอยไปใช้ user.name อัตโนมัติ)
                         const displayName = user.nickname || user.name || "สมาชิก";
 
@@ -1281,9 +1288,8 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                         let totalWithBounce = 0; // ยอดค้ำประกัน (รวมค้ำเด้ง 3 เท่า)
                         let betLegsDetail = []; // เก็บรายละเอียดเบอร์ขาที่แทง
                         let drawLegsDetail = []; // เก็บรายละเอียดขาที่ขอจั่วเพิ่ม
-
+                        // คำนวณเบอร์ขาฝั่งผู้เล่นปกติ
                         userBetsArray.forEach((bet) => {
-                            // คำนวณเบอร์ขาฝั่งผู้เล่นปกติ
                             if (bet.betType !== "รข" && bet.betType !== "รจ" && !bet.betType.startsWith('จ')) {
                                 const individualLegs = bet.betType.split('');
                                 individualLegs.forEach((leg) => {
@@ -1306,11 +1312,22 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                             totalRealPlay += bet.totalPrice || bet.actualBet; // รองรับโครงสร้างชื่อตัวแปรของโพย
                             totalWithBounce += bet.holdCost; // ดึงยอดค้ำเด้ง 3 เท่าที่ระบบหักไว้จริงมาแสดง
                         });
+                    
+                        // --- คำนวณฝั่งไฮโล ---
+                        let totalHiloAmt = 0;
+                        let hiloList = [];
+                        userHiloArray.forEach(hb => {
+                            const bName = hb.category || hb.type || hb.target || "ไฮโล";
+                            const bPrice = hb.totalPrice || hb.actualBet || hb.price || 0;
+                            totalHiloAmt += bPrice;
+                            hiloList.push(`${bName} ${bPrice}฿`);
+                        });
 
                         // จัดเรียงรายชื่อขาให้สวยงามเพื่ออ่านง่าย
-                        const legsStr = betLegsDetail.sort().join(', ');
-                        const drawStr = drawLegsDetail.length > 0 ? drawLegsDetail.sort().join(', ') : "ไม่มี (อยู่ 2 ใบ)";
-
+                    const legsStr = betLegsDetail.length > 0 ? betLegsDetail.sort().join(', ') : "ไม่ได้แทง";
+                    const drawStr = drawLegsDetail.length > 0 ? drawLegsDetail.sort().join(', ') : (userBetsArray.length > 0 ? "ไม่มี (อยู่ 2 ใบ)" : "-");
+                    const hiloTextDisplay = hiloList.length > 0 ? hiloList.join(', ') : 'ไม่ได้แทง';
+                    
                         // นำข้อมูลที่ประมวลผลได้มาแพ็คใส่รูปแบบ Flex Layout เพื่อความสวยงามและแสดงผลเป็นระเบียบ
                         summaryFlexContents.push({
                             "type": "box", "layout": "vertical", "margin": "md", "spacing": "xs",
@@ -1321,6 +1338,12 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                                     "contents": [
                                         { "type": "text", "text": `👉 แทงขา: [ ${legsStr} ]`, "size": "xs", "color": "#cccccc", "flex": 5 },
                                         { "type": "text", "text": `🃏 จั่วเพิ่ม: [ ${drawStr} ]`, "size": "xs", "color": "#3399ff", "flex": 5, "weight": "bold", "align": "end" }
+                                    ]
+                                },
+                                {
+                                    "type": "box", "layout": "horizontal",
+                                    "contents": [
+                                        { "type": "text", "text": `🎲 ไฮโล: ${hiloTextDisplay}`, "size": "xs", "color": "#ffcc00", "flex": 1, "wrap": true }
                                     ]
                                 },
                                 {
@@ -1350,7 +1373,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                 // 🚀 ยิงข้อความแพ็คคู่: [1. รูปภาพปิดจั่วของน้า] + [2. Flex Message สรุปโพยและการจั่วรายบุคคล]
                 try {
                     // 1. แบ่งกลุ่มการแสดงผล (Chunking) หน้าละ 3 รายชื่อ เพื่อไม่ให้ตัว Flex สรุปจั่วยาวจนเกินไป
-                    const chunkSize = 7; 
+                    const chunkSize = 5; 
                     const flexPages = [];
                     for (let i = 0; i < summaryFlexContents.length; i += chunkSize) {
                         flexPages.push(summaryFlexContents.slice(i, i + chunkSize));
@@ -1371,7 +1394,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                                 { "type": "text", "text": "🔒 ปิดรอบขอจั่วไพ่เรียบร้อยแล้วครับ 🏁", "weight": "bold", "color": "#ffaa00", "size": "md", "align": "center" },
                                 { "type": "text", "text": `รอบที่: ${currentRound} (หน้า ${index + 1}/${flexPages.length})`, "size": "xs", "color": "#ffffff", "align": "center" },
                                 { "type": "separator", "color": "#3a2d1f" },
-                                { "type": "text", "text": "📋 รายงานสรุปโพยและการจั่วรายบุคคล", "size": "xs", "color": "#ffaa00", "weight": "bold" },
+                                { "type": "text", "text": "📋 รายงานสรุปโพยป๊อกเด้ง + ไฮโล บุคคล", "size": "xs", "color": "#ffaa00", "weight": "bold" },
                                 { "type": "box", "layout": "vertical", "spacing": "xs", "contents": pageContents },
                                 { "type": "text", "text": "ℹ️ รอสรุปผลและคิดเงินสักครู่ครับ", "size": "xs", "color": "#aaaaaa", "align": "center", "margin": "sm" }
                             ]

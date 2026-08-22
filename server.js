@@ -1324,9 +1324,9 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                         });
 
                         // จัดเรียงรายชื่อขาให้สวยงามเพื่ออ่านง่าย
-                    const legsStr = betLegsDetail.length > 0 ? betLegsDetail.sort().join(', ') : "ไม่ได้แทง";
-                    const drawStr = drawLegsDetail.length > 0 ? drawLegsDetail.sort().join(', ') : (userBetsArray.length > 0 ? "ไม่มี (อยู่ 2 ใบ)" : "-");
-                    const hiloTextDisplay = hiloList.length > 0 ? hiloList.join(', ') : 'ไม่ได้แทง';
+                        const legsStr = betLegsDetail.length > 0 ? betLegsDetail.sort().join(', ') : "ไม่ได้แทง";
+                        const drawStr = drawLegsDetail.length > 0 ? drawLegsDetail.sort().join(', ') : (userBetsArray.length > 0 ? "ไม่มี (อยู่ 2 ใบ)" : "-");
+                        const hiloTextDisplay = hiloList.length > 0 ? hiloList.join(', ') : 'ไม่ได้แทง';
                     
                         // นำข้อมูลที่ประมวลผลได้มาแพ็คใส่รูปแบบ Flex Layout เพื่อความสวยงามและแสดงผลเป็นระเบียบ
                         summaryFlexContents.push({
@@ -1357,8 +1357,6 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                             ]
                         });
                     }
-                }
-
                 if (!hasBets) {
                     summaryFlexContents.push({
                         "type": "text",

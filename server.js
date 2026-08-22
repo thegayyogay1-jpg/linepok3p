@@ -1350,16 +1350,31 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                                     ]
                                 },
                                 {
-                                    "type": "box", "layout": "horizontal", "margin": "xs",
-                                    "contents": [
-                                        { "type": "text", "text": `💰 ยอดเล่น: [Hi ${totalHiloAmt}][Pok ${totalPokPlay}]`, "size": "xs", "color": "#aaaaaa", "flex": 6 },
-                                        { "type": "text", "text": `(รวม+ค้ำ: ${totalAllWithHold} ฿)`, "size": "xs", "color": "#00ff66", "flex": 4, "align": "end", "weight": "bold" }
-                                    ]
-                                },
-                                { "type": "separator", "color": "#2c2214", "margin": "xs" }
-                            ]
-                        });
-                    }
+                                "type": "box", "layout": "horizontal", "margin": "xs",
+                                "contents": [
+                                    { 
+                                        "type": "text", 
+                                        "text": `💰 ยอดเล่น: [Hi ${totalHiloAmt}][Pok ${totalPokPlay}]`, 
+                                        "size": "xs", 
+                                        "color": "#cccccc", 
+                                        "flex": 6 
+                                    },
+                                    { 
+                                        "type": "text", 
+                                        "text": `(รวม+ค้ำ: ${totalAllWithHold} ฿)`, 
+                                        "size": "xs", 
+                                        "color": "#00ff66", 
+                                        "weight": "bold", 
+                                        "flex": 4, 
+                                        "align": "end" 
+                                    }
+                                ]
+                            },
+                            { "type": "separator", "color": "#2c2214", "margin": "xs" }
+                        ]
+                    });
+                }
+
                 if (!hasBets) {
                     summaryFlexContents.push({
                         "type": "text",
@@ -1371,21 +1386,18 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                     });
                 }
 
-                // 🚀 ยิงข้อความแพ็คคู่: [1. รูปภาพปิดจั่วของน้า] + [2. Flex Message สรุปโพยและการจั่วรายบุคคล]
+                // 🚀 ยิงข้อความตอบกลับ
                 try {
-                    // 1. แบ่งกลุ่มการแสดงผล (Chunking) หน้าละ 3 รายชื่อ เพื่อไม่ให้ตัว Flex สรุปจั่วยาวจนเกินไป
-                    const chunkSize = 5; 
+                    const chunkSize = 4;
                     const flexPages = [];
                     for (let i = 0; i < summaryFlexContents.length; i += chunkSize) {
                         flexPages.push(summaryFlexContents.slice(i, i + chunkSize));
                     }
 
-                    // 2. ป้องกันข้อผิดพลาดกรณีไม่มีการส่งโพย
                     if (flexPages.length === 0) {
                         flexPages.push([{ "type": "text", "text": "ไม่มีรายการแทงในรอบนี้", "color": "#aaaaaa", "size": "xs", "align": "center" }]);
                     }
 
-                    // 3. วนลูปสร้างหน้าการ์ด (Bubble Carousel)
                     const carouselBubbles = flexPages.map((pageContents, index) => ({
                         "type": "bubble",
                         "styles": { "body": { "backgroundColor": "#1a140d" } },
@@ -1402,7 +1414,6 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                         }
                     }));
 
-                    // 4. ยิง API ตอบกลับ
                     await axios.post('https://api.line.me/v2/bot/message/reply', {
                         replyToken: replyToken,
                         messages: [
@@ -1415,7 +1426,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                                 "type": "flex",
                                 "altText": `🚫 ปิดรอบขอจั่วไพ่เรียบร้อยแล้ว (รอบที่ ${currentRound})`,
                                 "contents": {
-                                    "type": "carousel", // 👈 เปลี่ยนโครงสร้างเป็น carousel แบบสไลด์ข้าง
+                                    "type": "carousel",
                                     "contents": carouselBubbles
                                 }
                             }
@@ -1427,7 +1438,7 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                         }
                     });
                 } catch (error) {
-                    console.error("❌ ส่งรูปภาพและ Flex ปิดจั่วล้มเหลว:", error.response ? error.response.data : error.message);
+                    console.error("❌ ส่งรูปภาพและ Flex ปิดจั่วล้มเหลว:", error.response ? JSON.stringify(error.response.data) : error.message);
                 }
                 return;
             }

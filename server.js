@@ -109,7 +109,7 @@ function formatGroupedHiloBets(userHiloArray) {
     if (groups.evod.length > 0) resultSections.push(groups.evod.join(' '));
     if (groups.pair.length > 0) resultSections.push(groups.pair.join(' '));
 
-    return resultSections.join('\n');
+    return resultSections.join('\n    ');
 }
 
 // 🤖 [ระบบฝากออโต้] ฟังก์ชันตรวจสอบยอดเงินจากเศษสตางค์

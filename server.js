@@ -1921,17 +1921,19 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
                 }
 
                 // ---------------- 2. แปลงคำและประเภทเดิมพัน ----------------
-                // 2.1 สูง/ต่ำ และ 11 ไฮโล
-                if (targetStr === "ส" || targetStr === "สูง") { categoryName = "สูง"; isValidType = true; }
-                else if (targetStr === "ต" || targetStr === "ต่ำ") { categoryName = "ต่ำ"; isValidType = true; }
-                else if (targetStr === "11") { categoryName = "11 ไฮโล"; isValidType = true; }
-
-                // 2.2 ตองรวม และ ตองเจาะเลข
-                else if (targetStr === "ตอง") { 
-                    categoryName = "ตองรวม (ตองใดๆ)"; 
-                    betType = "ตองรวม"; 
+                // 2.1 [กรณีพิเศษ] 11 ไฮโล
+                if (targetStr === "11") { 
+                    categoryName = "11 ไฮโล"; 
+                    betType = "11"; 
                     isValidType = true; 
                 }
+
+                // 2.2 ตัวอักษร ส / ต
+                else if (targetStr === "ส" || targetStr === "สูง") { categoryName = "สูง"; betType = "ส/ต"; isValidType = true; }
+                else if (targetStr === "ต" || targetStr === "ต่ำ") { categoryName = "ต่ำ"; betType = "ส/ต"; isValidType = true; }
+
+                // 2.3 ตอง
+                else if (targetStr === "ตอง") { categoryName = "ตองรวม (ตองใดๆ)"; betType = "ตองรวม"; isValidType = true; }
                 else if (targetStr.startsWith("ตอง") && targetStr.length === 4) {
                     const num = targetStr.substring(3);
                     if (['1','2','3','4','5','6'].includes(num)) {
@@ -1941,64 +1943,70 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
                     }
                 }
 
-                // 2.3 คู่ สูง/ต่ำ + เลข (เช่น ต1, ส6)
+                // 2.4 คู่ สูง/ต่ำ + เลข (เช่น ต1, ส6)
                 else if ((targetStr.startsWith("ต") || targetStr.startsWith("ส")) && targetStr.length === 2) {
                     const side = targetStr.startsWith("ต") ? "ต่ำ" : "สูง";
                     const num = targetStr.substring(1);
                     if (['1','2','3','4','5','6'].includes(num)) {
                         categoryName = `${side}${num}`;
+                        betType = "คู่ส/ต";
                         isValidType = true;
                     }
                 }
-                // ❌ [เพิ่มใหม่ 2.4] ดักโต๊ด 2 ตัว
-                else if (targetStr.length === 2 && targetStr.split('').every(c => ['1','2','3','4','5','6'].includes(c))) {
-                    const nums = targetStr.split('');
-                    if (nums[0] === nums[1]) {
-                        hasError = true;
-                        errorMsg = `❌ ส่งโพยไม่ถูกต้อง! โต๊ด 2 ตัว ต้องเป็นเลขคนละตัวกัน (${targetStr})\n👉 หากต้องการแทงเต็ง ให้ส่งเช่น z${nums[0]}-${price}`;
-                        break;
-                    } else {
-                        categoryName = `โต๊ด${nums[0]}${nums[1]}`;
-                        isValidType = true;
-                    }
-                }
-                // ❌ [เพิ่มใหม่ 2.5] ดักโต๊ด 3 ตัว
-                else if (targetStr.length === 3 && targetStr.split('').every(c => ['1','2','3','4','5','6'].includes(c))) {
-                    const nums = targetStr.split('');
-                    if (new Set(nums).size !== 3) {
-                        hasError = true;
-                        errorMsg = `❌ ส่งโพยไม่ถูกต้อง! โต๊ด 3 ตัว ห้ามมีเลขซ้ำกัน (${targetStr})\n👉 หากต้องการแทงตอง ให้พิมพ์ "ตอง" หรือ "ตอง${nums[0]}"`;
-                        break;
-                    } else {
-                        categoryName = `โต๊ด${nums[0]}${nums[1]}${nums[2]}`;
-                        isValidType = true;
-                    }
-                }
-                // 2.6 แทงเต็งตัวเลข (เช่น 1 หรือแทงหลายหน้าพร้อมกัน เช่น 1234 หรือ 12345)
+
+                // 2.5 กลุ่มตัวเลข 1-6 เพียวๆ (เต็ง, โต๊ด2, โต๊ด3)
                 else if (targetStr.split('').every(c => ['1','2','3','4','5','6'].includes(c))) {
-                    // ถ้าใส่เลขซ้ำมาในความยาวตั้งแต่ 4 ตัวขึ้นไป (เช่น 1123, 22345)
-                    if (new Set(targetStr.split('')).size !== targetStr.length) {
-                        hasError = true;
-                        errorMsg = `❌ ส่งโพยไม่ถูกต้อง! พบเลขซ้ำกันในรายการเต็งหลายหน้า (${targetStr})`;
-                        break;
-                    }
-                    const digits = Array.from(new Set(targetStr.split(''))); // ดึงเลขไม่ซ้ำ
-                    
-                    // 🛡️ เช็คกฎเต็งห้ามเกิน 5 หน้า
-                    digits.forEach(d => tempSingles.add(d));
-                    if (tempSingles.size > 5) {
-                        hasError = true;
-                        errorMsg = `❌ แทงกั๊กไม่ได้! ระบบอนุญาตให้แทงเต็งได้สูงสุดไม่เกิน 5 หน้าต่อรอบครับ\n(รวมของเดิม คุณแทงไปแล้ว ${tempSingles.size} หน้า)`;
-                        break;
-                    }
+                    const nums = targetStr.split('');
 
-                    betType = "เต็ง";
-                    isValidType = true;
+                    // --- โต๊ด 2 ตัว (ความยาว 2 ตัว เช่น 23, 56) ---
+                    if (nums.length === 2) {
+                        if (nums[0] === nums[1]) {
+                            hasError = true;
+                            errorMsg = `❌ ส่งโพยไม่ถูกต้อง! โต๊ด 2 ตัว ต้องเป็นเลขคนละตัวกัน (${targetStr})\n👉 หากต้องการแทงเต็ง ให้ส่งเช่น z${nums[0]}-${price}`;
+                            break;
+                        } else {
+                            categoryName = `โต๊ด${nums[0]}${nums[1]}`;
+                            betType = "โต๊ด2";
+                            isValidType = true;
+                        }
+                    }
+                    // --- โต๊ด 3 ตัว (ความยาว 3 ตัว เช่น 123, 456) ---
+                    else if (nums.length === 3) {
+                        if (new Set(nums).size !== 3) {
+                            hasError = true;
+                            errorMsg = `❌ ส่งโพยไม่ถูกต้อง! โต๊ด 3 ตัว ห้ามมีเลขซ้ำกัน (${targetStr})\n👉 หากต้องการแทงตอง ให้พิมพ์ "ตอง" หรือ "ตอง${nums[0]}"`;
+                            break;
+                        } else {
+                            categoryName = `โต๊ด${nums[0]}${nums[1]}${nums[2]}`;
+                            betType = "โต๊ด3";
+                            isValidType = true;
+                        }
+                    }
+                    // --- เต็งตัวเลข (1 ตัว หรือเต็งหลายหน้า 4-5 ตัว เช่น 1, 12, 1234) ---
+                    else {
+                        if (new Set(nums).size !== nums.length) {
+                            hasError = true;
+                            errorMsg = `❌ ส่งโพยไม่ถูกต้อง! พบเลขซ้ำกันในรายการเต็งหลายหน้า (${targetStr})`;
+                            break;
+                        }
 
-                    if (digits.length === 1) {
-                        categoryName = `เต็ง ${digits[0]}`;
-                    } else {
-                        categoryName = `เต็ง ${digits.length} หน้า (${digits.join(', ')}) [ขาละ ${price} บ.]`;
+                        const digits = Array.from(new Set(nums));
+                        digits.forEach(d => tempSingles.add(d));
+                        
+                        if (tempSingles.size > 5) {
+                            hasError = true;
+                            errorMsg = `❌ แทงกั๊กไม่ได้! ระบบอนุญาตให้แทงเต็งได้สูงสุดไม่เกิน 5 หน้าต่อรอบครับ\n(รวมของเดิม คุณแทงไปแล้ว ${tempSingles.size} หน้า)`;
+                            break;
+                        }
+
+                        betType = "เต็ง";
+                        isValidType = true;
+
+                        if (digits.length === 1) {
+                            categoryName = `เต็ง ${digits[0]}`;
+                        } else {
+                            categoryName = `เต็ง ${digits.length} หน้า (${digits.join(', ')}) [ขาละ ${price} บ.]`;
+                        }
                     }
                 }
 
@@ -2008,7 +2016,7 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
                     break;
                 }
 
-                // ---------------- 3. ตรวจสอบอั้นจาก MAX_BET_MAP โดยอัตโนมัติ ----------------
+                // ---------------- 3. ตรวจสอบอั้นจาก MAX_BET_MAP ----------------
                 const maxAllowed = MAX_BET_MAP[betType];
                 
                 if (!maxAllowed) {
@@ -2025,7 +2033,7 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
 
                 // คำนวณราคารวมจริง (กรณีเต็งหลายหน้า)
                 let lineTotalPrice = price;
-                if (betType === "เต็ง") {
+                if (betType === "เต็ง" && targetStr.length > 1) {
                     lineTotalPrice = price * targetStr.length;
                 }
 

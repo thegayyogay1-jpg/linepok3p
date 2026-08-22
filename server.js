@@ -1939,22 +1939,38 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
                         isValidType = true;
                     }
                 }
-                // 2.4 โต๊ด 2 ตัว (เช่น 25)
+                // ❌ [เพิ่มใหม่ 2.4] ดักโต๊ด 2 ตัว
                 else if (targetStr.length === 2 && targetStr.split('').every(c => ['1','2','3','4','5','6'].includes(c))) {
                     const nums = targetStr.split('');
-                    if (nums[0] !== nums[1]) {
+                    if (nums[0] === nums[1]) {
+                        hasError = true;
+                        errorMsg = `❌ ส่งโพยไม่ถูกต้อง! โต๊ด 2 ตัว ต้องเป็นเลขคนละตัวกัน (${targetStr})\n👉 หากต้องการแทงเต็ง ให้ส่งเช่น z${nums[0]}-${price}`;
+                        break;
+                    } else {
                         categoryName = `โต๊ด${nums[0]}${nums[1]}`;
                         isValidType = true;
                     }
                 }
-                // 2.5 โต๊ด 3 ตัว (เช่น 123 - ต้องไม่ซ้ำกัน 3 เลข)
-                else if (targetStr.length === 3 && targetStr.split('').every(c => ['1','2','3','4','5','6'].includes(c)) && new Set(targetStr.split('')).size === 3) {
+                // ❌ [เพิ่มใหม่ 2.5] ดักโต๊ด 3 ตัว
+                else if (targetStr.length === 3 && targetStr.split('').every(c => ['1','2','3','4','5','6'].includes(c))) {
                     const nums = targetStr.split('');
-                    categoryName = `โต๊ด${nums[0]}${nums[1]}${nums[2]}`;
-                    isValidType = true;
+                    if (new Set(nums).size !== 3) {
+                        hasError = true;
+                        errorMsg = `❌ ส่งโพยไม่ถูกต้อง! โต๊ด 3 ตัว ห้ามมีเลขซ้ำกัน (${targetStr})\n👉 หากต้องการแทงตอง ให้พิมพ์ "ตอง" หรือ "ตอง${nums[0]}"`;
+                        break;
+                    } else {
+                        categoryName = `โต๊ด${nums[0]}${nums[1]}${nums[2]}`;
+                        isValidType = true;
+                    }
                 }
                 // 2.6 แทงเต็งตัวเลข (เช่น 1 หรือแทงหลายหน้าพร้อมกัน เช่น 1234 หรือ 12345)
                 else if (targetStr.split('').every(c => ['1','2','3','4','5','6'].includes(c))) {
+                    // ถ้าใส่เลขซ้ำมาในความยาวตั้งแต่ 4 ตัวขึ้นไป (เช่น 1123, 22345)
+                    if (new Set(targetStr.split('')).size !== targetStr.length) {
+                        hasError = true;
+                        errorMsg = `❌ ส่งโพยไม่ถูกต้อง! พบเลขซ้ำกันในรายการเต็งหลายหน้า (${targetStr})`;
+                        break;
+                    }
                     const digits = Array.from(new Set(targetStr.split(''))); // ดึงเลขไม่ซ้ำ
                     
                     // 🛡️ เช็คกฎเต็งห้ามเกิน 5 หน้า
@@ -1995,24 +2011,6 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
                     price: price
                 });
             }
-            // ❌ [ดักจับที่ 1] โต๊ด 2 ตัว แต่ใส่เลขซ้ำ เช่น z22(50) หรือ z2-2=50
-                if (isTod2 && hasDuplicateNumbers(targetNumbers)) {
-                    return await replyLine(replyToken, 
-                        `⚠️ ส่งโพยไม่ถูกต้อง!\n` +
-                        `❌ เลขโต๊ด 2 ตัว ต้องเป็นเลขคนละตัวกัน (เช่น z23=50)\n` +
-                        `👉 หากต้องการแทงเต็งเลขซ้ำ ให้แทงเต็งปกติครับ`
-                    );
-                }
-            
-                // ❌ [ดักจับที่ 2] โต๊ด 3 ตัว แต่ใส่เลขซ้ำ เช่น z223(50) หรือ z2-2-3=50
-                if (isTod3 && hasDuplicateNumbers(targetNumbers)) {
-                    return await replyLine(replyToken, 
-                        `⚠️ ส่งโพยไม่ถูกต้อง!\n` +
-                        `❌ เลขโต๊ด 3 ตัว ต้องเป็นเลขไม่ซ้ำกันทั้ง 3 ตัว (เช่น z234=50)\n` +
-                        `👉 หากต้องการแทงตอง/เต็ง ให้ส่งรูปแบบเต็งตามปกติครับ`
-                    );
-                }
-
             // 💰 บันทึกยอดเมื่อไม่มีข้อผิดพลาด
             if (!hasError && totalHiloBet > 0) {
                 if (user.balance < totalHiloBet) {

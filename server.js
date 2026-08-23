@@ -2753,16 +2753,22 @@ else if (originalMsg.startsWith('>')) {
   // ==================== [ 9. ระบบแอดมินยืนยันผลคำนวณเงินจริง OK / NO (Settlement Engine) ] ====================
 else if (userMsg === 'ok' || userMsg === 'no') {
     if (!ADMIN_IDS.includes(userId)) return;
+
+    // 💡 เช็กว่ามีผลเกมใดเกมหนึ่งส่งเข้ามาค้างอยู่หรือยัง
+    const hasPokdeckResult = tempRoomResults && tempDealerResult;
+    const hasHiloResult = tempHiloDices && tempHiloDices.length === 3;
     
-    if (!tempRoomResults || !tempDealerResult && !hasHiloResult || !tempHiloDices ) {
+   if (!hasPokdeckResult && !hasHiloResult) {
         replyText = "⚠️ ไม่มีข้อมูลผลแต้มค้างอยู่ในระบบครับ กรุณาส่งผลแต้มด้วยเครื่องหมาย > ก่อนครับ";
     } else {
         if (userMsg === 'ok') {
             let summaryPayoutText = `💰 สรุปยอดได้/เสีย รอบที่: ${currentRound}\n──────────────────\n`;
-                summaryPayoutText += `👑 เจ้ามือ: ${tempDealerResult.name}\n`;
+                if (hasPokdeckResult) summaryPayoutText += `👑 เจ้ามือ: ${tempDealerResult.name}\n`;
             
+                if (hasHiloResult) {
                 const hiloSum = tempHiloDices.reduce((a, b) => a + b, 0);
-                summaryPayoutText += `🎲 ผลไฮโล: [ ${hasHiloResult.join("-")} ] (${hiloSum} แต้ม)\n`;
+                summaryPayoutText += `🎲 ผลไฮโล: [ ${tempHiloDices.join("-")} ] (${hiloSum} แต้ม)\n`;
+            }
             
             summaryPayoutText += `──────────────────\n`;
             
@@ -2843,17 +2849,17 @@ else if (userMsg === 'ok' || userMsg === 'no') {
             };
 
             // 🎯 รวบรวม uId ทั้งหมดที่มีการเดิมพันในรอบนี้ (ทั้งป๊อกเด้ง และ ไฮโล)
-            const userBetsArray = Object.keys(roundBets || {});
+            const pokdengUserIds = Object.keys(roundBets || {});
             const hiloUserIds = Object.keys(hiloRoundBets || {});
-            const allBetUserIds = Array.from(new Set([...userBetsArray, ...hiloUserIds]));
+            const allBetUserIds = Array.from(new Set([...pokdengUserIds, ...hiloUserIds]));
 
             // วนลูปสมาชิกทุกคนที่มีการแทงในรอบนี้เพื่อคิดเงิน
             for (let uId in roundBets) {
                 try {
-                    const userBetsArray = roundBets[uId] || [];
-                    const hiloBetsArray = hiloRoundBets[uId] || [];
+                    const userBetsArray = roundBets ? (roundBets[uId] || []) : [];
+                    const hiloBetsArray = hiloRoundBets ? (hiloRoundBets[uId] || []) : [];
                     
-                    if (!userBetsArray || userBetsArray.length === 0 && hiloBetsArray.length === 0) continue;
+                    if (userBetsArray.length === 0 && hiloBetsArray.length === 0) continue;
                     
                 const user = usersWallets[uId];
                 // 🚨 [เพิ่มจุดนี้] ป้องกันระบบล่มถ้าหา Wallet สมาชิกไม่เจอ
@@ -3138,8 +3144,8 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                         "contents": [
                             { "type": "text", "text": "💰 สรุปยอดได้/เสีย ประจำรอบ 🎉", "weight": "bold", "color": "#ffaa00", "size": "md", "align": "center" },
                             { "type": "text", "text": `รอบที่: ${currentRound} (หน้า ${index + 1}/${userPages.length})`, "weight": "bold", "color": "#ffffff", "size": "xl", "align": "center", "margin": "none" },
-                            { "type": "text", "text": `👑 เจ้ามือป๊อกเด้ง: ${tempDealerResult.name}`, "size": "xs", "color": "#aaaaaa", "align": "center" }
-                            { "type": "text", "text": `🎲 ลูกเต๋าไฮโล: ${hasHiloResult.join("-")} (${tempHiloDices.reduce((a,b)=>a+b,0)} แต้ม)`, "size": "xs", "color": "#ffcc00", "align": "center" }
+                            ...(hasPokdeckResult ? [{ "type": "text", "text": `👑 เจ้ามือป๊อกเด้ง: ${tempDealerResult.name}`, "size": "xs", "color": "#aaaaaa", "align": "center" }] : []),
+                            ...(hasHiloResult [{ "type": "text", "text": `🎲 ลูกเต๋าไฮโล: ${hasHiloResult.join("-")} (${tempHiloDices.reduce((a,b)=>a+b,0)} แต้ม)`, "size": "xs", "color": "#ffcc00", "align": "center" }] : []),
                             { "type": "separator", "color": "#2a2a35" },
                             
                             // 👤 รายชื่อสมาชิก

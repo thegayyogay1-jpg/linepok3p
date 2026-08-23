@@ -3138,12 +3138,9 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                         "contents": [
                             { "type": "text", "text": "💰 สรุปยอดได้/เสีย ประจำรอบ 🎉", "weight": "bold", "color": "#ffaa00", "size": "md", "align": "center" },
                             { "type": "text", "text": `รอบที่: ${currentRound} (หน้า ${index + 1}/${userPages.length})`, "weight": "bold", "color": "#ffffff", "size": "xl", "align": "center", "margin": "none" },
-                            ...(hasPokdeckResult ? [
-                                { "type": "text", "text": `👑 เจ้ามือป๊อกเด้ง: ${tempDealerResult.name}`, "size": "xs", "color": "#aaaaaa", "align": "center" }
-                            ] : []),
-                            ...(hasHiloResult ? [
-                                { "type": "text", "text": `🎲 ลูกเต๋าไฮโล: ${tempHiloDices.join(" - ")} (${tempHiloDices.reduce((a,b)=>a+b,0)} แต้ม)`, "size": "xs", "color": "#ffcc00", "align": "center" }
-                            ] : []),
+                            { "type": "text", "text": `👑 เจ้ามือป๊อกเด้ง: ${tempDealerResult.name}`, "size": "xs", "color": "#aaaaaa", "align": "center" }
+                            { "type": "text", "text": `🎲 ลูกเต๋าไฮโล: ${tempHiloDices.join(" - ")} (${tempHiloDices.reduce((a,b)=>a+b,0)} แต้ม)`, "size": "xs", "color": "#ffcc00", "align": "center" }
+                            
                             { "type": "separator", "color": "#2a2a35" },
                             
                             // 👤 รายชื่อสมาชิก

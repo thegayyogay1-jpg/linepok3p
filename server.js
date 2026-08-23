@@ -2764,10 +2764,10 @@ else if (userMsg === 'ok' || userMsg === 'no') {
             let hasAnyBet = false;
             let flexUserContents = []; // 🎨 อาเรย์สำหรับเก็บดีไซน์กล่องรายคนใน Flex Message
 
-            // ✅ รวมรายชื่อ ID ผู้เล่นจากทั้งป๊อกเด้งและไฮโลเข้าด้วยกัน
-            const safeRoundBets = (typeof roundBets !== 'undefined' && roundBets) ? roundBets : {};
+            / ✅ ดึงข้อมูลอย่างปลอดภัย
             const safeHiloBets = (typeof hiloRoundBets !== 'undefined' && hiloRoundBets) ? hiloRoundBets : {};
             
+            // ✅ สร้าง Array รวม ID ผู้เล่นทั้งหมด
             const allUserIds = Array.from(new Set([
                 ...Object.keys(safeRoundBets),
                 ...Object.keys(safeHiloBets)
@@ -2775,10 +2775,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
 
             // วนลูปสมาชิกทุกคนที่มีการแทงในรอบนี้เพื่อคิดเงิน
             for (let uId in allUserIds) {
-                try {
-                    const userBetsArray = roundBets[uId] || [];
-                if (!userBetsArray || userBetsArray.length === 0) continue;
-                    
+                try {               
                 const user = usersWallets[uId];
                 // 🚨 [เพิ่มจุดนี้] ป้องกันระบบล่มถ้าหา Wallet สมาชิกไม่เจอ
                 if (!user) {
@@ -2899,50 +2896,50 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                     // 🎲 2. คิดผล ไฮโล (เพิ่มส่วนนี้เข้ามาสะสมยอด)
                     // ==========================================
                     const userHiloBetsArray = safeHiloBets[uId] || [];
-                    
                     if (typeof tempHiloResult !== 'undefined' && tempHiloResult && userHiloBetsArray.length > 0) {
+                        hasAnyBet = true; // มีการแทงไฮโล
                         userHiloBetsArray.forEach((hiloBet) => {
                             totalHoldRefund += (hiloBet.holdCost || 0);
                             
                             const betAmount = hiloBet.amount || hiloBet.price || hiloBet.betAmount || 0;
                             totalBetAmountThisRound += betAmount;
-            
+
                             let hiloWinLoss = 0;
                             const dice = tempHiloResult.dice || []; 
                             const totalScore = tempHiloResult.total;
                             const betType = hiloBet.type || hiloBet.betType || "";
-            
+
                             switch (betType) {
                                 case 'สูง':
                                     if (totalScore >= 12 && totalScore <= 17) hiloWinLoss = betAmount * 1;
                                     else hiloWinLoss = -betAmount;
                                     break;
-            
+
                                 case 'ต่ำ':
                                     if (totalScore >= 4 && totalScore <= 10) hiloWinLoss = betAmount * 1;
                                     else hiloWinLoss = -betAmount;
                                     break;
-            
+
                                 case 'เต็ง': 
                                     const matchCount = dice.filter(d => d === hiloBet.targetNum).length;
                                     if (matchCount > 0) hiloWinLoss = betAmount * matchCount;
                                     else hiloWinLoss = -betAmount;
                                     break;
-            
+
                                 case 'โต๊ด': 
                                     const hasNum1 = dice.includes(hiloBet.targetNum1);
                                     const hasNum2 = dice.includes(hiloBet.targetNum2);
                                     if (hasNum1 && hasNum2) hiloWinLoss = betAmount * 5;
                                     else hiloWinLoss = -betAmount;
                                     break;
-            
+
                                 case '11ไฮโล':
                                 case '11':
                                     if (totalScore === 11) hiloWinLoss = betAmount * 7;
                                     else hiloWinLoss = -betAmount;
                                     break;
                             }
-            
+
                             userTotalWinLoss += hiloWinLoss;
                         });
                     }

@@ -2848,11 +2848,18 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                 return betAmount * mult;
             };
 
+            // 🎯 รวบรวม uId ทั้งหมดที่มีการเดิมพันในรอบนี้ (ทั้งป๊อกเด้ง และ ไฮโล)
+            const pokdeckUserIds = Object.keys(roundBets || {});
+            const hiloUserIds = Object.keys(hiloRoundBets || {});
+            const allBetUserIds = Array.from(new Set([...pokdeckUserIds, ...hiloUserIds]));
+
             // วนลูปสมาชิกทุกคนที่มีการแทงในรอบนี้เพื่อคิดเงิน
             for (let uId in roundBets) {
                 try {
-                    const userBetsArray = roundBets[uId];
-                if (!userBetsArray || userBetsArray.length === 0) continue;
+                    const pokdeckBetsArray = roundBets[uId] || [];
+                    const hiloBetsArray = hiloRoundBets[uId] || [];
+                    
+                    if (pokdeckBetsArray.length === 0 && hiloBetsArray.length === 0) continue;
                     
                 const user = usersWallets[uId];
                 // 🚨 [เพิ่มจุดนี้] ป้องกันระบบล่มถ้าหา Wallet สมาชิกไม่เจอ
@@ -2868,33 +2875,23 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                 let userTotalWinLoss = 0; 
                 let totalHoldRefund = 0;   
                 let totalBetAmountThisRound = 0; // 📊 ตัวแปรเพิ่มใหม่สำหรับเก็บยอดแทงรวมแท้จริงในตานี้เพื่อเอาไปคิดเทิร์น
-
-                userBetsArray.forEach((bet) => {
-                    // 🎲 ตรวจสอบว่าเป็นโพยไฮโลหรือไม่ (จาก flag หรือการวิเคราะห์ betType)
-                        const isHiloBet = bet.gameType === "hilo" || 
-                                         bet.isHilo || 
-                                         ["สูง", "ต่ำ", "11", "ตองรวม"].includes(bet.betType) ||
-                                         bet.betType.startsWith("ตอง") ||
-                                         bet.betType.startsWith("เต็ง") ||
-                                         bet.betType.startsWith("ต่ำ") ||
-                                         bet.betType.startsWith("สูง") ||
-                                         bet.betType.startsWith("โต๊ด");
                     // -----------------------------------------------------------
                     // 🎲 [กรณีที่ 1: โพยเกมไฮโล]
                     // -----------------------------------------------------------
-                     if (isHiloBet) {
-                            if (hasHiloResult) {
-                                totalHoldRefund += bet.holdCost || bet.amount || 0;
-                                totalBetAmountThisRound += bet.pricePerLeg || bet.amount || 0;
+                     if (hasHiloResult && hiloBetsArray.length > 0) {
+                        hiloBetsArray.forEach((bet) => {
+                            totalHoldRefund += bet.holdCost || bet.amount || 0;
+                            totalBetAmountThisRound += bet.pricePerLeg || bet.amount || 0;
 
-                                const hiloResult = calculateHiloWinLoss(bet, tempHiloDices);
-                                userTotalWinLoss += hiloResult;
-                            }
-                        }
+                            const hiloResult = calculateHiloWinLoss(bet, tempHiloDices);
+                            userTotalWinLoss += hiloResult;
+                        });
+                    }
                     // -----------------------------------------------------------
                     // 🃏 [กรณีที่ 2: โพยเกมป๊อกเด้ง] (รันโค้ดระบบเดิมของน้า 100%)
                     // -----------------------------------------------------------
-                    else if (hasPokdeckResult) {
+                    if (hasPokdeckResult && pokdeckBetsArray.length > 0) {
+                        pokdeckBetsArray.forEach((bet) => {
                         totalHoldRefund += bet.holdCost; // ดึงเงินค้ำประกัน 3 เท่ากลับมาคืนก่อน
                         // แกะข้อมูลตามประเภทโพย (เช่น "1", "รข", "จ12")
                         let legsToCalculate = [];
@@ -3113,125 +3110,128 @@ else if (userMsg === 'ok' || userMsg === 'no') {
             pastRoundsData[currentRound] = {
                 dealer: JSON.parse(JSON.stringify(tempDealerResult)),
                 rooms: JSON.parse(JSON.stringify(tempRoomResults)),
-                bets: JSON.parse(JSON.stringify(roundBets))
+                hiloDices: tempHiloDices ? [...tempHiloDices] : [],
+                bets: JSON.parse(JSON.stringify(roundBets)),
+                hiloBets: JSON.parse(JSON.stringify(hiloRoundBets))
             };
             
            // ==================== [ส่วนแปลงเป็น CAROUSEL สไลด์ข้าง] ====================
-// 1. ตัดแบ่ง flexUserContents ออกเป็นหน้าๆ (แนะนำหน้าละ 3 คนเพื่อให้เห็นยอดคงเหลือชัดเจน)
-const chunkSize = 5; 
-const userPages = [];
-for (let i = 0; i < flexUserContents.length; i += chunkSize) {
-    userPages.push(flexUserContents.slice(i, i + chunkSize));
-}
-
-// ป้องกันกรณีไม่มีผู้เล่นในรอบ
-if (userPages.length === 0) {
-    userPages.push([{ "type": "text", "text": "ไม่มีรายการคำนวณในรอบนี้", "color": "#aaaaaa", "size": "xs", "align": "center" }]);
-}
-
-// 2. สร้างการ์ด Carousel
-const winLossBubbles = userPages.map((pageContents, index) => {
-    const isLastPage = index === userPages.length - 1;
-
-    return {
-        "type": "bubble",
-        "styles": {
-            "body": { "backgroundColor": "#191424" } // 🎨 ใช้สีม่วงดำสำหรับสรุปผล
-        },
-        "body": {
-            "type": "box",
-            "layout": "vertical",
-            "spacing": "md",
-            "contents": [
-                { "type": "text", "text": "💰 สรุปยอดได้/เสีย ประจำรอบ 🎉", "weight": "bold", "color": "#ffaa00", "size": "md", "align": "center" },
-                { "type": "text", "text": `รอบที่: ${currentRound} (หน้า ${index + 1}/${userPages.length})`, "weight": "bold", "color": "#ffffff", "size": "xl", "align": "center", "margin": "none" },
-                ...(hasPokdeckResult ? [
-                    { "type": "text", "text": `👑 เจ้ามือป๊อกเด้ง: ${tempDealerResult.name}`, "size": "xs", "color": "#aaaaaa", "align": "center" }
-                ] : []),
-                ...(hasHiloResult ? [
-                    { "type": "text", "text": `🎲 ลูกเต๋าไฮโล: ${tempHiloDices.join(" - ")} (${tempHiloDices.reduce((a,b)=>a+b,0)} แต้ม)`, "size": "xs", "color": "#ffcc00", "align": "center" }
-                ] : []),
-                { "type": "separator", "color": "#2a2a35" },
-                
-                // 👤 รายชื่อสมาชิก
-                {
-                    "type": "box",
-                    "layout": "vertical",
-                    "spacing": "sm",
-                    "contents": pageContents
-                },
-                
-                { "type": "separator", "color": "#2a2a35" },
-                { "type": "text", "text": "✅ ระบบทำการเคลียร์ยอดเงินในรอบนี้เสร็จสิ้นแล้วครับ!", "size": "xs", "color": "#00ff66", "align": "center", "weight": "bold" },
-                
-                // 🔘 ถ้าเป็นหน้าสุดท้าย ให้แสดงปุ่มกดเปิดรอบถัดไปได้ทันที
-                ...(isLastPage ? [
-                    {
-                        "type": "button",
-                        "style": "primary",
-                        "color": "#ffaa00",
-                        "height": "sm",
-                        "margin": "md",
-                        "action": {
-                            "type": "message",
-                            "label": "🚀 เปิดรอบแทงถัดไป",
-                            "text": "o" // 👈 เปลี่ยนเป็นคำสั่งเปิดรอบของน้าได้เลยครับ
-                        }
-                    }
-                ] : [])
-            ]
-        }
-    };
-});
-
-// 3. กำหนดค่า Carousel Flex
-global.currentReplyFlex = {
-    "type": "flex",
-    "altText": `💰 สรุปยอดได้/เสีย รอบที่: ${currentRound}`,
-    "contents": {
-        "type": "carousel",
-        "contents": winLossBubbles
-    }
-};
-// =========================================================================
-            // กำหนดให้ส่งทั้งข้อความธรรมดา (เก็บประวัติ) และแนบกล่องดีไซน์ไปด้วยครับน้า
-            tempRoomResults = null;
-            tempDealerResult = null;
-            tempHiloDices = [];
-            roundBets = {};
+            // 1. ตัดแบ่ง flexUserContents ออกเป็นหน้าๆ (แนะนำหน้าละ 3 คนเพื่อให้เห็นยอดคงเหลือชัดเจน)
+            const chunkSize = 5; 
+            const userPages = [];
+            for (let i = 0; i < flexUserContents.length; i += chunkSize) {
+                userPages.push(flexUserContents.slice(i, i + chunkSize));
+            }
             
-            replyText = ""; 
-        }     
-        else if (userMsg === 'no') {
-            replyText = "❌ แอดมินยกเลิกผลคำนวณรอบนี้เรียบร้อยครับ สามารถส่งแต้มเข้ามาใหม่ได้เลย";
-            tempRoomResults = null;
-            tempDealerResult = null;
-            tempHiloDices = [];
-        }
-    } // ปิดตัว else ของเงื่อนไขตรวจเช็กแต้มค้างคัดกรองหลัก
-}
-
-// ==================== [ 10. ระบบคู่มือ: คำสั่งสมาชิก (คส), กติกา (กต) และ บัญชี (บช) ] ====================
-else if (userMsg === 'คส' || userMsg === 'กต' || userMsg === 'บช' || userMsg === '/บช') {
-    if (userMsg === 'คส') {
-        replyText = `📜 **[ คู่มือคำสั่งสำหรับสมาชิกทุกท่าน ]** 📜\n\n` +
-                    `🔹 **C** ➡️ เช็กเลขสมาชิก ยอดเครดิต และสลิปโพยค้าง + เลขบัญชี\n` +
-                    `🔹 **บช** ➡️ ดูเลขบัญชีธนาคารสำหรับเติมเงิน\n` +
-                    `🔹 **[เลขขา]-[จำนวนเงิน]** ➡️ ส่งโพยเดิมพัน (เช่น 123-100)\n` +
-                    `🔹 **รข-[จำนวนเงิน]** ➡️ แทงเหมาหมดทุกขา ขาละเท่าๆ กัน\n` +
-                    `🔹 **รจ-[จำนวนเงิน]** ➡️ แทงเจ้ามือชนผู้เล่นทุกขา ขาละเท่าๆ กัน\n` +
-                    `🔹 **R** ➡️ ขอดึงโพยคืน/ยกเลิกโพยทั้งหมดในรอบนั้น (ตอนเปิดแทง)\n` +
-                    `🔹 **[เลขขา]+** ➡️ ขอจั่วไพ่ใบที่ 3 เพิ่มเติม (เฉพาะขาผู้เล่นปกติ)\n\n` +
-                    `💡 *หมายเหตุ: ทุกคำสั่งสามารถพิมพ์ได้ทั้งตัวพิมพ์เล็กและตัวพิมพ์ใหญ่ครับ*`;
-    } 
-    else if (userMsg === 'กต') {
-        replyText = `💡 สมาชิกพิมพ์ "คส" เพื่อดูวิธีการส่งโพยและคำสั่งอื่นๆ`;
-    }
-    else if (userMsg === 'บช' || userMsg === '/บช') {
-        // 🏦 บล็อกข้อความตอบกลับเรื่องบัญชีธนาคารโดยเฉพาะ
-        replyText = `🏦 [ กรุณา พิม ฝากจำนวนเงิน ] 🏦`;
-    }
-}
+            // ป้องกันกรณีไม่มีผู้เล่นในรอบ
+            if (userPages.length === 0) {
+                userPages.push([{ "type": "text", "text": "ไม่มีรายการคำนวณในรอบนี้", "color": "#aaaaaa", "size": "xs", "align": "center" }]);
+            }
+            
+            // 2. สร้างการ์ด Carousel
+            const winLossBubbles = userPages.map((pageContents, index) => {
+                const isLastPage = index === userPages.length - 1;
+            
+                return {
+                    "type": "bubble",
+                    "styles": {
+                        "body": { "backgroundColor": "#191424" } // 🎨 ใช้สีม่วงดำสำหรับสรุปผล
+                    },
+                    "body": {
+                        "type": "box",
+                        "layout": "vertical",
+                        "spacing": "md",
+                        "contents": [
+                            { "type": "text", "text": "💰 สรุปยอดได้/เสีย ประจำรอบ 🎉", "weight": "bold", "color": "#ffaa00", "size": "md", "align": "center" },
+                            { "type": "text", "text": `รอบที่: ${currentRound} (หน้า ${index + 1}/${userPages.length})`, "weight": "bold", "color": "#ffffff", "size": "xl", "align": "center", "margin": "none" },
+                            ...(hasPokdeckResult ? [
+                                { "type": "text", "text": `👑 เจ้ามือป๊อกเด้ง: ${tempDealerResult.name}`, "size": "xs", "color": "#aaaaaa", "align": "center" }
+                            ] : []),
+                            ...(hasHiloResult ? [
+                                { "type": "text", "text": `🎲 ลูกเต๋าไฮโล: ${tempHiloDices.join(" - ")} (${tempHiloDices.reduce((a,b)=>a+b,0)} แต้ม)`, "size": "xs", "color": "#ffcc00", "align": "center" }
+                            ] : []),
+                            { "type": "separator", "color": "#2a2a35" },
+                            
+                            // 👤 รายชื่อสมาชิก
+                            {
+                                "type": "box",
+                                "layout": "vertical",
+                                "spacing": "sm",
+                                "contents": pageContents
+                            },
+                            
+                            { "type": "separator", "color": "#2a2a35" },
+                            { "type": "text", "text": "✅ ระบบทำการเคลียร์ยอดเงินในรอบนี้เสร็จสิ้นแล้วครับ!", "size": "xs", "color": "#00ff66", "align": "center", "weight": "bold" },
+                            
+                            // 🔘 ถ้าเป็นหน้าสุดท้าย ให้แสดงปุ่มกดเปิดรอบถัดไปได้ทันที
+                            ...(isLastPage ? [
+                                {
+                                    "type": "button",
+                                    "style": "primary",
+                                    "color": "#ffaa00",
+                                    "height": "sm",
+                                    "margin": "md",
+                                    "action": {
+                                        "type": "message",
+                                        "label": "🚀 เปิดรอบแทงถัดไป",
+                                        "text": "o" // 👈 เปลี่ยนเป็นคำสั่งเปิดรอบของน้าได้เลยครับ
+                                    }
+                                }
+                            ] : [])
+                        ]
+                    }
+                };
+            });
+            
+            // 3. กำหนดค่า Carousel Flex
+            global.currentReplyFlex = {
+                "type": "flex",
+                "altText": `💰 สรุปยอดได้/เสีย รอบที่: ${currentRound}`,
+                "contents": {
+                    "type": "carousel",
+                    "contents": winLossBubbles
+                }
+            };
+            // =========================================================================
+                        // กำหนดให้ส่งทั้งข้อความธรรมดา (เก็บประวัติ) และแนบกล่องดีไซน์ไปด้วยครับน้า
+                        tempRoomResults = null;
+                        tempDealerResult = null;
+                        tempHiloDices = [];
+                        roundBets = {};
+                        hiloRoundBets = {}; // 👈 ล้างรายการโพยไฮโลเตรียมพร้อมรอบถัดไป
+                        
+                        replyText = ""; 
+                    }     
+                    else if (userMsg === 'no') {
+                        replyText = "❌ แอดมินยกเลิกผลคำนวณรอบนี้เรียบร้อยครับ สามารถส่งแต้มเข้ามาใหม่ได้เลย";
+                        tempRoomResults = null;
+                        tempDealerResult = null;
+                        tempHiloDices = [];
+                    }
+                } // ปิดตัว else ของเงื่อนไขตรวจเช็กแต้มค้างคัดกรองหลัก
+            }
+            
+            // ==================== [ 10. ระบบคู่มือ: คำสั่งสมาชิก (คส), กติกา (กต) และ บัญชี (บช) ] ====================
+            else if (userMsg === 'คส' || userMsg === 'กต' || userMsg === 'บช' || userMsg === '/บช') {
+                if (userMsg === 'คส') {
+                    replyText = `📜 **[ คู่มือคำสั่งสำหรับสมาชิกทุกท่าน ]** 📜\n\n` +
+                                `🔹 **C** ➡️ เช็กเลขสมาชิก ยอดเครดิต และสลิปโพยค้าง + เลขบัญชี\n` +
+                                `🔹 **บช** ➡️ ดูเลขบัญชีธนาคารสำหรับเติมเงิน\n` +
+                                `🔹 **[เลขขา]-[จำนวนเงิน]** ➡️ ส่งโพยเดิมพัน (เช่น 123-100)\n` +
+                                `🔹 **รข-[จำนวนเงิน]** ➡️ แทงเหมาหมดทุกขา ขาละเท่าๆ กัน\n` +
+                                `🔹 **รจ-[จำนวนเงิน]** ➡️ แทงเจ้ามือชนผู้เล่นทุกขา ขาละเท่าๆ กัน\n` +
+                                `🔹 **R** ➡️ ขอดึงโพยคืน/ยกเลิกโพยทั้งหมดในรอบนั้น (ตอนเปิดแทง)\n` +
+                                `🔹 **[เลขขา]+** ➡️ ขอจั่วไพ่ใบที่ 3 เพิ่มเติม (เฉพาะขาผู้เล่นปกติ)\n\n` +
+                                `💡 *หมายเหตุ: ทุกคำสั่งสามารถพิมพ์ได้ทั้งตัวพิมพ์เล็กและตัวพิมพ์ใหญ่ครับ*`;
+                } 
+                else if (userMsg === 'กต') {
+                    replyText = `💡 สมาชิกพิมพ์ "คส" เพื่อดูวิธีการส่งโพยและคำสั่งอื่นๆ`;
+                }
+                else if (userMsg === 'บช' || userMsg === '/บช') {
+                    // 🏦 บล็อกข้อความตอบกลับเรื่องบัญชีธนาคารโดยเฉพาะ
+                    replyText = `🏦 [ กรุณา พิม ฝากจำนวนเงิน ] 🏦`;
+                }
+            }
                 // ==================== [ ระบบดึงโพยและผลไพ่ย้อนหลังรายบุคคล (vรอบ,mสมาชิก) ] ====================
             else if (userMsg.startsWith('v') && userMsg.includes(',m')) {
                 // แยกข้อความด้วยเครื่องหมายจุลภาค (,)

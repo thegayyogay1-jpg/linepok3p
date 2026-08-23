@@ -2897,161 +2897,127 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                     });
                 }); // ปิด userBetsArray.forEach
                     
-                    // =========================================================================
-                // 🎲 [2. คำนวณผลไฮโลจาก hiloRoundBets ตามกติกาสากลและอัตราจ่ายพิเศษ]
-                // =========================================================================
-                let hiloWinLoss = 0;
-                
-                // สมมุติว่าผลเต๋า 3 ลูกเก็บไว้ในตัวแปร tempHiloDice เช่น [1, 2, 3]
-                const dice = tempHiloDice || [0, 0, 0]; 
-                const diceSum = dice.reduce((a, b) => a + b, 0);
-                
-                // เช็กว่าหน้าเต๋าซ้ำกันกี่ลูก (ตอง / คู่)
-                const isTriple = (dice[0] === dice[1] && dice[1] === dice[2]);
-                
-                hiloBetsArray.forEach((hBet) => {
-                    // 1. คืนเงินค้ำประกัน (ถ้ามี)
-                    if (hBet.holdCost) {
-                        totalHoldRefund += hBet.holdCost;
-                    }
-                
-                    const amount = hBet.amount || hBet.totalPrice || 0;
-                    totalBetAmountThisRound += amount; // สะสมยอดแทงคิดเทิร์น
-                
-                    let winMultiplier = 0; // อัตราจ่าย (0 = แพ้)
-                    let isWin = false;
-                
-                    // ----------------------------------------------------
-                    // 🧮 ตรวจสอบประเภทการแทง (hBet.type หรือ hBet.betType)
-                    // ----------------------------------------------------
-                    const bType = hBet.type || hBet.betType;
-                
-                    // 1️⃣ สูง / ต่ำ (1:1) - *ถ้าตอง เจ้ากิน (แทงสูง/ต่ำแพ้)*
-                    if (bType === "สูง") {
-                        if (!isTriple && diceSum >= 12 && diceSum <= 17) {
-                            isWin = true;
-                            winMultiplier = 1;
-                        }
-                    } else if (bType === "ต่ำ") {
-                        if (!isTriple && diceSum >= 4 && diceSum <= 10) {
-                            isWin = true;
-                            winMultiplier = 1;
-                        }
-                    }
-                
-                    // 2️⃣ 11 ไฮโล (1:7)
-                    else if (bType === "11" || bType === "11ไฮโล") {
-                        if (diceSum === 11) {
-                            isWin = true;
-                            winMultiplier = 7;
-                        }
-                    }
-                
-                    // 3️⃣ เต็งหน้า (1 ถึง 6) -> ถูก 1 ลูกจ่าย 1:1, ถูก 2 ลูกจ่าย 1:2, ถูก 3 ลูกจ่าย 1:5
-                    else if (["1", "2", "3", "4", "5", "6"].includes(String(bType))) {
-                        const targetNum = parseInt(bType);
-                        const matchCount = dice.filter(d => d === targetNum).length;
-                        if (matchCount === 1) {
-                            isWin = true;
-                            winMultiplier = 1;
-                        } else if (matchCount === 2) {
-                            isWin = true;
-                            winMultiplier = 2;
-                        } else if (matchCount === 3) {
-                            isWin = true;
-                            winMultiplier = 5;
-                        }
-                    }
-                
-                    // 4️⃣ โต๊ด 2 ตัว (เช่น "1-2", "4-5") (1:5)
-                    else if (bType.includes("-") && bType.split("-").length === 2) {
-                        const [n1, n2] = bType.split("-").map(Number);
-                        if (dice.includes(n1) && dice.includes(n2)) {
-                            // กรณีเป็นเลขคนละตัวกัน หรือเป็นคู่
-                            if (n1 !== n2 || dice.filter(d => d === n1).length >= 2) {
-                                isWin = true;
-                                winMultiplier = 5;
-                            }
-                        }
-                    }
-                
-                    // 5️⃣ โต๊ด 3 ตัว (เช่น "1-2-3") -> ถูก 2 ใน 3 จ่าย 1:1, ถูกครบ 3 ตัว จ่าย 1:5
-                    else if (bType.includes("-") && bType.split("-").length === 3) {
-                        const targets = bType.split("-").map(Number);
-                        // นับว่าผลเต๋าตรงกับเลขที่โต๊ดกี่ตัว
-                        const matchCount = targets.filter(t => dice.includes(t)).length;
-                        if (matchCount === 3) {
-                            isWin = true;
-                            winMultiplier = 5; // ถูกครบ 3 ตัว
-                        } else if (matchCount === 2) {
-                            isWin = true;
-                            winMultiplier = 1; // ถูก 2 ใน 3
-                        }
-                    }
-                
-                    // 6️⃣ ตองรวม (1:25)
-                    else if (bType === "ตองรวม") {
-                        if (isTriple) {
-                            isWin = true;
-                            winMultiplier = 25;
-                        }
-                    }
-                
-                    // 7️⃣ ตองเจาะ (เช่น "ตอง1", "ตอง6") (1:100)
-                    else if (bType.startsWith("ตอง")) {
-                        const targetNum = parseInt(bType.replace("ตอง", ""));
-                        if (isTriple && dice[0] === targetNum) {
-                            isWin = true;
-                            winMultiplier = 100;
-                        }
-                    }
-                
-                    // 8️⃣ ต่ำ + หน้าเต๋า (ต่ำ1 ถึง ต่ำ6)
-                    // เงื่อนไข: ต้องออก "ต่ำ" (แต้ม 4-10) และมีเลขเต๋านั้นๆ ออกมา
-                    else if (bType.startsWith("ต่ำ")) {
-                        const targetNum = parseInt(bType.replace("ต่ำ", ""));
-                        const isLow = (!isTriple && diceSum >= 4 && diceSum <= 10);
-                        
-                        if (isLow && dice.includes(targetNum)) {
-                            isWin = true;
-                            // อัตราจ่ายตามเลขหน้าเต๋า
-                            if (targetNum === 1 || targetNum === 2) winMultiplier = 2; // ต่ำ1, ต่ำ2 จ่าย 1:2
-                            else if (targetNum === 3) winMultiplier = 3;                // ต่ำ3 จ่าย 1:3
-                            else if (targetNum === 4) winMultiplier = 4;                // ต่ำ4 จ่าย 1:4
-                            else if (targetNum === 5) winMultiplier = 6;                // ต่ำ5 จ่าย 1:6
-                            else if (targetNum === 6) winMultiplier = 9;                // ต่ำ6 จ่าย 1:9
-                        }
-                    }
-                
-                    // 9️⃣ สูง + หน้าเต๋า (สูง1 ถึง สูง6)
-                    // เงื่อนไข: ต้องออก "สูง" (แต้ม 12-17) และมีเลขเต๋านั้นๆ ออกมา
-                    else if (bType.startsWith("สูง")) {
-                        const targetNum = parseInt(bType.replace("สูง", ""));
-                        const isHigh = (!isTriple && diceSum >= 12 && diceSum <= 17);
-                        
-                        if (isHigh && dice.includes(targetNum)) {
-                            isWin = true;
-                            // อัตราจ่ายตามเลขหน้าเต๋า
-                            if (targetNum === 6 || targetNum === 5) winMultiplier = 2; // สูง6, สูง5 จ่าย 1:2
-                            else if (targetNum === 4) winMultiplier = 3;                // สูง4 จ่าย 1:3
-                            else if (targetNum === 3) winMultiplier = 4;                // สูง3 จ่าย 1:4
-                            else if (targetNum === 2) winMultiplier = 6;                // สูง2 จ่าย 1:6
-                            else if (targetNum === 1) winMultiplier = 9;                // สูง1 จ่าย 1:9
-                        }
-                    }
-                
-                    // ----------------------------------------------------
-                    // 💰 สรุปผล คำนวณยอด ได้/เสีย ของใบนี้
-                    // ----------------------------------------------------
-                    if (isWin) {
-                        hiloWinLoss += (amount * winMultiplier);
-                    } else {
-                        hiloWinLoss -= amount;
-                    }
-                });
-                
-                // 💥 รวมยอดเข้ากับผลป๊อกเด้งสุทธิ
-                userTotalWinLoss += hiloWinLoss;
+                   // =========================================================================
+// 🎲 [2. ส่วนคำนวณผลไฮโล ปลอดภัย ไม่ทำระบบ Crash]
+// =========================================================================
+let hiloWinLoss = 0;
+
+// ป้องกันเต๋าไม่มีค่า
+const dice = (typeof tempHiloDice !== 'undefined' && Array.isArray(tempHiloDice)) ? tempHiloDice : [0, 0, 0]; 
+const diceSum = dice.reduce((a, b) => a + b, 0);
+const isTriple = (dice[0] > 0 && dice[0] === dice[1] && dice[1] === dice[2]);
+
+// อ่านข้อมูลโพยไฮโล (เช็กทั้งสองชื่อป้องกัน undefined)
+const hiloList = hiloBetsArray || activeHiloBets[uId] || [];
+
+hiloList.forEach((hBet) => {
+    if (!hBet) return;
+
+    // 1. คืนเงินค้ำประกัน (ถ้ามี)
+    if (hBet.holdCost) {
+        totalHoldRefund += hBet.holdCost;
+    }
+
+    const amount = Number(hBet.amount || hBet.totalPrice || 0);
+    totalBetAmountThisRound += amount; 
+
+    // ดึงประเภทการแทง และแปลงเป็น String ป้องกัน Error
+    const rawType = hBet.type || hBet.betType || hBet.option || "";
+    const bType = String(rawType).trim();
+
+    if (!bType) return; // ถ้าไม่มีประเภทการแทงให้ข้ามใบนี้ไป
+
+    let winMultiplier = 0;
+    let isWin = false;
+
+    // 1️⃣ สูง / ต่ำ (1:1)
+    if (bType === "สูง") {
+        if (!isTriple && diceSum >= 12 && diceSum <= 17) { isWin = true; winMultiplier = 1; }
+    } else if (bType === "ต่ำ") {
+        if (!isTriple && diceSum >= 4 && diceSum <= 10) { isWin = true; winMultiplier = 1; }
+    }
+
+    // 2️⃣ 11 ไฮโล (1:7)
+    else if (bType === "11" || bType === "11ไฮโล") {
+        if (diceSum === 11) { isWin = true; winMultiplier = 7; }
+    }
+
+    // 3️⃣ เต็งหน้า (1 ถึง 6)
+    else if (["1", "2", "3", "4", "5", "6"].includes(bType)) {
+        const targetNum = parseInt(bType);
+        const matchCount = dice.filter(d => d === targetNum).length;
+        if (matchCount === 1) { isWin = true; winMultiplier = 1; }
+        else if (matchCount === 2) { isWin = true; winMultiplier = 2; }
+        else if (matchCount === 3) { isWin = true; winMultiplier = 5; }
+    }
+
+    // 4️⃣ โต๊ด 2 ตัว (เช่น "1-2")
+    else if (bType.includes("-") && bType.split("-").length === 2) {
+        const [n1, n2] = bType.split("-").map(Number);
+        if (dice.includes(n1) && dice.includes(n2)) {
+            if (n1 !== n2 || dice.filter(d => d === n1).length >= 2) {
+                isWin = true; winMultiplier = 5;
+            }
+        }
+    }
+
+    // 5️⃣ โต๊ด 3 ตัว (เช่น "1-2-3")
+    else if (bType.includes("-") && bType.split("-").length === 3) {
+        const targets = bType.split("-").map(Number);
+        const matchCount = targets.filter(t => dice.includes(t)).length;
+        if (matchCount === 3) { isWin = true; winMultiplier = 5; }
+        else if (matchCount === 2) { isWin = true; winMultiplier = 1; }
+    }
+
+    // 6️⃣ ตองรวม (1:25)
+    else if (bType === "ตองรวม") {
+        if (isTriple) { isWin = true; winMultiplier = 25; }
+    }
+
+    // 7️⃣ ตองเจาะ (เช่น "ตอง1") (1:100)
+    else if (bType.startsWith("ตอง")) {
+        const targetNum = parseInt(bType.replace("ตอง", ""));
+        if (isTriple && dice[0] === targetNum) { isWin = true; winMultiplier = 100; }
+    }
+
+    // 8️⃣ ต่ำ + หน้าเต๋า (ต่ำ1 ถึง ต่ำ6)
+    else if (bType.startsWith("ต่ำ")) {
+        const targetNum = parseInt(bType.replace("ต่ำ", ""));
+        const isLow = (!isTriple && diceSum >= 4 && diceSum <= 10);
+        if (isLow && dice.includes(targetNum)) {
+            isWin = true;
+            if (targetNum === 1 || targetNum === 2) winMultiplier = 2;
+            else if (targetNum === 3) winMultiplier = 3;
+            else if (targetNum === 4) winMultiplier = 4;
+            else if (targetNum === 5) winMultiplier = 6;
+            else if (targetNum === 6) winMultiplier = 9;
+        }
+    }
+
+    // 9️⃣ สูง + หน้าเต๋า (สูง1 ถึง สูง6)
+    else if (bType.startsWith("สูง")) {
+        const targetNum = parseInt(bType.replace("สูง", ""));
+        const isHigh = (!isTriple && diceSum >= 12 && diceSum <= 17);
+        if (isHigh && dice.includes(targetNum)) {
+            isWin = true;
+            if (targetNum === 6 || targetNum === 5) winMultiplier = 2;
+            else if (targetNum === 4) winMultiplier = 3;
+            else if (targetNum === 3) winMultiplier = 4;
+            else if (targetNum === 2) winMultiplier = 6;
+            else if (targetNum === 1) winMultiplier = 9;
+        }
+    }
+
+    // สรุปยอดใบนี้
+    if (isWin) {
+        hiloWinLoss += (amount * winMultiplier);
+    } else {
+        hiloWinLoss -= amount;
+    }
+});
+
+// 💥 รวมยอดเข้ากับป๊อกเด้ง
+userTotalWinLoss += hiloWinLoss;
 
                 // 🧮 อัปเดตกระเป๋าเงินจริงหลังคิดยอดสุทธิ
                 user.balance = user.balance + totalHoldRefund + userTotalWinLoss;

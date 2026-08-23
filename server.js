@@ -2970,6 +2970,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                                 }
                             }
                         });
+                    }
                     }); // ปิด userBetsArray.forEach
 
                 // 🧮 อัปเดตกระเป๋าเงินจริงหลังคิดยอดสุทธิรวมทั้ง 2 เกม

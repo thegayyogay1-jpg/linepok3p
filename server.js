@@ -21,6 +21,7 @@ let usersWallets = {};
 let nextMemberId = 1;
 let isRoundOpen = false; // ตัวแปรจำสถานะ เปิด/ปิด รอบ
 let roundBets = {};      // ตัวแปรสำหรับจำโพยแทงในแต่ละรอบ
+hiloRoundBets: hiloRoundBets || {},   // บันทึกโหนดไฮโลแยกต่างหาก
 let hiloUserTrackers = {}; // ตัวแปรเก็บประวัติการแทงสวน/กั๊กไฮโลของผู้เล่นแต่ละคนในรอบนั้นๆ
 let isHiloRoundOpen = false; // 🎲 ตัวแปรจำสถานะ เปิด/ปิด รับแทงไฮโล
 let hiloRoundBets = {};      // 🎲 ตัวแปรเก็บโพยแทงไฮโลประจำรอบ
@@ -1057,7 +1058,7 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
 
                 // 💡 ฟังก์ชันช่วยแปลง betType ให้กลายเป็นข้อความอ่านง่าย
                 const formatLegDisplay = (bet) => {
-                    if (!bet || !bet.betType || bet.isHilo || bet.gameType === "hilo") return "ไม่ระบุขา";
+                    if (!bet || !bet.betType) return "ไม่ระบุขา";
                     const type = bet.betType;
                     const price = bet.pricePerLeg || 0;
 
@@ -1080,10 +1081,7 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                 for (let uId of allUserIds) {
                     const userBetsArray = (roundBets && roundBets[uId]) ? roundBets[uId] : [];
                     const userHiloArray = (hiloRoundBets && hiloRoundBets[uId]) ? hiloRoundBets[uId] : [];
-                    // กรองอาร์เรย์ป๊อกเด้ง ให้เหลือเฉพาะป๊อกเด้งจริง (เผื่อมีไฮโลหลุดเข้ามา)
-                    const pokBetsOnly = userBetsArray.filter(b => b && !b.isHilo && b.gameType !== "hilo");
-                
-                    if (pokBetsOnly.length === 0 && userHiloArray.length === 0) continue;
+                    if (userBetsArray.length === 0 && userHiloArray.length === 0) continue;
 
                     hasAnyBet = true;
                     const user = usersWallets[uId] || {};    
@@ -1106,11 +1104,6 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                     const legTextDisplay = legsList.length > 0 ? legsList.join(', ') : 'ไม่ได้แทง';
                 
                     // 3. คำนวณฝั่ง "ไฮโล"
-                    let totalHiloAmt = userHiloArray.reduce((sum, hb) => sum + (hb.totalPrice || hb.actualBet || hb.price || 0), 0);
-                    // ถ้าไม่มีโพยไฮโล ให้ขึ้นว่า "ไม่ได้แทง"
-                    const hiloTextDisplay = userHiloArray.length > 0 ? formatGroupedHiloBets(userHiloArray) : 'ไม่ได้แทง';
-
-                    // 🎲 --- คำนวณและจัดกลุ่มไฮโล (ปรับแก้จุดนี้) ---
                     let totalHiloAmt = userHiloArray.reduce((sum, hb) => sum + (hb.totalPrice || hb.actualBet || hb.price || 0), 0);
                     const hiloTextDisplay = formatGroupedHiloBets(userHiloArray);
 

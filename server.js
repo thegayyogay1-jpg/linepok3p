@@ -2747,17 +2747,22 @@ else if (originalMsg.startsWith('>')) {
   // ==================== [ 9. ระบบแอดมินยืนยันผลคำนวณเงินจริง OK / NO (Settlement Engine) ] ====================
 else if (userMsg === 'ok' || userMsg === 'no') {
     if (!ADMIN_IDS.includes(userId)) return;
-
-    if (!tempRoomResults || !tempDealerResult) {
+    
+    // 🛠️ เช็กว่ามีผลอย่างน้อย 1 อย่าง (ป๊อกเด้ง หรือ ไฮโล)
+    const hasPokdeckResult = tempDealerResult && tempRoomResults;
+    const hasHiloResult = tempHiloDices && tempHiloDices.length === 3;
+    
+    if (!hasPokdeckResult && !hasHiloResult) {
         replyText = "⚠️ ไม่มีข้อมูลผลแต้มค้างอยู่ในระบบครับ กรุณาส่งผลแต้มด้วยเครื่องหมาย > ก่อนครับ";
     } else {
         if (userMsg === 'ok') {
             let summaryPayoutText = `💰 สรุปยอดได้/เสีย รอบที่: ${currentRound}\n──────────────────\n`;
-            summaryPayoutText += `👑 เจ้ามือ: ${tempDealerResult.name}\n──────────────────\n`;
-            
-            if (tempHiloDices && tempHiloDices.length === 3) {
+            if (hasPokdeckResult) {
+                summaryPayoutText += `👑 เจ้ามือป๊อกเด้ง: ${tempDealerResult.name}\n`;
+            }
+            if (hasHiloResult) {
                 const hiloSum = tempHiloDices.reduce((a, b) => a + b, 0);
-                summaryPayoutText += `🎲 ผลไฮโล: [ ${tempHiloDices.join("-")} ] (${hiloSum} แต้ม)\n`;
+                summaryPayoutText += `🎲 ผลไฮโล: [ ${tempHiloDices.join("•")} ] (${hiloSum} แต้ม)\n`;
             }
             summaryPayoutText += `──────────────────\n`;
             
@@ -2825,7 +2830,6 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                     const rate = lowGakRates[betType] || 1;
                     mult = (isLow && dice.includes(targetNum)) ? rate : -1;
                 }
-
                 // 8. สูงกั๊ก (สูง6, สูง5 = 1 ต่อ 2 | สูง4 = 1 ต่อ 3 | สูง3 = 1 ต่อ 4 | สูง2 = 1 ต่อ 6 | สูง1 = 1 ต่อ 9)
                 else if (betType.startsWith("สูง")) {
                     const highGakRates = { "สูง6": 2, "สูง5": 2, "สูง4": 3, "สูง3": 4, "สูง2": 6, "สูง1": 9 };
@@ -2860,19 +2864,31 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                 let totalBetAmountThisRound = 0; // 📊 ตัวแปรเพิ่มใหม่สำหรับเก็บยอดแทงรวมแท้จริงในตานี้เพื่อเอาไปคิดเทิร์น
 
                 userBetsArray.forEach((bet) => {
+                    // 🎲 ตรวจสอบว่าเป็นโพยไฮโลหรือไม่ (จาก flag หรือการวิเคราะห์ betType)
+                        const isHiloBet = bet.gameType === "hilo" || 
+                                         bet.isHilo || 
+                                         ["สูง", "ต่ำ", "11", "ตองรวม"].includes(bet.betType) ||
+                                         bet.betType.startsWith("ตอง") ||
+                                         bet.betType.startsWith("เต็ง") ||
+                                         bet.betType.startsWith("ต่ำ") ||
+                                         bet.betType.startsWith("สูง") ||
+                                         bet.betType.startsWith("โต๊ด");
                     // -----------------------------------------------------------
                     // 🎲 [กรณีที่ 1: โพยเกมไฮโล]
                     // -----------------------------------------------------------
-                     if (bet.gameType === "hilo" || bet.isHilo) {
-                        totalHoldRefund += bet.holdCost || bet.amount || 0; // คืนเครดิตที่ดักไว้ตอนแทง
-                        totalBetAmountThisRound += bet.pricePerLeg || bet.amount || 0;
-                        const hiloResult = calculateHiloWinLoss(bet, tempHiloDices);
-                        userTotalWinLoss += hiloResult;
-                    }
+                     if (isHiloBet) {
+                            if (hasHiloResult) {
+                                totalHoldRefund += bet.holdCost || bet.amount || 0;
+                                totalBetAmountThisRound += bet.pricePerLeg || bet.amount || 0;
+
+                                const hiloResult = calculateHiloWinLoss(bet, tempHiloDices);
+                                userTotalWinLoss += hiloResult;
+                            }
+                        }
                     // -----------------------------------------------------------
                     // 🃏 [กรณีที่ 2: โพยเกมป๊อกเด้ง] (รันโค้ดระบบเดิมของน้า 100%)
                     // -----------------------------------------------------------
-                    else {
+                    else if (hasPokdeckResult) {
                         totalHoldRefund += bet.holdCost; // ดึงเงินค้ำประกัน 3 เท่ากลับมาคืนก่อน
                         // แกะข้อมูลตามประเภทโพย (เช่น "1", "รข", "จ12")
                         let legsToCalculate = [];
@@ -3096,7 +3112,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
             
            // ==================== [ส่วนแปลงเป็น CAROUSEL สไลด์ข้าง] ====================
 // 1. ตัดแบ่ง flexUserContents ออกเป็นหน้าๆ (แนะนำหน้าละ 3 คนเพื่อให้เห็นยอดคงเหลือชัดเจน)
-const chunkSize = 7; 
+const chunkSize = 5; 
 const userPages = [];
 for (let i = 0; i < flexUserContents.length; i += chunkSize) {
     userPages.push(flexUserContents.slice(i, i + chunkSize));
@@ -3123,10 +3139,12 @@ const winLossBubbles = userPages.map((pageContents, index) => {
             "contents": [
                 { "type": "text", "text": "💰 สรุปยอดได้/เสีย ประจำรอบ 🎉", "weight": "bold", "color": "#ffaa00", "size": "md", "align": "center" },
                 { "type": "text", "text": `รอบที่: ${currentRound} (หน้า ${index + 1}/${userPages.length})`, "weight": "bold", "color": "#ffffff", "size": "xl", "align": "center", "margin": "none" },
-                { "type": "text", "text": `👑 เจ้ามือ: ${tempDealerResult.name}`, "size": "xs", "color": "#aaaaaa", "align": "center" },
-                ...(tempHiloDices && tempHiloDices.length === 3 ? [
-                { "type": "text", "text": `🎲 ลูกเต๋าไฮโล: ${tempHiloDices.join(" - ")}`, "size": "xs", "color": "#ffcc00", "align": "center" }
-                            ] : []),
+                ...(hasPokdeckResult ? [
+                    { "type": "text", "text": `👑 เจ้ามือป๊อกเด้ง: ${tempDealerResult.name}`, "size": "xs", "color": "#aaaaaa", "align": "center" }
+                ] : []),
+                ...(hasHiloResult ? [
+                    { "type": "text", "text": `🎲 ลูกเต๋าไฮโล: ${tempHiloDices.join(" - ")} (${tempHiloDices.reduce((a,b)=>a+b,0)} แต้ม)`, "size": "xs", "color": "#ffcc00", "align": "center" }
+                ] : []),
                 { "type": "separator", "color": "#2a2a35" },
                 
                 // 👤 รายชื่อสมาชิก

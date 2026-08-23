@@ -2783,7 +2783,6 @@ console.log("=== 🎲 DEBUG HILO DATA END ===");
             
             // วนลูปสมาชิกทุกคนที่มีการแทงในรอบนี้เพื่อคิดเงิน
             for (let uId of allUserIds) {
-                for (let uId of allUserIds) {
     console.log(`👤 User: ${uId}`);
     console.log(`   - roundBets (ป๊อกเด้ง):`, roundBets[uId]);
     console.log(`   - activeHiloBets:`, typeof activeHiloBets !== 'undefined' ? activeHiloBets[uId] : 'N/A');

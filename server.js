@@ -1090,8 +1090,8 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                     let legsList = [];
                     userBetsArray.forEach((b) => {
                         // สะสมยอดค้ำ/ยอดแทงจริง
-                        const betAmount = b.actualBet || b.price || b.holdCost || 0;
-                        userTotalBetAmt += betAmount;
+                        if (b.actualBet) {
+                            userTotalBetAmt += b.actualBet;
                         }
 
                         // 🛠️ แก้ไขจุดนี้: ดึงขาที่แทงจาก b.betType ผ่านฟังก์ชันจัดรูปแบบ

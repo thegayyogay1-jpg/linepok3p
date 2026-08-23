@@ -1057,7 +1057,7 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
 
                 // 💡 ฟังก์ชันช่วยแปลง betType ให้กลายเป็นข้อความอ่านง่าย
                 const formatLegDisplay = (bet) => {
-                    if (!bet || !bet.betType) return "ไม่ระบุขา";
+                    if (!bet || !bet.betType || bet.isHilo || bet.gameType === "hilo") return "ไม่ระบุขา";
                     const type = bet.betType;
                     const price = bet.pricePerLeg || 0;
 
@@ -1080,7 +1080,10 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                 for (let uId of allUserIds) {
                     const userBetsArray = (roundBets && roundBets[uId]) ? roundBets[uId] : [];
                     const userHiloArray = (hiloRoundBets && hiloRoundBets[uId]) ? hiloRoundBets[uId] : [];
-                    if (userBetsArray.length === 0 && userHiloArray.length === 0) continue;
+                    // กรองอาร์เรย์ป๊อกเด้ง ให้เหลือเฉพาะป๊อกเด้งจริง (เผื่อมีไฮโลหลุดเข้ามา)
+                    const pokBetsOnly = userBetsArray.filter(b => b && !b.isHilo && b.gameType !== "hilo");
+                
+                    if (pokBetsOnly.length === 0 && userHiloArray.length === 0) continue;
 
                     hasAnyBet = true;
                     const user = usersWallets[uId] || {};    
@@ -1099,8 +1102,13 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                         legsList.push(legDisplay);
                     });
 
-                    // รวมขาที่แทงเข้าด้วยกัน เช่น "ขา1 (20), ขา2 (20)"
-                    const legTextDisplay = legsList.length > 0 ? legsList.join(', ') : 'ไม่มีข้อมูลขา';
+                    // ถ้าไม่มีโพยป๊อกเด้ง ให้ขึ้นว่า "ไม่ได้แทง"
+                    const legTextDisplay = legsList.length > 0 ? legsList.join(', ') : 'ไม่ได้แทง';
+                
+                    // 3. คำนวณฝั่ง "ไฮโล"
+                    let totalHiloAmt = userHiloArray.reduce((sum, hb) => sum + (hb.totalPrice || hb.actualBet || hb.price || 0), 0);
+                    // ถ้าไม่มีโพยไฮโล ให้ขึ้นว่า "ไม่ได้แทง"
+                    const hiloTextDisplay = userHiloArray.length > 0 ? formatGroupedHiloBets(userHiloArray) : 'ไม่ได้แทง';
 
                     // 🎲 --- คำนวณและจัดกลุ่มไฮโล (ปรับแก้จุดนี้) ---
                     let totalHiloAmt = userHiloArray.reduce((sum, hb) => sum + (hb.totalPrice || hb.actualBet || hb.price || 0), 0);
@@ -2061,11 +2069,6 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
                         hiloRoundBets[userId] = [];
                     }
 
-                    // 🛠️ เพิ่ม 3 บรรทัดนี้: สร้าง Key ให้ roundBets ถ้ายังไม่มี
-                    if (!roundBets[userId]) {
-                        roundBets[userId] = [];
-                    }
-
                     let itemsFlexContents = [];
                     processedHiloBets.forEach(hb => {
                         hiloRoundBets[userId].push({
@@ -2074,22 +2077,6 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
                             target: hb.target,
                             category: hb.category,
                             price: hb.price,
-                            time: new Date().toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok' })
-                        });
-
-                        // 🛠️ เพิ่มส่วนนี้: ดันข้อมูลเข้า roundBets ร่วมด้วยเพื่อให้ระบบคิดเงิน/checkbets มองเห็น
-                        roundBets[userId].push({
-                            name: displayName,
-                            memberNumber: user.memberNumber,
-                            gameType: "hilo",
-                            isHilo: true,
-                            target: hb.target,
-                            category: hb.category,
-                            betType: hb.category,
-                            price: hb.price,
-                            pricePerLeg: hb.price,
-                            actualBet: hb.price,
-                            holdCost: hb.price, // ยอดอายัด/ต้นทุน
                             time: new Date().toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok' })
                         });
 
@@ -2286,16 +2273,6 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
                 
                                 // 🗑️ ล้างรายการโพยไฮโลในรอบปัจจุบัน
                                 hiloRoundBets[userId] = [];
-
-                                // 🛠️ [เพิ่มจุดนี้] ลบรายการที่เป็นโพยไฮโลออกจาก roundBets ด้วย
-                                if (roundBets[userId]) {
-                                    roundBets[userId] = roundBets[userId].filter(b => !b.isHilo && b.gameType !== "hilo");
-                                    
-                                    // ถ้าลบไฮโลออกแล้วไม่มีรายการป๊อกเด้งเหลืออยู่เลย ให้ลบ key ผู้ใช้ออกไปเลย
-                                    if (roundBets[userId].length === 0) {
-                                        delete roundBets[userId];
-                                    }
-                                }
                 
                                 await saveDataToFirebase(); // 💾 บันทึกข้อมูลลงฐานข้อมูล
                 

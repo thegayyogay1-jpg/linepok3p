@@ -4081,7 +4081,7 @@ else if (command.toLowerCase() === "y") {
                         margin: "md",
                         contents: [
                             { type: "text", text: "💵 เครดิตกระเป๋า", color: "#ffffff", size: "sm", weight: "bold" },
-                            { type: "text", text: `${user.balance.toLocaleString()} บาท`, color: "#d4af37", size: "md", align: "end", weight: "bold" }
+                            { type: "text", text: `${(user && user.balance !== undefined && user.balance !== null ? Number(user.balance) : 0).toLocaleString()} บาท`, color: "#d4af37", size: "md", align: "end", weight: "bold" }
                         ]
                     },
                     {

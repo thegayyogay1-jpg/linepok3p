@@ -3016,11 +3016,16 @@ hiloList.forEach((hBet) => {
         }
     }
 
-    // สรุปผลยอดได้/เสียของใบนี้
+    // ----------------------------------------------------
+    // 💰 สรุปยอดเงินคืนเข้ากระเป๋า (แก้ไขตรงนี้)
+    // ----------------------------------------------------
     if (isWin) {
-        hiloWinLoss += (price * winMultiplier);
+        // ถ้าชนะ: คืนทุน (price) + กำไร (price * winMultiplier)
+        const payout = price + (price * winMultiplier);
+        hiloWinLoss += payout;
     } else {
-        hiloWinLoss -= price;
+        // ถ้าแพ้: ไม่ต้องทำอะไร (เพราะหักทุนไปแล้วตอนส่งโพย)
+        hiloWinLoss += 0; 
     }
 });
 

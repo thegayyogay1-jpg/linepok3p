@@ -1090,8 +1090,8 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                     let legsList = [];
                     userBetsArray.forEach((b) => {
                         // สะสมยอดค้ำ/ยอดแทงจริง
-                        if (b.actualBet) {
-                            userTotalBetAmt += b.actualBet;
+                        const betAmount = b.actualBet || b.price || b.holdCost || 0;
+                        userTotalBetAmt += betAmount;
                         }
 
                         // 🛠️ แก้ไขจุดนี้: ดึงขาที่แทงจาก b.betType ผ่านฟังก์ชันจัดรูปแบบ
@@ -2061,6 +2061,11 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
                         hiloRoundBets[userId] = [];
                     }
 
+                    // 🛠️ เพิ่ม 3 บรรทัดนี้: สร้าง Key ให้ roundBets ถ้ายังไม่มี
+                    if (!roundBets[userId]) {
+                        roundBets[userId] = [];
+                    }
+
                     let itemsFlexContents = [];
                     processedHiloBets.forEach(hb => {
                         hiloRoundBets[userId].push({
@@ -2069,6 +2074,22 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
                             target: hb.target,
                             category: hb.category,
                             price: hb.price,
+                            time: new Date().toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok' })
+                        });
+
+                        // 🛠️ เพิ่มส่วนนี้: ดันข้อมูลเข้า roundBets ร่วมด้วยเพื่อให้ระบบคิดเงิน/checkbets มองเห็น
+                        roundBets[userId].push({
+                            name: displayName,
+                            memberNumber: user.memberNumber,
+                            gameType: "hilo",
+                            isHilo: true,
+                            target: hb.target,
+                            category: hb.category,
+                            betType: hb.category,
+                            price: hb.price,
+                            pricePerLeg: hb.price,
+                            actualBet: hb.price,
+                            holdCost: hb.price, // ยอดอายัด/ต้นทุน
                             time: new Date().toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok' })
                         });
 

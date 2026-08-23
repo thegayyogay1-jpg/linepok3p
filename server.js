@@ -2744,6 +2744,11 @@ else if (originalMsg.startsWith('>')) {
         return res.sendStatus(200);
             }
         }
+    else if (userMsg === 'checkbets') {
+    if (!ADMIN_IDS.includes(userId)) return;
+    console.log("=== DEBUG roundBets ===", JSON.stringify(roundBets, null, 2));
+    replyText = `🔍 ข้อมูล roundBets ปัจจุบัน:\n` + JSON.stringify(roundBets, null, 2);
+}
   // ==================== [ 9. ระบบแอดมินยืนยันผลคำนวณเงินจริง OK / NO (Settlement Engine) ] ====================
 else if (userMsg === 'ok' || userMsg === 'no') {
     if (!ADMIN_IDS.includes(userId)) return;

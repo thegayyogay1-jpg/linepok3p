@@ -2774,20 +2774,9 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                 ...Object.keys(roundBets || {}),
                 ...Object.keys(activeHiloBets)
             ]));
-
-            // 🔍 [DEBUG SYSTEM] ปริ้นท์เช็กโครงสร้างโพยไฮโลใน Terminal
-console.log("=== 🎲 DEBUG HILO DATA START ===");
-console.log("1. tempHiloDice (ผลเต๋า):", typeof tempHiloDice !== 'undefined' ? tempHiloDice : "ไม่มีตัวแปรนี้");
-console.log("2. activeHiloBets:", JSON.stringify(typeof activeHiloBets !== 'undefined' ? activeHiloBets : "ไม่มี"));
-console.log("3. hiloRoundBets:", JSON.stringify(typeof hiloRoundBets !== 'undefined' ? hiloRoundBets : "ไม่มี"));
-console.log("=== 🎲 DEBUG HILO DATA END ===");
-
+            
             // วนลูปสมาชิกทุกคนที่มีการแทงในรอบนี้เพื่อคิดเงิน
             for (let uId of allUserIds) {
-                console.log(`👤 User: ${uId}`);
-    console.log(`   - roundBets (ป๊อกเด้ง):`, roundBets[uId]);
-    console.log(`   - activeHiloBets:`, typeof activeHiloBets !== 'undefined' ? activeHiloBets[uId] : 'N/A');
-    console.log(`   - hiloRoundBets:`, typeof hiloRoundBets !== 'undefined' ? hiloRoundBets[uId] : 'N/A');
                 try {
                     const userBetsArray = roundBets[uId] || []; // โพยป๊อกเด้ง
                     const hiloBetsArray = activeHiloBets[uId] || []; // โพยไฮโล
@@ -2805,7 +2794,7 @@ console.log("=== 🎲 DEBUG HILO DATA END ===");
                 const displayName = user.nickname || user.name || "สมาชิก";
                     
                 hasAnyBet = true;
-                let userTotalWinLoss = 0; 
+                let pokdengWinLoss = 0; 
                 let totalHoldRefund = 0;   
                 let totalBetAmountThisRound = 0; // 📊 ตัวแปรเพิ่มใหม่สำหรับเก็บยอดแทงรวมแท้จริงในตานี้เพื่อเอาไปคิดเทิร์น
 
@@ -3031,8 +3020,7 @@ console.log("=== 🎲 DEBUG HILO DATA END ===");
                 // ----------------------------------------------------
                 // 💥 ขั้นที่ 3: ปรับยอดเงินกระเป๋าจริง & ยอดโชว์หน้าจอ
                 // ----------------------------------------------------
-                usersWallets[uId] = (usersWallets[uId] || 0) + hiloNetWinLoss; // ปรับกระเป๋าตามผลสุทธิ
-                userTotalWinLoss += hiloNetWinLoss;                            // ส่งยอดสุทธิ (-50) ไปโชว์ Flex
+                let userTotalWinLoss = pokdengWinLoss + hiloNetWinLoss; // รวมยอดป๊อกเด้ง + ไฮโล
 
                 // 🧮 อัปเดตกระเป๋าเงินจริงหลังคิดยอดสุทธิ
                 user.balance = user.balance + totalHoldRefund + userTotalWinLoss;
@@ -3050,33 +3038,68 @@ console.log("=== 🎲 DEBUG HILO DATA END ===");
                 let isUserBettingOnDealer = userBetsArray.some(b => b.betType === "รจ" || b.betType.startsWith('จ'));
                 let feeNote = (isUserBettingOnDealer && userTotalWinLoss !== 0) ? " (หักต๋งแล้ว)" : "";
 
-                // 🛠️ ประกอบร่างดีไซน์ Flex รายบุคคล
-                flexUserContents.push({
+                    
+
+               // 🛠️ 🎯 แก้จุดที่ 3: ประกอบร่างดีไซน์ Flex รายบุคคลให้แสดงแยกรายเกม
+            let userBoxContents = [
+                { "type": "text", "text": `👤 [ ${user.memberNumber || '-'} ] ${displayName}`, "weight": "bold", "color": "#ffffff", "size": "sm" }
+            ];
+
+            // แสดงยอดป๊อกเด้ง (ถ้ามีการเล่น)
+            if (pokdengWinLoss !== 0) {
+                userBoxContents.push({
                     "type": "box",
-                    "layout": "vertical",
-                    "margin": "md",
-                    "spacing": "xs",
+                    "layout": "horizontal",
                     "contents": [
-                        { "type": "text", "text": `👤 [ ${user.memberNumber || '-'} ] ${displayName}`, "weight": "bold", "color": "#ffffff", "size": "sm" },
-                        {
-                            "type": "box",
-                            "layout": "horizontal",
-                            "contents": [
-                                { "type": "text", "text": `• ยอดสุทธิ:${feeNote}`, "size": "xs", "color": "#cccccc" },
-                                { "type": "text", "text": `${sign}${userTotalWinLoss} บาท`, "size": "xs", "color": displayColor, "align": "end", "weight": "bold" }
-                            ]
-                        },
-                        {
-                            "type": "box",
-                            "layout": "horizontal",
-                            "contents": [
-                                { "type": "text", "text": `• เครดิตคงเหลือ:`, "size": "xs", "color": "#cccccc" },
-                                { "type": "text", "text": `${user.balance} บ.`, "size": "xs", "color": "#ffffff", "align": "end" }
-                            ]
-                        },
-                        { "type": "separator", "color": "#2a2233", "margin": "xs" }
+                        { "type": "text", "text": `• ป๊อกเด้ง:${feeNote}`, "size": "xs", "color": "#aaaaaa" },
+                        { "type": "text", "text": `${fmt(pokdengWinLoss)} บาท`, "size": "xs", "color": pokdengWinLoss > 0 ? "#55ff55" : "#ff5555", "align": "end" }
                     ]
                 });
+            }
+
+            // แสดงยอดไฮโล (ถ้ามีการเล่น)
+            if (hiloNetWinLoss !== 0) {
+                userBoxContents.push({
+                    "type": "box",
+                    "layout": "horizontal",
+                    "contents": [
+                        { "type": "text", "text": `• ไฮโล:`, "size": "xs", "color": "#aaaaaa" },
+                        { "type": "text", "text": `${fmt(hiloNetWinLoss)} บาท`, "size": "xs", "color": hiloNetWinLoss > 0 ? "#55ff55" : "#ff5555", "align": "end" }
+                    ]
+                });
+            }
+
+            // แสดงยอดสุทธิรวม
+            let displayColor = userTotalWinLoss > 0 ? "#00ff66" : (userTotalWinLoss < 0 ? "#ff3333" : "#ffcc00");
+            userBoxContents.push({
+                "type": "box",
+                "layout": "horizontal",
+                "contents": [
+                    { "type": "text", "text": `• ยอดสุทธิ:`, "size": "xs", "color": "#ffffff", "weight": "bold" },
+                    { "type": "text", "text": `${fmt(userTotalWinLoss)} บาท`, "size": "xs", "color": displayColor, "align": "end", "weight": "bold" }
+                ]
+            });
+
+            // แสดงเครดิตคงเหลือ
+            userBoxContents.push({
+                "type": "box",
+                "layout": "horizontal",
+                "contents": [
+                    { "type": "text", "text": `• เครดิตคงเหลือ:`, "size": "xs", "color": "#aaaaaa" },
+                    { "type": "text", "text": `${user.balance} บ.`, "size": "xs", "color": "#ffffff", "align": "end" }
+                ]
+            });
+
+            userBoxContents.push({ "type": "separator", "color": "#2a2233", "margin": "xs" });
+
+            // ดันลง Array สรุป Flex
+            flexUserContents.push({
+                "type": "box",
+                "layout": "vertical",
+                "margin": "md",
+                "spacing": "xs",
+                "contents": userBoxContents
+            });
 
                 // เก็บลงตัวแปร text ระบบเดิมด้วยเพื่อไม่ให้ระบบหลังบ้านรวน
                 let oldSign = userTotalWinLoss > 0 ? "🟢 +" : (userTotalWinLoss < 0 ? "🔴 " : "🟡 ");

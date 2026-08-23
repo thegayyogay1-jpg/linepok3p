@@ -2776,7 +2776,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
             ]));
 
             // วนลูปสมาชิกทุกคนที่มีการแทงในรอบนี้เพื่อคิดเงิน
-            for (let uId of roundBets) {
+            for (let uId of allUserIds) {
                 try {
                     const userBetsArray = roundBets[uId] || []; // โพยป๊อกเด้ง
                     const hiloBetsArray = activeHiloBets[uId] || []; // โพยไฮโล

@@ -21,7 +21,6 @@ let usersWallets = {};
 let nextMemberId = 1;
 let isRoundOpen = false; // ตัวแปรจำสถานะ เปิด/ปิด รอบ
 let roundBets = {};      // ตัวแปรสำหรับจำโพยแทงในแต่ละรอบ
-hiloRoundBets: hiloRoundBets || {},   // บันทึกโหนดไฮโลแยกต่างหาก
 let hiloUserTrackers = {}; // ตัวแปรเก็บประวัติการแทงสวน/กั๊กไฮโลของผู้เล่นแต่ละคนในรอบนั้นๆ
 let isHiloRoundOpen = false; // 🎲 ตัวแปรจำสถานะ เปิด/ปิด รับแทงไฮโล
 let hiloRoundBets = {};      // 🎲 ตัวแปรเก็บโพยแทงไฮโลประจำรอบ
@@ -182,6 +181,7 @@ async function saveDataToFirebase() {
             nextMemberId: nextMemberId,
             isRoundOpen: isRoundOpen,         // 💾 จำสถานะ เปิด/ปิด รอบ
             roundBets: roundBets,             // 💾 จำโพยแทงในแต่ละรอบ
+            hiloRoundBets: hiloRoundBets || {},   // 💾บันทึกโหนดไฮโลแยกต่างหาก
             currentRound: currentRound,       // 💾 จำลำดับรอบปัจจุบัน
             isDrawOpen: isDrawOpen,           // 💾 จำสถานะรอบจั่วไพ่
             matchHistory: matchHistory,       // 💾 จำประวัติสถิติย้อนหลัง 5 รอบ

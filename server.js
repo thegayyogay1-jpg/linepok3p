@@ -2895,18 +2895,24 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                     // ==========================================
                     // 🎲 2. คิดผล ไฮโล (เพิ่มส่วนนี้เข้ามาสะสมยอด)
                     // ==========================================
-                    if (typeof tempHiloResult !== 'undefined' && tempHiloResult && userHiloBetsArray.length > 0) {
-                        userHiloBetsArray.forEach((hiloBet) => {
-                            totalHoldRefund += (hiloBet.holdCost || 0); // หากมีเงินค้ำไฮโล
-                            const betAmount = hiloBet.amount || hiloBet.price || 0;
+                    const userHiloBetsArray = (typeof hiloRoundBets !== 'undefined' && hiloRoundBets[uId]) ? hiloRoundBets[uId] : [];
+                    
+                    if (typeof tempHiloResult !== 'undefined' && tempHiloResult && userHiloRoundBetsArray.length > 0) {
+                        userHiloBetsArray.forEach((hiloRoundBets) => {
+                            totalHoldRefund += (hiloRoundBets.holdCost || 0); // หากมีเงินค้ำไฮโล
+                            
+                            const betAmount = hiloRoundBet.amount || hiloRoundBet.price || hiloRoundBet.betAmount || 0;
                             totalBetAmountThisRound += betAmount;
 
                             let hiloWinLoss = 0;
                             const dice = tempHiloResult.dice; // Array [ลูกที่1, ลูกที่2, ลูกที่3]
                             const totalScore = tempHiloResult.total;
 
+                            // ดึงประเภทการแทง (รองรับทั้ง .type หรือ .betType)
+                            const betType = hiloRoundBet.type || hiloRoundBet.betType || "";
+
                             // ตัวอย่างตรรกะการตรวจคำนวณไฮโล
-                            switch (hiloBet.type) {
+                            switch (hiloRoundBets.type) {
                                 case 'สูง':
                                     if (totalScore >= 12 && totalScore <= 17) hiloWinLoss = betAmount * 1;
                                     else hiloWinLoss = -betAmount;

@@ -3049,10 +3049,6 @@ console.log("=== 🎲 DEBUG HILO DATA END ===");
                 let isUserBettingOnDealer = userBetsArray.some(b => b.betType === "รจ" || b.betType.startsWith('จ'));
                 let feeNote = (isUserBettingOnDealer && userTotalWinLoss !== 0) ? " (หักต๋งแล้ว)" : "";
 
-           if (user) {
-                user.balance = Number(user.balance || 0) + totalHoldRefund + userTotalWinLoss;
-            }
-
                  // 🛠️ ประกอบร่างดีไซน์ Flex รายบุคคล
                 flexUserContents.push({
                     "type": "box",

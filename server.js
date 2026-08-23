@@ -2837,7 +2837,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                                 if (bet.maxMultiplier && bet.maxMultiplier < 3 && winMultiplier > bet.maxMultiplier) {
                                     winMultiplier = bet.maxMultiplier;
                                 }
-                                userTotalWinLoss += (betPrice * winMultiplier);
+                                pokdengWinLoss += (betPrice * winMultiplier);
                             } 
                             // 🔴 ฝั่งผู้เล่นแพ้:
                             else if (finalCard.score < tempDealerResult.score) {
@@ -2850,7 +2850,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                                 if (bet.maxMultiplier && loseMultiplier > bet.maxMultiplier) {
                                     loseMultiplier = bet.maxMultiplier;
                                 }
-                                userTotalWinLoss -= (betPrice * loseMultiplier);
+                                pokdengWinLoss -= (betPrice * loseMultiplier);
                             }
                         }
                         else {
@@ -2880,7 +2880,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                                 
                                 // 🔥 หักต๋งรายขาทันที 10% (เหลือจ่ายจริง 90%)
                                 let netWin = Math.floor(grossWin * 0.9);
-                                userTotalWinLoss += netWin;
+                                pokdengWinLoss += netWin;
                             } 
                            // 🔴 ฝั่งคนแทงเจ้ามือแพ้:
                         else if (tempDealerResult.score < finalCard.score) {
@@ -2893,7 +2893,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                             if (bet.maxMultiplier && loseMultiplier > bet.maxMultiplier) {
                             loseMultiplier = bet.maxMultiplier;
                             }
-                            userTotalWinLoss -= (betPrice * loseMultiplier);
+                            pokdengWinLoss -= (betPrice * loseMultiplier);
                             }
                         }
                     });

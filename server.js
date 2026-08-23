@@ -3038,7 +3038,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                 let isUserBettingOnDealer = userBetsArray.some(b => b.betType === "รจ" || b.betType.startsWith('จ'));
                 let feeNote = (isUserBettingOnDealer && userTotalWinLoss !== 0) ? " (หักต๋งแล้ว)" : "";
 
-                    
+                const fmt = (num) => (num > 0 ? `+${num}` : `${num}`);   
 
                // 🛠️ 🎯 แก้จุดที่ 3: ประกอบร่างดีไซน์ Flex รายบุคคลให้แสดงแยกรายเกม
             let userBoxContents = [

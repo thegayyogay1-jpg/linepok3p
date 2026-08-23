@@ -2767,7 +2767,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
             // ดึงรายชื่อ uId ทั้งหมดที่มีการแทง (ทั้ง ป๊อกเด้ง และ ไฮโล)
             const allUserIds = Array.from(new Set([
                 ...Object.keys(roundBets || {}),
-                ...Object.keys(hiloBets || {}) // รองรับถ้าแยกตัวแปรเก็บโพยไฮโล
+                ...Object.keys(hiloRoundBets || {}) // รองรับถ้าแยกตัวแปรเก็บโพยไฮโล
             ]));
 
             // วนลูปสมาชิกทุกคนที่มีการแทงในรอบนี้เพื่อคิดเงิน

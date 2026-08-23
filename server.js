@@ -2755,8 +2755,88 @@ else if (userMsg === 'ok' || userMsg === 'no') {
             let summaryPayoutText = `💰 สรุปยอดได้/เสีย รอบที่: ${currentRound}\n──────────────────\n`;
             summaryPayoutText += `👑 เจ้ามือ: ${tempDealerResult.name}\n──────────────────\n`;
             
+            if (tempHiloDices && tempHiloDices.length === 3) {
+                const hiloSum = tempHiloDices.reduce((a, b) => a + b, 0);
+                summaryPayoutText += `🎲 ผลไฮโล: [ ${tempHiloDices.join("-")} ] (${hiloSum} แต้ม)\n`;
+            }
+            summaryPayoutText += `──────────────────\n`;
+            
             let hasAnyBet = false;
             let flexUserContents = []; // 🎨 อาเรย์สำหรับเก็บดีไซน์กล่องรายคนใน Flex Message
+
+            // 🛠️ Function ช่วยคำนวณอัตราจ่ายของไฮโลต่อ 1 โพย
+            const calculateHiloWinLoss = (bet, dice) => {
+                if (!dice || dice.length !== 3) return 0;
+                const sum = dice[0] + dice[1] + dice[2];
+                const isTriple = (dice[0] === dice[1] && dice[1] === dice[2]);
+                const betType = bet.betType; // เช่น "สูง", "ต่ำ", "11", "เต็ง3", "โต๊ด12", "ตองรวม", "ตอง5", "ต่ำ1"
+                const betAmount = bet.pricePerLeg || bet.amount || 0;
+
+                let mult = 0; // ตัวคูณกำไร (ถ้าแพ้จะเป็น -1)
+
+                // 1. สูง / ต่ำ (1 ต่อ 1)
+                if (betType === "สูง") mult = (!isTriple && sum >= 12 && sum <= 17) ? 1 : -1;
+                else if (betType === "ต่ำ") mult = (!isTriple && sum >= 4 && sum <= 10) ? 1 : -1;
+
+                // 2. 11 ไฮโล (1 ต่อ 6)
+                else if (betType === "11" || betType === "11ไฮโล") mult = (sum === 11) ? 6 : -1;
+
+                // 3. ตองรวม (1 ต่อ 25) / ตองเจาะ (1 ต่อ 100)
+                else if (betType === "ตองรวม") mult = isTriple ? 25 : -1;
+                else if (betType.startsWith("ตอง")) {
+                    const targetNum = parseInt(betType.replace("ตอง", ""));
+                    mult = (isTriple && dice[0] === targetNum) ? 100 : -1;
+                }
+
+                // 4. เต็งเลข (1 ต่อ 1 / 1 ต่อ 2 / 1 ต่อ 5)
+                else if (/^[1-6]$/.test(betType) || betType.startsWith("เต็ง")) {
+                    const targetNum = parseInt(betType.replace("เต็ง", ""));
+                    const matchCount = dice.filter(d => d === targetNum).length;
+                    if (matchCount === 1) mult = 1;
+                    else if (matchCount === 2) mult = 2;
+                    else if (matchCount === 3) mult = 5;
+                    else mult = -1;
+                }
+
+                // 5. โต๊ด 2 ตัว (1 ต่อ 5) เช่น "12", "โต๊ด12"
+                else if (betType.startsWith("โต๊ด") || (betType.length === 2 && !isNaN(betType))) {
+                    const nums = betType.replace("โต๊ด", "").split("").map(Number);
+                    const tempD = [...dice];
+                    const idx1 = tempD.indexOf(nums[0]);
+                    if (idx1 !== -1) tempD.splice(idx1, 1);
+                    const idx2 = tempD.indexOf(nums[1]);
+                    mult = (idx1 !== -1 && idx2 !== -1) ? 5 : -1;
+                }
+
+                // 6. โต๊ด 3 ตัว (ถูก 2 ใน 3 จ่าย 1 ต่อ 1 / ถูก 3 จ่าย 1 ต่อ 5)
+                else if (betType.startsWith("โต๊ด3") || (betType.length === 3 && !isNaN(betType))) {
+                    const nums = betType.replace("โต๊ด3", "").split("").map(Number);
+                    const matches = nums.filter(n => dice.includes(n)).length;
+                    if (matches === 3) mult = 5;
+                    else if (matches === 2) mult = 1;
+                    else mult = -1;
+                }
+
+                // 7. ต่ำกั๊ก (ต่ำ1, ต่ำ2 = 1 ต่อ 2 | ต่ำ3 = 1 ต่อ 3 | ต่ำ4 = 1 ต่อ 4 | ต่ำ5 = 1 ต่อ 6 | ต่ำ6 = 1 ต่อ 9)
+                else if (betType.startsWith("ต่ำ")) {
+                    const lowGakRates = { "ต่ำ1": 2, "ต่ำ2": 2, "ต่ำ3": 3, "ต่ำ4": 4, "ต่ำ5": 6, "ต่ำ6": 9 };
+                    const isLow = (!isTriple && sum >= 4 && sum <= 10);
+                    const targetNum = parseInt(betType.replace("ต่ำ", ""));
+                    const rate = lowGakRates[betType] || 1;
+                    mult = (isLow && dice.includes(targetNum)) ? rate : -1;
+                }
+
+                // 8. สูงกั๊ก (สูง6, สูง5 = 1 ต่อ 2 | สูง4 = 1 ต่อ 3 | สูง3 = 1 ต่อ 4 | สูง2 = 1 ต่อ 6 | สูง1 = 1 ต่อ 9)
+                else if (betType.startsWith("สูง")) {
+                    const highGakRates = { "สูง6": 2, "สูง5": 2, "สูง4": 3, "สูง3": 4, "สูง2": 6, "สูง1": 9 };
+                    const isHigh = (!isTriple && sum >= 12 && sum <= 17);
+                    const targetNum = parseInt(betType.replace("สูง", ""));
+                    const rate = highGakRates[betType] || 1;
+                    mult = (isHigh && dice.includes(targetNum)) ? rate : -1;
+                }
+
+                return betAmount * mult;
+            };
 
             // วนลูปสมาชิกทุกคนที่มีการแทงในรอบนี้เพื่อคิดเงิน
             for (let uId in roundBets) {
@@ -2780,107 +2860,119 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                 let totalBetAmountThisRound = 0; // 📊 ตัวแปรเพิ่มใหม่สำหรับเก็บยอดแทงรวมแท้จริงในตานี้เพื่อเอาไปคิดเทิร์น
 
                 userBetsArray.forEach((bet) => {
-                    totalHoldRefund += bet.holdCost; // ดึงเงินค้ำประกัน 3 เท่ากลับมาคืนก่อน
-
-                    // แกะข้อมูลตามประเภทโพย (เช่น "1", "รข", "จ12")
-                    let legsToCalculate = [];
-                    if (bet.betType === "รข" || bet.betType === "รจ") {
-                        legsToCalculate = ['1', '2', '3', '4', '5', '6'];
-                    } else if (bet.betType.startsWith('จ')) {
-                        legsToCalculate = bet.betType.substring(1).split('');
-                    } else {
-                        legsToCalculate = bet.betType.split('');
+                    // -----------------------------------------------------------
+                    // 🎲 [กรณีที่ 1: โพยเกมไฮโล]
+                    // -----------------------------------------------------------
+                     if (bet.gameType === "hilo" || bet.isHilo) {
+                        totalHoldRefund += bet.holdCost || bet.amount || 0; // คืนเครดิตที่ดักไว้ตอนแทง
+                        totalBetAmountThisRound += bet.pricePerLeg || bet.amount || 0;
+                        const hiloResult = calculateHiloWinLoss(bet, tempHiloDices);
+                        userTotalWinLoss += hiloResult;
                     }
-
-                    // 🧮 สะสมยอดเดิมพันรวมจากราคารายขาคูณจำนวนขาที่เปิดสู้จริงในตานี้
-                    totalBetAmountThisRound += (bet.pricePerLeg * legsToCalculate.length);
-
-                    // คำนวณเงินแยกตามรายขาในโพยใบนี้
-                    legsToCalculate.forEach((leg) => {
-                        const legNum = parseInt(leg);
-                        const matchResult = tempRoomResults[legNum];
-                        if (!matchResult) return; // ป้องกันกรณีขาไม่มีข้อมูลผล
-                        
-                        // 🔍 ตรวจสอบประเภทโพย: เป็นการแทงฝั่งเจ้ามือสู้ขาผู้เล่นใช่หรือไม่
-                        const isBettingOnDealer = (bet.betType === "รจ" || bet.betType.startsWith('จ'));
-
-                        let finalCard;
-                        const betPrice = bet.pricePerLeg; // ยอดแทงต่อ 1 ขา
-
-                        if (!isBettingOnDealer) {
-                            // 👤 [ฝั่งคนแทงผู้เล่นปกติ] -> รันระบบเดิมของคุณที่สมบูรณ์แบบอยู่แล้ว 100%
-                            const isUserDrawn = (bet.drawStatus && bet.drawStatus[leg] === "จั่ว");
-                            finalCard = isUserDrawn ? matchResult.threeCards : matchResult.twoCards;
-                            // 🟢 ฝั่งผู้เล่นชนะ:
-                            if (finalCard.score > tempDealerResult.score) {
-                                let winMultiplier = finalCard.mult;
-                                // 🛡️ ถ้าค้ำประกันมาแค่ 2 เด้ง ชนะเท่าไหร่ก็โดนแคปให้ได้ไม่เกิน 2 เด้ง (ถ้าค้ำครบ 3 เด้งจะปล่อยได้เต็ม 5 เด้ง)
-                                if (bet.maxMultiplier && bet.maxMultiplier < 3 && winMultiplier > bet.maxMultiplier) {
-                                    winMultiplier = bet.maxMultiplier;
+                    // -----------------------------------------------------------
+                    // 🃏 [กรณีที่ 2: โพยเกมป๊อกเด้ง] (รันโค้ดระบบเดิมของน้า 100%)
+                    // -----------------------------------------------------------
+                    else {
+                        totalHoldRefund += bet.holdCost; // ดึงเงินค้ำประกัน 3 เท่ากลับมาคืนก่อน
+                        // แกะข้อมูลตามประเภทโพย (เช่น "1", "รข", "จ12")
+                        let legsToCalculate = [];
+                        if (bet.betType === "รข" || bet.betType === "รจ") {
+                            legsToCalculate = ['1', '2', '3', '4', '5', '6'];
+                        } else if (bet.betType.startsWith('จ')) {
+                            legsToCalculate = bet.betType.substring(1).split('');
+                        } else {
+                            legsToCalculate = bet.betType.split('');
+                        }
+    
+                        // 🧮 สะสมยอดเดิมพันรวมจากราคารายขาคูณจำนวนขาที่เปิดสู้จริงในตานี้
+                        totalBetAmountThisRound += (bet.pricePerLeg * legsToCalculate.length);
+    
+                        // คำนวณเงินแยกตามรายขาในโพยใบนี้
+                        legsToCalculate.forEach((leg) => {
+                            const legNum = parseInt(leg);
+                            const matchResult = tempRoomResults[legNum];
+                            if (!matchResult) return; // ป้องกันกรณีขาไม่มีข้อมูลผล
+                            
+                            // 🔍 ตรวจสอบประเภทโพย: เป็นการแทงฝั่งเจ้ามือสู้ขาผู้เล่นใช่หรือไม่
+                            const isBettingOnDealer = (bet.betType === "รจ" || bet.betType.startsWith('จ'));
+    
+                            let finalCard;
+                            const betPrice = bet.pricePerLeg; // ยอดแทงต่อ 1 ขา
+    
+                            if (!isBettingOnDealer) {
+                                // 👤 [ฝั่งคนแทงผู้เล่นปกติ] -> รันระบบเดิมของคุณที่สมบูรณ์แบบอยู่แล้ว 100%
+                                const isUserDrawn = (bet.drawStatus && bet.drawStatus[leg] === "จั่ว");
+                                finalCard = isUserDrawn ? matchResult.threeCards : matchResult.twoCards;
+                                // 🟢 ฝั่งผู้เล่นชนะ:
+                                if (finalCard.score > tempDealerResult.score) {
+                                    let winMultiplier = finalCard.mult;
+                                    // 🛡️ ถ้าค้ำประกันมาแค่ 2 เด้ง ชนะเท่าไหร่ก็โดนแคปให้ได้ไม่เกิน 2 เด้ง (ถ้าค้ำครบ 3 เด้งจะปล่อยได้เต็ม 5 เด้ง)
+                                    if (bet.maxMultiplier && bet.maxMultiplier < 3 && winMultiplier > bet.maxMultiplier) {
+                                        winMultiplier = bet.maxMultiplier;
+                                    }
+                                    userTotalWinLoss += (betPrice * winMultiplier);
+                                } 
+                                // 🔴 ฝั่งผู้เล่นแพ้:
+                                else if (finalCard.score < tempDealerResult.score) {
+                                    let loseMultiplier = tempDealerResult.mult;
+                                    // ล็อกเพดานแพ้สูงสุดไม่เกิน 3 เด้งสำหรับคนค้ำครบ
+                                    if (loseMultiplier > 3) {
+                                    loseMultiplier = 3;
+                                    }
+                                    // 🛡️ ถ้าค้ำประกันมาน้อยกว่า (เช่น 2 เด้ง) ก็หักแพ้ตามเพดานค้ำจริง (ไม่เกิน 2)
+                                    if (bet.maxMultiplier && loseMultiplier > bet.maxMultiplier) {
+                                        loseMultiplier = bet.maxMultiplier;
+                                    }
+                                    userTotalWinLoss -= (betPrice * loseMultiplier);
                                 }
-                                userTotalWinLoss += (betPrice * winMultiplier);
-                            } 
-                            // 🔴 ฝั่งผู้เล่นแพ้:
-                            else if (finalCard.score < tempDealerResult.score) {
-                                let loseMultiplier = tempDealerResult.mult;
+                            }
+                            else {
+                                // 👑 [ฝั่งคนแทงเจ้ามือ (จ หรือ มจ)] -> ใช้กฎตายตัวแยกคำนวณเด็ดขาด
+                                let playerTwoCardScore = matchResult.twoCards.score;
+                                let playerTwoCardMult = matchResult.twoCards.mult;
+    
+                                // รันกฎตายตัว: ขาผู้เล่นได้ 4 แต้มหรือต่ำกว่า (และไม่ใช่ 4 แต้มเด้ง) ให้เจ้ามือไปสู้กับผล 3 ใบ
+                                if (playerTwoCardScore <= 4 || (playerTwoCardScore === 4 && playerTwoCardMult === 1)) {
+                                    finalCard = matchResult.threeCards; // ชนกับผลไพ่ 3 ใบ
+                                } else {
+                                    finalCard = matchResult.twoCards;   // ชนกับผลไพ่ 2 ใบ (5 แต้มขึ้นไป หรือ 4 แต้มเด้ง)
+                                }
+    
+                                // 🧮 ตรรกะคิดเงินของฝั่งคนแทงเจ้ามือ (หักต๋ง 10% เฉพาะขาที่ได้กำไร)
+                                if (tempDealerResult.score > finalCard.score) {
+                                    let winMultiplier = tempDealerResult.mult; // ไม่ต้องเอา bet.maxMultiplier มาล็อคแล้ว                              
+                                    if (tempDealerResult.rawMult) {
+                                        winMultiplier = tempDealerResult.rawMult;
+                                    }
+                                    // 🛡️ ถ้าค้ำประกันมาแค่ 2 เด้ง ชนะเท่าไหร่ก็โดนแคปไม่เกิน 2 เด้ง (ถ้าค้ำครบ 3 เด้งปล่อยได้เต็ม)
+                                    if (bet.maxMultiplier && bet.maxMultiplier < 3 && winMultiplier > bet.maxMultiplier) {
+                                        winMultiplier = bet.maxMultiplier;
+                                     }
+                                    
+                                    let grossWin = betPrice * winMultiplier; // กำไรเต็มก่อนหัก
+                                    
+                                    // 🔥 หักต๋งรายขาทันที 10% (เหลือจ่ายจริง 90%)
+                                    let netWin = Math.floor(grossWin * 0.9);
+                                    userTotalWinLoss += netWin;
+                                } 
+                               // 🔴 ฝั่งคนแทงเจ้ามือแพ้:
+                            else if (tempDealerResult.score < finalCard.score) {
+                                let loseMultiplier = finalCard.mult;
                                 // ล็อกเพดานแพ้สูงสุดไม่เกิน 3 เด้งสำหรับคนค้ำครบ
                                 if (loseMultiplier > 3) {
                                 loseMultiplier = 3;
                                 }
-                                // 🛡️ ถ้าค้ำประกันมาน้อยกว่า (เช่น 2 เด้ง) ก็หักแพ้ตามเพดานค้ำจริง (ไม่เกิน 2)
+                                // 🛡️ ถ้าค้ำประกันมาน้อยกว่า (เช่น 2 เด้ง) หักแพ้ไม่เกินเพดานค้ำจริง
                                 if (bet.maxMultiplier && loseMultiplier > bet.maxMultiplier) {
-                                    loseMultiplier = bet.maxMultiplier;
+                                loseMultiplier = bet.maxMultiplier;
                                 }
                                 userTotalWinLoss -= (betPrice * loseMultiplier);
-                            }
-                        }
-                        else {
-                            // 👑 [ฝั่งคนแทงเจ้ามือ (จ หรือ มจ)] -> ใช้กฎตายตัวแยกคำนวณเด็ดขาด
-                            let playerTwoCardScore = matchResult.twoCards.score;
-                            let playerTwoCardMult = matchResult.twoCards.mult;
-
-                            // รันกฎตายตัว: ขาผู้เล่นได้ 4 แต้มหรือต่ำกว่า (และไม่ใช่ 4 แต้มเด้ง) ให้เจ้ามือไปสู้กับผล 3 ใบ
-                            if (playerTwoCardScore <= 4 || (playerTwoCardScore === 4 && playerTwoCardMult === 1)) {
-                                finalCard = matchResult.threeCards; // ชนกับผลไพ่ 3 ใบ
-                            } else {
-                                finalCard = matchResult.twoCards;   // ชนกับผลไพ่ 2 ใบ (5 แต้มขึ้นไป หรือ 4 แต้มเด้ง)
-                            }
-
-                            // 🧮 ตรรกะคิดเงินของฝั่งคนแทงเจ้ามือ (หักต๋ง 10% เฉพาะขาที่ได้กำไร)
-                            if (tempDealerResult.score > finalCard.score) {
-                                let winMultiplier = tempDealerResult.mult; // ไม่ต้องเอา bet.maxMultiplier มาล็อคแล้ว                              
-                                if (tempDealerResult.rawMult) {
-                                    winMultiplier = tempDealerResult.rawMult;
                                 }
-                                // 🛡️ ถ้าค้ำประกันมาแค่ 2 เด้ง ชนะเท่าไหร่ก็โดนแคปไม่เกิน 2 เด้ง (ถ้าค้ำครบ 3 เด้งปล่อยได้เต็ม)
-                                if (bet.maxMultiplier && bet.maxMultiplier < 3 && winMultiplier > bet.maxMultiplier) {
-                                    winMultiplier = bet.maxMultiplier;
-                                 }
-                                
-                                let grossWin = betPrice * winMultiplier; // กำไรเต็มก่อนหัก
-                                
-                                // 🔥 หักต๋งรายขาทันที 10% (เหลือจ่ายจริง 90%)
-                                let netWin = Math.floor(grossWin * 0.9);
-                                userTotalWinLoss += netWin;
-                            } 
-                           // 🔴 ฝั่งคนแทงเจ้ามือแพ้:
-                        else if (tempDealerResult.score < finalCard.score) {
-                            let loseMultiplier = finalCard.mult;
-                            // ล็อกเพดานแพ้สูงสุดไม่เกิน 3 เด้งสำหรับคนค้ำครบ
-                            if (loseMultiplier > 3) {
-                            loseMultiplier = 3;
                             }
-                            // 🛡️ ถ้าค้ำประกันมาน้อยกว่า (เช่น 2 เด้ง) หักแพ้ไม่เกินเพดานค้ำจริง
-                            if (bet.maxMultiplier && loseMultiplier > bet.maxMultiplier) {
-                            loseMultiplier = bet.maxMultiplier;
-                            }
-                            userTotalWinLoss -= (betPrice * loseMultiplier);
-                            }
-                        }
-                    });
-                }); // ปิด userBetsArray.forEach
+                        });
+                    }); // ปิด userBetsArray.forEach
 
-                // 🧮 อัปเดตกระเป๋าเงินจริงหลังคิดยอดสุทธิ
+                // 🧮 อัปเดตกระเป๋าเงินจริงหลังคิดยอดสุทธิรวมทั้ง 2 เกม
                 user.balance = user.balance + totalHoldRefund + userTotalWinLoss;
 
                 // 📊 [ระบบคำนวณและหักยอดเทิร์นอัตโนมัติ - เวอร์ชันสากลหักตามยอดแทงจริงที่มีผลได้เสีย]
@@ -3031,6 +3123,9 @@ const winLossBubbles = userPages.map((pageContents, index) => {
                 { "type": "text", "text": "💰 สรุปยอดได้/เสีย ประจำรอบ 🎉", "weight": "bold", "color": "#ffaa00", "size": "md", "align": "center" },
                 { "type": "text", "text": `รอบที่: ${currentRound} (หน้า ${index + 1}/${userPages.length})`, "weight": "bold", "color": "#ffffff", "size": "xl", "align": "center", "margin": "none" },
                 { "type": "text", "text": `👑 เจ้ามือ: ${tempDealerResult.name}`, "size": "xs", "color": "#aaaaaa", "align": "center" },
+                ...(tempHiloDices && tempHiloDices.length === 3 ? [
+                { "type": "text", "text": `🎲 ลูกเต๋าไฮโล: ${tempHiloDices.join(" - ")}`, "size": "xs", "color": "#ffcc00", "align": "center" }
+                            ] : []),
                 { "type": "separator", "color": "#2a2a35" },
                 
                 // 👤 รายชื่อสมาชิก
@@ -3077,6 +3172,7 @@ global.currentReplyFlex = {
             // กำหนดให้ส่งทั้งข้อความธรรมดา (เก็บประวัติ) และแนบกล่องดีไซน์ไปด้วยครับน้า
             tempRoomResults = null;
             tempDealerResult = null;
+            tempHiloDices = [];
             roundBets = {};
             
             replyText = ""; 
@@ -3085,6 +3181,7 @@ global.currentReplyFlex = {
             replyText = "❌ แอดมินยกเลิกผลคำนวณรอบนี้เรียบร้อยครับ สามารถส่งแต้มเข้ามาใหม่ได้เลย";
             tempRoomResults = null;
             tempDealerResult = null;
+            tempHiloDices = [];
         }
     } // ปิดตัว else ของเงื่อนไขตรวจเช็กแต้มค้างคัดกรองหลัก
 }

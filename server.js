@@ -2774,7 +2774,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                 if (!dice || dice.length !== 3) return 0;
                 const sum = dice[0] + dice[1] + dice[2];
                 const isTriple = (dice[0] === dice[1] && dice[1] === dice[2]);
-                const betType = bet.betType; // เช่น "สูง", "ต่ำ", "11", "เต็ง3", "โต๊ด12", "ตองรวม", "ตอง5", "ต่ำ1"
+                const betType = String(bet.betType).trim();
                 const betAmount = bet.pricePerLeg || bet.amount || 0;
 
                 let mult = 0; // ตัวคูณกำไร (ถ้าแพ้จะเป็น -1)

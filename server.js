@@ -2754,22 +2754,16 @@ else if (originalMsg.startsWith('>')) {
 else if (userMsg === 'ok' || userMsg === 'no') {
     if (!ADMIN_IDS.includes(userId)) return;
     
-    // 🛠️ เช็กว่ามีผลอย่างน้อย 1 อย่าง (ป๊อกเด้ง หรือ ไฮโล)
-    const hasPokdeckResult = tempDealerResult && tempRoomResults;
-    const hasHiloResult = tempHiloDices && tempHiloDices.length === 3;
-    
-    if (!hasPokdeckResult && !hasHiloResult) {
+    if (!tempRoomResults || !tempDealerResult && !hasHiloResult) {
         replyText = "⚠️ ไม่มีข้อมูลผลแต้มค้างอยู่ในระบบครับ กรุณาส่งผลแต้มด้วยเครื่องหมาย > ก่อนครับ";
     } else {
         if (userMsg === 'ok') {
             let summaryPayoutText = `💰 สรุปยอดได้/เสีย รอบที่: ${currentRound}\n──────────────────\n`;
-            if (hasPokdeckResult) {
-                summaryPayoutText += `👑 เจ้ามือป๊อกเด้ง: ${tempDealerResult.name}\n`;
-            }
-            if (hasHiloResult) {
+                summaryPayoutText += `👑 เจ้ามือ: ${tempDealerResult.name}\n`;
+            
                 const hiloSum = tempHiloDices.reduce((a, b) => a + b, 0);
                 summaryPayoutText += `🎲 ผลไฮโล: [ ${tempHiloDices.join("•")} ] (${hiloSum} แต้ม)\n`;
-            }
+            
             summaryPayoutText += `──────────────────\n`;
             
             let hasAnyBet = false;
@@ -2849,17 +2843,17 @@ else if (userMsg === 'ok' || userMsg === 'no') {
             };
 
             // 🎯 รวบรวม uId ทั้งหมดที่มีการเดิมพันในรอบนี้ (ทั้งป๊อกเด้ง และ ไฮโล)
-            const pokdeckUserIds = Object.keys(roundBets || {});
+            const userBetsArray = Object.keys(roundBets || {});
             const hiloUserIds = Object.keys(hiloRoundBets || {});
-            const allBetUserIds = Array.from(new Set([...pokdeckUserIds, ...hiloUserIds]));
+            const allBetUserIds = Array.from(new Set([...userBetsArray, ...hiloUserIds]));
 
             // วนลูปสมาชิกทุกคนที่มีการแทงในรอบนี้เพื่อคิดเงิน
             for (let uId in roundBets) {
                 try {
-                    const pokdeckBetsArray = roundBets[uId] || [];
+                    const userBetsArray = roundBets[uId] || [];
                     const hiloBetsArray = hiloRoundBets[uId] || [];
                     
-                    if (pokdeckBetsArray.length === 0 && hiloBetsArray.length === 0) continue;
+                    if (!userBetsArray || userBetsArray.length === 0 && hiloBetsArray.length === 0) continue;
                     
                 const user = usersWallets[uId];
                 // 🚨 [เพิ่มจุดนี้] ป้องกันระบบล่มถ้าหา Wallet สมาชิกไม่เจอ
@@ -2891,7 +2885,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                     // 🃏 [กรณีที่ 2: โพยเกมป๊อกเด้ง] (รันโค้ดระบบเดิมของน้า 100%)
                     // -----------------------------------------------------------
                     if (hasPokdeckResult && pokdeckBetsArray.length > 0) {
-                        pokdeckBetsArray.forEach((bet) => {
+                       userBetsArray.forEach((bet) => {
                         totalHoldRefund += bet.holdCost; // ดึงเงินค้ำประกัน 3 เท่ากลับมาคืนก่อน
                         // แกะข้อมูลตามประเภทโพย (เช่น "1", "รข", "จ12")
                         let legsToCalculate = [];

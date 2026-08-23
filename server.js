@@ -3020,7 +3020,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                 // ----------------------------------------------------
                 // 💥 ขั้นที่ 3: ปรับยอดเงินกระเป๋าจริง & ยอดโชว์หน้าจอ
                 // ----------------------------------------------------
-                let userTotalWinLoss = pokdengWinLoss + hiloNetWinLoss; // รวมยอดป๊อกเด้ง + ไฮโล
+                let userTotalWinLoss += hiloNetWinLoss; // รวมยอดป๊อกเด้ง + ไฮโล
 
                 // 🧮 อัปเดตกระเป๋าเงินจริงหลังคิดยอดสุทธิ
                 user.balance = user.balance + totalHoldRefund + userTotalWinLoss;

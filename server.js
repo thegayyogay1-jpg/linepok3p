@@ -2774,9 +2774,20 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                 ...Object.keys(roundBets || {}),
                 ...Object.keys(activeHiloBets)
             ]));
+            // 🔍 [DEBUG SYSTEM] ปริ้นท์เช็กโครงสร้างโพยไฮโลใน Terminal
+console.log("=== 🎲 DEBUG HILO DATA START ===");
+console.log("1. tempHiloDice (ผลเต๋า):", typeof tempHiloDice !== 'undefined' ? tempHiloDice : "ไม่มีตัวแปรนี้");
+console.log("2. activeHiloBets:", JSON.stringify(typeof activeHiloBets !== 'undefined' ? activeHiloBets : "ไม่มี"));
+console.log("3. hiloRoundBets:", JSON.stringify(typeof hiloRoundBets !== 'undefined' ? hiloRoundBets : "ไม่มี"));
+console.log("=== 🎲 DEBUG HILO DATA END ===");
             
             // วนลูปสมาชิกทุกคนที่มีการแทงในรอบนี้เพื่อคิดเงิน
             for (let uId of allUserIds) {
+                for (let uId of allUserIds) {
+    console.log(`👤 User: ${uId}`);
+    console.log(`   - roundBets (ป๊อกเด้ง):`, roundBets[uId]);
+    console.log(`   - activeHiloBets:`, typeof activeHiloBets !== 'undefined' ? activeHiloBets[uId] : 'N/A');
+    console.log(`   - hiloRoundBets:`, typeof hiloRoundBets !== 'undefined' ? hiloRoundBets[uId] : 'N/A');
                 try {
                     const userBetsArray = roundBets[uId] || []; // โพยป๊อกเด้ง
                     const hiloBetsArray = activeHiloBets[uId] || []; // โพยไฮโล

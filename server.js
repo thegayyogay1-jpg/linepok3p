@@ -181,7 +181,7 @@ async function saveDataToFirebase() {
             nextMemberId: nextMemberId,
             isRoundOpen: isRoundOpen,         // 💾 จำสถานะ เปิด/ปิด รอบ
             roundBets: roundBets,             // 💾 จำโพยแทงในแต่ละรอบ
-            hiloRoundBets: hiloRoundBets || {},   // 💾บันทึกโหนดไฮโลแยกต่างหาก
+            hiloRoundBets: hiloRoundBets,   // 💾บันทึกโหนดไฮโลแยกต่างหาก
             currentRound: currentRound,       // 💾 จำลำดับรอบปัจจุบัน
             isDrawOpen: isDrawOpen,           // 💾 จำสถานะรอบจั่วไพ่
             matchHistory: matchHistory,       // 💾 จำประวัติสถิติย้อนหลัง 5 รอบ
@@ -2764,18 +2764,23 @@ else if (userMsg === 'ok' || userMsg === 'no') {
             let hasAnyBet = false;
             let flexUserContents = []; // 🎨 อาเรย์สำหรับเก็บดีไซน์กล่องรายคนใน Flex Message
 
-            / ✅ ดึงข้อมูลอย่างปลอดภัย
-            const safeHiloBets = (typeof hiloRoundBets !== 'undefined' && hiloRoundBets) ? hiloRoundBets : {};
+            // 🎲 ดึงข้อมูลโพยไฮโลจาก Firebase / Variable (หากไม่มีให้เป็นวัตถุว่าง)
+            const activeHiloBets = hiloRoundBets || {};
             
-            // ✅ สร้าง Array รวม ID ผู้เล่นทั้งหมด
+            // 🔗 รวบรวม uId ของผู้เล่นทุกคนที่มีการแทง (ทั้ง ป๊อกเด้ง และ ไฮโล)
             const allUserIds = Array.from(new Set([
-                ...Object.keys(safeRoundBets),
-                ...Object.keys(safeHiloBets)
+                ...Object.keys(roundBets || {}),
+                ...Object.keys(activeHiloBets)
             ]));
 
             // วนลูปสมาชิกทุกคนที่มีการแทงในรอบนี้เพื่อคิดเงิน
             for (let uId in allUserIds) {
-                try {               
+                try {
+                    const userBetsArray = roundBets[uId] || []; // โพยป๊อกเด้ง
+                    const hiloBetsArray = activeHiloBets[uId] || []; // โพยไฮโล
+
+                    if (userBetsArray.length === 0 && hiloBetsArray.length === 0) continue;
+                    
                 const user = usersWallets[uId];
                 // 🚨 [เพิ่มจุดนี้] ป้องกันระบบล่มถ้าหา Wallet สมาชิกไม่เจอ
                 if (!user) {
@@ -2892,57 +2897,34 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                     });
                 }); // ปิด userBetsArray.forEach
                     
-                    // ==========================================
-                    // 🎲 2. คิดผล ไฮโล (เพิ่มส่วนนี้เข้ามาสะสมยอด)
-                    // ==========================================
-                    const userHiloBetsArray = safeHiloBets[uId] || [];
-                    if (typeof tempHiloResult !== 'undefined' && tempHiloResult && userHiloBetsArray.length > 0) {
-                        hasAnyBet = true; // มีการแทงไฮโล
-                        userHiloBetsArray.forEach((hiloBet) => {
-                            totalHoldRefund += (hiloBet.holdCost || 0);
-                            
-                            const betAmount = hiloBet.amount || hiloBet.price || hiloBet.betAmount || 0;
-                            totalBetAmountThisRound += betAmount;
+                    // =========================================================================
+                    // 🎲 [2. เพิ่มใหม่: ส่วนคำนวณผลไฮโลจาก hiloRoundBets]
+                    // =========================================================================
+                    let hiloWinLoss = 0;
+                    hiloBetsArray.forEach((hBet) => {
+                        // คืนเงินค้ำประกันไฮโล (ถ้ามี)
+                        if (hBet.holdCost) {
+                            totalHoldRefund += hBet.holdCost;
+                        }
 
-                            let hiloWinLoss = 0;
-                            const dice = tempHiloResult.dice || []; 
-                            const totalScore = tempHiloResult.total;
-                            const betType = hiloBet.type || hiloBet.betType || "";
+                        // สะสมยอดแทงสำหรับคิดเทิร์น
+                        totalBetAmountThisRound += (hBet.amount || hBet.totalPrice || 0);
 
-                            switch (betType) {
-                                case 'สูง':
-                                    if (totalScore >= 12 && totalScore <= 17) hiloWinLoss = betAmount * 1;
-                                    else hiloWinLoss = -betAmount;
-                                    break;
+                        // 🧮 ตรรกะคำนวณผลได้/เสีย ไฮโล (อ้างอิงตามผลคำนวณ hBet.winLoss หรือคำนวณอัตราจ่าย)
+                        if (typeof hBet.winLoss !== 'undefined') {
+                            hiloWinLoss += hBet.winLoss;
+                        } else if (hBet.isWin) {
+                            // กรณีบันทึกเป็น multiplier / payout
+                            let payRate = hBet.payoutRate || 1;
+                            let netProfit = Math.floor(hBet.amount * payRate);
+                            hiloWinLoss += netProfit;
+                        } else if (hBet.isWin === false) {
+                            hiloWinLoss -= hBet.amount;
+                        }
+                    });
 
-                                case 'ต่ำ':
-                                    if (totalScore >= 4 && totalScore <= 10) hiloWinLoss = betAmount * 1;
-                                    else hiloWinLoss = -betAmount;
-                                    break;
-
-                                case 'เต็ง': 
-                                    const matchCount = dice.filter(d => d === hiloBet.targetNum).length;
-                                    if (matchCount > 0) hiloWinLoss = betAmount * matchCount;
-                                    else hiloWinLoss = -betAmount;
-                                    break;
-
-                                case 'โต๊ด': 
-                                    const hasNum1 = dice.includes(hiloBet.targetNum1);
-                                    const hasNum2 = dice.includes(hiloBet.targetNum2);
-                                    if (hasNum1 && hasNum2) hiloWinLoss = betAmount * 5;
-                                    else hiloWinLoss = -betAmount;
-                                    break;
-
-                                case '11ไฮโล':
-                                case '11':
-                                    if (totalScore === 11) hiloWinLoss = betAmount * 7;
-                                    else hiloWinLoss = -betAmount;
-                                    break;
-                            }
-
-                            userTotalWinLoss += hiloWinLoss;
-                        });
-                    }
+                    // 💥 [3. สรุปรวมยอดได้/เสีย ป๊อกเด้ง + ไฮโล หลังสุด]
+                    userTotalWinLoss += hiloWinLoss;
 
                 // 🧮 อัปเดตกระเป๋าเงินจริงหลังคิดยอดสุทธิ
                 user.balance = user.balance + totalHoldRefund + userTotalWinLoss;
@@ -3141,9 +3123,8 @@ global.currentReplyFlex = {
             // กำหนดให้ส่งทั้งข้อความธรรมดา (เก็บประวัติ) และแนบกล่องดีไซน์ไปด้วยครับน้า
             tempRoomResults = null;
             tempDealerResult = null;
-            if (typeof tempHiloResult !== 'undefined') tempHiloResult = null;
             roundBets = {};
-            if (typeof hiloBets !== 'undefined') hiloBets = {};
+            hiloRoundBets = {};
             
             replyText = ""; 
         }     
@@ -3151,7 +3132,6 @@ global.currentReplyFlex = {
             replyText = "❌ แอดมินยกเลิกผลคำนวณรอบนี้เรียบร้อยครับ สามารถส่งแต้มเข้ามาใหม่ได้เลย";
             tempRoomResults = null;
             tempDealerResult = null;
-            if (typeof tempHiloResult !== 'undefined') tempHiloResult = null;
         }
     } // ปิดตัว else ของเงื่อนไขตรวจเช็กแต้มค้างคัดกรองหลัก
 }

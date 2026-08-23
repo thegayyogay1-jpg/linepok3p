@@ -3070,7 +3070,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
             }
 
             // แสดงยอดสุทธิรวม
-            let displayColor = userTotalWinLoss > 0 ? "#00ff66" : (userTotalWinLoss < 0 ? "#ff3333" : "#ffcc00");
+            displayColor = userTotalWinLoss > 0 ? "#00ff66" : (userTotalWinLoss < 0 ? "#ff3333" : "#ffcc00");
             userBoxContents.push({
                 "type": "box",
                 "layout": "horizontal",

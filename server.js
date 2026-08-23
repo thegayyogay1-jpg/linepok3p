@@ -2791,7 +2791,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                 }
 
                 // 💡 ดึงชื่อเล่น (ถ้าน้าไม่ได้ตั้ง nickname ไว้ ระบบจะถอยไปใช้ user.name อัตโนมัติ)
-                const displayName = user.nickname || user.name || "สมาชิก";
+                const displayName = (user && (user.nickname || user.name)) ? (user.nickname || user.name) : "สมาชิก";
                     
                 hasAnyBet = true;
                 let pokdengWinLoss = 0; 
@@ -3038,69 +3038,60 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                 let isUserBettingOnDealer = userBetsArray.some(b => b.betType === "รจ" || b.betType.startsWith('จ'));
                 let feeNote = (isUserBettingOnDealer && userTotalWinLoss !== 0) ? " (หักต๋งแล้ว)" : "";
 
-                // 🛠️ 1. สร้าง Array สำหรับเก็บแถบข้อความแบบ Dynamic
-            let userBoxContents = [
-                { "type": "text", "text": `👤 [ ${user.memberNumber || '-'} ] ${displayName}`, "weight": "bold", "color": "#ffffff", "size": "sm" }
-            ];
-
-            // 🎯 2. ถ้ามีผลป๊อกเด้ง ให้ดันแถบป๊อกเด้งเข้ากล่อง
-            if (pokdengWinLoss !== 0) {
-                userBoxContents.push({
-                    "type": "box",
-                    "layout": "horizontal",
-                    "contents": [
-                        { "type": "text", "text": `• ป๊อกเด้ง:${feeNote}`, "size": "xs", "color": "#cccccc" },
-                        { "type": "text", "text": `${pokdengWinLoss > 0 ? '+' : ''}${pokdengWinLoss} บาท`, "size": "xs", "color": pokdengWinLoss > 0 ? "#55ff55" : "#ff5555", "align": "end" }
-                    ]
-                });
+           if (user) {
+                user.balance = Number(user.balance || 0) + totalHoldRefund + userTotalWinLoss;
             }
 
-            // 🎲 3. ถ้ามีผลไฮโล ให้ดันแถบไฮโลเข้ากล่อง
-            if (hiloNetWinLoss !== 0) {
-                userBoxContents.push({
-                    "type": "box",
-                    "layout": "horizontal",
-                    "contents": [
-                        { "type": "text", "text": `• ไฮโล:`, "size": "xs", "color": "#cccccc" },
-                        { "type": "text", "text": `${hiloNetWinLoss > 0 ? '+' : ''}${hiloNetWinLoss} บาท`, "size": "xs", "color": hiloNetWinLoss > 0 ? "#55ff55" : "#ff5555", "align": "end" }
-                    ]
-                });
-            }
+                // 3. ดึงเลขสมาชิกและเครดิตคงเหลือ
+const memberNum = user ? (user.memberNumber || '-') : '-';
+const userBalance = user ? (user.balance !== undefined ? user.balance : 0) : 0;
 
-            // 💰 4. คำนวณสีของยอดสุทธิรวม (อ้างอิงจากตัวแปรเดิมของน้า)
-            displayColor = userTotalWinLoss > 0 ? "#00ff66" : (userTotalWinLoss < 0 ? "#ff3333" : "#ffcc00");
+// ----------------------------------------------------
+// 🛠️ นำไปใส่ใน Flex รายคน
+// ----------------------------------------------------
+let userBoxContents = [
+    { "type": "text", "text": `👤 [ ${memberNum} ] ${displayName}`, "weight": "bold", "color": "#ffffff", "size": "sm" }
+];
 
-            // 📊 5. ดันแถบ "ยอดสุทธิ" รวมเข้ากล่อง
-            userBoxContents.push({
-                "type": "box",
-                "layout": "horizontal",
-                "contents": [
-                    { "type": "text", "text": `• ยอดสุทธิรวม:`, "size": "xs", "color": "#ffffff", "weight": "bold" },
-                    { "type": "text", "text": `${sign}${userTotalWinLoss} บาท`, "size": "xs", "color": displayColor, "align": "end", "weight": "bold" }
-                ]
-            });
+if (pokdengWinLoss !== 0) {
+    userBoxContents.push({
+        "type": "box",
+        "layout": "horizontal",
+        "contents": [
+            { "type": "text", "text": `• ป๊อกเด้ง:${feeNote}`, "size": "xs", "color": "#cccccc" },
+            { "type": "text", "text": `${pokdengWinLoss > 0 ? '+' : ''}${pokdengWinLoss} บาท`, "size": "xs", "color": pokdengWinLoss > 0 ? "#55ff55" : "#ff5555", "align": "end" }
+        ]
+    });
+}
 
-            // 💳 6. ดันแถบ "เครดิตคงเหลือ" เข้ากล่อง
-            userBoxContents.push({
-                "type": "box",
-                "layout": "horizontal",
-                "contents": [
-                    { "type": "text", "text": `• เครดิตคงเหลือ:`, "size": "xs", "color": "#cccccc" },
-                    { "type": "text", "text": `${user.balance} บ.`, "size": "xs", "color": "#ffffff", "align": "end" }
-                ]
-            });
+if (hiloNetWinLoss !== 0) {
+    userBoxContents.push({
+        "type": "box",
+        "layout": "horizontal",
+        "contents": [
+            { "type": "text", "text": `• ไฮโล:`, "size": "xs", "color": "#cccccc" },
+            { "type": "text", "text": `${hiloNetWinLoss > 0 ? '+' : ''}${hiloNetWinLoss} บาท`, "size": "xs", "color": hiloNetWinLoss > 0 ? "#55ff55" : "#ff5555", "align": "end" }
+        ]
+    });
+}
 
-            // ➖ 7. ปิดท้ายด้วยเส้นคั่น
-            userBoxContents.push({ "type": "separator", "color": "#2a2233", "margin": "xs" });
+userBoxContents.push({
+    "type": "box",
+    "layout": "horizontal",
+    "contents": [
+        { "type": "text", "text": `• ยอดสุทธิรวม:`, "size": "xs", "color": "#ffffff", "weight": "bold" },
+        { "type": "text", "text": `${sign}${userTotalWinLoss} บาท`, "size": "xs", "color": displayColor, "align": "end", "weight": "bold" }
+    ]
+});
 
-            // 🚀 8. ประกอบร่างลง flexUserContents ตัวใหญ่
-            flexUserContents.push({
-                "type": "box",
-                "layout": "vertical",
-                "margin": "md",
-                "spacing": "xs",
-                "contents": userBoxContents
-            });
+userBoxContents.push({
+    "type": "box",
+    "layout": "horizontal",
+    "contents": [
+        { "type": "text", "text": `• เครดิตคงเหลือ:`, "size": "xs", "color": "#cccccc" },
+        { "type": "text", "text": `${userBalance} บ.`, "size": "xs", "color": "#ffffff", "align": "end" }
+    ]
+});
                     
                 // เก็บลงตัวแปร text ระบบเดิมด้วยเพื่อไม่ให้ระบบหลังบ้านรวน
                 let oldSign = userTotalWinLoss > 0 ? "🟢 +" : (userTotalWinLoss < 0 ? "🔴 " : "🟡 ");

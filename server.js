@@ -2286,6 +2286,16 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
                 
                                 // 🗑️ ล้างรายการโพยไฮโลในรอบปัจจุบัน
                                 hiloRoundBets[userId] = [];
+
+                                // 🛠️ [เพิ่มจุดนี้] ลบรายการที่เป็นโพยไฮโลออกจาก roundBets ด้วย
+                                if (roundBets[userId]) {
+                                    roundBets[userId] = roundBets[userId].filter(b => !b.isHilo && b.gameType !== "hilo");
+                                    
+                                    // ถ้าลบไฮโลออกแล้วไม่มีรายการป๊อกเด้งเหลืออยู่เลย ให้ลบ key ผู้ใช้ออกไปเลย
+                                    if (roundBets[userId].length === 0) {
+                                        delete roundBets[userId];
+                                    }
+                                }
                 
                                 await saveDataToFirebase(); // 💾 บันทึกข้อมูลลงฐานข้อมูล
                 

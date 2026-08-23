@@ -2754,7 +2754,7 @@ else if (originalMsg.startsWith('>')) {
 else if (userMsg === 'ok' || userMsg === 'no') {
     if (!ADMIN_IDS.includes(userId)) return;
     
-    if (!tempRoomResults || !tempDealerResult && !hasHiloResult) {
+    if (!tempRoomResults || !tempDealerResult && !hasHiloResult || !tempHiloDices ) {
         replyText = "⚠️ ไม่มีข้อมูลผลแต้มค้างอยู่ในระบบครับ กรุณาส่งผลแต้มด้วยเครื่องหมาย > ก่อนครับ";
     } else {
         if (userMsg === 'ok') {

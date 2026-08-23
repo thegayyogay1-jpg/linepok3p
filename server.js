@@ -2791,10 +2791,10 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                 }
 
                 // 💡 ดึงชื่อเล่น (ถ้าน้าไม่ได้ตั้ง nickname ไว้ ระบบจะถอยไปใช้ user.name อัตโนมัติ)
-                const displayName = (user && (user.nickname || user.name)) ? (user.nickname || user.name) : "สมาชิก";
+                const displayName = user.nickname || user.name || "สมาชิก";
                     
                 hasAnyBet = true;
-                let pokdengWinLoss = 0; 
+                let userTotalWinLoss = 0; 
                 let totalHoldRefund = 0;   
                 let totalBetAmountThisRound = 0; // 📊 ตัวแปรเพิ่มใหม่สำหรับเก็บยอดแทงรวมแท้จริงในตานี้เพื่อเอาไปคิดเทิร์น
 
@@ -2837,7 +2837,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                                 if (bet.maxMultiplier && bet.maxMultiplier < 3 && winMultiplier > bet.maxMultiplier) {
                                     winMultiplier = bet.maxMultiplier;
                                 }
-                                pokdengWinLoss += (betPrice * winMultiplier);
+                                userTotalWinLoss += (betPrice * winMultiplier);
                             } 
                             // 🔴 ฝั่งผู้เล่นแพ้:
                             else if (finalCard.score < tempDealerResult.score) {
@@ -2850,7 +2850,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                                 if (bet.maxMultiplier && loseMultiplier > bet.maxMultiplier) {
                                     loseMultiplier = bet.maxMultiplier;
                                 }
-                                pokdengWinLoss -= (betPrice * loseMultiplier);
+                                userTotalWinLoss -= (betPrice * loseMultiplier);
                             }
                         }
                         else {
@@ -2880,7 +2880,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                                 
                                 // 🔥 หักต๋งรายขาทันที 10% (เหลือจ่ายจริง 90%)
                                 let netWin = Math.floor(grossWin * 0.9);
-                                pokdengWinLoss += netWin;
+                                userTotalWinLoss += netWin;
                             } 
                            // 🔴 ฝั่งคนแทงเจ้ามือแพ้:
                         else if (tempDealerResult.score < finalCard.score) {
@@ -2893,7 +2893,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                             if (bet.maxMultiplier && loseMultiplier > bet.maxMultiplier) {
                             loseMultiplier = bet.maxMultiplier;
                             }
-                            pokdengWinLoss -= (betPrice * loseMultiplier);
+                            userTotalWinLoss -= (betPrice * loseMultiplier);
                             }
                         }
                     });

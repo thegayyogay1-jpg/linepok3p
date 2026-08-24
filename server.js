@@ -2496,8 +2496,7 @@ else if (originalMsg.startsWith('>')) {
             if (isDealer && clean.includes('*')) { isPok = true; clean = clean.replace('*', ''); }
 
             // แปลงแต้มพิเศษ (รองรับทั้งไทยและอังกฤษ)
-            if (clean === 't' || clean === 'ต') { rawScore = 700; multiplier = 5; typeName = "ตอง"; } 
-            else if (clean === '7.5') { rawScore = 750; multiplier = 1; typeName = "7.5"; }   
+            if (clean === 't' || clean === 'ต') { rawScore = 700; multiplier = 5; typeName = "ตอง"; }    
             else if (clean === 'sf') { rawScore = 600; multiplier = 5; typeName = "สเตฟฟลัช"; } 
             else if (clean === 'h') { rawScore = 400; multiplier = 3; typeName = "เซียน/3เหลือง"; } 
             else if (clean === 's' || clean === 'ร') { rawScore = 500; multiplier = 3; typeName = "เรียง"; } 
@@ -2509,6 +2508,7 @@ else if (originalMsg.startsWith('>')) {
                 if (isPok) {
             if (pts === 9) { rawScore = 900; typeName = "ป๊อก 9"; }
             else if (pts === 8) { rawScore = 800; typeName = "ป๊อก 8"; }
+            else if (pts === 7.5) { rawScore = 750; typeName = "7.5"; }
             else { rawScore = pts; typeName = `${pts} แต้ม`; }
         } else {
             rawScore = pts; typeName = `${pts} แต้ม`;

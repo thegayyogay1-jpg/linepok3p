@@ -3105,6 +3105,8 @@ const userTotalWinLoss = pokdengWinLoss + hiloNetWinLoss;
                     user.turnoverTarget -= currentTurnoverMade;
                     if (user.turnoverTarget < 0) user.turnoverTarget = 0; 
                 }
+                    // 🌟 [เพิ่มบรรทัดนี้เข้าไปครับ] สะสมยอดเทิร์นเพื่อดันเลเวล VIP
+                    user.totalTurnover = (user.totalTurnover || 0) + totalBetAmountThisRound;
 
                 let sign = userTotalWinLoss > 0 ? "+" : "";
                 let displayColor = userTotalWinLoss > 0 ? "#00ff66" : (userTotalWinLoss < 0 ? "#ff3333" : "#ffcc00");

@@ -2900,29 +2900,31 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                 }); // ปิด userBetsArray.forEach
 
 // =========================================================================
-// 🎲 [2. โค้ดคำนวณผลไฮโล ตรงรุ่นตาม โครงสร้าง Data จริง]
+// 🎲 [2. โค้ดคำนวณผลไฮโล - แก้ไข Bug แปลง Type & เช็กผลแม่นยำ]
 // =========================================================================
 let hiloNetWinLoss = 0;
 
-// 1. ดึงผลเต๋าจากระบบ (ลองเช็กตัวแปรที่มีในระบบน้า)
-const dice = (typeof tempHiloDice !== 'undefined' && Array.isArray(tempHiloDice)) ? tempHiloDice : 
-             (typeof hiloDice !== 'undefined' && Array.isArray(hiloDice)) ? hiloDice :
-             (typeof currentDice !== 'undefined' && Array.isArray(currentDice)) ? currentDice : [0, 0, 0];
+// 1. แปลงค่าหน้าเต๋าให้เป็น Number ทั้งหมดป้องกัน Type Mismatch
+const rawDice = (typeof tempHiloDice !== 'undefined' && Array.isArray(tempHiloDice)) ? tempHiloDice : 
+                (typeof hiloDice !== 'undefined' && Array.isArray(hiloDice)) ? hiloDice :
+                (typeof currentDice !== 'undefined' && Array.isArray(currentDice)) ? currentDice : [0, 0, 0];
 
+const dice = rawDice.map(Number); // บังคับเป็นตัวเลข [2, 3, 1]
 const diceSum = dice.reduce((a, b) => a + b, 0);
 const isTriple = (dice[0] > 0 && dice[0] === dice[1] && dice[1] === dice[2]);
 
-// 2. ดึงโพยไฮโลจาก activeHiloBets หรือ hiloRoundBets
+// 2. ดึงโพยไฮโล
 const hiloList = activeHiloBets[uId] || hiloRoundBets[uId] || [];
 
 hiloList.forEach((hBet) => {
     if (!hBet) return;
 
-    // ดึงราคาเดิมพัน (ในระบบน้าใช้ฟิลด์ price)
     const price = Number(hBet.price || hBet.amount || 0);
-    totalBetAmountThisRound += price; // สะสมยอดคิดเทิร์น
+    if (typeof totalBetAmountThisRound !== 'undefined') {
+        totalBetAmountThisRound += price; 
+    }
 
-    // ดึงเป้าหมายการแทง (ในระบบน้าใช้ target เช่น "1", "23", "ต", "ต2", "234")
+    // แปลง target ให้เป็น String และตัดช่องว่าง
     const target = String(hBet.target || hBet.category || "").trim();
     if (!target) return;
 
@@ -2933,7 +2935,7 @@ hiloList.forEach((hBet) => {
     // 🧮 ตรวจสอบผลตาม target ในโพย
     // ----------------------------------------------------
 
-    // 1️⃣ สูง / ต่ำ (ใช้ "ส", "สูง" / "ต", "ต่ำ")
+    // 1️⃣ สูง / ต่ำ
     if (target === "ส" || target === "สูง") {
         if (!isTriple && diceSum >= 12 && diceSum <= 17) { isWin = true; winMultiplier = 1; }
     } else if (target === "ต" || target === "ต่ำ") {
@@ -2945,28 +2947,37 @@ hiloList.forEach((hBet) => {
         if (diceSum === 11) { isWin = true; winMultiplier = 7; }
     }
 
-    // 3️⃣ เต็งหน้า 1 ถึง 6 (เช่น target: "1", "2")
+    // 3️⃣ เต็งหน้า 1 ถึง 6 (แก้ให้รับทั้ง String และ Number)
     else if (["1", "2", "3", "4", "5", "6"].includes(target)) {
-        const targetNum = parseInt(target);
+        const targetNum = Number(target);
         const matchCount = dice.filter(d => d === targetNum).length;
         if (matchCount === 1) { isWin = true; winMultiplier = 1; }
         else if (matchCount === 2) { isWin = true; winMultiplier = 2; }
         else if (matchCount === 3) { isWin = true; winMultiplier = 5; }
     }
 
-    // 4️⃣ โต๊ด 2 ตัว (เช่น target: "23", "45", "1-2")
-    else if (target.length === 2 && !isNaN(target) && !target.startsWith("ต") && !target.startsWith("ส")) {
-        const n1 = parseInt(target[0]);
-        const n2 = parseInt(target[1]);
-        if (dice.includes(n1) && dice.includes(n2)) {
-            if (n1 !== n2 || dice.filter(d => d === n1).length >= 2) {
-                isWin = true; winMultiplier = 5;
+    // 4️⃣ โต๊ด 2 ตัว (เช่น "23", "21", "12") - แก้ไขจุดนี้ใหม่หมด
+    else if (target.length === 2 && !isNaN(Number(target)) && !target.startsWith("ต") && !target.startsWith("ส")) {
+        const n1 = Number(target[0]);
+        const n2 = Number(target[1]);
+        
+        if (n1 !== n2) {
+            // กรณีเลขไม่ซ้ำ เช่น 23, 21
+            if (dice.includes(n1) && dice.includes(n2)) {
+                isWin = true; 
+                winMultiplier = 5;
+            }
+        } else {
+            // กรณีแทงเบิ้ล เช่น 22
+            if (dice.filter(d => d === n1).length >= 2) {
+                isWin = true; 
+                winMultiplier = 5;
             }
         }
     }
 
-    // 5️⃣ โต๊ด 3 ตัว (เช่น target: "234", "1-2-3")
-    else if (target.length === 3 && !isNaN(target) && !target.startsWith("ตอง")) {
+    // 5️⃣ โต๊ด 3 ตัว (เช่น "234")
+    else if (target.length === 3 && !isNaN(Number(target)) && !target.startsWith("ตอง")) {
         const targets = target.split("").map(Number);
         const matchCount = targets.filter(t => dice.includes(t)).length;
         if (matchCount === 3) { isWin = true; winMultiplier = 5; }
@@ -2980,13 +2991,13 @@ hiloList.forEach((hBet) => {
 
     // 7️⃣ ตองเจาะ (เช่น "ตอง1")
     else if (target.startsWith("ตอง")) {
-        const targetNum = parseInt(target.replace("ตอง", ""));
+        const targetNum = Number(target.replace("ตอง", ""));
         if (isTriple && dice[0] === targetNum) { isWin = true; winMultiplier = 100; }
     }
 
-    // 8️⃣ ต่ำ + หน้าเต๋า (เช่น target: "ต1", "ต2", "ต3")
-    else if (target.startsWith("ต") && target.length === 2 && !isNaN(target[1])) {
-        const targetNum = parseInt(target[1]);
+    // 8️⃣ ต่ำ + หน้าเต๋า (เช่น "ต1", "ต2")
+    else if (target.startsWith("ต") && target.length === 2 && !isNaN(Number(target[1]))) {
+        const targetNum = Number(target[1]);
         const isLow = (!isTriple && diceSum >= 4 && diceSum <= 10);
         if (isLow && dice.includes(targetNum)) {
             isWin = true;
@@ -2998,9 +3009,9 @@ hiloList.forEach((hBet) => {
         }
     }
 
-    // 9️⃣ สูง + หน้าเต๋า (เช่น target: "ส6", "ส5")
-    else if (target.startsWith("ส") && target.length === 2 && !isNaN(target[1])) {
-        const targetNum = parseInt(target[1]);
+    // 9️⃣ สูง + หน้าเต๋า (เช่น "ส6", "ส5")
+    else if (target.startsWith("ส") && target.length === 2 && !isNaN(Number(target[1]))) {
+        const targetNum = Number(target[1]);
         const isHigh = (!isTriple && diceSum >= 12 && diceSum <= 17);
         if (isHigh && dice.includes(targetNum)) {
             isWin = true;
@@ -3013,12 +3024,12 @@ hiloList.forEach((hBet) => {
     }
 
     // ----------------------------------------------------
-    // ⚔️ ขั้นที่ 2: คำนวณผลได้/เสียสุทธิของโพยใบนี้
+    // ⚔️ คำนวณผลได้/เสียสุทธิ
     // ----------------------------------------------------
     if (isWin) {
-        hiloNetWinLoss += (price * winMultiplier); // ชนะ: บวกกำไร
+        hiloNetWinLoss += (price * winMultiplier);
     } else {
-        hiloNetWinLoss -= price;                   // แพ้: หักเงินทุน
+        hiloNetWinLoss -= price;
     }
 });
 

@@ -2794,7 +2794,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                 const displayName = user.nickname || user.name || "สมาชิก";
                     
                 hasAnyBet = true;
-                let userTotalWinLoss = 0; 
+                let pokdengWinLoss = 0; 
                 let totalHoldRefund = 0;   
                 let totalBetAmountThisRound = 0; // 📊 ตัวแปรเพิ่มใหม่สำหรับเก็บยอดแทงรวมแท้จริงในตานี้เพื่อเอาไปคิดเทิร์น
 
@@ -2837,7 +2837,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                                 if (bet.maxMultiplier && bet.maxMultiplier < 3 && winMultiplier > bet.maxMultiplier) {
                                     winMultiplier = bet.maxMultiplier;
                                 }
-                                userTotalWinLoss += (betPrice * winMultiplier);
+                                pokdengWinLoss += (betPrice * winMultiplier);
                             } 
                             // 🔴 ฝั่งผู้เล่นแพ้:
                             else if (finalCard.score < tempDealerResult.score) {
@@ -2850,7 +2850,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                                 if (bet.maxMultiplier && loseMultiplier > bet.maxMultiplier) {
                                     loseMultiplier = bet.maxMultiplier;
                                 }
-                                userTotalWinLoss -= (betPrice * loseMultiplier);
+                                pokdengWinLoss -= (betPrice * loseMultiplier);
                             }
                         }
                         else {
@@ -2893,7 +2893,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                             if (bet.maxMultiplier && loseMultiplier > bet.maxMultiplier) {
                             loseMultiplier = bet.maxMultiplier;
                             }
-                            userTotalWinLoss -= (betPrice * loseMultiplier);
+                            pokdengWinLoss -= (betPrice * loseMultiplier);
                             }
                         }
                     });
@@ -3022,11 +3022,10 @@ hiloList.forEach((hBet) => {
     }
 });
 
-// ----------------------------------------------------
-// 💥 ขั้นที่ 3: ปรับยอดเงินกระเป๋าจริง & ยอดโชว์หน้าจอ
-// ----------------------------------------------------
-usersWallets[uId] = (usersWallets[uId] || 0) + hiloNetWinLoss; // ปรับกระเป๋าตามผลสุทธิ
-userTotalWinLoss += hiloNetWinLoss;                            // ส่งยอดสุทธิ (-50) ไปโชว์ Flex
+            // ----------------------------------------------------
+            // 💥 🎯 แก้จุดที่ 2: รวมยอดสุทธิของทั้ง 2 เกมเข้าด้วยกัน
+            // ----------------------------------------------------
+            let userTotalWinLoss = pokdengWinLoss + hiloNetWinLoss; // รวมยอดป๊อกเด้ง + ไฮโล
                     
                 // 🧮 อัปเดตกระเป๋าเงินจริงหลังคิดยอดสุทธิ
                 user.balance = user.balance + totalHoldRefund + userTotalWinLoss;
@@ -3044,33 +3043,72 @@ userTotalWinLoss += hiloNetWinLoss;                            // ส่งย�
                 let isUserBettingOnDealer = userBetsArray.some(b => b.betType === "รจ" || b.betType.startsWith('จ'));
                 let feeNote = (isUserBettingOnDealer && userTotalWinLoss !== 0) ? " (หักต๋งแล้ว)" : "";
 
-                // 🛠️ ประกอบร่างดีไซน์ Flex รายบุคคล
-                flexUserContents.push({
+                // ฟังก์ชันสร้างเครื่องหมาย + หรือ -
+                const fmt = (num) => (num > 0 ? `+${num}` : `${num}`);
+                    
+                // 🛠️ 1. สร้าง Array สำหรับเก็บแถบข้อความแบบ Dynamic
+            let userBoxContents = [
+                { "type": "text", "text": `👤 [ ${user.memberNumber || '-'} ] ${displayName}`, "weight": "bold", "color": "#ffffff", "size": "sm" }
+            ];
+
+            // 🎯 2. ถ้ามีผลป๊อกเด้ง ให้ดันแถบป๊อกเด้งเข้ากล่อง
+            if (pokdengWinLoss !== 0) {
+                userBoxContents.push({
                     "type": "box",
-                    "layout": "vertical",
-                    "margin": "md",
-                    "spacing": "xs",
+                    "layout": "horizontal",
                     "contents": [
-                        { "type": "text", "text": `👤 [ ${user.memberNumber || '-'} ] ${displayName}`, "weight": "bold", "color": "#ffffff", "size": "sm" },
-                        {
-                            "type": "box",
-                            "layout": "horizontal",
-                            "contents": [
-                                { "type": "text", "text": `• ยอดสุทธิ:${feeNote}`, "size": "xs", "color": "#cccccc" },
-                                { "type": "text", "text": `${sign}${userTotalWinLoss} บาท`, "size": "xs", "color": displayColor, "align": "end", "weight": "bold" }
-                            ]
-                        },
-                        {
-                            "type": "box",
-                            "layout": "horizontal",
-                            "contents": [
-                                { "type": "text", "text": `• เครดิตคงเหลือ:`, "size": "xs", "color": "#cccccc" },
-                                { "type": "text", "text": `${user.balance} บ.`, "size": "xs", "color": "#ffffff", "align": "end" }
-                            ]
-                        },
-                        { "type": "separator", "color": "#2a2233", "margin": "xs" }
+                        { "type": "text", "text": `• ป๊อกเด้ง:${feeNote}`, "size": "xs", "color": "#cccccc" },
+                        { "type": "text", "text": `${pokdengWinLoss > 0 ? '+' : ''}${pokdengWinLoss} บาท`, "size": "xs", "color": pokdengWinLoss > 0 ? "#55ff55" : "#ff5555", "align": "end" }
                     ]
                 });
+            }
+
+            // 🎲 3. ถ้ามีผลไฮโล ให้ดันแถบไฮโลเข้ากล่อง
+            if (hiloNetWinLoss !== 0) {
+                userBoxContents.push({
+                    "type": "box",
+                    "layout": "horizontal",
+                    "contents": [
+                        { "type": "text", "text": `• ไฮโล:`, "size": "xs", "color": "#cccccc" },
+                        { "type": "text", "text": `${hiloNetWinLoss > 0 ? '+' : ''}${hiloNetWinLoss} บาท`, "size": "xs", "color": hiloNetWinLoss > 0 ? "#55ff55" : "#ff5555", "align": "end" }
+                    ]
+                });
+            }
+
+            // 💰 4. คำนวณสีของยอดสุทธิรวม (อ้างอิงจากตัวแปรเดิมของน้า)
+            displayColor = userTotalWinLoss > 0 ? "#00ff66" : (userTotalWinLoss < 0 ? "#ff3333" : "#ffcc00");
+
+            // 📊 5. ดันแถบ "ยอดสุทธิ" รวมเข้ากล่อง
+            userBoxContents.push({
+                "type": "box",
+                "layout": "horizontal",
+                "contents": [
+                    { "type": "text", "text": `• ยอดสุทธิรวม:`, "size": "xs", "color": "#ffffff", "weight": "bold" },
+                    { "type": "text", "text": `${sign}${userTotalWinLoss} บาท`, "size": "xs", "color": displayColor, "align": "end", "weight": "bold" }
+                ]
+            });
+
+            // 💳 6. ดันแถบ "เครดิตคงเหลือ" เข้ากล่อง
+            userBoxContents.push({
+                "type": "box",
+                "layout": "horizontal",
+                "contents": [
+                    { "type": "text", "text": `• เครดิตคงเหลือ:`, "size": "xs", "color": "#cccccc" },
+                    { "type": "text", "text": `${user.balance} บ.`, "size": "xs", "color": "#ffffff", "align": "end" }
+                ]
+            });
+
+            // ➖ 7. ปิดท้ายด้วยเส้นคั่น
+            userBoxContents.push({ "type": "separator", "color": "#2a2233", "margin": "xs" });
+
+            // 🚀 8. ประกอบร่างลง flexUserContents ตัวใหญ่
+            flexUserContents.push({
+                "type": "box",
+                "layout": "vertical",
+                "margin": "md",
+                "spacing": "xs",
+                "contents": userBoxContents
+            });
 
                 // เก็บลงตัวแปร text ระบบเดิมด้วยเพื่อไม่ให้ระบบหลังบ้านรวน
                 let oldSign = userTotalWinLoss > 0 ? "🟢 +" : (userTotalWinLoss < 0 ? "🔴 " : "🟡 ");

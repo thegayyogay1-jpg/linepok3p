@@ -2880,7 +2880,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                                 
                                 // 🔥 หักต๋งรายขาทันที 10% (เหลือจ่ายจริง 90%)
                                 let netWin = Math.floor(grossWin * 0.9);
-                                userTotalWinLoss += netWin;
+                                pokdengWinLoss += netWin;
                             } 
                            // 🔴 ฝั่งคนแทงเจ้ามือแพ้:
                         else if (tempDealerResult.score < finalCard.score) {
@@ -2915,8 +2915,6 @@ hiloList.forEach((hBet) => {
 
     const price = Number(hBet.price || hBet.amount || 0);
     totalBetAmountThisRound += price; // สะสมยอดคิดเทิร์น
-
-    usersWallets[uId] = (usersWallets[uId] || 0) + price;
 
     const target = String(hBet.target || hBet.category || "").trim();
     if (!target) return;
@@ -3012,11 +3010,19 @@ hiloList.forEach((hBet) => {
     }
 });
 
+            /// ----------------------------------------------------
+            // 💥 🎯 รวมยอดสุทธิเข้าตัวแปรส่วนกลาง (แก้ไขจุดที่พัง)
             // ----------------------------------------------------
-            // 💥 🎯 แก้จุดที่ 2: รวมยอดสุทธิของทั้ง 2 เกมเข้าด้วยกัน
-            // ----------------------------------------------------
-            usersWallets[uId] = (usersWallets[uId] || 0) + hiloNetWinLoss; // ปรับกระเป๋าตามผลสุทธิ
-            userTotalWinLoss += hiloNetWinLoss;                            // ส่งยอดสุทธิ (-50) ไปโชว์ Flex
+            userTotalWinLoss += hiloNetWinLoss; // รวมยอดนำไปแสดงผล Flex
+            
+            // ✅ วิธีอัปเดตเงินในกระเป๋าอย่างปลอดภัย (เช็กว่าเป็น Object หรือ Number)
+            if (typeof usersWallets[uId] === 'object' && usersWallets[uId] !== null) {
+                // ถ้าระบบใช้เก็บเป็น Object มีฟิลด์ balance
+                usersWallets[uId].balance = Number(usersWallets[uId].balance || 0) + hiloNetWinLoss;
+            } else {
+                // ถ้าระบบใช้เก็บเป็นตัวเลขเดี่ยวๆ
+                usersWallets[uId] = Number(usersWallets[uId] || 0) + hiloNetWinLoss;
+            }
                     
                 // 🧮 อัปเดตกระเป๋าเงินจริงหลังคิดยอดสุทธิ
                 user.balance = user.balance + totalHoldRefund + userTotalWinLoss;

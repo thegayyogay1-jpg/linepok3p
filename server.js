@@ -3011,6 +3011,18 @@ hiloList.forEach((hBet) => {
         hiloNetWinLoss -= price;
     }
 });
+           // ----------------------------------------------------
+// 🔍 [LOGGER] เช็กค่าตัวแปรจริงก่อนอัปเดตกระเป๋าเงิน
+// ----------------------------------------------------
+const walletBefore = typeof usersWallets[uId] === 'object' ? usersWallets[uId].balance : usersWallets[uId];
+
+console.log("-----------------------------------------");
+console.log("🆔 uId:", uId);
+console.log("💰 1. ยอดเงินในกระเป๋าก่อนคิดผล:", walletBefore);
+console.log("🎲 2. ยอดได้เสียไฮโล (hiloNetWinLoss):", hiloNetWinLoss);
+console.log("♠️ 3. ยอดได้เสียป๊อกเด้ง (pokdengWinLoss):", typeof pokdengWinLoss !== 'undefined' ? pokdengWinLoss : 0);
+console.log("🔄 4. ยอดคืนทุนรวม (totalHoldRefund):", typeof totalHoldRefund !== 'undefined' ? totalHoldRefund : 0);
+console.log("-----------------------------------------");         
 
            // ----------------------------------------------------
 // 💥 🎯 รวมยอดได้/เสียทั้งหมด (ป๊อกเด้ง + ไฮโล)

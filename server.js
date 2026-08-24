@@ -2497,9 +2497,10 @@ else if (originalMsg.startsWith('>')) {
 
             // แปลงแต้มพิเศษ (รองรับทั้งไทยและอังกฤษ)
             if (clean === 't' || clean === 'ต') { rawScore = 700; multiplier = 5; typeName = "ตอง"; } 
+            else if (clean === '7.5') { rawScore = 750; multiplier = 1; typeName = "7.5"; }   
             else if (clean === 'sf') { rawScore = 600; multiplier = 5; typeName = "สเตฟฟลัช"; } 
-            else if (clean === 'h') { rawScore = 500; multiplier = 3; typeName = "เซียน/3เหลือง"; } 
-            else if (clean === 's' || clean === 'ร') { rawScore = 400; multiplier = 3; typeName = "เรียง"; } 
+            else if (clean === 'h') { rawScore = 400; multiplier = 3; typeName = "เซียน/3เหลือง"; } 
+            else if (clean === 's' || clean === 'ร') { rawScore = 500; multiplier = 3; typeName = "เรียง"; } 
             else {
                 let pts = parseInt(clean);
                 if (isNaN(pts)) pts = 0;

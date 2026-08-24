@@ -3046,7 +3046,7 @@ const userTotalWinLoss = pokdengWinLoss + hiloNetWinLoss;
                     "type": "box",
                     "layout": "horizontal",
                     "contents": [
-                        { "type": "text", "text": `• ป๊อกเด้ง:${feeNote}`, "size": "xs", "color": "#cccccc" },
+                        { "type": "text", "text": `♠️ป๊อกเด้ง:${feeNote}`, "size": "xs", "color": "#cccccc" },
                         { "type": "text", "text": `${pokdengWinLoss > 0 ? '+' : ''}${pokdengWinLoss} บาท`, "size": "xs", "color": pokdengWinLoss > 0 ? "#55ff55" : "#ff5555", "align": "end" }
                     ]
                 });
@@ -3058,7 +3058,7 @@ const userTotalWinLoss = pokdengWinLoss + hiloNetWinLoss;
                     "type": "box",
                     "layout": "horizontal",
                     "contents": [
-                        { "type": "text", "text": `• ไฮโล:`, "size": "xs", "color": "#cccccc" },
+                        { "type": "text", "text": `🎲ไฮโล:`, "size": "xs", "color": "#cccccc" },
                         { "type": "text", "text": `${hiloNetWinLoss > 0 ? '+' : ''}${hiloNetWinLoss} บาท`, "size": "xs", "color": hiloNetWinLoss > 0 ? "#55ff55" : "#ff5555", "align": "end" }
                     ]
                 });

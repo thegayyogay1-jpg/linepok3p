@@ -3013,16 +3013,7 @@ hiloList.forEach((hBet) => {
             /// ----------------------------------------------------
             // 💥 🎯 รวมยอดสุทธิเข้าตัวแปรส่วนกลาง (แก้ไขจุดที่พัง)
             // ----------------------------------------------------
-            userTotalWinLoss += hiloNetWinLoss; // รวมยอดนำไปแสดงผล Flex
-            
-            // ✅ วิธีอัปเดตเงินในกระเป๋าอย่างปลอดภัย (เช็กว่าเป็น Object หรือ Number)
-            if (typeof usersWallets[uId] === 'object' && usersWallets[uId] !== null) {
-                // ถ้าระบบใช้เก็บเป็น Object มีฟิลด์ balance
-                usersWallets[uId].balance = Number(usersWallets[uId].balance || 0) + hiloNetWinLoss;
-            } else {
-                // ถ้าระบบใช้เก็บเป็นตัวเลขเดี่ยวๆ
-                usersWallets[uId] = Number(usersWallets[uId] || 0) + hiloNetWinLoss;
-            }
+            userTotalWinLoss += hiloNetWinLoss; 
                     
                 // 🧮 อัปเดตกระเป๋าเงินจริงหลังคิดยอดสุทธิ
                 user.balance = user.balance + totalHoldRefund + userTotalWinLoss;

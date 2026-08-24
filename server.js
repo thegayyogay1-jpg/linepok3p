@@ -201,6 +201,83 @@ app.post('/callback', async (req, res) => {
     if (!events) return res.sendStatus(200);
 
     for (let event of events) {
+        
+        // =================================================================
+        // 🎯 1. [ระบบจัดการการกดปุ่ม Postback VIP] (เมื่อมีคนเอานิ้วกดปุ่มบนการ์ด)
+        // =================================================================
+        if (event.type === 'postback') {
+            const dataParams = new URLSearchParams(event.postback.data);
+            const action = dataParams.get('action');
+
+            if (action === 'claim_vip') {
+                const clickerId = event.source.userId;
+                const ownerId = dataParams.get('ownerId');
+                const targetLevel = parseInt(dataParams.get('targetLevel'));
+
+                let replyText = "";
+
+                // ❌ 1.1 กันคนอื่นมาแอบกดปุ่มบัตรคนอื่น
+                if (clickerId !== ownerId) {
+                    replyText = "⚠️ คุณไม่มีสิทธิ์กดรับรางวัลแทนผู้อื่นครับ!";
+                } else {
+                    const user = usersWallets[ownerId];
+
+                    if (user) {
+                        const vipConfig = [
+                            { level: 1, reqTurn: 500, reward: 10 },
+                            { level: 2, reqTurn: 1000, reward: 15 },
+                            { level: 3, reqTurn: 3000, reward: 30 },
+                            { level: 4, reqTurn: 5000, reward: 50 },
+                            { level: 5, reqTurn: 10000, reward: 120 },
+                            { level: 6, reqTurn: 30000, reward: 300 },
+                            { level: 7, reqTurn: 50000, reward: 600 },
+                            { level: 8, reqTurn: 100000, reward: 1200 },
+                            { level: 9, reqTurn: 150000, reward: 1800 },
+                            { level: 10, reqTurn: 250000, reward: 4000 }
+                        ];
+
+                        const userTurn = user.totalTurnover || 0;
+                        const currentVip = user.vipLevel || 0;
+                        const targetConfig = vipConfig.find(v => v.level === targetLevel);
+
+                        if (targetConfig) {
+                            // ❌ 1.2 เช็กว่าเคยรับไปแล้วหรือยัง
+                            if (currentVip >= targetLevel) {
+                                replyText = `❌ คุณเคยรับโบนัส VIP ${targetLevel} ไปแล้วครับ!`;
+                            } 
+                            // ❌ 1.3 เช็กยอดเทิร์นสะสม
+                            else if (userTurn < targetConfig.reqTurn) {
+                                const diff = targetConfig.reqTurn - userTurn;
+                                replyText = `❌ เงื่อนไขยังไม่ครบ! คุณต้องสะสมยอดได้-เสียอีก ${diff.toLocaleString()} บาท ถึงจะรับ VIP ${targetLevel} ได้ครับ`;
+                            } 
+                            // ✅ 1.4 ผ่านเงื่อนไข! เติมเงินอัปเลเวลทันที
+                            else {
+                                user.vipLevel = targetLevel;
+                                user.balance = (user.balance || 0) + targetConfig.reward;
+                                await saveDataToFirebase();
+
+                                replyText = `🎉 ยินดีด้วยครับคุณ ${user.nickname || user.name}!\nคุณได้รับโบนัสอัพเกรด VIP ${targetLevel} จำนวน +${targetConfig.reward.toLocaleString()} บาท เข้ากระเป๋าเรียบร้อยแล้ว 💵✨`;
+                            }
+                        }
+                    }
+                }
+
+                // ส่งข้อความตอบกลับหาผู้ใช้
+                if (replyText) {
+                    await axios.post('https://api.line.me/v2/bot/message/reply', {
+                        replyToken: event.replyToken,
+                        messages: [{ type: 'text', text: replyText }]
+                    }, {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${TOKEN}`
+                        }
+                    });
+                }
+            }
+            continue;
+        }
+        
       // =================================================================
         // 📸 [ระบบฟิวชั่น ร่างอัปเกรดเตือนภัย] ดักจับรูปภาพสลิป + เตือนแอดมินถ้าส่งช้าเกิน 5 นาที
         // =================================================================
@@ -4090,7 +4167,138 @@ if (userMsg === 'c') {
         turnStatusColor = "#ff5555";
     }
 
-    // 🏆 4. ประกอบร่าง Flex Message
+    
+
+    // 👑 3. เช็กสถานะเทิร์นโอเวอร์
+    let turnStatusText = "🔓 ปกติ (ไม่ติดเทิร์น)";
+    let turnStatusColor = "#55ff55";
+    if (user.turnoverTarget && user.turnoverTarget > 0) {
+        turnStatusText = `🔒ติดเทิร์น (เป้า:${user.turnoverTarget} บ.)`;
+        turnStatusColor = "#ff5555";
+    }
+
+    // 🏆 4.คำนวณปุ่มรับโบนัส VIP
+    const userTurn = user.totalTurnover || 0;
+    const currentVip = user.vipLevel || 0;
+    
+    const vipConfig = [
+            { level: 1, reqTurn: 500, reward: 10 },
+            { level: 2, reqTurn: 1000, reward: 15 },
+            { level: 3, reqTurn: 3000, reward: 30 },
+            { level: 4, reqTurn: 5000, reward: 50 },
+            { level: 5, reqTurn: 10000, reward: 120 },
+            { level: 6, reqTurn: 30000, reward: 300 },
+            { level: 7, reqTurn: 50000, reward: 600 },
+            { level: 8, reqTurn: 100000, reward: 1200 },
+            { level: 9, reqTurn: 150000, reward: 1800 },
+            { level: 10, reqTurn: 250000, reward: 4000 }
+    ];
+
+    const nextVip = vipConfig.find(v => v.level > currentVip);
+    let vipButtonBox = null;
+
+    if (nextVip) {
+        const canClaim = userTurn >= nextVip.reqTurn;
+        vipButtonBox = {
+            type: "box",
+            layout: "vertical",
+            margin: "md",
+            contents: [
+                {
+                    type: "button",
+                    action: {
+                        type: "postback",
+                        label: canClaim ? `🎁 กดรับโบนัส VIP ${nextVip.level} (+${nextVip.reward.toLocaleString()} บ.)` : `🔒 VIP ${nextVip.level} (ขาดอีก ${(nextVip.reqTurn - userTurn).toLocaleString()} บ.)`,
+                        data: `action=claim_vip&ownerId=${userId}&targetLevel=${nextVip.level}`
+                    },
+                    style: canClaim ? "primary" : "secondary",
+                    color: canClaim ? "#d4af37" : "#444444",
+                    height: "sm"
+                }
+            ]
+        };
+    }
+
+    // 🌟 5. ประกอบร่าง Flex Message (ใส่ปุ่ม VIP ต่อท้ายด้านล่างสุด)
+    const bodyElements = [
+        {
+            type: "box",
+            layout: "horizontal",
+            contents: [
+                { type: "text", text: "👤 สมาชิกคนที่", color: "#8e8e93", size: "xs" },
+                { type: "text", text: `No. ${user.memberNumber}`, color: "#ffffff", size: "xs", align: "end", weight: "bold" }
+            ]
+        },
+        {
+            type: "box",
+            layout: "horizontal",
+            margin: "sm",
+            contents: [
+                { type: "text", text: "🏷️ ชื่อLine", color: "#8e8e93", size: "xs" },
+                { type: "text", text: `${user.nickname || user.name}`, color: "#00ffcc", size: "xs", align: "end", weight: "bold" }
+            ]
+        },
+        {
+            type: "box",
+            layout: "horizontal",
+            margin: "sm",
+            contents: [
+                { type: "text", text: "🌟 ระดับสมาชิก", color: "#8e8e93", size: "xs" },
+                { type: "text", text: `VIP ${currentVip}`, color: "#d4af37", size: "xs", align: "end", weight: "bold" }
+            ]
+        },
+        { type: "separator", margin: "md", color: "#3a3a3c" },
+        {
+            type: "box",
+            layout: "horizontal",
+            margin: "md",
+            contents: [
+                { type: "text", text: "💵 เครดิตกระเป๋า", color: "#ffffff", size: "sm", weight: "bold" },
+                { type: "text", text: `${user.balance.toLocaleString()} บาท`, color: "#d4af37", size: "md", align: "end", weight: "bold" }
+            ]
+        },
+        {
+            type: "box",
+            layout: "horizontal",
+            margin: "sm",
+            contents: [
+                { type: "text", text: "📊 สถานะเทิร์น", color: "#8e8e93", size: "xs", flex: 4 },
+                { type: "text", text: turnStatusText, color: turnStatusColor, size: "xs", align: "end", weight: "bold", flex: 6 }
+            ]
+        },
+        { type: "separator", margin: "md", color: "#3a3a3c" },
+        {
+            type: "box",
+            layout: "vertical",
+            margin: "md",
+            contents: [
+                { type: "text", text: "📝 รายการโพยรอบนี้:", color: "#d4af37", size: "xs", weight: "bold", margin: "xs" },
+                {
+                    type: "box",
+                    layout: "vertical",
+                    margin: "xs",
+                    contents: betContents
+                }
+            ]
+        },
+        { type: "separator", margin: "md", color: "#3a3a3c" },
+        {
+            type: "box",
+            layout: "vertical",
+            margin: "md",
+            contents: [
+                { type: "text", text: "📖 คู่มือช่วยเหลือใช้งาน", color: "#8e8e93", size: "xxs", weight: "bold" },
+                { type: "text", text: "• พิมพ์ คส เพื่อดูคำสั่งทั้งหมด\n• พิมพ์ ฝาก [จำนวน] หรือ ถอน [จำนวน]\n• พิมพ์ กต เพื่ออ่านกฎกติกาห้อง", color: "#aaaaaa", size: "xxs", margin: "xs", wrap: true }
+            ]
+        }
+    ];
+
+    // ถ้ามีข้อมูลปุ่ม VIP ให้ใส่ต่อท้ายสุดของการ์ด
+    if (vipButtonBox) {
+        bodyElements.push({ type: "separator", margin: "md", color: "#3a3a3c" });
+        bodyElements.push(vipButtonBox);
+    }
+
     global.currentReplyFlex = {
         type: "flex",
         altText: "📊 บัตรข้อมูลสมาชิกและยอดเงินของคุณ",
@@ -4116,82 +4324,20 @@ if (userMsg === 'c') {
             body: {
                 type: "box",
                 layout: "vertical",
-                contents: [
-                    {
-                        type: "box",
-                        layout: "horizontal",
-                        contents: [
-                            { type: "text", text: "👤 สมาชิกคนที่", color: "#8e8e93", size: "xs" },
-                            { type: "text", text: `No. ${user.memberNumber}`, color: "#ffffff", size: "xs", align: "end", weight: "bold" }
-                        ]
-                    },
-                    {
-                        type: "box",
-                        layout: "horizontal",
-                        margin: "sm",
-                        contents: [
-                            { type: "text", text: "🏷️ ชื่อLine", color: "#8e8e93", size: "xs" },
-                            { type: "text", text: `${user.nickname || user.name}`, color: "#00ffcc", size: "xs", align: "end", weight: "bold" }
-                        ]
-                    },
-                    { type: "separator", margin: "md", color: "#3a3a3c" },
-                    {
-                        type: "box",
-                        layout: "horizontal",
-                        margin: "md",
-                        contents: [
-                            { type: "text", text: "💵 เครดิตกระเป๋า", color: "#ffffff", size: "sm", weight: "bold" },
-                            { type: "text", text: `${user.balance.toLocaleString()} บาท`, color: "#d4af37", size: "md", align: "end", weight: "bold" }
-                        ]
-                    },
-                    {
-                        type: "box",
-                        layout: "horizontal",
-                        margin: "sm",
-                        contents: [
-                            { type: "text", text: "📊 สถานะเทิร์น", color: "#8e8e93", size: "xs", flex: 4 },
-                            { type: "text", text: turnStatusText, color: turnStatusColor, size: "xs", align: "end", weight: "bold", flex: 6 }
-                        ]
-                    },
-                    { type: "separator", margin: "md", color: "#3a3a3c" },
-                    {
-                        type: "box",
-                        layout: "vertical",
-                        margin: "md",
-                        contents: [
-                            { type: "text", text: "📝 รายการโพยรอบนี้:", color: "#d4af37", size: "xs", weight: "bold", margin: "xs" },
-                            {
-                                type: "box",
-                                layout: "vertical",
-                                margin: "xs",
-                                contents: betContents
-                            }
-                        ]
-                    },
-                    { type: "separator", margin: "md", color: "#3a3a3c" },
-                    {
-                        type: "box",
-                        layout: "vertical",
-                        margin: "md",
-                        contents: [
-                            { type: "text", text: "📖 คู่มือช่วยเหลือใช้งาน", color: "#8e8e93", size: "xxs", weight: "bold" },
-                            { type: "text", text: "• พิมพ์ คส เพื่อดูคำสั่งทั้งหมด\n• พิมพ์ ฝาก [จำนวน] หรือ ถอน [จำนวน]\n• พิมพ์ กต เพื่ออ่านกฎกติกาห้อง", color: "#aaaaaa", size: "xxs", margin: "xs", wrap: true }
-                        ]
-                    }
-                ]
+                contents: bodyElements
             }
         }
     };
 } else if (originalMsg.startsWith('C/') || originalMsg.startsWith('c/')) {
-                        // 🔒 ป้องกันคนเก่าแอบพิมพ์ C/ มาเปลี่ยนชื่อหลังบ้าน
-                        replyText = `❌ ไม่สามารถเปลี่ยนข้อมูลเองได้ค่ะคุณ ${user.name}!\n──────────────────\n⚠️ เนื่องจากระบบได้ผูกบัญชีธนาคารของคุณไว้ในคลังความปลอดภัยแล้ว\n\n📌 หากต้องการเปลี่ยน ชื่อ-นามสกุล หรือ เลขบัญชีธนาคาร กรุณาทักแชทติดต่อแอดมินโดยตรงเพื่อขออัปเดตข้อมูลนะคะ 🙏`;
-                    } else {
-                        // ปล่อยว่างไว้เพื่อให้ข้อความทั่วไปไหลไปเข้า Settlement / แทงโพย ปกติตามธรรมชาติ
-                        replyText = "";
-                    }
+    // 🔒 ป้องกันคนเก่าแอบพิมพ์ C/ มาเปลี่ยนชื่อหลังบ้าน
+    replyText = `❌ ไม่สามารถเปลี่ยนข้อมูลเองได้ค่ะคุณ ${user.name}!\n──────────────────\n⚠️ เนื่องจากระบบได้ผูกบัญชีธนาคารของคุณไว้ในคลังความปลอดภัยแล้ว\n\n📌 หากต้องการเปลี่ยน ชื่อ-นามสกุล หรือ เลขบัญชีธนาคาร กรุณาทักแชทติดต่อแอดมินโดยตรงเพื่อขออัปเดตข้อมูลนะคะ 🙏`;
+} else {
+    // ปล่อยว่างไว้เพื่อให้ข้อความทั่วไปไหลไปเข้า Settlement / แทงโพย ปกติตามธรรมชาติ
+    replyText = "";
+}
                 }
             } // ปิดระบบลงทะเบียน
-            
+                      
             // ==================== [ แก้ไขบั๊ก m 1 2: คำสั่ง m เช็กบัญชีแยกรายคนด้วยเว้นวรรคอย่างแม่นยำ ] ====================
             if (userMsg.startsWith('m') && !userMsg.includes('-') && !userMsg.endsWith('+') && userMsg !== 'รข' && userMsg !== 'รจ') {
                 // 🚨 กรองขั้นสูงสุด: ถ้าไม่ใช่แอดมินในกล่องกลาง หรือ แอดมินไม่ได้สั่งในแชทส่วนตัว (1 ต่อ 1) ให้บอทเงียบกริบไม่ตอบ

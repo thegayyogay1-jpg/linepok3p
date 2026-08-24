@@ -4158,17 +4158,7 @@ if (userMsg === 'c') {
             style: "italic"
         });
     }
-
-    // 👑 3. เช็กสถานะเทิร์นโอเวอร์
-    let turnStatusText = "🔓 ปกติ (ไม่ติดเทิร์น)";
-    let turnStatusColor = "#55ff55";
-    if (user.turnoverTarget && user.turnoverTarget > 0) {
-        turnStatusText = `🔒ติดเทิร์น (เป้า:${user.turnoverTarget} บ.)`;
-        turnStatusColor = "#ff5555";
-    }
-
     
-
     // 👑 3. เช็กสถานะเทิร์นโอเวอร์
     let turnStatusText = "🔓 ปกติ (ไม่ติดเทิร์น)";
     let turnStatusColor = "#55ff55";

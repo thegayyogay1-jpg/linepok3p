@@ -3010,33 +3010,17 @@ hiloList.forEach((hBet) => {
     } else {
         hiloNetWinLoss -= price;
     }
-});         
+}); 
+                    
 // 💥 🎯 รวมยอดได้/เสียทั้งหมด (ป๊อกเด้ง + ไฮโล)
 // ----------------------------------------------------
 const userTotalWinLoss = pokdengWinLoss + hiloNetWinLoss;
 
-// 💳 1. คำนวณยอดเงินใหม่ใน RAM
-let finalBalance = 0;
+// ✅ อัปเดตเงินในกระเป๋าผู้เล่น (คืนเงินค้ำประกัน + ยอดได้/เสีย)
 if (typeof usersWallets[uId] === 'object' && usersWallets[uId] !== null) {
     usersWallets[uId].balance = Number(usersWallets[uId].balance || 0) + userTotalWinLoss + totalHoldRefund;
-    finalBalance = usersWallets[uId].balance;
 } else {
     usersWallets[uId] = Number(usersWallets[uId] || 0) + userTotalWinLoss + totalHoldRefund;
-    finalBalance = usersWallets[uId];
-}
-
-// 🔄 2. ถ้ามีตัวแปร user (ที่ Flex Message ชอบดึงไปโชว์) ให้แก้ balance ของ user ให้เป็นยอดล่าสุดด้วย
-if (typeof user === 'object' && user !== null) {
-    user.balance = finalBalance;
-}
-
-// 💾 3. บันทึกลง Firebase ทันที ณ วินาทีนี้! (กันโดนอ่านค่าเก่ามาทับ)
-try {
-    if (typeof db !== 'undefined' && db) {
-        db.ref(`users/${uId}/balance`).set(finalBalance);
-    }
-} catch (e) {
-    console.log("Firebase Save Error:", e);
 }
                     
                 // 🧮 อัปเดตกระเป๋าเงินจริงหลังคิดยอดสุทธิ

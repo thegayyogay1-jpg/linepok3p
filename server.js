@@ -3013,7 +3013,7 @@ hiloList.forEach((hBet) => {
             /// ----------------------------------------------------
 // 💥 🎯 รวมยอดได้/เสียทั้งหมด (ป๊อกเด้ง + ไฮโล)
 // ----------------------------------------------------
-const totalWinLoss = pokdengWinLoss + hiloNetWinLoss;
+const userTotalWinLoss = pokdengWinLoss + hiloNetWinLoss;
 
 // ✅ อัปเดตเงินในกระเป๋าผู้เล่น (คืนเงินค้ำประกัน + ยอดได้/เสีย)
 if (typeof usersWallets[uId] === 'object' && usersWallets[uId] !== null) {

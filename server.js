@@ -3010,17 +3010,17 @@ hiloList.forEach((hBet) => {
     }
 });
 
-            /// ----------------------------------------------------
+           // ----------------------------------------------------
 // 💥 🎯 รวมยอดได้/เสียทั้งหมด (ป๊อกเด้ง + ไฮโล)
 // ----------------------------------------------------
 const userTotalWinLoss = pokdengWinLoss + hiloNetWinLoss;
 
 // ✅ อัปเดตเงินในกระเป๋าผู้เล่น (คืนเงินค้ำประกัน + ยอดได้/เสีย)
 if (typeof usersWallets[uId] === 'object' && usersWallets[uId] !== null) {
-    usersWallets[uId].balance = Number(usersWallets[uId].balance || 0) + totalWinLoss + totalHoldRefund;
+    usersWallets[uId].balance = Number(usersWallets[uId].balance || 0) + userTotalWinLoss + totalHoldRefund;
 } else {
-    usersWallets[uId] = Number(usersWallets[uId] || 0) + totalWinLoss + totalHoldRefund;
-} 
+    usersWallets[uId] = Number(usersWallets[uId] || 0) + userTotalWinLoss + totalHoldRefund;
+}
                     
                 // 🧮 อัปเดตกระเป๋าเงินจริงหลังคิดยอดสุทธิ
                 user.balance = user.balance + totalHoldRefund + userTotalWinLoss;

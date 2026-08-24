@@ -3981,88 +3981,123 @@ else if (command.toLowerCase() === "y") {
                     // 🟢 กรณีที่เป็นสมาชิกเก่าที่ลงทะเบียนเรียบร้อยแล้ว
                     const user = usersWallets[userId];
                     
-                   // ==================== [ คำสั่งเช็กยอด c เวอร์ชันการ์ดดำทอง ] ====================
-                    if (userMsg === 'c') {
-                        // 🛡️ 1. ระบบ Anti-Spam กันสมาชิกกด c ย้ำๆ (ตั้งไว้ที่ 3 วินาทีต่อคน)
+                   // ==================== [ คำสั่งเช็กยอด c เวอร์ชันการ์ดดำทอง + ไฮโล ] ====================
+if (userMsg === 'c') {
+    // 🛡️ 1. ระบบ Anti-Spam กันสมาชิกกด c ย้ำๆ (1.5 วินาทีต่อคน)
     if (!global.cCooldowns) global.cCooldowns = new Map();
     const now = Date.now();
     const lastUsed = global.cCooldowns.get(userId) || 0;
-    const cooldownTime = 1500; // 1500 ms = 1.5 วินาที
+    const cooldownTime = 1500;
 
     if (now - lastUsed < cooldownTime) {
-        // ถ้าพิมพ์รัวเกิน 1.5 วินาที ให้ข้าม ไม่ต้องส่ง Flex Message ซ้ำเพื่อเซฟโควต้า LINE
         replyText = null;
         return; 
     }
     global.cCooldowns.set(userId, now);
-                        
-                        // 🛠️ แก้ปัญหา LINE API บล็อกข้อความว่าง: บังคับให้ข้อความธรรมดาเป็น null เพื่อส่งแค่การ์ด Flex
-                        replyText = null;
 
-                        // 📝 1. ดึงรายการโพยของจริงจากระบบมาจัดแถวตัวหนังสือย่อยในการ์ด
-                        let betContents = [];
-                        const myBets = roundBets[userId] || [];
-                        
-                        if (myBets && myBets.length > 0) {
-                            myBets.forEach((bet, index) => {
-                                let betText = `${index + 1}. ${bet.detail}`;
-                                if (bet.drawStatus) {
-                                    let drawLegs = [];
-                                    for (let leg in bet.drawStatus) {
-                                        if (bet.drawStatus[leg] === "จั่ว") drawLegs.push(leg);
-                                    }
-                                    if (drawLegs.length > 0) {
-                                        betText += ` 🃏 (จั่ว: ${drawLegs.sort().join(', ')})`;
-                                    }
-                                }
-                                betContents.push({
-                                    type: "text",
-                                    text: betText,
-                                    color: "#e0e0e0",
-                                    size: "xs",
-                                    wrap: true,
-                                    margin: "xs"
-                                });
-                            });
-                            
-                            const totalHold = myBets.reduce((sum, bet) => sum + (bet.holdCost || 0), 0);
-                            betContents.push({
-                                type: "text",
-                                text: `🔒 ประกันเด้งที่ล็อก: ${totalHold} บาท`,
-                                color: "#ffaa00",
-                                size: "xs",
-                                weight: "bold",
-                                margin: "sm"
-                            });
-                        } else {
-                            betContents.push({
-                                type: "text",
-                                text: "ไม่มีโพยค้างในรอบนี้",
-                                color: "#888888",
-                                size: "xs",
-                                style: "italic"
-                            });
-                        }
+    replyText = null;
 
-                        // 👑 2. เช็กสถานะเทิร์นโอเวอร์
-                        let turnStatusText = "🔓 ปกติ (ไม่ติดเทิร์น)";
-                        let turnStatusColor = "#55ff55";
-                        if (user.turnoverTarget && user.turnoverTarget > 0) {
-                            turnStatusText = `🔒ติดเทิร์น (เป้า:${user.turnoverTarget} บ.)`;
-                            turnStatusColor = "#ff5555";
-                        }
+    // 📝 2. ดึงรายการโพยป๊อกเด้ง และ โพยไฮโล มาจัดแถว
+    let betContents = [];
+    const myPokdengBets = roundBets[userId] || [];
+    const myHiloBets = (typeof activeHiloBets !== 'undefined' && activeHiloBets[userId]) || 
+                       (typeof hiloRoundBets !== 'undefined' && hiloRoundBets[userId]) || [];
 
-                       // 🏆 3. ประกอบร่างกล่อง Flex Message สีดำ-ทอง วิ่งตรงเข้าตัวแปร Global
-                        global.currentReplyFlex = {
-                            type: "flex",
-                            altText: "📊 บัตรข้อมูลสมาชิกและยอดเงินของคุณ",
-                            contents: {
-                                type: "bubble",
-                                styles: {
-                                    header: { backgroundColor: "#141416" },
-                                    body: { backgroundColor: "#1e1e22" }
-                                },
-                               header: {
+    let itemNo = 1;
+
+    // ♠️ 2.1 ดึงโพยป๊อกเด้ง
+    if (myPokdengBets && myPokdengBets.length > 0) {
+        myPokdengBets.forEach((bet) => {
+            let betText = `${itemNo++}. ♠️ [ป๊อกเด้ง] ${bet.detail}`;
+            if (bet.drawStatus) {
+                let drawLegs = [];
+                for (let leg in bet.drawStatus) {
+                    if (bet.drawStatus[leg] === "จั่ว") drawLegs.push(leg);
+                }
+                if (drawLegs.length > 0) {
+                    betText += ` 🃏 (จั่ว: ${drawLegs.sort().join(', ')})`;
+                }
+            }
+            betContents.push({
+                type: "text",
+                text: betText,
+                color: "#e0e0e0",
+                size: "xs",
+                wrap: true,
+                margin: "xs"
+            });
+        });
+
+        const totalPokdengHold = myPokdengBets.reduce((sum, bet) => sum + (bet.holdCost || 0), 0);
+        betContents.push({
+            type: "text",
+            text: `🔒 ประกันเด้งที่ล็อก: ${totalPokdengHold.toLocaleString()} บาท`,
+            color: "#ffaa00",
+            size: "xs",
+            weight: "bold",
+            margin: "xs"
+        });
+    }
+
+    // 🎲 2.2 ดึงโพยไฮโล
+    if (myHiloBets && myHiloBets.length > 0) {
+        let totalHiloBet = 0;
+        myHiloBets.forEach((hBet) => {
+            if (!hBet) return;
+            const targetName = hBet.target || hBet.category || "ไฮโล";
+            const amount = Number(hBet.price || hBet.amount || 0);
+            totalHiloBet += amount;
+
+            betContents.push({
+                type: "text",
+                text: `${itemNo++}. 🎲 [ไฮโล] แทง ${targetName} : ${amount.toLocaleString()} บาท`,
+                color: "#00e5ff",
+                size: "xs",
+                wrap: true,
+                margin: "xs"
+            });
+        });
+
+        betContents.push({
+            type: "text",
+            text: `🔒 ทุนไฮโลที่ค้ำ: ${totalHiloBet.toLocaleString()} บาท`,
+            color: "#ffaa00",
+            size: "xs",
+            weight: "bold",
+            margin: "xs"
+        });
+    }
+
+    // ❌ กรณีไม่มีโพยเลยสักเกม
+    if (betContents.length === 0) {
+        betContents.push({
+            type: "text",
+            text: "ไม่มีโพยค้างในรอบนี้",
+            color: "#888888",
+            size: "xs",
+            style: "italic"
+        });
+    }
+
+    // 👑 3. เช็กสถานะเทิร์นโอเวอร์
+    let turnStatusText = "🔓 ปกติ (ไม่ติดเทิร์น)";
+    let turnStatusColor = "#55ff55";
+    if (user.turnoverTarget && user.turnoverTarget > 0) {
+        turnStatusText = `🔒ติดเทิร์น (เป้า:${user.turnoverTarget} บ.)`;
+        turnStatusColor = "#ff5555";
+    }
+
+    // 🏆 4. ประกอบร่าง Flex Message
+    global.currentReplyFlex = {
+        type: "flex",
+        altText: "📊 บัตรข้อมูลสมาชิกและยอดเงินของคุณ",
+        contents: {
+            type: "bubble",
+            styles: {
+                header: { backgroundColor: "#141416" },
+                body: { backgroundColor: "#1e1e22" }
+            },
+            header: {
                 type: "box",
                 layout: "vertical",
                 contents: [
@@ -4093,7 +4128,7 @@ else if (command.toLowerCase() === "y") {
                         margin: "sm",
                         contents: [
                             { type: "text", text: "🏷️ ชื่อLine", color: "#8e8e93", size: "xs" },
-                            { type: "text", text: `${user.nickname || user.name}`, color: "#00ffcc", size: "xs", align: "end", weight: "bold" } // 👈 ปรับโชว์เฉพาะชื่อเล่น
+                            { type: "text", text: `${user.nickname || user.name}`, color: "#00ffcc", size: "xs", align: "end", weight: "bold" }
                         ]
                     },
                     { type: "separator", margin: "md", color: "#3a3a3c" },

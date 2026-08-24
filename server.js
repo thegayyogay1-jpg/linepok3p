@@ -2501,7 +2501,7 @@ else if (originalMsg.startsWith('>')) {
             else if (clean === 'sf') { rawScore = 600; multiplier = 5; typeName = "สเตฟฟลัช"; } 
             else if (clean === 'h') { rawScore = 400; multiplier = 3; typeName = "เซียน/3เหลือง"; } 
             else if (clean === 's' || clean === 'ร') { rawScore = 500; multiplier = 3; typeName = "เรียง"; }
-            else if (clean === '7.5') { rawScore = 75; typeName = "7.5"; }
+            else if (clean === '7.5') { rawScore = 7.5; typeName = "7.5"; }
                 
             else {
                 let pts = parseInt(clean);

@@ -2900,9 +2900,10 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                 }); // ปิด userBetsArray.forEach
 
 // =========================================================================
-// 🎲 [2. โค้ดคำนวณผลไฮโล - แก้ไข Bug แปลง Type & เช็กผลแม่นยำ]
+// 🎲 [2. โค้ดคำนวณผลไฮโล - แก้ไขการคืนเงิน/จ่ายรางวัลให้ถูกต้อง]
 // =========================================================================
-let hiloNetWinLoss = 0;
+let hiloPayoutTotal = 0; // ยอดเงินรางวัลรวม (ทุนคืน + กำไร) ที่ต้องโอนคืนเข้ากระเป๋า
+let hiloProfitLossSummary = 0; // ยอดกำไร/ขาดทุนสุทธิ (เอาไว้แสดงผล Flex Message ให้ผู้เล่นดู)
 
 const dice = (Array.isArray(tempHiloDices) && tempHiloDices.length === 3) ? tempHiloDices : [0, 0, 0];
 const diceSum = dice.reduce((a, b) => a + b, 0);
@@ -3000,26 +3001,31 @@ hiloList.forEach((hBet) => {
             else if (targetNum === 1) winMultiplier = 9;
         }
     }
+
     // ----------------------------------------------------
-    // ⚔️ คำนวณผลได้/เสียสุทธิ
+    // ⚔️ คำนวณยอดเงินที่จะโอนคืนกระเป๋า
     // ----------------------------------------------------
     if (isWin) {
-        hiloNetWinLoss += (price * winMultiplier);
+        // ชนะ: ได้คืนทุน (price) + กำไร (price * winMultiplier)
+        hiloPayoutTotal += price + (price * winMultiplier);
+        hiloProfitLossSummary += (price * winMultiplier);
     } else {
-        hiloNetWinLoss -= price;
+        // แพ้: ไม่ได้รับเงินคืน (เพราะหักเงินค่าแทงไปล่วงหน้าแล้ว)
+        hiloProfitLossSummary -= price;
     }
 });
 
-           // ----------------------------------------------------
-// 💥 🎯 รวมยอดได้/เสียทั้งหมด (ป๊อกเด้ง + ไฮโล)
 // ----------------------------------------------------
-const userTotalWinLoss = pokdengWinLoss + hiloNetWinLoss;
+// 💥 🎯 อัปเดตยอดเงินเข้ากระเป๋าจริง
+// ----------------------------------------------------
+// สำหรับป๊อกเด้ง: pokdengWinLoss + totalHoldRefund
+// สำหรับไฮโล: hiloPayoutTotal (ยอดโอนคืนรวมทุน+กำไรของตัวที่ถูก)
+const totalAmountToAddToWallet = pokdengWinLoss + totalHoldRefund + hiloPayoutTotal;
 
-// ✅ อัปเดตเงินในกระเป๋าผู้เล่น (คืนเงินค้ำประกัน + ยอดได้/เสีย)
 if (typeof usersWallets[uId] === 'object' && usersWallets[uId] !== null) {
-    usersWallets[uId].balance = Number(usersWallets[uId].balance || 0) + userTotalWinLoss + totalHoldRefund;
+    usersWallets[uId].balance = Number(usersWallets[uId].balance || 0) + totalAmountToAddToWallet;
 } else {
-    usersWallets[uId] = Number(usersWallets[uId] || 0) + userTotalWinLoss + totalHoldRefund;
+    usersWallets[uId] = Number(usersWallets[uId] || 0) + totalAmountToAddToWallet;
 }
                     
                 // 🧮 อัปเดตกระเป๋าเงินจริงหลังคิดยอดสุทธิ

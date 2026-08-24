@@ -3015,7 +3015,8 @@ hiloList.forEach((hBet) => {
             // ----------------------------------------------------
             // 💥 🎯 แก้จุดที่ 2: รวมยอดสุทธิของทั้ง 2 เกมเข้าด้วยกัน
             // ----------------------------------------------------
-            let userTotalWinLoss = pokdengWinLoss + hiloNetWinLoss; // รวมยอดป๊อกเด้ง + ไฮโล
+            usersWallets[uId] = (usersWallets[uId] || 0) + hiloNetWinLoss; // ปรับกระเป๋าตามผลสุทธิ
+            userTotalWinLoss += hiloNetWinLoss;                            // ส่งยอดสุทธิ (-50) ไปโชว์ Flex
                     
                 // 🧮 อัปเดตกระเป๋าเงินจริงหลังคิดยอดสุทธิ
                 user.balance = user.balance + totalHoldRefund + userTotalWinLoss;

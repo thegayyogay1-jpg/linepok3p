@@ -3089,15 +3089,17 @@ if (typeof usersWallets[uId] === 'object' && usersWallets[uId] !== null) {
                 ]
             });
 
-            // 💳 6. ดันแถบ "เครดิตคงเหลือ" เข้ากล่อง
-            userBoxContents.push({
-                "type": "box",
-                "layout": "horizontal",
-                "contents": [
-                    { "type": "text", "text": `• เครดิตคงเหลือ:`, "size": "xs", "color": "#cccccc" },
-                    { "type": "text", "text": `${user.balance} บ.`, "size": "xs", "color": "#ffffff", "align": "end" }
-                ]
-            });
+            // 💳 6. ดันแถบ "เครดิตคงเหลือ" เข้ากล่อง (ดึงจาก usersWallets ล่าสุด)
+const currentBalance = typeof usersWallets[uId] === 'object' ? usersWallets[uId].balance : usersWallets[uId];
+
+userBoxContents.push({
+    "type": "box",
+    "layout": "horizontal",
+    "contents": [
+        { "type": "text", "text": `• เครดิตคงเหลือ:`, "size": "xs", "color": "#cccccc" },
+        { "type": "text", "text": `${Number(currentBalance || 0).toLocaleString()} บ.`, "size": "xs", "color": "#ffffff", "align": "end" }
+    ]
+});
 
             // ➖ 7. ปิดท้ายด้วยเส้นคั่น
             userBoxContents.push({ "type": "separator", "color": "#2a2233", "margin": "xs" });

@@ -2873,7 +2873,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                                 }
                                 // 🛡️ ถ้าค้ำประกันมาแค่ 2 เด้ง ชนะเท่าไหร่ก็โดนแคปไม่เกิน 2 เด้ง (ถ้าค้ำครบ 3 เด้งปล่อยได้เต็ม)
                                 if (bet.maxMultiplier && bet.maxMultiplier < 3 && winMultiplier > bet.maxMultiplier) {
-                                    winMultiplier = bet.maxMultiplier;
+                                    userTotalWinLoss = bet.maxMultiplier;
                                  }
                                 
                                 let grossWin = betPrice * winMultiplier; // กำไรเต็มก่อนหัก

@@ -2916,6 +2916,8 @@ hiloList.forEach((hBet) => {
     const price = Number(hBet.price || hBet.amount || 0);
     totalBetAmountThisRound += price; // สะสมยอดคิดเทิร์น
 
+    usersWallets[uId] = (usersWallets[uId] || 0) + price;
+
     const target = String(hBet.target || hBet.category || "").trim();
     if (!target) return;
 

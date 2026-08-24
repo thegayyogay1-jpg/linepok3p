@@ -2902,7 +2902,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
 // =========================================================================
 // 🎲 [2. โค้ดคำนวณผลไฮโล ตรงรุ่นตาม โครงสร้าง Data จริง]
 // =========================================================================
-let hiloWinLoss = 0;
+let hiloNetWinLoss = 0;
 
 // 1. ดึงผลเต๋าจากระบบ (ลองเช็กตัวแปรที่มีในระบบน้า)
 const dice = (typeof tempHiloDice !== 'undefined' && Array.isArray(tempHiloDice)) ? tempHiloDice : 

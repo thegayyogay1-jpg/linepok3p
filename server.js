@@ -2900,10 +2900,9 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                 }); // ปิด userBetsArray.forEach
 
 // =========================================================================
-// 🎲 [2. โค้ดคำนวณผลไฮโล - แก้ไขการคืนเงิน/จ่ายรางวัลให้ถูกต้อง]
+// 🎲 [2. โค้ดคำนวณผลไฮโล - แก้ไข Bug แปลง Type & เช็กผลแม่นยำ]
 // =========================================================================
-let hiloPayoutTotal = 0; // ยอดเงินรางวัลรวม (ทุนคืน + กำไร) ที่ต้องโอนคืนเข้ากระเป๋า
-let hiloProfitLossSummary = 0; // ยอดกำไร/ขาดทุนสุทธิ (เอาไว้แสดงผล Flex Message ให้ผู้เล่นดู)
+let hiloNetWinLoss = 0;
 
 const dice = (Array.isArray(tempHiloDices) && tempHiloDices.length === 3) ? tempHiloDices : [0, 0, 0];
 const diceSum = dice.reduce((a, b) => a + b, 0);
@@ -2916,6 +2915,8 @@ hiloList.forEach((hBet) => {
 
     const price = Number(hBet.price || hBet.amount || 0);
     totalBetAmountThisRound += price; // สะสมยอดคิดเทิร์น
+
+    totalHoldRefund += price;
 
     const target = String(hBet.target || hBet.category || "").trim();
     if (!target) return;
@@ -3001,31 +3002,26 @@ hiloList.forEach((hBet) => {
             else if (targetNum === 1) winMultiplier = 9;
         }
     }
-
     // ----------------------------------------------------
-    // ⚔️ คำนวณยอดเงินที่จะโอนคืนกระเป๋า
+    // ⚔️ คำนวณผลได้/เสียสุทธิ
     // ----------------------------------------------------
     if (isWin) {
-        // ชนะ: ได้คืนทุน (price) + กำไร (price * winMultiplier)
-        hiloPayoutTotal += price + (price * winMultiplier);
-        hiloProfitLossSummary += (price * winMultiplier);
+        hiloNetWinLoss += (price * winMultiplier);
     } else {
-        // แพ้: ไม่ได้รับเงินคืน (เพราะหักเงินค่าแทงไปล่วงหน้าแล้ว)
-        hiloProfitLossSummary -= price;
+        hiloNetWinLoss -= price;
     }
 });
 
+           // ----------------------------------------------------
+// 💥 🎯 รวมยอดได้/เสียทั้งหมด (ป๊อกเด้ง + ไฮโล)
 // ----------------------------------------------------
-// 💥 🎯 อัปเดตยอดเงินเข้ากระเป๋าจริง
-// ----------------------------------------------------
-// สำหรับป๊อกเด้ง: pokdengWinLoss + totalHoldRefund
-// สำหรับไฮโล: hiloPayoutTotal (ยอดโอนคืนรวมทุน+กำไรของตัวที่ถูก)
-const totalAmountToAddToWallet = pokdengWinLoss + totalHoldRefund + hiloPayoutTotal;
+const userTotalWinLoss = pokdengWinLoss + hiloNetWinLoss;
 
+// ✅ อัปเดตเงินในกระเป๋าผู้เล่น (คืนเงินค้ำประกัน + ยอดได้/เสีย)
 if (typeof usersWallets[uId] === 'object' && usersWallets[uId] !== null) {
-    usersWallets[uId].balance = Number(usersWallets[uId].balance || 0) + totalAmountToAddToWallet;
+    usersWallets[uId].balance = Number(usersWallets[uId].balance || 0) + userTotalWinLoss + totalHoldRefund;
 } else {
-    usersWallets[uId] = Number(usersWallets[uId] || 0) + totalAmountToAddToWallet;
+    usersWallets[uId] = Number(usersWallets[uId] || 0) + userTotalWinLoss + totalHoldRefund;
 }
                     
                 // 🧮 อัปเดตกระเป๋าเงินจริงหลังคิดยอดสุทธิ
@@ -3089,17 +3085,15 @@ if (typeof usersWallets[uId] === 'object' && usersWallets[uId] !== null) {
                 ]
             });
 
-            // 💳 6. ดันแถบ "เครดิตคงเหลือ" เข้ากล่อง (ดึงจาก usersWallets ล่าสุด)
-const currentBalance = typeof usersWallets[uId] === 'object' ? usersWallets[uId].balance : usersWallets[uId];
-
-userBoxContents.push({
-    "type": "box",
-    "layout": "horizontal",
-    "contents": [
-        { "type": "text", "text": `• เครดิตคงเหลือ:`, "size": "xs", "color": "#cccccc" },
-        { "type": "text", "text": `${Number(currentBalance || 0).toLocaleString()} บ.`, "size": "xs", "color": "#ffffff", "align": "end" }
-    ]
-});
+            // 💳 6. ดันแถบ "เครดิตคงเหลือ" เข้ากล่อง
+            userBoxContents.push({
+                "type": "box",
+                "layout": "horizontal",
+                "contents": [
+                    { "type": "text", "text": `• เครดิตคงเหลือ:`, "size": "xs", "color": "#cccccc" },
+                    { "type": "text", "text": `${user.balance} บ.`, "size": "xs", "color": "#ffffff", "align": "end" }
+                ]
+            });
 
             // ➖ 7. ปิดท้ายด้วยเส้นคั่น
             userBoxContents.push({ "type": "separator", "color": "#2a2233", "margin": "xs" });

@@ -4170,7 +4170,7 @@ else if (command.toLowerCase() === "y") {
                                 isWithdrawLocked: false,
                                 pendingWithdrawAmount: 0,
                                 bankName: bankName,
-                                bankAccount: bankAccount
+                                bankAccount: bankAccount,
                                 totalDeposit: 0,       // ยอดฝากสำเร็จสะสม
                                 totalWithdraw: 0,      // ยอดถอนสำเร็จสะสม
                                 lastCashbackClaim: null // เวลาที่กดรับยอดเสียล่าสุด

@@ -1391,82 +1391,155 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                 hiloRoundBets = {}; // 🎲 [จุดที่ 1] ล้างข้อมูลโพยไฮโลเก่า
                 await saveDataToFirebase();
                 
-                // --- 📊 สร้างโครงสร้างสถิติย้อนหลัง ---
-                let historyFlexContents = [];
-                if (matchHistory && matchHistory.length > 0) {
-                    // วนลูปแปลงค่าให้ปลอดภัย ไม่ว่าประวัติจะเป็น Object หรือ String
-                    historyFlexContents = matchHistory.map(item => {
-                        let textDisplay = typeof item === 'object' ? JSON.stringify(item) : item;
-                        return {
-                            "type": "text",
-                            "text": textDisplay,
-                            "size": "xs",
-                            "color": "#E2E1E4",
-                            "wrap": true
-                        };
+                // 📊 --- [สร้างตารางสถิติแบบ Grid สไตล์ภาพตัวอย่าง] ---
+        let historyFlexContents = [];
+
+        // 1. หัวตาราง (Header Row)
+        historyFlexContents.push({
+            "type": "box",
+            "layout": "horizontal",
+            "backgroundColor": "#3b2354",
+            "paddingAll": "xs",
+            "cornerRadius": "xs",
+            "contents": [
+                { "type": "text", "text": "รอบ", "size": "xxs", "color": "#ffffff", "weight": "bold", "flex": 2, "align": "center" },
+                { "type": "text", "text": "เจ้า", "size": "xxs", "color": "#ffcc00", "weight": "bold", "flex": 2, "align": "center" },
+                { "type": "text", "text": "ขา1", "size": "xxs", "color": "#ffffff", "weight": "bold", "flex": 3, "align": "center" },
+                { "type": "text", "text": "ขา2", "size": "xxs", "color": "#ffffff", "weight": "bold", "flex": 3, "align": "center" },
+                { "type": "text", "text": "ขา3", "size": "xxs", "color": "#ffffff", "weight": "bold", "flex": 3, "align": "center" },
+                { "type": "text", "text": "ขา4", "size": "xxs", "color": "#ffffff", "weight": "bold", "flex": 3, "align": "center" },
+                { "type": "text", "text": "ขา5", "size": "xxs", "color": "#ffffff", "weight": "bold", "flex": 3, "align": "center" },
+                { "type": "text", "text": "ขา6", "size": "xxs", "color": "#ffffff", "weight": "bold", "flex": 3, "align": "center" }
+            ]
+        });
+
+        // 2. แถวข้อมูลผลการเล่นแต่ละรอบ (Data Rows)
+        if (matchHistory && matchHistory.length > 0) {
+            // วนลูปย้อนหลังจากรอบล่าสุดลงไป
+            const historyCopy = [...matchHistory].reverse();
+            
+            historyCopy.forEach(item => {
+                // หากเป็น Object โครงสร้างใหม่
+                if (typeof item === 'object' && item.legs) {
+                    let rowCells = [
+                        { "type": "text", "text": `#${item.round}`, "size": "xxs", "color": "#aaaaaa", "flex": 2, "align": "center", "gravity": "center" },
+                        { 
+                            "type": "box", "layout": "vertical", "flex": 2, "backgroundColor": "#d32f2f", "cornerRadius": "md", "paddingAll": "xxs",
+                            "contents": [{ "type": "text", "text": `${item.dealer}`, "size": "xxs", "color": "#ffffff", "weight": "bold", "align": "center" }] 
+                        }
+                    ];
+
+                    for (let l = 1; l <= 6; l++) {
+                        rowCells.push({
+                            "type": "box",
+                            "layout": "vertical",
+                            "flex": 3,
+                            "backgroundColor": "#2c2235",
+                            "cornerRadius": "sm",
+                            "paddingAll": "xxs",
+                            "contents": [
+                                { "type": "text", "text": item.legs[l] || "-", "size": "xxs", "color": "#4fc3f7", "align": "center", "weight": "bold" }
+                            ]
+                        });
+                    }
+
+                    // แถวป๊อกเด้ง (ขา 1-6)
+                    historyFlexContents.push({
+                        "type": "box",
+                        "layout": "horizontal",
+                        "spacing": "xs",
+                        "margin": "xs",
+                        "contents": rowCells
                     });
+
+                    // แถวไฮโล ต่อท้ายด้านล่างของรอบนั้นๆ
+                    historyFlexContents.push({
+                        "type": "box",
+                        "layout": "horizontal",
+                        "backgroundColor": "#1a1222",
+                        "paddingAll": "xxs",
+                        "margin": "xs",
+                        "cornerRadius": "xs",
+                        "contents": [
+                            { "type": "text", "text": `   └ ${item.hilo}`, "size": "xxs", "color": "#ffb74d", "wrap": true }
+                        ]
+                    });
+
+                    historyFlexContents.push({ "type": "separator", "color": "#2a2233", "margin": "xs" });
+
                 } else {
+                    // รองรับกรณีข้อมูลเก่าที่เป็น String
                     historyFlexContents.push({
                         "type": "text",
-                        "text": "• ยังไม่มีข้อมูลสถิติย้อนหลังในรอบนี้",
-                        "size": "xs",
+                        "text": typeof item === 'object' ? JSON.stringify(item) : item,
+                        "size": "xxs",
                         "color": "#E2E1E4",
-                        "style": "italic",
-                        "align": "center"
+                        "wrap": true
                     });
                 }
+            });
+        } else {
+            historyFlexContents.push({
+                "type": "text",
+                "text": "• ยังไม่มีข้อมูลสถิติย้อนหลัง",
+                "size": "xs",
+                "color": "#E2E1E4",
+                "style": "italic",
+                "align": "center"
+            });
+        }
 
-                // 🚀 ยิงข้อความแพ็คคู่: [1. รูปภาพเปิดรอบ] + [2. Flex Message สถิติ]
-                try {
-                    await axios.post('https://api.line.me/v2/bot/message/reply', {
-                        replyToken: replyToken,
-                        messages: [
-                            // 📸 ข้อความที่ 1: รูปเปิดรอบของน้า
-                            {
-                                "type": "image",
-                                "originalContentUrl": openRoundImgUrl,
-                                "previewImageUrl": openRoundImgUrl
-                            },
-                            // 📊 ข้อความที่ 2: Flex Message สรุปและสถิติ
-                            {
-                                "type": "flex",
-                                "altText": `🟢 เริ่มเปิดรอบแทงแล้ว! รอบที่ ${currentRound}`,
-                                "contents": {
-                                    "type": "bubble",
-                                    "styles": { "body": { "backgroundColor": "#1A1A1A" } },
-                                    "body": {
-                                        "type": "box", "layout": "vertical", "spacing": "md",
-                                        "contents": [
-                                            { "type": "text", "text": "🎰 เริ่มเปิดรอบแทงแล้วครับ 🎉", "weight": "bold", "color": "#66FF00", "size": "md", "align": "center" },
-                                            { "type": "text", "text": `รอบที่: ${currentRound}`, "weight": "bold", "color": "#ffffff", "size": "xl", "align": "center", "margin": "none" },
-                                            { "type": "separator", "color": "#22031F" },
-                                            { "type": "text", "text": "📈 สถิติผลเจ้ามือ 5 รอบล่าสุด", "size": "xs", "color": "#66FF00", "weight": "bold" },
-                                            // 🔥 นำกล่องแถวประวัติวงรีมาวางตรงนี้โดยตรง
-                                            { 
-                                                "type": "box", 
-                                                "layout": "vertical", 
-                                                "spacing": "xs", 
-                                                "contents": historyFlexContents 
-                                            },
-                                            { "type": "separator", "color": "#1f3a2b" },
-                                            { "type": "text", "text": "✨ สมาชิกสามารถส่งโพยเข้ามาได้เลยครับ 🎰", "size": "sm", "color": "#ffffff", "wrap": true, "align": "center", "weight": "bold" }
-                                        ]
-                                    }
-                                }
+        // 🚀 ยิงข้อความแพ็คคู่: [1. รูปภาพเปิดรอบ] + [2. Flex Message สถิติตาราง]
+        try {
+            await axios.post('https://api.line.me/v2/bot/message/reply', {
+                replyToken: replyToken,
+                messages: [
+                    {
+                        "type": "image",
+                        "originalContentUrl": openRoundImgUrl,
+                        "previewImageUrl": openRoundImgUrl
+                    },
+                    {
+                        "type": "flex",
+                        "altText": `🟢 เริ่มเปิดรอบแทงแล้ว! รอบที่ ${currentRound}`,
+                        "contents": {
+                            "type": "bubble",
+                            "styles": { "body": { "backgroundColor": "#130f17" } },
+                            "body": {
+                                "type": "box", "layout": "vertical", "spacing": "md",
+                                "contents": [
+                                    { "type": "text", "text": "🎰 เริ่มเปิดรอบแทงแล้วครับ 🎉", "weight": "bold", "color": "#00ff66", "size": "md", "align": "center" },
+                                    { "type": "text", "text": `รอบที่: ${currentRound}`, "weight": "bold", "color": "#ffffff", "size": "xl", "align": "center", "margin": "none" },
+                                    { "type": "separator", "color": "#2a2233" },
+                                    { "type": "text", "text": "📊 สถิติผลการเล่น 5 รอบล่าสุด", "size": "xs", "color": "#ffcc00", "weight": "bold" },
+                                    
+                                    // 🏆 ตารางสถิติแบบ Grid
+                                    { 
+                                        "type": "box", 
+                                        "layout": "vertical", 
+                                        "spacing": "xs", 
+                                        "contents": historyFlexContents 
+                                    },
+                                    
+                                    { "type": "separator", "color": "#2a2233" },
+                                    { "type": "text", "text": "✨ สมาชิกสามารถส่งโพยเข้ามาได้เลยครับ 🎰", "size": "sm", "color": "#ffffff", "wrap": true, "align": "center", "weight": "bold" }
+                                ]
                             }
-                        ]
-                    }, {
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${TOKEN}`
                         }
-                    });
-                } catch (error) {
-                    console.error("❌ ส่งรูปภาพและ Flex เปิดรอบล้มเหลว:", error.response ? error.response.data : error.message);
+                    }
+                ]
+            }, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${TOKEN}`
                 }
-                return; 
-            }
-        } else if (userMsg === 'x') {
+            });
+        } catch (error) {
+            console.error("❌ ส่งรูปภาพและ Flex เปิดรอบล้มเหลว:", error.response ? error.response.data : error.message);
+        }
+        return; 
+    }
+} else if (userMsg === 'x') {
             if (!isRoundOpen) {
                 replyText = `⚠️ ระบบปิดรอบแทงอยู่แล้วครับ ไม่สามารถปิดซ้ำได้`;
             } else {
@@ -3643,42 +3716,41 @@ const userTotalWinLoss = pokdengWinLoss + hiloNetWinLoss;
             
             // 📊 [ระบบบันทึกสถิติแบบละเอียดแยกขา - เวอร์ชันโชว์ไพ่ 2 ใบ และ 3 ใบ] 
             let dealerDisplay = ""; 
-            if (tempDealerResult.name.includes("ป๊อก 9")) dealerDisplay = "9ป";
-            else if (tempDealerResult.name.includes("ป๊อก 8")) dealerDisplay = "8ป";
+            if (tempDealerResult.name.includes("ป๊อก 9")) dealerDisplay = "P9";
+            else if (tempDealerResult.name.includes("ป๊อก 8")) dealerDisplay = "P8";
             else if (tempDealerResult.name.includes("ตอง")) dealerDisplay = "ตอง";
-            else if (tempDealerResult.name.includes("สเตฟฟลัช")) dealerDisplay = "สเตฟ";
+            else if (tempDealerResult.name.includes("สเตฟฟลัช")) dealerDisplay = "เรียงสี";
             else if (tempDealerResult.name.includes("เซียน")) dealerDisplay = "เซียน";
             else if (tempDealerResult.name.includes("เรียง")) dealerDisplay = "เรียง";
             else dealerDisplay = `${tempDealerResult.score}แต้ม`;
 
-            let historySummary = `รอบที่ ${currentRound}: [👑${dealerDisplay}] ⚔️\n`;
-            let roomRows = [];
-
+            let legScores = {};
             for (let leg = 1; leg <= 6; leg++) {
                 if (tempRoomResults[leg]) {
                     const legRes = tempRoomResults[leg];
-
-                    // 1. เช็กไพ่ 2 ใบ ชนกับเจ้ามือ (ชนะ=🟢, แพ้=🔴, เสมอ=🟡)
-                    let dotCard2 = "🟡";
-                    if (tempDealerResult.score > legRes.twoCards.score) dotCard2 = "🔴";
-                    else if (tempDealerResult.score < legRes.twoCards.score) dotCard2 = "🟢";
-
-                    // 2. เช็กไพ่ 3 ใบ ชนกับเจ้ามือ (ชนะ=🟢, แพ้=🔴, เสมอ=🟡)
-                    let dotCard3 = "🟡";
-                    if (tempDealerResult.score > legRes.threeCards.score) dotCard3 = "🔴";
-                    else if (tempDealerResult.score < legRes.threeCards.score) dotCard3 = "🟢";
-
-                    roomRows.push(`[${leg}${dotCard2}ll${dotCard3}]`);
+                    // ดึงแต้ม 2 ใบ และ 3 ใบ (ถ้าไม่มีแต้มให้ใส่ -)
+                    const s2 = legRes.twoCards ? legRes.twoCards.score : '-';
+                    const s3 = legRes.threeCards ? legRes.threeCards.score : '-';
+                    legScores[leg] = `${s2} | ${s3}`;
                 } else {
-                    // หากห้องนั้นไม่มีข้อมูล ให้ถือว่าแพ้ทั้งคู่ (🔴)
-                    roomRows.push(`[${leg}🔴I🔴]`);
+                    legScores[leg] = "- | -";
                 }
             }
 
-            // จัดหน้าแบ่งเป็น 2 แถว แถวละ 3 ห้องตามสไตล์ที่น้าต้องการ
-            historySummary += `${roomRows[0]} ${roomRows[1]} ${roomRows[2]}\n${roomRows[3]} ${roomRows[4]} ${roomRows[5]}`;
-            
-            matchHistory.push(historySummary);
+            // เตรียมข้อมูลผลไฮโล
+            let hiloSummaryText = "-";
+            if (typeof hiloDices !== 'undefined' && hiloDices.length === 3) {
+                hiloSummaryText = `🎲 ${hiloDices.join("-")} (${hiloTotalScore}แต้ม) ${hiloResultText}`;
+            }
+
+            // บันทึกเข้า matchHistory เป็น Object
+            matchHistory.push({
+                round: currentRound,
+                dealer: dealerDisplay,
+                legs: legScores,
+                hilo: hiloSummaryText
+            });
+
             if (matchHistory.length > 5) matchHistory.shift(); 
 
             pastRoundsData[currentRound] = {

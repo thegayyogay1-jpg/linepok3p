@@ -241,7 +241,7 @@ app.post('/callback', async (req, res) => {
                     if (user) {
                         const vipConfig = [
                             { level: 1, reqTurn: 500, reward: 10 },
-                            { level: 2, reqTurn: 1000, reward: 15 },
+                            { level: 2, reqTurn: 1000, reward: 20 },
                             { level: 3, reqTurn: 3000, reward: 30 },
                             { level: 4, reqTurn: 5000, reward: 50 },
                             { level: 5, reqTurn: 10000, reward: 120 },
@@ -4316,7 +4316,7 @@ if (userMsg === 'c') {
     
     const vipConfig = [
         { level: 1, reqTurn: 500, reward: 10 },
-        { level: 2, reqTurn: 1000, reward: 15 },
+        { level: 2, reqTurn: 1000, reward: 20 },
         { level: 3, reqTurn: 3000, reward: 30 },
         { level: 4, reqTurn: 5000, reward: 50 },
         { level: 5, reqTurn: 10000, reward: 120 },
@@ -4368,7 +4368,7 @@ if (userMsg === 'c') {
                         type: "box",
                         layout: "horizontal",
                         contents: [
-                            { type: "text", text: `🎯 VIP ${nextVip.level} Progress`, color: "#aaaaaa", size: "xxs" },
+                            { type: "text", text: `🎯 VIP ${nextVip.level} ความคืบหน้า`, color: "#aaaaaa", size: "xxs" },
                             { type: "text", text: `${userTurn.toLocaleString()} / ${nextVip.reqTurn.toLocaleString()} บ. (${percent}%)`, color: "#ffd700", size: "xxs", align: "end", weight: "bold" }
                         ]
                     },
@@ -4404,7 +4404,7 @@ if (userMsg === 'c') {
                         contents: [
                             {
                                 type: "text",
-                                text: `🔒 VIP ${nextVip.level} (ขาดอีก ${(nextVip.reqTurn - userTurn).toLocaleString()} บ.)`,
+                                text: `🔒 VIP ${nextVip.level} `,
                                 color: "#8e8e93",
                                 weight: "bold",
                                 size: "xs",

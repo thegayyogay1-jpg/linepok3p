@@ -4333,9 +4333,11 @@ else if (command.toLowerCase() === "y") {
                                                         "margin": "sm",
                                                         "contents": [
                                                             {
-                                                                "type": "avatar",
-                                                                "size": "xl",
-                                                                "url": userAvatar
+                                                                "type": "image",
+                                                                "url": userAvatar,
+                                                                "size": "md",
+                                                                "aspectRatio": "1:1",
+                                                                "aspectMode": "cover"
                                                             }
                                                         ]
                                                     },

@@ -3126,7 +3126,7 @@ else if (originalMsg.startsWith('>')) {
                                 "layout": "vertical",
                                 "spacing": "md",
                                 "contents": [
-                                    { "type": "text", "text": "📊 ตรวจสอบผลการเล่นผลคะแนน 🎰", "weight": "bold", "color": "#b8860b", "size": "md", "align": "center" },
+                                    { "type": "text", "text": "📊 ผลป๊อกเด้ง และ ไอโล 🎰", "weight": "bold", "color": "#b8860b", "size": "md", "align": "center" },
                                     { "type": "text", "text": `รอบที่: ${currentRound}`, "weight": "bold", "color": "#ffffff", "size": "sm", "align": "center" },
                                     { "type": "separator", "color": "#2a2233" },
                                     

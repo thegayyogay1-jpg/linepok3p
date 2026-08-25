@@ -1434,10 +1434,32 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                 if (typeof item === 'object' && item.legs) {
                     
                     let rowCells = [
-                        { "type": "text", "text": `#${item.round}`, "size": "xxs", "color": "#aaaaaa", "flex": 3, "align": "center", "gravity": "center" },
                         { 
-                            "type": "box", "layout": "vertical", "flex": 3, "backgroundColor": "#d32f2f", "cornerRadius": "md", "paddingAll": "xxs",
-                            "contents": [{ "type": "text", "text": `${item.dealer}`, "size": "xxs", "color": "#ffffff", "weight": "bold", "align": "center" }] 
+                            "type": "text", 
+                            "text": `#${item.round}`, 
+                            "size": "xxs", 
+                            "color": "#aaaaaa", 
+                            "flex": 3, 
+                            "align": "center", 
+                            "gravity": "center" 
+                        },
+                        { 
+                            "type": "box", 
+                            "layout": "vertical", 
+                            "flex": 3, 
+                            "backgroundColor": "#d32f2f", 
+                            "cornerRadius": "sm", 
+                            "paddingAll": "xs", // padding ให้คงไว้อยู่ที่ระดับ box เท่านั้น
+                            "contents": [
+                                { 
+                                    "type": "text", 
+                                    "text": `${item.dealer}`, 
+                                    "size": "xxs", 
+                                    "color": "#ffffff", 
+                                    "weight": "bold", 
+                                    "align": "center" 
+                                }
+                            ] 
                         }
                     ];
 

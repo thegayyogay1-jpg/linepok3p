@@ -4285,12 +4285,14 @@ else if (command.toLowerCase() === "y") {
                             const nickname = webData.nickname || webData.lineName || fullName || "สมาชิก";
                             const bankName = webData.bankName || "";
                             const bankAccount = webData.bankAccount || webData.accountNumber || "";
-
+                            const pictureUrl = webData.pictureUrl || webData.linePictureUrl || ""; // 👈 เพิ่มจุดนี้
+                            
                             // 💾 บันทึกข้อมูลลงกระเป๋าเงิน (usersWallets)
                             usersWallets[userId] = {
                                 memberNumber: nextMemberId,
                                 name: fullName,
                                 nickname: nickname,
+                                pictureUrl: pictureUrl,
                                 balance: 0, 
                                 turnoverTarget: 0,
                                 turnoverCount: 0,
@@ -4307,6 +4309,8 @@ else if (command.toLowerCase() === "y") {
                             await axios.delete(`${FIREBASE_URL}pending_verify/${pendingCodeKey}.json`);
 
                             // ==================== [ 🚀 ยิง Flex Message แจ้งสมัครสมาชิกสำเร็จ ] ====================
+                            const userAvatar = pictureUrl || "https://cdn-icons-png.flaticon.com/512/847/847969.png";
+                            
                             await axios.post('https://api.line.me/v2/bot/message/reply', {
                                 replyToken: replyToken,
                                 messages: [
@@ -4321,6 +4325,20 @@ else if (command.toLowerCase() === "y") {
                                                 "layout": "vertical",
                                                 "spacing": "md",
                                                 "contents": [
+                                                    // 🖼️ เพิ่มส่วนแสดงรูปโปรไฟล์วงกลมด้านบน Flex
+                                                    {
+                                                        "type": "box",
+                                                        "layout": "vertical",
+                                                        "alignItems": "center",
+                                                        "margin": "sm",
+                                                        "contents": [
+                                                            {
+                                                                "type": "avatar",
+                                                                "size": "xl",
+                                                                "url": userAvatar
+                                                            }
+                                                        ]
+                                                    },
                                                     { "type": "text", "text": "🎉 ลงทะเบียนสมาชิกใหม่สำเร็จ! 🎉", "weight": "bold", "color": "#00ffcc", "size": "md", "align": "center" },
                                                     { "type": "separator", "color": "#183242" },
                                                     {

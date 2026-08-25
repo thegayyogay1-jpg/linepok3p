@@ -634,6 +634,9 @@ app.post('/callback', async (req, res) => {
                     // 💰 1. เติมเครดิตเข้ากระเป๋าของลูกค้า
                     if (usersWallets[foundUserId]) {
                         usersWallets[foundUserId].balance += matchedQueue.rawAmount;
+
+                        // 🟢 [เพิ่มบรรทัดนี้] สะสมยอดฝากสำเร็จของสมาชิกออโต้
+                        usersWallets[foundUserId].totalDeposit = (usersWallets[foundUserId].totalDeposit || 0) + matchedQueue.rawAmount;
                         
                         console.log(`✅ [จับคู่สำเร็จ] เติมเงินให้สมาชิกที่ ${usersWallets[foundUserId].memberNumber} จำนวน ${matchedQueue.rawAmount} บาท!`);
 
@@ -687,6 +690,10 @@ app.post('/callback', async (req, res) => {
                                     replyText = `❌ เติมเงินไม่สำเร็จ! \n สมาชิกเลข ${targetMemberId} ยังไม่ได้พิมพ์ฝากเข้ามาในระบบ หรือยอดนี้เคยเติมไป`;
                                 } else {
                                     usersWallets[foundUserKey].balance += amount;
+
+                                    // 🟢 2. [เพิ่มบรรทัดนี้] สะสมยอดฝากสำเร็จ
+                                    usersWallets[foundUserKey].totalDeposit = (usersWallets[foundUserKey].totalDeposit || 0) + amount;
+                                    
                                     const user = usersWallets[foundUserKey];
                                     
                                     // 🧼 ล้างคิวฝากทิ้งทันที
@@ -2672,6 +2679,74 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
         }
     }
 }
+                // ==================== [ คำสั่งสมาชิก: กดรับคืนยอดเสีย (พิมพ์: คืนยอดเสีย) ] ====================
+else if (userMsg === 'คืนยอดเสีย' || userMsg === 'cashback') {
+    const user = usersWallets[userId];
+    if (!user) return res.sendStatus(200);
+
+    const totalDeposit = user.totalDeposit || 0;
+    const totalWithdraw = user.totalWithdraw || 0;
+    const cashbackRate = 0.05; // 💡 ตั้งค่า % คืนยอดเสีย (0.05 = 5%)
+
+    // 1. คำนวณยอดเสียสุทธิ
+    const netLoss = totalDeposit - totalWithdraw;
+
+    if (netLoss <= 0) {
+        // ❌ ไม่เข้าเงื่อนไข (กำไรอยู่ หรือไม่ได้ฝากเงิน)
+        global.currentReplyText = `❌ **คุณยังไม่อยู่ในเงื่อนไขรับยอดเสีย**\n──────────────────\n📥 ยอดฝากรวม: ${totalDeposit.toLocaleString()} บ.\n📤 ยอดถอนรวม: ${totalWithdraw.toLocaleString()} บ.\n✨ ปัจจุบันคุณยังมียอดกำไรอยู่นะครับ สู้ๆ!`;
+    } else {
+        // ✅ ขาดทุน: คำนวณเงินคืน
+        const cashbackAmount = Math.floor(netLoss * cashbackRate);
+
+        if (cashbackAmount < 1) {
+            global.currentReplyText = `⚠️ **ยอดคืนของคุณน้อยเกินไป** (ต้องสะสมยอดเสียให้ได้เงินคืนขั้นต่ำ 1 บาทขึ้นไปครับ)`;
+        } else {
+            // 💰 อัปเดตเงินเข้ากระเป๋าหลักทันที
+            user.balance = (user.balance || 0) + cashbackAmount;
+
+            // 🔄 ล้างยอดฝาก-ถอนสะสม เพื่อเริ่มนับรอบใหม่ (หรือตั้งค่าตามรอบของน้าได้เลย)
+            user.totalDeposit = 0;
+            user.totalWithdraw = 0;
+
+            // 💾 เซฟข้อมูล
+            if (typeof saveUsersWallets === 'function') saveUsersWallets();
+
+            // 📊 ส่งการ์ดแจ้งรับเงินสำเร็จ
+            global.currentReplyFlex = {
+                "type": "flex",
+                "altText": `🎁 คุณได้รับเงินคืนยอดเสีย ${cashbackAmount.toLocaleString()} บาท`,
+                "contents": {
+                    "type": "bubble",
+                    "styles": { "body": { "backgroundColor": "#121214" } },
+                    "body": {
+                        "type": "box",
+                        "layout": "vertical",
+                        "spacing": "md",
+                        "contents": [
+                            { "type": "text", "text": "🎁 คืนยอดเสียสำเร็จ!", "weight": "bold", "color": "#00ff66", "size": "md", "align": "center" },
+                            { "type": "separator", "color": "#2a2a35" },
+                            {
+                                "type": "box",
+                                "layout": "vertical",
+                                "backgroundColor": "#1e1e24",
+                                "cornerRadius": "md",
+                                "paddingAll": "md",
+                                "spacing": "xs",
+                                "contents": [
+                                    { "type": "text", "text": `• ยอดเสียสุทธิ: ${netLoss.toLocaleString()} บาท`, "color": "#aaaaaa", "size": "xs" },
+                                    { "type": "text", "text": `• อัตราคืนเงิน: ${(cashbackRate * 100)}%`, "color": "#aaaaaa", "size": "xs" },
+                                    { "type": "text", "text": `💰 เครดิตเข้ากระเป๋า: +${cashbackAmount.toLocaleString()} บาท`, "color": "#ffd700", "weight": "bold", "size": "sm" }
+                                ]
+                            },
+                            { "type": "separator", "color": "#2a2a35" },
+                            { "type": "text", "text": "💳 ยอดฝาก-ถอนสะสมถูกรีเซ็ตเพื่อเริ่มรอบใหม่แล้วครับ", "size": "xxs", "color": "#8e8e93", "align": "center" }
+                        ]
+                    }
+                }
+            };
+        }
+    }
+}
              // ==================== [ 8. ระบบแอดมินส่งผลสรุปคำนวณแต้ม - เวอร์ชันพ่วง Flex Message ] ====================
 else if (originalMsg.startsWith('>')) {
     if (!ADMIN_IDS.includes(userId)) {
@@ -3962,7 +4037,9 @@ else if (command.toLowerCase() === "y") {
                         
                         // ✅ 1. ทำการหักเงินเครดิตจริงออกจากกระเป๋า
                         user.balance -= finalAmount;
-                        
+
+                        // 🟢 [เพิ่มบรรทัดนี้ลงไปครับ] สะสมยอดถอนสำเร็จของสมาชิกคนนี้
+                        user.totalWithdraw = (user.totalWithdraw || 0) + finalAmount;
                         
                         // 🔓 2. ทำการปลดล็อกบัญชีให้ส่งโพยใหม่ได้ตามปกติ
                         user.isWithdrawLocked = false;
@@ -4094,6 +4171,9 @@ else if (command.toLowerCase() === "y") {
                                 pendingWithdrawAmount: 0,
                                 bankName: bankName,
                                 bankAccount: bankAccount
+                                totalDeposit: 0,       // ยอดฝากสำเร็จสะสม
+                                totalWithdraw: 0,      // ยอดถอนสำเร็จสะสม
+                                lastCashbackClaim: null // เวลาที่กดรับยอดเสียล่าสุด
                             };
 
                             // 🧹 ลบโค้ดนี้ออกจาก pending_verify ใน Firebase

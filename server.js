@@ -4412,6 +4412,7 @@ if (userMsg === 'c') {
                     }
                 ]
             };
+    }
     } else {
         // 👑 กรณี VIP ตันสูงสุดแล้ว (VIP 10)
         vipButtonBox = {

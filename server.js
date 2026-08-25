@@ -4562,6 +4562,28 @@ if (userMsg === 'c') {
         bodyElements.push(vipButtonBox);
     }
 
+    // 🟢 [เพิ่มจุดนี้] ถ้าแอดมินเปิดระบบยอดเสียอยู่ ให้ต่อปุ่มรับยอดเสียไว้ข้างใต้ VIP ทันที
+    if (global.isCashbackOpen) {
+        bodyElements.push({
+            type: "box",
+            layout: "vertical",
+            margin: "md",
+            contents: [
+                {
+                    type: "button",
+                    action: {
+                        type: "message",
+                        label: "🎁 กดรับคืนยอดเสีย 5%",
+                        text: "รับยอดเสีย"
+                    },
+                    style: "primary",
+                    color: "#e67e22", // สีส้มเด่นๆ สไตล์ Flex
+                    height: "sm"
+                }
+            ]
+        });
+    }
+
     global.currentReplyFlex = {
         type: "flex",
         altText: "📊 บัตรข้อมูลสมาชิกและยอดเงินของคุณ",

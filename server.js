@@ -326,7 +326,7 @@ app.post('/callback', async (req, res) => {
                             // 🎨 สรุปข้อความแบบการ์ด Flex Message ชมพูพาสเทล ขอบทองหรูหรา
                             replyMessages = [{
                                 type: 'flex',
-                                altText: `👑 ยินดีด้วย! อัปเกรด VIP ${newVipLevel}`,
+                                altText: `ยินดีด้วย! อัปเกรด VIP ${newVipLevel}`,
                                 contents: {
                                     type: 'bubble',
                                     size: 'md',
@@ -336,8 +336,8 @@ app.post('/callback', async (req, res) => {
                                         backgroundColor: '#FFB6C1', // ชมพูพาสเทลสดใส
                                         paddingAll: 'lg',
                                         contents: [
-                                            { type: 'text', text: '👑 อัปเกรดระดับ VIP สำเร็จ! ✨', weight: 'bold', color: '#FFFFFF', size: 'md', align: 'center' },
-                                            { type: 'text', text: `ยินดีด้วยนะค้าบคุณ ${user.nickname || user.name} 💕`, color: '#FFF0F5', size: 'xs', align: 'center', margin: 'xs' }
+                                            { type: 'text', text: '👑 อัปเกรดระดับ VIP สำเร็จ! ✨', weight: 'bold', color: '#FFFFFF', size: 'md', align: 'center',wrap: true },
+                                            { type: 'text', text: `ยินดีด้วยนะค้าบคุณ ${user.nickname || user.name} 💕`, color: '#FFF0F5', size: 'xs', align: 'center', margin: 'xs',wrap: true }
                                         ]
                                     },
                                     body: {
@@ -390,7 +390,7 @@ app.post('/callback', async (req, res) => {
                                         backgroundColor: '#FFF0F5',
                                         paddingAll: 'md',
                                         contents: [
-                                            { type: 'text', text: '💖 ขอบคุณที่ร่วมสนุกกับเรา ขอให้โชคดีนะค้าบ 💖', color: '#A0808B', size: 'xxs', align: 'center' }
+                                            { type: 'text', text: '💖 ขอบคุณที่ร่วมสนุกกับเรา ขอให้โชคดีนะค้าบ 💖', color: '#A0808B', size: 'xxs', align: 'center',wrap: true }
                                         ]
                                     }
                                 }
@@ -403,15 +403,24 @@ app.post('/callback', async (req, res) => {
 
                 // 📤 ส่ง Flex Message ตอบกลับหาผู้ใช้
                 if (replyMessages.length > 0) {
-                    await axios.post('https://api.line.me/v2/bot/message/reply', {
-                        replyToken: event.replyToken,
-                        messages: replyMessages
-                    }, {
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${TOKEN}`
+                    try {
+                        await axios.post('https://api.line.me/v2/bot/message/reply', {
+                            replyToken: event.replyToken,
+                            messages: replyMessages
+                        }, {
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${TOKEN}`
+                            }
+                        });
+                    } catch (error) {
+                        if (error.response) {
+                            // ปริ้นท์รายละเอียดที่ LINE API ฟ้องว่าผิดตรงไหนออกมาดูชัดๆ
+                            console.error("LINE API Details Error:", JSON.stringify(error.response.data, null, 2));
+                        } else {
+                            console.error("Error Message:", error.message);
                         }
-                    });
+                    }
                 }
             }
             continue;

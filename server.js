@@ -1394,7 +1394,7 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                 // 📊 --- [สร้างตารางสถิติแบบย่อยบรรทัด อ่านง่ายไม่ล้นจอ] ---
         let historyFlexContents = [];
 
-        // 1. หัวตาราง (Header Row) 6 ขาแถวเดียว
+        // 1. หัวตาราง (Header Row) 6 ขา
         historyFlexContents.push({
             "type": "box",
             "layout": "horizontal",
@@ -1416,8 +1416,6 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
         // ฟังก์ชันคำนวณสีตัวอักษร: ชนะ = เขียว (#2ebd6e), แพ้ = แดง (#ff4d4d), เสมอ = เหลือง (#ffcc00)
         const getCardColor = (playerCard, dealerCard) => {
             if (!playerCard || !dealerCard) return "#ffffff"; 
-            
-            // ชนะ/แพ้ ไพ่พิเศษ ป๊อก หรือ แต้ม
             let pScore = playerCard.score;
             let dScore = dealerCard.score;
 
@@ -1449,16 +1447,9 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                             "flex": 3, 
                             "backgroundColor": "#d32f2f", 
                             "cornerRadius": "sm", 
-                            "paddingAll": "xs", // padding ให้คงไว้อยู่ที่ระดับ box เท่านั้น
+                            "paddingAll": "xs",
                             "contents": [
-                                { 
-                                    "type": "text", 
-                                    "text": `${item.dealer}`, 
-                                    "size": "xxs", 
-                                    "color": "#ffffff", 
-                                    "weight": "bold", 
-                                    "align": "center" 
-                                }
+                                { "type": "text", "text": `${item.dealer}`, "size": "xxs", "color": "#ffffff", "weight": "bold", "align": "center" }
                             ] 
                         }
                     ];
@@ -1466,23 +1457,29 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                     for (let l = 1; l <= 6; l++) {
                         const legData = item.legs[l];
                         
-                        // กำหนดสีตัวอักษร
+                        // คำนวณสี
                         const color2 = getCardColor(legData ? legData.two : null, item.dealerObj);
                         const color3 = getCardColor(legData ? legData.three : null, item.dealerObj);
 
                         const parts = legData && legData.display ? legData.display.split('|') : ['-', '-'];
+                        const text2 = parts[0] ? parts[0].trim() : '-';
+                        const text3 = parts[1] ? parts[1].trim() : '-';
 
+                        // สร้างกล่องใส่ขา (แยกส่วน text ชัดเจน เพื่อไม่ให้ซ้อนโดน padding)
                         rowCells.push({
                             "type": "box",
                             "layout": "horizontal",
                             "flex": 4,
                             "backgroundColor": "#1d1626",
                             "cornerRadius": "sm",
-                            "paddingAll": "xxs",
+                            "paddingTop": "xs",
+                            "paddingBottom": "xs",
+                            "paddingStart": "none",
+                            "paddingEnd": "none",
                             "contents": [
-                                { "type": "text", "text": parts[0].trim(), "size": "xxs", "color": color2, "align": "center", "weight": "bold", "flex": 1 },
-                                { "type": "text", "text": "|", "size": "xxs", "color": "#555555", "align": "center", "flex": 0 },
-                                { "type": "text", "text": parts[1].trim(), "size": "xxs", "color": color3, "align": "center", "weight": "bold", "flex": 1 }
+                                { "type": "text", "text": text2, "size": "xxs", "color": color2, "align": "center", "weight": "bold", "flex": 1 },
+                                { "type": "text", "text": "|", "size": "xxs", "color": "#555555", "align": "center" },
+                                { "type": "text", "text": text3, "size": "xxs", "color": color3, "align": "center", "weight": "bold", "flex": 1 }
                             ]
                         });
                     }
@@ -1502,7 +1499,7 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                             "type": "box",
                             "layout": "horizontal",
                             "backgroundColor": "#1a1222",
-                            "paddingAll": "xxs",
+                            "paddingAll": "xs",
                             "margin": "xs",
                             "cornerRadius": "xs",
                             "contents": [
@@ -1514,10 +1511,10 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                     historyFlexContents.push({ "type": "separator", "color": "#2a2233", "margin": "xs" });
 
                 } else {
-                    // ข้อมูล String ยุคเก่า
+                    // รองรับข้อความเก่า
                     historyFlexContents.push({
                         "type": "text",
-                        "text": typeof item === 'object' ? JSON.stringify(item) : item,
+                        "text": typeof item === 'object' ? JSON.stringify(item) : String(item),
                         "size": "xxs",
                         "color": "#E2E1E4",
                         "wrap": true

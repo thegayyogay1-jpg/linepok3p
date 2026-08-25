@@ -202,7 +202,7 @@ app.post('/callback', async (req, res) => {
 
     for (let event of events) {
         
-       // =================================================================
+      // =================================================================
         // 🎯 1. [ระบบจัดการการกดปุ่ม Postback VIP] (เมื่อมีคนเอานิ้วกดปุ่มบนการ์ด)
         // =================================================================
         if (event.type === 'postback') {
@@ -215,11 +215,11 @@ app.post('/callback', async (req, res) => {
 
                 let replyMessages = [];
 
-                // ❌ 1.1 กันคนอื่นมาแอบกดปุ่มบัตรคนอื่น (สไตล์เตือนแบบนุ่มนวล)
+                // ❌ 1.1 กันคนอื่นมาแอบกดปุ่มบัตรคนอื่น
                 if (clickerId !== ownerId) {
                     replyMessages = [{
                         type: 'flex',
-                        altText: '⚠️ แจ้งเตือนสิทธิ์',
+                        altText: 'แจ้งเตือนสิทธิ์',
                         contents: {
                             type: 'bubble',
                             size: 'kilo',
@@ -229,7 +229,7 @@ app.post('/callback', async (req, res) => {
                                 backgroundColor: '#FFF0F3',
                                 paddingAll: 'lg',
                                 contents: [
-                                    { type: 'text', text: '🎀 ปฏิเสธการทำรายการ', weight: 'bold', color: '#FF4D6D', size: 'md' },
+                                    { type: 'text', text: 'ปฏิเสธการทำรายการ', weight: 'bold', color: '#FF4D6D', size: 'md' },
                                     { type: 'text', text: 'คุณไม่มีสิทธิ์กดรับรางวัลแทนผู้อื่นครับ!', color: '#594A4E', size: 'sm', margin: 'md', wrap: true }
                                 ]
                             }
@@ -258,7 +258,7 @@ app.post('/callback', async (req, res) => {
                         let totalRewardToClaim = 0;
                         let newVipLevel = currentVip;
 
-                        // 🔄 1.2 วนลูปคำนวณขั้น VIP ที่สิทธิ์ถึงทั้งหมด (ข้ามขั้นรวดเดียว)
+                        // 🔄 1.2 คำนวณข้ามขั้น VIP
                         for (let config of vipConfig) {
                             if (config.level > currentVip && userTurn >= config.reqTurn) {
                                 totalRewardToClaim += config.reward;
@@ -266,24 +266,24 @@ app.post('/callback', async (req, res) => {
                             }
                         }
 
-                        // ❌ กรณีเลเวลไม่เพิ่มขึ้นเลย (ยอดเทิร์นยังไม่ถึงขั้นถัดไป หรือ รับครบแล้ว)
+                        // ❌ กรณีเลเวลไม่เพิ่มขึ้น
                         if (newVipLevel === currentVip) {
                             const nextConfig = vipConfig.find(v => v.level === currentVip + 1);
                             
-                            let warningTitle = '🌸 เงื่อนไขยังไม่ครบ';
+                            let warningTitle = 'เงื่อนไขยังไม่ครบ';
                             let warningDetail = '';
 
                             if (nextConfig) {
                                 const diff = nextConfig.reqTurn - userTurn;
-                                warningDetail = `คุณต้องสะสมยอดเทิร์นอีก ${diff.toLocaleString()} ฿\nถึงจะรับ VIP ${nextConfig.level} ได้ครับ`;
+                                warningDetail = `ขาดยอดเทิร์นอีก ${diff.toLocaleString()} บาท\nถึงจะรับ VIP ${nextConfig.level} ได้ครับ`;
                             } else {
-                                warningTitle = '💖 ระดับสูงสุดแล้ว';
+                                warningTitle = 'ระดับสูงสุดแล้ว';
                                 warningDetail = 'คุณได้รับโบนัส VIP ครบทุกระดับเรียบร้อยแล้วครับ!';
                             }
 
                             replyMessages = [{
                                 type: 'flex',
-                                altText: '🌸 แจ้งเตือน VIP',
+                                altText: 'แจ้งเตือน VIP',
                                 contents: {
                                     type: 'bubble',
                                     size: 'kilo',
@@ -302,7 +302,7 @@ app.post('/callback', async (req, res) => {
                                                 margin: 'md',
                                                 contents: [
                                                     { type: 'text', text: 'ยอดสะสมปัจจุบัน:', color: '#8A737C', size: 'xs' },
-                                                    { type: 'text', text: `${userTurn.toLocaleString()} ฿`, color: '#B56587', size: 'xs', align: 'end', weight: 'bold' }
+                                                    { type: 'text', text: `${userTurn.toLocaleString()} บาท`, color: '#B56587', size: 'xs', align: 'end', weight: 'bold' }
                                                 ]
                                             }
                                         ]
@@ -310,20 +310,13 @@ app.post('/callback', async (req, res) => {
                                 }
                             }];
                         } 
-                        // ✅ 1.3 ผ่านเงื่อนไข! การ์ดโทนชมพู-ทอง น่ารักหรูหรา
+                        // ✅ 1.3 ผ่านเงื่อนไข! รับโบนัสรวดเดียว
                         else {
-                            // อัปเดต VIP ล่าสุด
                             user.vipLevel = newVipLevel;
-                            
-                            // เติมเงินโบนัสเข้ากระเป๋า
                             user.balance = (user.balance || 0) + totalRewardToClaim;
-
-                            // 🎯 ติดเทิร์นโอเวอร์ 1 เท่าของยอดโบนัสรวมที่ได้รับ
                             user.turnoverTarget = (user.turnoverTarget || 0) + totalRewardToClaim;
 
-                            await saveDataToFirebase();
-
-                            // 🎨 สรุปข้อความแบบการ์ด Flex Message ชมพูพาสเทล ขอบทองหรูหรา
+                            // 🎨 Flex Message ถูกต้องตามสเปก LINE API
                             replyMessages = [{
                                 type: 'flex',
                                 altText: `ยินดีด้วย! อัปเกรด VIP ${newVipLevel}`,
@@ -333,17 +326,17 @@ app.post('/callback', async (req, res) => {
                                     header: {
                                         type: 'box',
                                         layout: 'vertical',
-                                        backgroundColor: '#FFB6C1', // ชมพูพาสเทลสดใส
+                                        backgroundColor: '#FFB6C1',
                                         paddingAll: 'lg',
                                         contents: [
-                                            { type: 'text', text: '👑 อัปเกรดระดับ VIP สำเร็จ! ✨', weight: 'bold', color: '#FFFFFF', size: 'md', align: 'center',wrap: true },
-                                            { type: 'text', text: `ยินดีด้วยนะค้าบคุณ ${user.nickname || user.name} 💕`, color: '#FFF0F5', size: 'xs', align: 'center', margin: 'xs',wrap: true }
+                                            { type: 'text', text: '👑 อัปเกรดระดับ VIP สำเร็จ! ✨', weight: 'bold', color: '#FFFFFF', size: 'md', align: 'center', wrap: true },
+                                            { type: 'text', text: `ยินดีด้วยนะค้าบคุณ ${user.nickname || user.name} 💕`, color: '#FFF0F5', size: 'xs', align: 'center', margin: 'xs', wrap: true }
                                         ]
                                     },
                                     body: {
                                         type: 'box',
                                         layout: 'vertical',
-                                        backgroundColor: '#FFF8FA', // ชมพูอ่อนมากๆ สะอาดตา
+                                        backgroundColor: '#FFF8FA',
                                         paddingAll: 'lg',
                                         contents: [
                                             {
@@ -390,18 +383,20 @@ app.post('/callback', async (req, res) => {
                                         backgroundColor: '#FFF0F5',
                                         paddingAll: 'md',
                                         contents: [
-                                            { type: 'text', text: '💖 ขอบคุณที่ร่วมสนุกกับเรา ขอให้โชคดีนะค้าบ 💖', color: '#A0808B', size: 'xxs', align: 'center',wrap: true }
+                                            { type: 'text', text: '💖 ขอบคุณที่ร่วมสนุกกับเรา ขอให้โชคดีนะค้าบ 💖', color: '#A0808B', size: 'xxs', align: 'center', wrap: true }
                                         ]
                                     }
                                 }
                             }];
-                            // ⚡ บันทึกลง Firebase แบบเบื้องหลัง (ไม่ให้มาหน่วง Reply Token)
-                            saveDataToFirebase().catch(err => console.error("Firebase Save Error:", err));
+
+                            saveDataToFirebase()
+                                .then(() => console.error("💾 บันทึกข้อมูลลง Firebase เรียบร้อย!"))
+                                .catch(err => console.error("Firebase Save Error:", err));
                         }
                     }
                 }
 
-                // 📤 ส่ง Flex Message ตอบกลับหาผู้ใช้
+                // 📤 ตอบกลับ LINE
                 if (replyMessages.length > 0) {
                     try {
                         await axios.post('https://api.line.me/v2/bot/message/reply', {
@@ -415,7 +410,6 @@ app.post('/callback', async (req, res) => {
                         });
                     } catch (error) {
                         if (error.response) {
-                            // ปริ้นท์รายละเอียดที่ LINE API ฟ้องว่าผิดตรงไหนออกมาดูชัดๆ
                             console.error("LINE API Details Error:", JSON.stringify(error.response.data, null, 2));
                         } else {
                             console.error("Error Message:", error.message);

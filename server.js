@@ -1402,14 +1402,14 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
             "paddingAll": "xs",
             "cornerRadius": "xs",
             "contents": [
-                { "type": "text", "text": "รอบ", "size": "xxs", "color": "#ffffff", "weight": "bold", "flex": 2, "align": "center" },
-                { "type": "text", "text": "เจ้า", "size": "xxs", "color": "#ffcc00", "weight": "bold", "flex": 2, "align": "center" },
-                { "type": "text", "text": "ขา1", "size": "xxs", "color": "#ffffff", "weight": "bold", "flex": 3, "align": "center" },
-                { "type": "text", "text": "ขา2", "size": "xxs", "color": "#ffffff", "weight": "bold", "flex": 3, "align": "center" },
-                { "type": "text", "text": "ขา3", "size": "xxs", "color": "#ffffff", "weight": "bold", "flex": 3, "align": "center" },
-                { "type": "text", "text": "ขา4", "size": "xxs", "color": "#ffffff", "weight": "bold", "flex": 3, "align": "center" },
-                { "type": "text", "text": "ขา5", "size": "xxs", "color": "#ffffff", "weight": "bold", "flex": 3, "align": "center" },
-                { "type": "text", "text": "ขา6", "size": "xxs", "color": "#ffffff", "weight": "bold", "flex": 3, "align": "center" }
+                { "type": "text", "text": "รอบ", "size": "xs", "color": "#ffffff", "weight": "bold", "flex": 2, "align": "center" },
+                { "type": "text", "text": "เจ้า", "size": "xs", "color": "#ffcc00", "weight": "bold", "flex": 2, "align": "center" },
+                { "type": "text", "text": "ขา1", "size": "xs", "color": "#ffffff", "weight": "bold", "flex": 3, "align": "center" },
+                { "type": "text", "text": "ขา2", "size": "xs", "color": "#ffffff", "weight": "bold", "flex": 3, "align": "center" },
+                { "type": "text", "text": "ขา3", "size": "xs", "color": "#ffffff", "weight": "bold", "flex": 3, "align": "center" },
+                { "type": "text", "text": "ขา4", "size": "xs", "color": "#ffffff", "weight": "bold", "flex": 3, "align": "center" },
+                { "type": "text", "text": "ขา5", "size": "xs", "color": "#ffffff", "weight": "bold", "flex": 3, "align": "center" },
+                { "type": "text", "text": "ขา6", "size": "xs", "color": "#ffffff", "weight": "bold", "flex": 3, "align": "center" }
             ]
         });
 
@@ -1422,10 +1422,10 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                 // หากเป็น Object โครงสร้างใหม่
                 if (typeof item === 'object' && item.legs) {
                     let rowCells = [
-                        { "type": "text", "text": `#${item.round}`, "size": "xxs", "color": "#aaaaaa", "flex": 2, "align": "center", "gravity": "center" },
+                        { "type": "text", "text": `#${item.round}`, "size": "xs", "color": "#aaaaaa", "flex": 2, "align": "center", "gravity": "center" },
                         { 
-                            "type": "box", "layout": "vertical", "flex": 2, "backgroundColor": "#d32f2f", "cornerRadius": "md", "paddingAll": "xxs",
-                            "contents": [{ "type": "text", "text": `${item.dealer}`, "size": "xxs", "color": "#ffffff", "weight": "bold", "align": "center" }] 
+                            "type": "box", "layout": "vertical", "flex": 2, "backgroundColor": "#d32f2f", "cornerRadius": "md", "paddingAll": "xs",
+                            "contents": [{ "type": "text", "text": `${item.dealer}`, "size": "xs", "color": "#ffffff", "weight": "bold", "align": "center" }] 
                         }
                     ];
 
@@ -1436,9 +1436,9 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                             "flex": 3,
                             "backgroundColor": "#2c2235",
                             "cornerRadius": "sm",
-                            "paddingAll": "xxs",
+                            "paddingAll": "xs",
                             "contents": [
-                                { "type": "text", "text": item.legs[l] || "-", "size": "xxs", "color": "#4fc3f7", "align": "center", "weight": "bold" }
+                                { "type": "text", "text": item.legs[l] || "-", "size": "xs", "color": "#4fc3f7", "align": "center", "weight": "bold" }
                             ]
                         });
                     }
@@ -1457,11 +1457,11 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                         "type": "box",
                         "layout": "horizontal",
                         "backgroundColor": "#1a1222",
-                        "paddingAll": "xxs",
+                        "paddingAll": "xs",
                         "margin": "xs",
                         "cornerRadius": "xs",
                         "contents": [
-                            { "type": "text", "text": `   └ ${item.hilo}`, "size": "xxs", "color": "#ffb74d", "wrap": true }
+                            { "type": "text", "text": `   └ ${item.hilo}`, "size": "xs", "color": "#ffb74d", "wrap": true }
                         ]
                     });
 
@@ -1472,7 +1472,7 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                     historyFlexContents.push({
                         "type": "text",
                         "text": typeof item === 'object' ? JSON.stringify(item) : item,
-                        "size": "xxs",
+                        "size": "xs",
                         "color": "#E2E1E4",
                         "wrap": true
                     });

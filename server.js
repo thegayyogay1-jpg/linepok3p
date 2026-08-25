@@ -4332,22 +4332,88 @@ if (userMsg === 'c') {
 
     if (nextVip) {
         const canClaim = userTurn >= nextVip.reqTurn;
+    if (canClaim) {
+            // ✅ ผ่านเงื่อนไข: ซ่อนหลอด EXP แล้วโชว์ปุ่มทองให้กดรับรางวัล
+            vipButtonBox = {
+                type: "box",
+                layout: "vertical",
+                margin: "md",
+                contents: [
+                    {
+                        type: "button",
+                        action: {
+                            type: "postback",
+                            label: `🎁 กดรับโบนัส VIP ${nextVip.level} (+${nextVip.reward.toLocaleString()} บ.)`,
+                            data: `action=claim_vip&ownerId=${userId}&targetLevel=${nextVip.level}`
+                        },
+                        style: "primary",
+                        color: "#d4af37",
+                        height: "sm"
+                    }
+                ]
+            };
+        } else {
+            // ⏳ ยังไม่ผ่าน: คำนวณเปอร์เซ็นต์ + วาดหลอด EXP + ปุ่มล็อก
+            const percent = Math.min(Math.floor((userTurn / nextVip.reqTurn) * 100), 100);
+            const barWidth = percent === 0 ? "5%" : `${percent}%`;
+
+            vipButtonBox = {
+                type: "box",
+                layout: "vertical",
+                margin: "md",
+                contents: [
+                    // 📊 1. ตัวเลขบอกความคืบหน้า (เช่น 0 / 500 บ.)
+                    {
+                        type: "box",
+                        layout: "horizontal",
+                        contents: [
+                            { type: "text", text: `🎯 VIP ${nextVip.level} Progress`, color: "#aaaaaa", size: "xxs" },
+                            { type: "text", text: `${userTurn.toLocaleString()} / ${nextVip.reqTurn.toLocaleString()} บ. (${percent}%)`, color: "#ffd700", size: "xxs", align: "end", weight: "bold" }
+                        ]
+                    },
+                    // 🟢 2. หลอด EXP (Progress Bar)
+                    {
+                        type: "box",
+                        layout: "vertical",
+                        backgroundColor: "#333333",
+                        height: "6px",
+                        cornerRadius: "3px",
+                        margin: "xs",
+                        contents: [
+                            {
+                                type: "box",
+                                layout: "vertical",
+                                backgroundColor: "#d4af37",
+                                height: "6px",
+                                width: barWidth,
+                                cornerRadius: "3px"
+                            }
+                        ]
+                    },
+                    // 🔒 3. ปุ่มล็อกแสดงยอดที่ขาด
+                    {
+                        type: "button",
+                        action: {
+                            type: "postback",
+                            label: `🔒 VIP ${nextVip.level} (ขาดอีก ${(nextVip.reqTurn - userTurn).toLocaleString()} บ.)`,
+                            data: "none"
+                        },
+                        style: "secondary",
+                        color: "#444444",
+                        height: "sm",
+                        margin: "sm"
+                    }
+                ]
+            };
+        }
+    } else {
+        // 👑 กรณี VIP ตันสูงสุดแล้ว (VIP 10)
         vipButtonBox = {
             type: "box",
             layout: "vertical",
             margin: "md",
             contents: [
-                {
-                    type: "button",
-                    action: {
-                        type: "postback",
-                        label: canClaim ? `🎁 กดรับโบนัส VIP ${nextVip.level} (+${nextVip.reward.toLocaleString()} บ.)` : `🔒 VIP ${nextVip.level} (ขาดอีก ${(nextVip.reqTurn - userTurn).toLocaleString()} บ.)`,
-                        data: `action=claim_vip&ownerId=${userId}&targetLevel=${nextVip.level}`
-                    },
-                    style: canClaim ? "primary" : "secondary",
-                    color: canClaim ? "#d4af37" : "#444444",
-                    height: "sm"
-                }
+                { type: "text", text: "👑 คุณบรรลุระดับ VIP สูงสุดเรียบร้อยแล้ว!", color: "#ffd700", size: "xs", align: "center", weight: "bold" }
             ]
         };
     }

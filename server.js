@@ -2679,11 +2679,16 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
         }
     }
 }
-                // ==================== [ คำสั่งสมาชิก: กดรับคืนยอดเสีย 5% ] ====================
-else if (userMsg === "รับยอดเสีย" || userMsg === "ยอดเสีย") {
-    // 1. เช็กก่อนว่าแอดมินเปิดระบบอยู่ไหม
-    if (!global.isCashbackOpen) {
-        replyText = "⚠️ ขณะนี้ **ยังไม่ถึงเวลาเปิดให้รับยอดเสีย** หรือหมดเวลาไปแล้วครับ\nโปรดรอติดตามประกาศจากแอดมินครับ";
+                // ==================== [ จัดการการกดปุ่มรับยอดเสีย (Postback) ] ====================
+if (postbackData.startsWith("action=claim_cashback")) {
+    const params = new URLSearchParams(postbackData);
+    const ownerId = params.get("ownerId");
+
+    // 🔒 ป้องกันคนอื่นมาแอบกดปุ่มในการ์ดคนอื่น
+    if (userId !== ownerId) {
+        replyText = "⚠️ คุณสามารถกดรับยอดเสียจากการ์ดข้อมูลของตัวเองเท่านั้นครับ!";
+    } else if (!global.isCashbackOpen) {
+        replyText = "⚠️ ขณะนี้ **ยังไม่ถึงเวลาเปิดให้รับยอดเสีย** หรือหมดเวลาไปแล้วครับ";
     } else {
         const userKey = Object.keys(usersWallets).find(key => key === userId || usersWallets[key].memberNumber === currentUserMemberNumber);
         const user = usersWallets[userKey];
@@ -2701,22 +2706,27 @@ else if (userMsg === "รับยอดเสีย" || userMsg === "ยอด�
             if (netLoss <= 0) {
                 replyText = `⚠️ คุณ ${user.name} (ID: ${user.memberNumber}) ยังไม่อยู่ในเงื่อนไขรับยอดเสียครับ\n(ยอดเสียสุทธิ: 0 บาท)`;
             } else {
-                const cashBackRate = 0.05; // 5% (ปรับเปอร์เซ็นต์ได้ตามต้องการ)
-                const cashbackAmount = Math.floor(netLoss * cashBackRate); // ปัดเศษทศนิยมออก
+                const cashBackRate = 0.05; // 5%
+                const cashbackAmount = Math.floor(netLoss * cashBackRate);
 
                 if (cashbackAmount <= 0) {
                     replyText = `⚠️ ยอดเสียคงเหลือของคุณน้อยเกินไปที่จะคำนวณคืน 5% ครับ`;
                 } else {
-                    // 💰 เติมยอดเสียเข้า balance
+                    // 💰 1. เติมเงินยอดเสียเข้า balance
                     user.balance += cashbackAmount;
 
-                    // 🔄 รีเซ็ตค่าเพื่อไม่ให้กดรับซ้ำในรอบเดียวกันได้
+                    // 🎯 2. ตั้งค่าเทิร์นโอเวอร์ 1 เท่า (สมมติใช้ตัวแปร targetTurnover หรือ requiredTurnover)
+                    // เพิ่มยอดเทิร์นที่ต้องทำอีก 1 เท่าของโบนัสที่ได้รับ
+                    user.requiredTurnover = (user.requiredTurnover || 0) + cashbackAmount;
+                    user.turnoverStatus = "ติดเทิร์น"; // หรืออัปเดตสถานะเทิร์นตามระบบเดิมของน้า
+
+                    // 🔄 3. รีเซ็ตค่าเพื่อไม่ให้กดรับซ้ำในรอบเดียวกันได้
                     user.totalDeposit = user.balance;
                     user.totalWithdraw = 0;
 
                     await saveDataToFirebase();
 
-                    replyText = `🎁 **รับคืนยอดเสียสำเร็จ!** 🎉\n──────────────────\n👤 คุณ: ${user.name} (ID: ${user.memberNumber})\n📉 ยอดเสียสุทธิ: ${netLoss.toLocaleString()} บาท\n💸 คืนยอดเสีย (5%): +${cashbackAmount.toLocaleString()} บาท\n💰 เครดิตคงเหลือใหม่: ${user.balance.toLocaleString()} บาท`;
+                    replyText = `🎁 **รับคืนยอดเสียสำเร็จ!** 🎉\n──────────────────\n👤 คุณ: ${user.name} (ID: ${user.memberNumber})\n📉 ยอดเสียสุทธิ: ${netLoss.toLocaleString()} บาท\n💸 คืนยอดเสีย (5%): +${cashbackAmount.toLocaleString()} บาท\n🔒 เงื่อนไข: ติดเทิร์น 1 เท่า (${cashbackAmount.toLocaleString()} บาท)\n💰 เครดิตคงเหลือใหม่: ${user.balance.toLocaleString()} บาท`;
                 }
             }
         }
@@ -4572,9 +4582,9 @@ if (userMsg === 'c') {
                 {
                     type: "button",
                     action: {
-                        type: "message",
+                        type: "postback",
                         label: "🎁 กดรับคืนยอดเสีย 5%",
-                        text: "รับยอดเสีย"
+                        text: "action=claim_cashback&ownerId=${userId}"
                     },
                     style: "primary",
                     color: "#e67e22", // สีส้มเด่นๆ สไตล์ Flex

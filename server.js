@@ -4803,6 +4803,135 @@ else if (userMsg === 'สรุป' || userMsg === 'สรุป' || userMsg ===
         }
     };
 }
+    // ==================== [ คำสั่งแอดมิน: รีเซ็ต VIP (พิมพ์: รีVIP) ] ====================
+else if (userMsg === 'RVIP' || userMsg === 'rvip' || userMsg === 'RESET_VIP') {
+    // 🚨 กรองเฉพาะแอดมิน + แชทส่วนตัวเท่านั้น
+    if (!ADMIN_IDS.includes(userId) || event.source.type !== 'user') {
+        return res.sendStatus(200);
+    }
+
+    // 📤 ส่ง Flex Message พร้อมปุ่มยืนยัน / ยกเลิก
+    global.currentReplyFlex = {
+        "type": "flex",
+        "altText": "⚠️ ยืนยันการรีเซ็ต VIP สมาชิกทั้งหมด",
+        "contents": {
+            "type": "bubble",
+            "styles": { "body": { "backgroundColor": "#121214" } },
+            "body": {
+                "type": "box",
+                "layout": "vertical",
+                "spacing": "md",
+                "contents": [
+                    { "type": "text", "text": "⚠️ ยืนยันรีเซ็ต VIP", "weight": "bold", "color": "#ff453a", "size": "md", "align": "center" },
+                    { "type": "separator", "color": "#2a2a35" },
+                    {
+                        "type": "text",
+                        "text": "คุณกำลังจะทำการล้างระดับ VIP และยอด Turnover ของสมาชิกทุกคนกลับเป็น 0 เพื่อเริ่มซีซั่นใหม่",
+                        "color": "#cccccc",
+                        "size": "xs",
+                        "wrap": true,
+                        "align": "center"
+                    },
+                    {
+                        "type": "box",
+                        "layout": "vertical",
+                        "spacing": "sm",
+                        "margin": "md",
+                        "contents": [
+                            // 🔴 ปุ่มยืนยัน (ส่งคำสั่ง CONFIRM_RESET_VIP)
+                            {
+                                "type": "button",
+                                "action": {
+                                    "type": "message",
+                                    "label": "🚨 ยืนยันรีเซ็ต VIP ทั้งหมด",
+                                    "text": "CONFIRM_RESET_VIP"
+                                },
+                                "style": "primary",
+                                "color": "#ff453a",
+                                "height": "sm"
+                            },
+                            // ⚪ ปุ่มยกเลิก (ส่งคำสั่ง CANCEL_RESET_VIP)
+                            {
+                                "type": "button",
+                                "action": {
+                                    "type": "message",
+                                    "label": "❌ ยกเลิก",
+                                    "text": "CANCEL_RESET_VIP"
+                                },
+                                "style": "secondary",
+                                "color": "#3a3a3c",
+                                "height": "sm"
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    };
+}
+
+// ==================== [ คำสั่งแอดมิน: กดปุ่มยืนยันการรีเซ็ต ] ====================
+else if (userMsg === 'CONFIRM_RESET_VIP') {
+    if (!ADMIN_IDS.includes(userId) || event.source.type !== 'user') {
+        return res.sendStatus(200);
+    }
+
+    let resetCount = 0;
+
+    // 🔄 วนลูปรีเซ็ตค่า VIP และ turnover ของทุกคน
+    for (let key in usersWallets) {
+        usersWallets[key].vipLevel = 0;
+        usersWallets[key].totalTurnover = 0;
+        resetCount++;
+    }
+
+    // 💾 บันทึกลงระบบไฟล์/Database
+    if (typeof saveUsersWallets === 'function') {
+        saveUsersWallets();
+    }
+
+    // 📊 ส่ง Flex Message แจ้งผลสำเร็จ
+    global.currentReplyFlex = {
+        "type": "flex",
+        "altText": "🔄 รีเซ็ต VIP เรียบร้อยแล้ว",
+        "contents": {
+            "type": "bubble",
+            "styles": { "body": { "backgroundColor": "#121214" } },
+            "body": {
+                "type": "box",
+                "layout": "vertical",
+                "spacing": "md",
+                "contents": [
+                    { "type": "text", "text": "✅ รีเซ็ตซีซั่น VIP สำเร็จ!", "weight": "bold", "color": "#34c759", "size": "md", "align": "center" },
+                    { "type": "separator", "color": "#2a2a35" },
+                    {
+                        "type": "box",
+                        "layout": "vertical",
+                        "backgroundColor": "#1e1e24",
+                        "cornerRadius": "md",
+                        "paddingAll": "md",
+                        "spacing": "xs",
+                        "contents": [
+                            { "type": "text", "text": `• รีเซ็ตสมาชิกทั้งหมด: ${resetCount} คน`, "color": "#ffffff", "size": "xs" },
+                            { "type": "text", "text": "• ระดับ VIP ปัจจุบัน: VIP 0", "color": "#ffd700", "size": "xs" },
+                            { "type": "text", "text": "• ยอดสะสม Turnover: 0 บาท", "color": "#ffd700", "size": "xs" }
+                        ]
+                    },
+                    { "type": "separator", "color": "#2a2a35" },
+                    { "type": "text", "text": "🚀 สมาชิกเริ่มสะสมหลอด EXP ใหม่ได้ทันที", "size": "xxs", "color": "#8e8e93", "align": "center" }
+                ]
+            }
+        }
+    };
+}
+
+// ==================== [ คำสั่งแอดมิน: กดปุ่มยกเลิก ] ====================
+else if (userMsg === 'CANCEL_RESET_VIP') {
+    if (!ADMIN_IDS.includes(userId) || event.source.type !== 'user') {
+        return res.sendStatus(200);
+    }
+    replyText = "❌ **ยกเลิกการรีเซ็ต VIP เรียบร้อยแล้ว** (ข้อมูลสมาชิกยังคงเหมือนเดิมครับ)";
+}
             // ==================== [ เพิ่มใหม่: คำสั่งแอดมินลบสมาชิกรายคนผ่านแชทส่วนตัว (del1, del2...) ] ====================
             else if (userMsg.startsWith('d') && !userMsg.includes('-') && !userMsg.endsWith('+')) {
                 if (!ADMIN_IDS.includes(userId) || event.source.type !== 'user') {

@@ -1441,10 +1441,16 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                         });
                     }
 
-                    // --- 2. แถวล่าง: เว้นช่องรอบ/เจ้ามือ ด้วย Box เปล่า + ขา 4-6 ---
+                    // --- 2. แถวล่าง: ใส่ Text Space เว้นช่องให้ตรงกับ "รอบ" และ "เจ้า" ---
                     let row2Contents = [
-                        { "type": "box", "layout": "vertical", "flex": 2 }, // เว้นช่องให้ตรงกับ "รอบ"
-                        { "type": "box", "layout": "vertical", "flex": 3 }  // เว้นช่องให้ตรงกับ "เจ้า"
+                        { 
+                            "type": "box", "layout": "vertical", "flex": 2, 
+                            "contents": [{ "type": "text", "text": " ", "size": "xxs" }] 
+                        },
+                        { 
+                            "type": "box", "layout": "vertical", "flex": 3, 
+                            "contents": [{ "type": "text", "text": " ", "size": "xxs" }] 
+                        }
                     ];
 
                     for (let l = 4; l <= 6; l++) {

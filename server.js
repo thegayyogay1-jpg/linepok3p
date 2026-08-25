@@ -3022,6 +3022,18 @@ else if (originalMsg.startsWith('>')) {
         tempRoomResults = roomResults;
         tempDealerResult = dealerResult;
         tempHiloDices = hiloDices; // (อย่าลืมประกาศตัวแปร tempHiloDices ไว้ด้านบนสุดของไฟล์ด้วยครับ)
+        
+        // --- 📊 [เตรียมตัวแปรสำหรับแสดงผลไฮโล] ---
+        let hiloDicesText = "-";
+        let hiloTotalText = "-";
+        let hiloResultType = "-";
+
+        if (hiloDices && hiloDices.length === 3) {
+            hiloDicesText = hiloDices.join(" - ");
+            hiloTotalText = `${hiloTotalScore} แต้ม`;
+            hiloResultType = hiloResultText;
+        }
+        
 
        // --- 📊 [ส่วนสร้างโครงสร้างข้อมูลจัดระเบียบส่งเข้า Flex Message] ---
         

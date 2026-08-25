@@ -4634,60 +4634,94 @@ if (userMsg === 'c') {
         };
     }
 
-    // 🌟 5. ประกอบร่าง Flex Message (ใส่ปุ่ม VIP ต่อท้ายด้านล่างสุด)
+  // 🌟 4. เตรียมข้อมูลองค์ประกอบการ์ด (bodyElements)
+    const profileImg = user.pictureUrl || "https://cdn-icons-png.flaticon.com/512/847/847969.png";
+    const displayName = user.nickname || user.name || "สมาชิก";
+
     const bodyElements = [
+        // 4.1 แถบโปรไฟล์ (รูปวงกลม + ชื่อ + ID + VIP)
         {
             type: "box",
             layout: "horizontal",
+            gravity: "center",
+            spacing: "md",
             contents: [
-                { type: "text", text: "👤 สมาชิกคนที่", color: "#8e8e93", size: "xs" },
-                { type: "text", text: `No. ${user.memberNumber}`, color: "#ffffff", size: "xs", align: "end", weight: "bold" }
+                {
+                    type: "avatar",
+                    url: profileImg,
+                    size: "md"
+                },
+                {
+                    type: "box",
+                    layout: "vertical",
+                    flex: 1,
+                    contents: [
+                        { type: "text", text: displayName, weight: "bold", color: "#ffffff", size: "sm", wrap: true },
+                        { type: "text", text: `ID: ${user.memberNumber || '---'}`, color: "#8e8e93", size: "xxs" }
+                    ]
+                },
+                {
+                    type: "box",
+                    layout: "vertical",
+                    backgroundColor: "#2b2200",
+                    cornerRadius: "md",
+                    paddingAll: "xs",
+                    paddingStart: "sm",
+                    paddingEnd: "sm",
+                    contents: [
+                        { type: "text", text: `🔥 VIP ${currentVip}`, color: "#ffd700", size: "xs", weight: "bold" }
+                    ]
+                }
             ]
         },
+        // 4.2 กล่องคู่ 2 คอลัมน์ (ยอดเงินคงเหลือ + สถานะเทิร์น)
         {
             type: "box",
             layout: "horizontal",
-            margin: "sm",
-            contents: [
-                { type: "text", text: "🏷️ ชื่อLine", color: "#8e8e93", size: "xs" },
-                { type: "text", text: `${user.nickname || user.name}`, color: "#00ffcc", size: "xs", align: "end", weight: "bold" }
-            ]
-        },
-        {
-            type: "box",
-            layout: "horizontal",
-            margin: "sm",
-            contents: [
-                { type: "text", text: "🌟 ระดับสมาชิก", color: "#8e8e93", size: "xs" },
-                { type: "text", text: `VIP ${currentVip}`, color: "#d4af37", size: "xs", align: "end", weight: "bold" }
-            ]
-        },
-        { type: "separator", margin: "md", color: "#3a3a3c" },
-        {
-            type: "box",
-            layout: "horizontal",
+            spacing: "md",
             margin: "md",
             contents: [
-                { type: "text", text: "💵 เครดิตกระเป๋า", color: "#ffffff", size: "sm", weight: "bold" },
-                { type: "text", text: `${user.balance.toLocaleString()} บาท`, color: "#d4af37", size: "md", align: "end", weight: "bold" }
+                {
+                    type: "box",
+                    layout: "vertical",
+                    backgroundColor: "#141416",
+                    cornerRadius: "md",
+                    paddingAll: "md",
+                    flex: 1,
+                    contents: [
+                        { type: "text", text: "🪙 เครดิตกระเป๋า", color: "#8e8e93", size: "xxs" },
+                        { type: "text", text: `฿${(user.balance || 0).toLocaleString()}`, color: "#2ecc71", size: "sm", weight: "bold", margin: "xs" }
+                    ]
+                },
+                {
+                    type: "box",
+                    layout: "vertical",
+                    backgroundColor: "#141416",
+                    cornerRadius: "md",
+                    paddingAll: "md",
+                    flex: 1,
+                    contents: [
+                        { type: "text", text: "⛔ สถานะเทิร์น", color: "#8e8e93", size: "xxs" },
+                        { 
+                            type: "text", 
+                            text: (user.turnoverTarget && user.turnoverTarget > 0) ? `ติด ${user.turnoverTarget.toLocaleString()} บ.` : "ปลดล็อกแล้ว", 
+                            color: (user.turnoverTarget && user.turnoverTarget > 0) ? "#ff5555" : "#00e5ff", 
+                            size: "xs", 
+                            weight: "bold", 
+                            margin: "xs" 
+                        }
+                    ]
+                }
             ]
         },
-        {
-            type: "box",
-            layout: "horizontal",
-            margin: "sm",
-            contents: [
-                { type: "text", text: "📊 สถานะเทิร์น", color: "#8e8e93", size: "xs", flex: 4 },
-                { type: "text", text: turnStatusText, color: turnStatusColor, size: "xs", align: "end", weight: "bold", flex: 6 }
-            ]
-        },
+        // 4.3 รายการโพย
         { type: "separator", margin: "md", color: "#3a3a3c" },
         {
             type: "box",
             layout: "vertical",
             margin: "md",
             contents: [
-                { type: "text", text: "📝 รายการโพยรอบนี้:", color: "#d4af37", size: "xs", weight: "bold", margin: "xs" },
+                { type: "text", text: "📝 รายการโพยรอบนี้:", color: "#ffd700", size: "xs", weight: "bold" },
                 {
                     type: "box",
                     layout: "vertical",
@@ -4696,6 +4730,7 @@ if (userMsg === 'c') {
                 }
             ]
         },
+        // 4.4 คู่มือช่วยเหลือ
         { type: "separator", margin: "md", color: "#3a3a3c" },
         {
             type: "box",
@@ -4708,14 +4743,14 @@ if (userMsg === 'c') {
         }
     ];
 
-    // ถ้ามีข้อมูลปุ่ม VIP ให้ใส่ต่อท้ายสุดของการ์ด
+    // 4.5 ปุ่ม VIP ต่อท้าย
     if (vipButtonBox) {
         bodyElements.push({ type: "separator", margin: "md", color: "#3a3a3c" });
         bodyElements.push(vipButtonBox);
     }
 
-    // 🟢 [เพิ่มจุดนี้] ถ้าแอดมินเปิดระบบยอดเสียอยู่ ให้ต่อปุ่มรับยอดเสียไว้ข้างใต้ VIP ทันที
-    const userData = usersWallets[userId]; // ดึงข้อมูลยูสเซอร์ (ตรวจสอบชื่อตัวแปร user ของคุณอีกทีนะครับ)
+    // 4.6 🟢 ปุ่มรับคืนยอดเสีย (แสดงเฉพาะตอนเปิดระบบ + ยังไม่ได้กดรับ)
+    const userData = usersWallets[userId];
     if (global.isCashbackOpen && (!userData || !userData.hasClaimedCashback)) {
         bodyElements.push({
             type: "box",
@@ -4730,31 +4765,35 @@ if (userMsg === 'c') {
                         data: `action=ยอดเสีย&ownerId=${userId}`
                     },
                     style: "primary",
-                    color: "#e67e22", // สีส้มเด่นๆ สไตล์ Flex
+                    color: "#e67e22",
                     height: "sm"
                 }
             ]
         });
     }
+
+    // 5. ประกอบ Flex Message ส่งออก
     global.currentReplyFlex = {
         type: "flex",
-        altText: "📊 บัตรข้อมูลสมาชิกและยอดเงินของคุณ",
+        altText: "📊 บัตรข้อมูลสมาชิก VIP",
         contents: {
             type: "bubble",
+            size: "mega",
             styles: {
-                header: { backgroundColor: "#141416" },
+                header: { backgroundColor: "#0f0f0f" },
                 body: { backgroundColor: "#1e1e22" }
             },
             header: {
                 type: "box",
                 layout: "vertical",
+                paddingAll: "none",
                 contents: [
                     {
-                        type: "text",
-                        text: "👑 การ์ดข้อมูลสมาชิก",
-                        weight: "bold",
-                        color: "#d4af37",
-                        size: "sm"
+                        type: "image",
+                        url: "https://img.freepik.com/free-vector/black-luxury-background-with-golden-elements_52683-10068.jpg",
+                        size: "full",
+                        aspectRatio: "20:6",
+                        aspectMode: "cover"
                     }
                 ]
             },

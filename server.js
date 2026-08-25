@@ -414,12 +414,12 @@ app.post('/callback', async (req, res) => {
                     }
                 }
             // ==================== [ 1.2 รับคืนยอดเสีย ] ====================
-            else if (action === 'ยอดเสีย' || postbackData.startsWith("ยอดเสีย")) {
+            else if (action === 'ยอดเสีย' || postbackData.includes("action=ยอดเสีย")) {
                 const ownerId = dataParams.get("ownerId");
                 let replyText = "";
 
                 // 🔒 ป้องกันคนอื่นมาแอบกดปุ่มในการ์ดคนอื่น
-                if (userId !== ownerId) {
+                if (!ownerId || ownerId === 'undefined' || userId !== ownerId) {
                     replyText = "⚠️ คุณสามารถกดรับยอดเสียจากการ์ดข้อมูลของตัวเองเท่านั้นครับ!";
                 } else if (!global.isCashbackOpen) {
                     replyText = "⚠️ ขณะนี้ **ยังไม่ถึงเวลาเปิดให้รับยอดเสีย** หรือหมดเวลาไปแล้วครับ";
@@ -4597,7 +4597,7 @@ if (userMsg === 'c') {
                     action: {
                         type: "postback",
                         label: "🎁 กดรับคืนยอดเสีย 5%",
-                        data: "aaction=ยอดเสีย&ownerId=${userId}"
+                        data: "action=ยอดเสีย&ownerId=${userId}"
                     },
                     style: "primary",
                     color: "#e67e22", // สีส้มเด่นๆ สไตล์ Flex

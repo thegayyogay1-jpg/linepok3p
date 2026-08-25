@@ -3023,73 +3023,75 @@ else if (originalMsg.startsWith('>')) {
         tempDealerResult = dealerResult;
         tempHiloDices = hiloDices; // (อย่าลืมประกาศตัวแปร tempHiloDices ไว้ด้านบนสุดของไฟล์ด้วยครับ)
 
-        // 🛠️ ฟังก์ชันสร้าง Box สำหรับแต่ละขา (ใช้ร่วมกันทั้ง 6 ขา)
-        const createLegBox = (legNum) => {
-            const res = roomResults[legNum];
-            if (!res) {
-                // กรณีไม่มีข้อมูลขานี้
+       // --- 📊 [ส่วนสร้างโครงสร้างข้อมูลจัดระเบียบส่งเข้า Flex Message] ---
+        
+        // ฟังก์ชันสร้าง Box สำหรับขาแต่ละขา (ปรับให้กระชับสำหรับ Grid 3 ช่อง)
+        function createLegBox(leg) {
+            if (!roomResults[leg]) {
                 return {
                     "type": "box",
                     "layout": "vertical",
                     "flex": 1,
-                    "backgroundColor": "#29181d", // แดงมืด
+                    "backgroundColor": "#1a1520",
                     "cornerRadius": "md",
                     "paddingAll": "sm",
-                    "borderWidth": "1px",
-                    "borderColor": "#ff4d4d",
                     "contents": [
-                        { "type": "text", "text": `ขา ${legNum}`, "weight": "bold", "color": "#ffffff", "size": "xs", "align": "center" },
-                        {
-                            "type": "box",
-                            "layout": "horizontal",
-                            "margin": "xs",
-                            "contents": [
-                                { "type": "text", "text": "-", "size": "xs", "color": "#888888", "align": "center", "flex": 1 },
-                                { "type": "text", "text": "|", "size": "xs", "color": "#555555", "align": "center", "flex": 0 },
-                                { "type": "text", "text": "-", "size": "xs", "color": "#888888", "align": "center", "flex": 1 }
-                            ]
-                        }
+                        { "type": "text", "text": `🃏 ขาที่ ${leg}`, "weight": "bold", "color": "#aaaaaa", "size": "xxs", "align": "center" },
+                        { "type": "text", "text": "ไม่มีผลไพ่", "size": "xxs", "color": "#888888", "style": "italic", "align": "center", "margin": "xs" },
+                        { "type": "text", "text": "แพ้ 🔴", "size": "xs", "color": "#ff3333", "align": "center", "weight": "bold", "margin": "xs" }
                     ]
                 };
             }
 
-            const status2 = getCardStatus(res.twoCards, dealerResult);
-            const status3 = getCardStatus(res.threeCards, dealerResult);
+            const res = roomResults[leg];
 
-            // คำนวณสีพื้นหลังของกล่องตามผลลัพธ์
-            let boxBgColor = "#1f1d2b";
-            if (status2.text.includes("ชนะ") && status3.text.includes("ชนะ")) boxBgColor = "#1a3323"; // เขียว
-            else if (status2.text.includes("แพ้") && status3.text.includes("แพ้")) boxBgColor = "#361c24"; // แดง
-            else if (status2.text.includes("เสมอ") && status3.text.includes("เสมอ")) boxBgColor = "#332d1a"; // เหลือง
+            let status2Str = "เสมอ 🟡"; let color2 = "#ffcc00";
+            if (res.twoCards.score > dealerResult.score) { status2Str = "ชนะ 🟢"; color2 = "#00ff66"; }
+            else if (res.twoCards.score < dealerResult.score) { status2Str = "แพ้ 🔴"; color2 = "#ff3333"; }
+
+            let status3Str = "เสมอ 🟡"; let color3 = "#ffcc00";
+            if (res.threeCards.score > dealerResult.score) { status3Str = "ชนะ 🟢"; color3 = "#00ff66"; }
+            else if (res.threeCards.score < dealerResult.score) { status3Str = "แพ้ 🔴"; color3 = "#ff3333"; }
 
             return {
                 "type": "box",
                 "layout": "vertical",
                 "flex": 1,
-                "backgroundColor": boxBgColor,
+                "backgroundColor": "#221929",
                 "cornerRadius": "md",
                 "paddingAll": "sm",
-                "borderWidth": "1px",
-                "borderColor": "#443a52",
                 "contents": [
-                    { "type": "text", "text": `ขา ${legNum}`, "weight": "bold", "color": "#ffffff", "size": "xs", "align": "center" },
+                    { "type": "text", "text": `🃏 ขาที่ ${leg}`, "weight": "bold", "color": "#ffffff", "size": "xs", "align": "center" },
+                    { "type": "separator", "color": "#3a2d48", "margin": "xs" },
+                    // [2ใบ]
                     {
                         "type": "box",
-                        "layout": "horizontal",
+                        "layout": "vertical",
                         "margin": "xs",
                         "contents": [
-                            // ฝั่งซ้าย: ผล 2 ใบ
-                            { "type": "text", "text": res.twoCards.name.replace("แต้ม", ""), "size": "xs", "color": status2.color, "weight": "bold", "align": "center", "flex": 1 },
-                            { "type": "text", "text": "|", "size": "xs", "color": "#aaaaaa", "align": "center", "flex": 0 },
-                            // ฝั่งขวา: ผล 3 ใบ
-                            { "type": "text", "text": res.threeCards.name.replace("แต้ม", ""), "size": "xs", "color": status3.color, "weight": "bold", "align": "center", "flex": 1 }
+                            { "type": "text", "text": `2ใบ: ${res.twoCards.name}`, "size": "xxs", "color": "#cccccc" },
+                            { "type": "text", "text": `${status2Str} (${res.twoCards.mult}เด้ง)`, "size": "xxs", "color": color2, "weight": "bold" }
+                        ]
+                    },
+                    // [3ใบ]
+                    {
+                        "type": "box",
+                        "layout": "vertical",
+                        "margin": "xs",
+                        "contents": [
+                            { "type": "text", "text": `3ใบ: ${res.threeCards.name}`, "size": "xxs", "color": "#cccccc" },
+                            { "type": "text", "text": `${status3Str} (${res.threeCards.mult}เด้ง)`, "size": "xxs", "color": color3, "weight": "bold" }
                         ]
                     }
                 ]
             };
-        };
+        }
 
-        // 🚀 ยิงข้อความแพ็คคู่: รูปภาพ + Flex Message ตามโครงสร้าง Layout แบบในภาพ
+        // จัดกลุ่มเป็นแถวบน (ขา 1, 2, 3) และแถวล่าง (ขา 4, 5, 6)
+        const topRowContents = [createLegBox(1), createLegBox(2), createLegBox(3)];
+        const bottomRowContents = [createLegBox(4), createLegBox(5), createLegBox(6)];
+
+        // 🚀 ยิงข้อความแพ็คคู่: รูปภาพหัวข้อผลลัพธ์ + Flex Message สรุปผลคะแนน
         const summaryImgUrl = "https://img2.pic.in.th/-__-----4b1c38e0628ea626.jpg";
 
         try {
@@ -3103,7 +3105,7 @@ else if (originalMsg.startsWith('>')) {
                     },
                     {
                         "type": "flex",
-                        "altText": `📊 ผลป๊อกเด้ง และ ไฮโล รอบที่ ${currentRound}`,
+                        "altText": `📊 ตรวจสอบผลการเล่น รอบที่ ${currentRound}`,
                         "contents": {
                             "type": "bubble",
                             "styles": { "body": { "backgroundColor": "#130f17" } },
@@ -3112,105 +3114,116 @@ else if (originalMsg.startsWith('>')) {
                                 "layout": "vertical",
                                 "spacing": "md",
                                 "contents": [
-                                    // 1. หัวข้อใหญ่
-                                    { "type": "text", "text": "ผล ป๊อกเด้ง และ ไฮโล", "weight": "bold", "color": "#ffffff", "size": "md", "align": "center" },
+                                    { "type": "text", "text": "📊 ตรวจสอบผลการเล่นผลคะแนน 🎰", "weight": "bold", "color": "#b8860b", "size": "md", "align": "center" },
+                                    { "type": "text", "text": `รอบที่: ${currentRound}`, "weight": "bold", "color": "#ffffff", "size": "sm", "align": "center" },
+                                    { "type": "separator", "color": "#2a2233" },
                                     
-                                    // 2. กล่องเจ้ามือ (อยู่ตรงกลาง)
+                                    // 👑 เจ้ามือ
                                     {
                                         "type": "box",
-                                        "layout": "vertical",
+                                        "layout": "horizontal",
                                         "backgroundColor": "#221929",
                                         "cornerRadius": "md",
                                         "paddingAll": "sm",
-                                        "borderWidth": "1px",
-                                        "borderColor": "#ffaa00",
                                         "contents": [
-                                            { "type": "text", "text": `เจ้ามือ: ${dealerResult.name} (${dealerResult.mult} เด้ง)`, "weight": "bold", "color": "#ffaa00", "size": "sm", "align": "center" }
+                                            { "type": "text", "text": "👑 เจ้ามือ:", "weight": "bold", "color": "#ffaa00", "size": "sm" },
+                                            { "type": "text", "text": `${dealerResult.name} (${dealerResult.mult} เด้ง)`, "weight": "bold", "color": "#ffffff", "size": "sm", "align": "end" }
                                         ]
                                     },
-
-                                    // 3. ขา 1 | ขา 2 | ขา 3 (แถวที่ 1)
+                                    { "type": "separator", "color": "#2a2233" },
+                                    
+                                    // 📝 ลำดับหน้าไพ่ Grid 3 ช่อง (บน 3 ขา / ล่าง 3 ขา)
+                                    { "type": "text", "text": "📝 ลำดับหน้าไพ่และผลแพ้ชนะแต่ละขา", "size": "xs", "color": "#ffaa00", "weight": "bold" },
                                     {
                                         "type": "box",
-                                        "layout": "horizontal",
-                                        "spacing": "sm",
-                                        "contents": [ createLegBox(1), createLegBox(2), createLegBox(3) ]
-                                    },
-
-                                    // 4. ขา 4 | ขา 5 | ขา 6 (แถวที่ 2)
-                                    {
-                                        "type": "box",
-                                        "layout": "horizontal",
-                                        "spacing": "sm",
-                                        "contents": [ createLegBox(4), createLegBox(5), createLegBox(6) ]
-                                    },
-
-                                    { "type": "separator", "color": "#2a2233", "margin": "md" },
-
-                                    // 5. โซนไฮโล
-                                    { "type": "text", "text": "ไฮโล", "weight": "bold", "color": "#ffffff", "size": "sm", "align": "center" },
-                                    {
-                                        "type": "box",
-                                        "layout": "horizontal",
+                                        "layout": "vertical",
                                         "spacing": "sm",
                                         "contents": [
+                                            { "type": "box", "layout": "horizontal", "spacing": "sm", "contents": topRowContents },
+                                            { "type": "box", "layout": "horizontal", "spacing": "sm", "contents": bottomRowContents }
+                                        ]
+                                    },
+                                    
+                                    // 🎲 แสดงผลไฮโล แยกเป็น 3 กล่องเรียงข้างกัน
+                                    { "type": "separator", "color": "#2a2233" },
+                                    { "type": "text", "text": "🎲 ผลการออกรางวัลไฮโล", "size": "xs", "color": "#ffaa00", "weight": "bold" },
+                                    {
+                                        "type": "box",
+                                        "layout": "horizontal",
+                                        "spacing": "xs",
+                                        "contents": [
+                                            // กล่องที่ 1: หน้าลูกเต๋า
                                             {
                                                 "type": "box",
                                                 "layout": "vertical",
                                                 "flex": 1,
                                                 "backgroundColor": "#221929",
                                                 "cornerRadius": "md",
-                                                "paddingAll": "sm",
+                                                "paddingAll": "xs",
                                                 "contents": [
-                                                    { "type": "text", "text": hiloDices.length > 0 ? hiloDices.join("-") : "-", "color": "#ffffff", "size": "xs", "align": "center", "weight": "bold" }
+                                                    { "type": "text", "text": "ลูกเต๋า", "size": "xxs", "color": "#aaaaaa", "align": "center" },
+                                                    { "type": "text", "text": hiloDicesText || "-", "size": "xs", "color": "#ffffff", "weight": "bold", "align": "center", "margin": "xs" }
                                                 ]
                                             },
+                                            // กล่องที่ 2: แต้มรวม
                                             {
                                                 "type": "box",
                                                 "layout": "vertical",
                                                 "flex": 1,
                                                 "backgroundColor": "#221929",
                                                 "cornerRadius": "md",
-                                                "paddingAll": "sm",
+                                                "paddingAll": "xs",
                                                 "contents": [
-                                                    { "type": "text", "text": hiloTotalScore > 0 ? `${hiloTotalScore} แต้ม` : "-", "color": "#ffaa00", "size": "xs", "align": "center", "weight": "bold" }
+                                                    { "type": "text", "text": "แต้มรวม", "size": "xxs", "color": "#aaaaaa", "align": "center" },
+                                                    { "type": "text", "text": hiloTotalText || "-", "size": "xs", "color": "#ffcc00", "weight": "bold", "align": "center", "margin": "xs" }
                                                 ]
                                             },
+                                            // กล่องที่ 3: สูง/ต่ำ/11/ตอง
                                             {
                                                 "type": "box",
                                                 "layout": "vertical",
                                                 "flex": 1,
                                                 "backgroundColor": "#221929",
                                                 "cornerRadius": "md",
-                                                "paddingAll": "sm",
+                                                "paddingAll": "xs",
                                                 "contents": [
-                                                    { "type": "text", "text": hiloResultText.includes("สูง") ? "สูง 🔴" : (hiloResultText.includes("ต่ำ") ? "ต่ำ 🔵" : "-"), "color": "#ffffff", "size": "xs", "align": "center", "weight": "bold" }
+                                                    { "type": "text", "text": "ผลลัพธ์", "size": "xxs", "color": "#aaaaaa", "align": "center" },
+                                                    { "type": "text", "text": hiloResultType || "-", "size": "xs", "color": "#00ff66", "weight": "bold", "align": "center", "margin": "xs" }
                                                 ]
                                             }
                                         ]
                                     },
-
-                                    { "type": "separator", "color": "#2a2233", "margin": "md" },
-
-                                    // 6. ปุ่ม ยืนยัน / ยกเลิก ด้านล่างสุด
+                                    
+                                    { "type": "separator", "color": "#2a2233" },
+                                    
+                                    // 🔘 ชุดปุ่มกด ยืนยัน (ok) / ยกเลิก (no)
                                     {
                                         "type": "box",
                                         "layout": "horizontal",
                                         "spacing": "sm",
+                                        "margin": "md",
                                         "contents": [
                                             {
                                                 "type": "button",
                                                 "style": "primary",
                                                 "color": "#00c853",
                                                 "height": "sm",
-                                                "action": { "type": "message", "label": "ยืนยัน", "text": "ok" }
+                                                "action": {
+                                                    "type": "message",
+                                                    "label": "✅ ยืนยัน",
+                                                    "text": "ok"
+                                                }
                                             },
                                             {
                                                 "type": "button",
                                                 "style": "primary",
                                                 "color": "#d32f2f",
                                                 "height": "sm",
-                                                "action": { "type": "message", "label": "ยกเลิก", "text": "no" }
+                                                "action": {
+                                                    "type": "message",
+                                                    "label": "❌ ยกเลิก",
+                                                    "text": "no"
+                                                }
                                             }
                                         ]
                                     }

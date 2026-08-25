@@ -389,9 +389,13 @@ app.post('/callback', async (req, res) => {
                                 }
                             }];
 
-                            saveDataToFirebase()
-                                .then(() => console.error("💾 บันทึกข้อมูลลง Firebase เรียบร้อย!"))
-                                .catch(err => console.error("Firebase Save Error:", err));
+                            // 💾 3. บันทึกลง Firebase พร้อมดัก Error
+                            try {
+                                await saveDataToFirebase();
+                                console.log("💾 บันทึกข้อมูลโบนัส VIP ลง Firebase เรียบร้อย!");
+                            } catch (err) {
+                                console.error("❌ บันทึกข้อมูลลง Firebase ล้มเหลว:", err.message);
+                            }
                         }
                     }
                 }
@@ -463,7 +467,12 @@ else if (action === 'ยอดเสีย' || postbackData.includes("action=ย
                     user.totalDeposit = user.balance;
                     user.totalWithdraw = 0;
 
-                    await saveDataToFirebase();
+                    try {
+                        await saveDataToFirebase();
+                        console.log("💾 บันทึกข้อมูลลง Firebase เรียบร้อย!");
+                    } catch (err) {
+                        console.error("❌ บันทึกข้อมูลลง Firebase ล้มเหลว:", err.message);
+                    }
 
                     // 🎨 สร้าง Flex Message ตอบกลับแบบน่ารักสดใส
                     const flexCashbackSuccess = {

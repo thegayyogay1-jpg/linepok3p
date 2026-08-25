@@ -595,28 +595,7 @@ else if (action === 'ยอดเสีย' || postbackData.includes("action=ย
                 }
             }
         }
-    }
-
-    // 📤 เพิ่มส่วนนี้: ส่ง replyText ออกไป ในกรณีที่ไม่ผ่านเงื่อนไข (เช่น ไม่ใช่เจ้าของ / ปิดรับ / ยอดเสียไม่ถึง)
-    if (replyText) {
-        try {
-            await axios.post('https://api.line.me/v2/bot/message/reply', {
-                replyToken: event.replyToken,
-                messages: [{ type: 'text', text: replyText }]
-            }, {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${TOKEN}`
-                }
-            });
-        } catch (error) {
-            console.error("LINE API Reply Text Error:", error.response ? error.response.data : error.message);
-        }
-    }
-
-    return res.sendStatus(200);
-}
-    
+    }   
       // =================================================================
         // 📸 [ระบบฟิวชั่น ร่างอัปเกรดเตือนภัย] ดักจับรูปภาพสลิป + เตือนแอดมินถ้าส่งช้าเกิน 5 นาที
         // =================================================================

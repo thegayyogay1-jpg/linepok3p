@@ -413,52 +413,52 @@ app.post('/callback', async (req, res) => {
                         }
                     }
                 }
-            // ==================== [ 1.2 รับคืนยอดเสีย ] ====================
-            else if (action === 'ยอดเสีย' || postbackData.includes("action=ยอดเสีย")) {
-                const ownerId = dataParams.get("ownerId");
-                let replyText = "";
+           // ==================== [ 1.2 รับคืนยอดเสีย ] ====================
+else if (action === 'ยอดเสีย' || postbackData.includes("action=ยอดเสีย")) {
+    const ownerId = dataParams.get("ownerId");
+    let replyText = "";
 
-                // 🔒 ป้องกันคนอื่นมาแอบกดปุ่มในการ์ดคนอื่น
-                if (!ownerId || ownerId === 'undefined' || userId !== ownerId) {
-                    replyText = "⚠️ คุณสามารถกดรับยอดเสียจากการ์ดข้อมูลของตัวเองเท่านั้นครับ!";
-                } else if (!global.isCashbackOpen) {
-                    replyText = "⚠️ ขณะนี้ **ยังไม่ถึงเวลาเปิดให้รับยอดเสีย** หรือหมดเวลาไปแล้วครับ";
+    // 🔒 ป้องกันคนอื่นมาแอบกดปุ่มในการ์ดคนอื่น
+    if (!ownerId || ownerId === 'undefined' || userId !== ownerId) {
+        replyText = "⚠️ คุณสามารถกดรับยอดเสียจากการ์ดข้อมูลของตัวเองเท่านั้นครับ!";
+    } else if (!global.isCashbackOpen) {
+        replyText = "⚠️ ขณะนี้ **ยังไม่ถึงเวลาเปิดให้รับยอดเสีย** หรือหมดเวลาไปแล้วครับ";
+    } else {
+        const user = usersWallets[ownerId] || usersWallets[userId];
+
+        if (!user) {
+            replyText = "❌ ไม่พบข้อมูลสมาชิกในระบบครับ";
+        } else {
+            const totalDeposit = user.totalDeposit || 0;
+            const totalWithdraw = user.totalWithdraw || 0;
+            const currentBalance = user.balance || 0;
+
+            // 🧮 คำนวณยอดเสียสุทธิ
+            const netLoss = totalDeposit - totalWithdraw - currentBalance;
+
+            if (netLoss <= 0) {
+                replyText = `⚠️ คุณ ${user.name} (ID: ${user.memberNumber}) ยังไม่อยู่ในเงื่อนไขรับยอดเสียครับ\n(ยอดเสียสุทธิ: 0 บาท)`;
+            } else {
+                const cashBackRate = 0.05; // 5%
+                const cashbackAmount = Math.floor(netLoss * cashBackRate);
+
+                if (cashbackAmount <= 0) {
+                    replyText = `⚠️ ยอดเสียคงเหลือของคุณน้อยเกินไปที่จะคำนวณคืน 5% ครับ`;
                 } else {
-                    const user = usersWallets[ownerId] || usersWallets[userId];
+                    // 💰 1. เติมเงินยอดเสียเข้า balance
+                    user.balance = (user.balance || 0) + cashbackAmount;
 
-                    if (!user) {
-                        replyText = "❌ ไม่พบข้อมูลสมาชิกในระบบครับ";
-                    } else {
-                        const totalDeposit = user.totalDeposit || 0;
-                        const totalWithdraw = user.totalWithdraw || 0;
-                        const currentBalance = user.balance || 0;
+                    // 🎯 2. ตั้งค่าเทิร์นโอเวอร์ 1 เท่า
+                    user.turnoverTarget = (user.turnoverTarget || 0) + cashbackAmount;
+                    user.turnoverStatus = "ติดเทิร์น";
 
-                        // 🧮 คำนวณยอดเสียสุทธิ
-                        const netLoss = totalDeposit - totalWithdraw - currentBalance;
+                    // 🔄 3. รีเซ็ตค่าเพื่อไม่ให้กดรับซ้ำในรอบเดียวกันได้
+                    user.totalDeposit = user.balance;
+                    user.totalWithdraw = 0;
 
-                        if (netLoss <= 0) {
-                            replyText = `⚠️ คุณ ${user.name} (ID: ${user.memberNumber}) ยังไม่อยู่ในเงื่อนไขรับยอดเสียครับ\n(ยอดเสียสุทธิ: 0 บาท)`;
-                        } else {
-                            const cashBackRate = 0.05; // 5%
-                            const cashbackAmount = Math.floor(netLoss * cashBackRate);
+                    await saveDataToFirebase();
 
-                            if (cashbackAmount <= 0) {
-                                replyText = `⚠️ ยอดเสียคงเหลือของคุณน้อยเกินไปที่จะคำนวณคืน 5% ครับ`;
-                            } else {
-                                // 💰 1. เติมเงินยอดเสียเข้า balance
-                                user.balance = (user.balance || 0) + cashbackAmount;
-
-                                // 🎯 2. ตั้งค่าเทิร์นโอเวอร์ 1 เท่า
-                                user.turnoverTarget = (user.turnoverTarget || 0) + cashbackAmount;
-                                user.turnoverStatus = "ติดเทิร์น";
-
-                                // 🔄 3. รีเซ็ตค่าเพื่อไม่ให้กดรับซ้ำในรอบเดียวกันได้
-                                user.totalDeposit = user.balance;
-                                user.totalWithdraw = 0;
-
-                                await saveDataToFirebase();
-
-                                // 🎨 สร้าง Flex Message ตอบกลับแบบน่ารักสดใส
+                    // 🎨 สร้าง Flex Message ตอบกลับแบบน่ารักสดใส
                     const flexCashbackSuccess = {
                         type: 'flex',
                         altText: '🎁 คืนยอดเสียสำเร็จแล้วนะค้าบ!',
@@ -576,7 +576,7 @@ app.post('/callback', async (req, res) => {
                         }
                     };
 
-                // 📤 ส่งตอบกลับเป็น Flex Message
+                    // 📤 ส่ง Flex Message เมื่อรับสำเร็จ
                     try {
                         await axios.post('https://api.line.me/v2/bot/message/reply', {
                             replyToken: event.replyToken,
@@ -590,11 +590,32 @@ app.post('/callback', async (req, res) => {
                     } catch (error) {
                         console.error("LINE API Cashback Flex Reply Error:", error.response ? error.response.data : error.message);
                     }
+
+                    return res.sendStatus(200);
                 }
             }
-
-            return res.sendStatus(200);
         }
+    }
+
+    // 📤 เพิ่มส่วนนี้: ส่ง replyText ออกไป ในกรณีที่ไม่ผ่านเงื่อนไข (เช่น ไม่ใช่เจ้าของ / ปิดรับ / ยอดเสียไม่ถึง)
+    if (replyText) {
+        try {
+            await axios.post('https://api.line.me/v2/bot/message/reply', {
+                replyToken: event.replyToken,
+                messages: [{ type: 'text', text: replyText }]
+            }, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${TOKEN}`
+                }
+            });
+        } catch (error) {
+            console.error("LINE API Reply Text Error:", error.response ? error.response.data : error.message);
+        }
+    }
+
+    return res.sendStatus(200);
+}
     
       // =================================================================
         // 📸 [ระบบฟิวชั่น ร่างอัปเกรดเตือนภัย] ดักจับรูปภาพสลิป + เตือนแอดมินถ้าส่งช้าเกิน 5 นาที

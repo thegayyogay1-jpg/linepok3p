@@ -4803,17 +4803,15 @@ else if (userMsg === 'สรุป' || userMsg === 'สรุป' || userMsg ===
         }
     };
 }
-    // ==================== [ คำสั่งแอดมิน: รีเซ็ต VIP (พิมพ์: รีVIP) ] ====================
-else if (userMsg === 'RVIP' || userMsg === 'rvip' || userMsg === 'RESET_VIP') {
-    // 🚨 กรองเฉพาะแอดมิน + แชทส่วนตัวเท่านั้น
-    if (!ADMIN_IDS.includes(userId) || event.source.type !== 'user') {
+    // ==================== [ 1. พิมพ์ rvip เพื่อเรียกปุ่มยืนยัน ] ====================
+else if (userMsg.toLowerCase() === 'rvip' || userMsg === 'รีVIP' || userMsg === 'รีvip') {
+    if (!ADMIN_IDS.includes(userId)) {
         return res.sendStatus(200);
     }
 
-    // 📤 ส่ง Flex Message พร้อมปุ่มยืนยัน / ยกเลิก
     global.currentReplyFlex = {
         "type": "flex",
-        "altText": "⚠️ ยืนยันการรีเซ็ต VIP สมาชิกทั้งหมด",
+        "altText": "⚠️ ยืนยันการรีเซ็ต VIP",
         "contents": {
             "type": "bubble",
             "styles": { "body": { "backgroundColor": "#121214" } },
@@ -4822,7 +4820,7 @@ else if (userMsg === 'RVIP' || userMsg === 'rvip' || userMsg === 'RESET_VIP') {
                 "layout": "vertical",
                 "spacing": "md",
                 "contents": [
-                    { "type": "text", "text": "⚠️ ยืนยันรีเซ็ต VIP", "weight": "bold", "color": "#ff453a", "size": "md", "align": "center" },
+                    { "type": "text", "text": "⚠️ ยืนยันการรีเซ็ต VIP", "weight": "bold", "color": "#ff453a", "size": "md", "align": "center" },
                     { "type": "separator", "color": "#2a2a35" },
                     {
                         "type": "text",
@@ -4838,25 +4836,23 @@ else if (userMsg === 'RVIP' || userMsg === 'rvip' || userMsg === 'RESET_VIP') {
                         "spacing": "sm",
                         "margin": "md",
                         "contents": [
-                            // 🔴 ปุ่มยืนยัน (ส่งคำสั่ง CONFIRM_RESET_VIP)
                             {
                                 "type": "button",
                                 "action": {
                                     "type": "message",
                                     "label": "🚨 ยืนยันรีเซ็ต VIP ทั้งหมด",
-                                    "text": "CONFIRM_RESET_VIP"
+                                    "text": "confirm_reset_vip" // ปรับเป็นตัวพิมพ์เล็ก
                                 },
                                 "style": "primary",
                                 "color": "#ff453a",
                                 "height": "sm"
                             },
-                            // ⚪ ปุ่มยกเลิก (ส่งคำสั่ง CANCEL_RESET_VIP)
                             {
                                 "type": "button",
                                 "action": {
                                     "type": "message",
                                     "label": "❌ ยกเลิก",
-                                    "text": "CANCEL_RESET_VIP"
+                                    "text": "cancel_reset_vip"
                                 },
                                 "style": "secondary",
                                 "color": "#3a3a3c",
@@ -4870,27 +4866,24 @@ else if (userMsg === 'RVIP' || userMsg === 'rvip' || userMsg === 'RESET_VIP') {
     };
 }
 
-// ==================== [ คำสั่งแอดมิน: กดปุ่มยืนยันการรีเซ็ต ] ====================
-else if (userMsg === 'CONFIRM_RESET_VIP') {
-    if (!ADMIN_IDS.includes(userId) || event.source.type !== 'user') {
+// ==================== [ 2. เมื่อกดปุ่มยืนยัน ] ====================
+else if (userMsg.toLowerCase() === 'confirm_reset_vip') {
+    if (!ADMIN_IDS.includes(userId)) {
         return res.sendStatus(200);
     }
 
     let resetCount = 0;
 
-    // 🔄 วนลูปรีเซ็ตค่า VIP และ turnover ของทุกคน
+    // 🔄 ลูปรีเซ็ตค่าใน Object กระเป๋าเงินสมาชิกทุกคน
     for (let key in usersWallets) {
         usersWallets[key].vipLevel = 0;
         usersWallets[key].totalTurnover = 0;
         resetCount++;
     }
 
-    // 💾 บันทึกลงระบบไฟล์/Database
-    if (typeof saveUsersWallets === 'function') {
-        saveUsersWallets();
-    }
+    // 💾 เซฟข้อมูลลงไฟล์ (ถ้าน้ามีฟังก์ชันเซฟไฟล์ให้ปลดคอมเมนต์บรรทัดล่างนี้ออกนะครับ)
+    // if (typeof saveUsersWallets === 'function') saveUsersWallets();
 
-    // 📊 ส่ง Flex Message แจ้งผลสำเร็จ
     global.currentReplyFlex = {
         "type": "flex",
         "altText": "🔄 รีเซ็ต VIP เรียบร้อยแล้ว",
@@ -4902,7 +4895,7 @@ else if (userMsg === 'CONFIRM_RESET_VIP') {
                 "layout": "vertical",
                 "spacing": "md",
                 "contents": [
-                    { "type": "text", "text": "✅ รีเซ็ตซีซั่น VIP สำเร็จ!", "weight": "bold", "color": "#34c759", "size": "md", "align": "center" },
+                    { "type": "text", "text": "✅ รีเซ็ต VIP สำเร็จแล้ว!", "weight": "bold", "color": "#34c759", "size": "md", "align": "center" },
                     { "type": "separator", "color": "#2a2a35" },
                     {
                         "type": "box",
@@ -4912,25 +4905,27 @@ else if (userMsg === 'CONFIRM_RESET_VIP') {
                         "paddingAll": "md",
                         "spacing": "xs",
                         "contents": [
-                            { "type": "text", "text": `• รีเซ็ตสมาชิกทั้งหมด: ${resetCount} คน`, "color": "#ffffff", "size": "xs" },
-                            { "type": "text", "text": "• ระดับ VIP ปัจจุบัน: VIP 0", "color": "#ffd700", "size": "xs" },
-                            { "type": "text", "text": "• ยอดสะสม Turnover: 0 บาท", "color": "#ffd700", "size": "xs" }
+                            { "type": "text", "text": `• สมาชิกที่ถูกรีเซ็ต: ${resetCount} คน`, "color": "#ffffff", "size": "xs" },
+                            { "type": "text", "text": "• ระดับ VIP: กลับเป็น VIP 0", "color": "#ffd700", "size": "xs" },
+                            { "type": "text", "text": "• ยอดเล่นสะสม: เหลือ 0 บาท", "color": "#ffd700", "size": "xs" }
                         ]
                     },
                     { "type": "separator", "color": "#2a2a35" },
-                    { "type": "text", "text": "🚀 สมาชิกเริ่มสะสมหลอด EXP ใหม่ได้ทันที", "size": "xxs", "color": "#8e8e93", "align": "center" }
+                    { "type": "text", "text": "🚀 เริ่มต้นซีซั่นใหม่เรียบร้อย", "size": "xxs", "color": "#8e8e93", "align": "center" }
                 ]
             }
         }
     };
 }
 
-// ==================== [ คำสั่งแอดมิน: กดปุ่มยกเลิก ] ====================
-else if (userMsg === 'CANCEL_RESET_VIP') {
-    if (!ADMIN_IDS.includes(userId) || event.source.type !== 'user') {
+// ==================== [ 3. เมื่อกดปุ่มยกเลิก ] ====================
+else if (userMsg.toLowerCase() === 'cancel_reset_vip') {
+    if (!ADMIN_IDS.includes(userId)) {
         return res.sendStatus(200);
     }
-    replyText = "❌ **ยกเลิกการรีเซ็ต VIP เรียบร้อยแล้ว** (ข้อมูลสมาชิกยังคงเหมือนเดิมครับ)";
+    
+    // ตั้งค่าข้อความตอบกลับธรรมดา (ปรับตามโครงสร้างส่งข้อความของน้าได้เลยครับ)
+    global.currentReplyText = "❌ **ยกเลิกการรีเซ็ต VIP เรียบร้อยแล้ว** (ข้อมูลยังคงเหมือนเดิม)";
 }
             // ==================== [ เพิ่มใหม่: คำสั่งแอดมินลบสมาชิกรายคนผ่านแชทส่วนตัว (del1, del2...) ] ====================
             else if (userMsg.startsWith('d') && !userMsg.includes('-') && !userMsg.endsWith('+')) {

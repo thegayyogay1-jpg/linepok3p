@@ -4390,22 +4390,28 @@ if (userMsg === 'c') {
                             }
                         ]
                     },
-                    // 🔒 3. ปุ่มล็อกแสดงยอดที่ขาด
+                    // 🔒 3. ปรับเป็น Box สีเทา (ไม่ใช้ Button) เพื่อไม่ให้ติด Error ของ LINE
                     {
-                        type: "button",
-                        action: {
-                            type: "postback",
-                            label: `🔒 VIP ${nextVip.level} (ขาดอีก ${(nextVip.reqTurn - userTurn).toLocaleString()} บ.)`,
-                            data: "none"
-                        },
-                        style: "secondary",
-                        color: "#444444",
-                        height: "sm",
-                        margin: "sm"
+                        type: "box",
+                        layout: "vertical",
+                        backgroundColor: "#3a3a3c",
+                        cornerRadius: "md",
+                        paddingAll: "sm",
+                        margin: "sm",
+                        alignItems: "center",
+                        contents: [
+                            {
+                                type: "text",
+                                text: `🔒 VIP ${nextVip.level} (ขาดอีก ${(nextVip.reqTurn - userTurn).toLocaleString()} บ.)`,
+                                color: "#8e8e93",
+                                weight: "bold",
+                                size: "xs",
+                                align: "center"
+                            }
+                        ]
                     }
                 ]
             };
-        }
     } else {
         // 👑 กรณี VIP ตันสูงสุดแล้ว (VIP 10)
         vipButtonBox = {

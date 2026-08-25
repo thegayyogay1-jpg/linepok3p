@@ -456,6 +456,9 @@ else if (action === 'ยอดเสีย' || postbackData.includes("action=ย
                     user.turnoverTarget = (user.turnoverTarget || 0) + cashbackAmount;
                     user.turnoverStatus = "ติดเทิร์น";
 
+                    // 🚩 บันทึกสิทธิ์ว่า "กดรับยอดเสียรอบนี้ไปแล้ว"
+                    user.hasClaimedCashback = true;
+
                     // 🔄 3. รีเซ็ตค่าเพื่อไม่ให้กดรับซ้ำในรอบเดียวกันได้
                     user.totalDeposit = user.balance;
                     user.totalWithdraw = 0;

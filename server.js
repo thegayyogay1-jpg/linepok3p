@@ -4597,7 +4597,7 @@ if (userMsg === 'c') {
                     action: {
                         type: "postback",
                         label: "🎁 กดรับคืนยอดเสีย 5%",
-                        data: "action=ยอดเสีย&ownerId=${userId}"
+                        data: `action=ยอดเสีย&ownerId=${userId}`
                     },
                     style: "primary",
                     color: "#e67e22", // สีส้มเด่นๆ สไตล์ Flex

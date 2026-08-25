@@ -1394,15 +1394,15 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                 // 📊 --- [สร้างตารางสถิติแบบย่อยบรรทัด อ่านง่ายไม่ล้นจอ] ---
         let historyFlexContents = [];
 
-        // ฟังก์ชันคำนวณสีพื้นหลังกรอบ: ชนะ = เขียว, แพ้ = แดง, เสมอ = เหลือง
+        // ฟังก์ชันคำนวณสีพื้นหลังกรอบ
         const getBgColor = (playerCard, dealerCard) => {
-            if (!playerCard || !dealerCard) return "#424242"; // สีเทา (ไม่มีข้อมูล)
+            if (!playerCard || !dealerCard) return "#424242"; 
             let pScore = playerCard.score;
             let dScore = dealerCard.score;
 
-            if (pScore > dScore) return "#2ebd6e"; // เขียว (ชนะ)
-            if (pScore < dScore) return "#d32f2f"; // แดง (แพ้)
-            return "#f57f17"; // เหลืองเข้ม (เสมอ)
+            if (pScore > dScore) return "#2ebd6e"; // ชนะ = เขียว
+            if (pScore < dScore) return "#d32f2f"; // แพ้ = แดง
+            return "#f57f17"; // เสมอ = เหลือง
         };
 
         if (matchHistory && matchHistory.length > 0) {
@@ -1411,7 +1411,7 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
             historyCopy.forEach(item => {
                 if (typeof item === 'object' && item.legs) {
                     
-                    // --- 1. แถวบน: รอบ + เจ้ามือ + ขา 1-3 ---
+                    // --- 1. แถวบน: รอบ + เจ้ามือ + ขา 1, 2, 3 ---
                     let row1Contents = [
                         { "type": "text", "text": `#${item.round}`, "size": "xxs", "color": "#ffcc00", "weight": "bold", "flex": 2, "align": "center", "gravity": "center" },
                         { 
@@ -1426,13 +1426,12 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                         const bg3 = getBgColor(legData.three, item.dealerObj);
 
                         row1Contents.push({
-                            "type": "box", "layout": "horizontal", "flex": 4, "spacing": "none",
+                            "type": "box", "layout": "horizontal", "flex": 4, "spacing": "xs",
                             "contents": [
                                 {
                                     "type": "box", "layout": "vertical", "flex": 1, "backgroundColor": bg2, "cornerRadius": "xs", "paddingAll": "xs",
                                     "contents": [{ "type": "text", "text": `${legData.display2}`, "size": "xxs", "color": "#ffffff", "align": "center", "weight": "bold" }]
                                 },
-                                { "type": "text", "text": "|", "size": "xxs", "color": "#ffffff", "align": "center", "gravity": "center", "flex": 0 },
                                 {
                                     "type": "box", "layout": "vertical", "flex": 1, "backgroundColor": bg3, "cornerRadius": "xs", "paddingAll": "xs",
                                     "contents": [{ "type": "text", "text": `${legData.display3}`, "size": "xxs", "color": "#ffffff", "align": "center", "weight": "bold" }]
@@ -1441,16 +1440,10 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                         });
                     }
 
-                    // --- 2. แถวล่าง: ใส่ Text Space เว้นช่องให้ตรงกับ "รอบ" และ "เจ้า" ---
+                    // --- 2. แถวล่าง: ช่องว่าง + ขา 4, 5, 6 ---
                     let row2Contents = [
-                        { 
-                            "type": "box", "layout": "vertical", "flex": 2, 
-                            "contents": [{ "type": "text", "text": " ", "size": "xxs" }] 
-                        },
-                        { 
-                            "type": "box", "layout": "vertical", "flex": 3, 
-                            "contents": [{ "type": "text", "text": " ", "size": "xxs" }] 
-                        }
+                        { "type": "box", "layout": "vertical", "flex": 2, "contents": [{ "type": "text", "text": " ", "size": "xxs" }] },
+                        { "type": "box", "layout": "vertical", "flex": 3, "contents": [{ "type": "text", "text": " ", "size": "xxs" }] }
                     ];
 
                     for (let l = 4; l <= 6; l++) {
@@ -1459,13 +1452,12 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                         const bg3 = getBgColor(legData.three, item.dealerObj);
 
                         row2Contents.push({
-                            "type": "box", "layout": "horizontal", "flex": 4, "spacing": "none",
+                            "type": "box", "layout": "horizontal", "flex": 4, "spacing": "xs",
                             "contents": [
                                 {
                                     "type": "box", "layout": "vertical", "flex": 1, "backgroundColor": bg2, "cornerRadius": "xs", "paddingAll": "xs",
                                     "contents": [{ "type": "text", "text": `${legData.display2}`, "size": "xxs", "color": "#ffffff", "align": "center", "weight": "bold" }]
                                 },
-                                { "type": "text", "text": "|", "size": "xxs", "color": "#ffffff", "align": "center", "gravity": "center", "flex": 0 },
                                 {
                                     "type": "box", "layout": "vertical", "flex": 1, "backgroundColor": bg3, "cornerRadius": "xs", "paddingAll": "xs",
                                     "contents": [{ "type": "text", "text": `${legData.display3}`, "size": "xxs", "color": "#ffffff", "align": "center", "weight": "bold" }]
@@ -1474,12 +1466,12 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                         });
                     }
 
-                    // รวมเข้า historyFlexContents
+                    // ประกอบกล่องรอบป๊อกเด้ง
                     historyFlexContents.push({
-                        "type": "box", "layout": "horizontal", "spacing": "xs", "margin": "xs", "contents": row1Contents
+                        "type": "box", "layout": "horizontal", "spacing": "sm", "margin": "xs", "contents": row1Contents
                     });
                     historyFlexContents.push({
-                        "type": "box", "layout": "horizontal", "spacing": "xs", "margin": "xs", "contents": row2Contents
+                        "type": "box", "layout": "horizontal", "spacing": "sm", "margin": "xs", "contents": row2Contents
                     });
 
                     // --- 3. บรรทัดสรุปผลไฮโล ---
@@ -1530,13 +1522,15 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                                     { "type": "separator", "color": "#2a2233" },
                                     { "type": "text", "text": "📊 สถิติผลการเล่น 5 รอบล่าสุด", "size": "xs", "color": "#ffcc00", "weight": "bold" },
                                     
-                                    // หัวตารางแนะนำขา
+                                    // หัวตารางแบบชัดเจน (ขา 1/4 | ขา 2/5 | ขา 3/6)
                                     {
-                                        "type": "box", "layout": "horizontal", "backgroundColor": "#2a1b38", "paddingAll": "xs", "cornerRadius": "xs",
+                                        "type": "box", "layout": "horizontal", "backgroundColor": "#2a1b38", "paddingAll": "xs", "cornerRadius": "xs", "spacing": "sm",
                                         "contents": [
-                                            { "type": "text", "text": "รอบ", "size": "xxs", "color": "#aaaaaa", "flex": 2, "align": "center" },
+                                            { "type": "text", "text": "รอบ", "size": "xxs", "color": "#aaaaaa", "flex": 2, "align": "center", "weight": "bold" },
                                             { "type": "text", "text": "เจ้า", "size": "xxs", "color": "#0288d1", "flex": 3, "align": "center", "weight": "bold" },
-                                            { "type": "text", "text": "ขา 1-3 (แถวบน) / ขา 4-6 (แถวล่าง)", "size": "xxs", "color": "#ffffff", "flex": 12, "align": "center" }
+                                            { "type": "text", "text": "ขา 1/4", "size": "xxs", "color": "#ffffff", "flex": 4, "align": "center", "weight": "bold" },
+                                            { "type": "text", "text": "ขา 2/5", "size": "xxs", "color": "#ffffff", "flex": 4, "align": "center", "weight": "bold" },
+                                            { "type": "text", "text": "ขา 3/6", "size": "xxs", "color": "#ffffff", "flex": 4, "align": "center", "weight": "bold" }
                                         ]
                                     },
 
@@ -3760,10 +3754,12 @@ const userTotalWinLoss = pokdengWinLoss + hiloNetWinLoss;
                     if (name2.includes("ป๊อก 9")) name2 = "P9";
                     else if (name2.includes("ป๊อก 8")) name2 = "P8";
                     
-                    if (name3.includes("ตอง")) name3 = "ตอง";
-                    else if (name3.includes("สเตฟฟลัช")) name3 = "เรียงสี";
-                    else if (name3.includes("เซียน")) name3 = "เซียน";
-                    else if (name3.includes("เรียง")) name3 = "เรียง";
+                    if (name3.includes("ตอง")) name3 = "ต";
+                    else if (name3.includes("สเตฟฟลัช")) name3 = "รส";
+                    else if (name3.includes("ป๊อก 9")) name3 = "P9";
+                    else if (name3.includes("ป๊อก 8")) name3 = "P8";
+                    else if (name3.includes("เซียน")) name3 = "ซ";
+                    else if (name3.includes("เรียง")) name3 = "ร";
 
                     legHistoryData[leg] = {
                         display2: name2,

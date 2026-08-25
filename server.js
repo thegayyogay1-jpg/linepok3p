@@ -3023,61 +3023,73 @@ else if (originalMsg.startsWith('>')) {
         tempDealerResult = dealerResult;
         tempHiloDices = hiloDices; // (อย่าลืมประกาศตัวแปร tempHiloDices ไว้ด้านบนสุดของไฟล์ด้วยครับ)
 
-        // --- 📊 [ส่วนสร้างโครงสร้างข้อมูลจัดระเบียบส่งเข้า Flex Message] ---
-        let legsFlexContents = [];
-
-        for (let leg = 1; leg <= 6; leg++) {
-            if (roomResults[leg]) {
-                const res = roomResults[leg];
-                
-                let status2Str = "เสมอ 🟡"; let color2 = "#ffcc00";
-                if (res.twoCards.score > dealerResult.score) { status2Str = "ชนะ 🟢"; color2 = "#00ff66"; }
-                else if (res.twoCards.score < dealerResult.score) { status2Str = "แพ้ 🔴"; color2 = "#ff3333"; }
-
-                let status3Str = "เสมอ 🟡"; let color3 = "#ffcc00";
-                if (res.threeCards.score > dealerResult.score) { status3Str = "ชนะ 🟢"; color3 = "#00ff66"; }
-                else if (res.threeCards.score < dealerResult.score) { status3Str = "แพ้ 🔴"; color3 = "#ff3333"; }
-
-                legsFlexContents.push({
+        // 🛠️ ฟังก์ชันสร้าง Box สำหรับแต่ละขา (ใช้ร่วมกันทั้ง 6 ขา)
+        const createLegBox = (legNum) => {
+            const res = roomResults[legNum];
+            if (!res) {
+                // กรณีไม่มีข้อมูลขานี้
+                return {
                     "type": "box",
                     "layout": "vertical",
-                    "margin": "md",
-                    "spacing": "xs",
+                    "flex": 1,
+                    "backgroundColor": "#29181d", // แดงมืด
+                    "cornerRadius": "md",
+                    "paddingAll": "sm",
+                    "borderWidth": "1px",
+                    "borderColor": "#ff4d4d",
                     "contents": [
-                        { "type": "text", "text": `🃏 ขาที่ ${leg}`, "weight": "bold", "color": "#ffffff", "size": "sm" },
+                        { "type": "text", "text": `ขา ${legNum}`, "weight": "bold", "color": "#ffffff", "size": "xs", "align": "center" },
                         {
                             "type": "box",
                             "layout": "horizontal",
+                            "margin": "xs",
                             "contents": [
-                                { "type": "text", "text": `• [2ใบ]: ${res.twoCards.name} (${res.twoCards.mult}เด้ง)`, "size": "xs", "color": "#cccccc" },
-                                { "type": "text", "text": status2Str, "size": "xs", "color": color2, "align": "end", "weight": "bold" }
+                                { "type": "text", "text": "-", "size": "xs", "color": "#888888", "align": "center", "flex": 1 },
+                                { "type": "text", "text": "|", "size": "xs", "color": "#555555", "align": "center", "flex": 0 },
+                                { "type": "text", "text": "-", "size": "xs", "color": "#888888", "align": "center", "flex": 1 }
                             ]
-                        },
-                        {
-                            "type": "box",
-                            "layout": "horizontal",
-                            "contents": [
-                                { "type": "text", "text": `• [3ใบ]: ${res.threeCards.name} (${res.threeCards.mult}เด้ง)`, "size": "xs", "color": "#cccccc" },
-                                { "type": "text", "text": status3Str, "size": "xs", "color": color3, "align": "end", "weight": "bold" }
-                            ]
-                        },
-                        { "type": "separator", "color": "#2a2233", "margin": "xs" }
+                        }
                     ]
-                });
-            } else {
-                legsFlexContents.push({
-                    "type": "box",
-                    "layout": "horizontal",
-                    "margin": "xs",
-                    "contents": [
-                        { "type": "text", "text": `🃏 ขาที่  ${leg}: ⚠️ ไม่มีผลไพ่`, "size": "xs", "color": "#888888", "style": "italic" },
-                        { "type": "text", "text": "แพ้ 🔴", "size": "xs", "color": "#ff3333", "align": "end", "weight": "bold" }
-                    ]
-                });
+                };
             }
-        }
 
-        // 🚀 ยิงข้อความแพ็คคู่: รูปภาพหัวข้อผลลัพธ์ + Flex Message สรุปผลคะแนน
+            const status2 = getCardStatus(res.twoCards, dealerResult);
+            const status3 = getCardStatus(res.threeCards, dealerResult);
+
+            // คำนวณสีพื้นหลังของกล่องตามผลลัพธ์
+            let boxBgColor = "#1f1d2b";
+            if (status2.text.includes("ชนะ") && status3.text.includes("ชนะ")) boxBgColor = "#1a3323"; // เขียว
+            else if (status2.text.includes("แพ้") && status3.text.includes("แพ้")) boxBgColor = "#361c24"; // แดง
+            else if (status2.text.includes("เสมอ") && status3.text.includes("เสมอ")) boxBgColor = "#332d1a"; // เหลือง
+
+            return {
+                "type": "box",
+                "layout": "vertical",
+                "flex": 1,
+                "backgroundColor": boxBgColor,
+                "cornerRadius": "md",
+                "paddingAll": "sm",
+                "borderWidth": "1px",
+                "borderColor": "#443a52",
+                "contents": [
+                    { "type": "text", "text": `ขา ${legNum}`, "weight": "bold", "color": "#ffffff", "size": "xs", "align": "center" },
+                    {
+                        "type": "box",
+                        "layout": "horizontal",
+                        "margin": "xs",
+                        "contents": [
+                            // ฝั่งซ้าย: ผล 2 ใบ
+                            { "type": "text", "text": res.twoCards.name.replace("แต้ม", ""), "size": "xs", "color": status2.color, "weight": "bold", "align": "center", "flex": 1 },
+                            { "type": "text", "text": "|", "size": "xs", "color": "#aaaaaa", "align": "center", "flex": 0 },
+                            // ฝั่งขวา: ผล 3 ใบ
+                            { "type": "text", "text": res.threeCards.name.replace("แต้ม", ""), "size": "xs", "color": status3.color, "weight": "bold", "align": "center", "flex": 1 }
+                        ]
+                    }
+                ]
+            };
+        };
+
+        // 🚀 ยิงข้อความแพ็คคู่: รูปภาพ + Flex Message ตามโครงสร้าง Layout แบบในภาพ
         const summaryImgUrl = "https://img2.pic.in.th/-__-----4b1c38e0628ea626.jpg";
 
         try {
@@ -3091,7 +3103,7 @@ else if (originalMsg.startsWith('>')) {
                     },
                     {
                         "type": "flex",
-                        "altText": `📊 ตรวจสอบผลการเล่น รอบที่ ${currentRound}`,
+                        "altText": `📊 ผลป๊อกเด้ง และ ไฮโล รอบที่ ${currentRound}`,
                         "contents": {
                             "type": "bubble",
                             "styles": { "body": { "backgroundColor": "#130f17" } },
@@ -3100,56 +3112,105 @@ else if (originalMsg.startsWith('>')) {
                                 "layout": "vertical",
                                 "spacing": "md",
                                 "contents": [
-                                    { "type": "text", "text": "📊 ตรวจสอบผลการเล่นผลคะแนน 🎰", "weight": "bold", "color": "#b8860b", "size": "md", "align": "center" },
-                                    { "type": "text", "text": `รอบที่: ${currentRound}`, "weight": "bold", "color": "#ffffff", "size": "sm", "align": "center" },
-                                    { "type": "separator", "color": "#2a2233" },
+                                    // 1. หัวข้อใหญ่
+                                    { "type": "text", "text": "ผล ป๊อกเด้ง และ ไฮโล", "weight": "bold", "color": "#ffffff", "size": "md", "align": "center" },
+                                    
+                                    // 2. กล่องเจ้ามือ (อยู่ตรงกลาง)
                                     {
                                         "type": "box",
-                                        "layout": "horizontal",
+                                        "layout": "vertical",
                                         "backgroundColor": "#221929",
+                                        "cornerRadius": "md",
+                                        "paddingAll": "sm",
+                                        "borderWidth": "1px",
+                                        "borderColor": "#ffaa00",
                                         "contents": [
-                                            { "type": "text", "text": "👑 เจ้ามือ:", "weight": "bold", "color": "#ffaa00", "size": "sm" },
-                                            { "type": "text", "text": `${dealerResult.name} (${dealerResult.mult} เด้ง)`, "weight": "bold", "color": "#ffffff", "size": "sm", "align": "end" }
+                                            { "type": "text", "text": `เจ้ามือ: ${dealerResult.name} (${dealerResult.mult} เด้ง)`, "weight": "bold", "color": "#ffaa00", "size": "sm", "align": "center" }
                                         ]
                                     },
-                                    { "type": "separator", "color": "#2a2233" },
-                                    { "type": "text", "text": "📝 ลำดับหน้าไพ่และผลแพ้ชนะแต่ละขา", "size": "xs", "color": "#ffaa00", "weight": "bold" },
-                                    { "type": "box", "layout": "vertical", "spacing": "xs", "contents": legsFlexContents },
-                                    
-                                    // แสดงผลไฮโล (ถ้ามี)
-                                    { "type": "separator", "color": "#2a2233" },
-                                    { "type": "text", "text": "🎲 ผลการออกรางวัลไฮโล", "size": "xs", "color": "#ffaa00", "weight": "bold" },
-                                    { "type": "text", "text": hiloResultText, "size": "xs", "color": "#ffffff", "wrap": true },
-                                    
-                                    { "type": "separator", "color": "#2a2233" },
-                                  // 🔘 [เพิ่มใหม่]: ชุดปุ่มกด ยืนยัน (ok) / ยกเลิก (no)
+
+                                    // 3. ขา 1 | ขา 2 | ขา 3 (แถวที่ 1)
                                     {
                                         "type": "box",
                                         "layout": "horizontal",
                                         "spacing": "sm",
-                                        "margin": "md",
+                                        "contents": [ createLegBox(1), createLegBox(2), createLegBox(3) ]
+                                    },
+
+                                    // 4. ขา 4 | ขา 5 | ขา 6 (แถวที่ 2)
+                                    {
+                                        "type": "box",
+                                        "layout": "horizontal",
+                                        "spacing": "sm",
+                                        "contents": [ createLegBox(4), createLegBox(5), createLegBox(6) ]
+                                    },
+
+                                    { "type": "separator", "color": "#2a2233", "margin": "md" },
+
+                                    // 5. โซนไฮโล
+                                    { "type": "text", "text": "ไฮโล", "weight": "bold", "color": "#ffffff", "size": "sm", "align": "center" },
+                                    {
+                                        "type": "box",
+                                        "layout": "horizontal",
+                                        "spacing": "sm",
+                                        "contents": [
+                                            {
+                                                "type": "box",
+                                                "layout": "vertical",
+                                                "flex": 1,
+                                                "backgroundColor": "#221929",
+                                                "cornerRadius": "md",
+                                                "paddingAll": "sm",
+                                                "contents": [
+                                                    { "type": "text", "text": hiloDices.length > 0 ? hiloDices.join("-") : "-", "color": "#ffffff", "size": "xs", "align": "center", "weight": "bold" }
+                                                ]
+                                            },
+                                            {
+                                                "type": "box",
+                                                "layout": "vertical",
+                                                "flex": 1,
+                                                "backgroundColor": "#221929",
+                                                "cornerRadius": "md",
+                                                "paddingAll": "sm",
+                                                "contents": [
+                                                    { "type": "text", "text": hiloTotalScore > 0 ? `${hiloTotalScore} แต้ม` : "-", "color": "#ffaa00", "size": "xs", "align": "center", "weight": "bold" }
+                                                ]
+                                            },
+                                            {
+                                                "type": "box",
+                                                "layout": "vertical",
+                                                "flex": 1,
+                                                "backgroundColor": "#221929",
+                                                "cornerRadius": "md",
+                                                "paddingAll": "sm",
+                                                "contents": [
+                                                    { "type": "text", "text": hiloResultText.includes("สูง") ? "สูง 🔴" : (hiloResultText.includes("ต่ำ") ? "ต่ำ 🔵" : "-"), "color": "#ffffff", "size": "xs", "align": "center", "weight": "bold" }
+                                                ]
+                                            }
+                                        ]
+                                    },
+
+                                    { "type": "separator", "color": "#2a2233", "margin": "md" },
+
+                                    // 6. ปุ่ม ยืนยัน / ยกเลิก ด้านล่างสุด
+                                    {
+                                        "type": "box",
+                                        "layout": "horizontal",
+                                        "spacing": "sm",
                                         "contents": [
                                             {
                                                 "type": "button",
                                                 "style": "primary",
-                                                "color": "#00c853", // สีเขียว
+                                                "color": "#00c853",
                                                 "height": "sm",
-                                                "action": {
-                                                    "type": "message",
-                                                    "label": "✅ ยืนยัน",
-                                                    "text": "ok" // คำสั่งที่ส่งเข้าแชทเมื่อกดปุ่ม
-                                                }
+                                                "action": { "type": "message", "label": "ยืนยัน", "text": "ok" }
                                             },
                                             {
                                                 "type": "button",
                                                 "style": "primary",
-                                                "color": "#d32f2f", // สีแดง
+                                                "color": "#d32f2f",
                                                 "height": "sm",
-                                                "action": {
-                                                    "type": "message",
-                                                    "label": "❌ ยกเลิก",
-                                                    "text": "no" // คำสั่งที่ส่งเข้าแชทเมื่อกดปุ่ม
-                                                }
+                                                "action": { "type": "message", "label": "ยกเลิก", "text": "no" }
                                             }
                                         ]
                                     }

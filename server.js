@@ -275,7 +275,7 @@ app.post('/callback', async (req, res) => {
 
                             if (nextConfig) {
                                 const diff = nextConfig.reqTurn - userTurn;
-                                warningDetail = `คุณต้องสะสมยอดได้-เสียอีก ${diff.toLocaleString()} ฿ ถึงจะรับ VIP ${nextConfig.level} ได้ครับ`;
+                                warningDetail = `คุณต้องสะสมยอดเทิร์นอีก ${diff.toLocaleString()} ฿\nถึงจะรับ VIP ${nextConfig.level} ได้ครับ`;
                             } else {
                                 warningTitle = '💖 ระดับสูงสุดแล้ว';
                                 warningDetail = 'คุณได้รับโบนัส VIP ครบทุกระดับเรียบร้อยแล้วครับ!';
@@ -395,6 +395,8 @@ app.post('/callback', async (req, res) => {
                                     }
                                 }
                             }];
+                            // ⚡ บันทึกลง Firebase แบบเบื้องหลัง (ไม่ให้มาหน่วง Reply Token)
+                            saveDataToFirebase().catch(err => console.error("Firebase Save Error:", err));
                         }
                     }
                 }

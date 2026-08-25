@@ -1394,141 +1394,111 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                 // 📊 --- [สร้างตารางสถิติแบบย่อยบรรทัด อ่านง่ายไม่ล้นจอ] ---
         let historyFlexContents = [];
 
-        // 1. หัวตาราง (Header Row) 6 ขา
-        historyFlexContents.push({
-            "type": "box",
-            "layout": "horizontal",
-            "backgroundColor": "#3b2354",
-            "paddingAll": "xs",
-            "cornerRadius": "xs",
-            "contents": [
-                { "type": "text", "text": "รอบ", "size": "xxs", "color": "#ffffff", "weight": "bold", "flex": 3, "align": "center" },
-                { "type": "text", "text": "เจ้า", "size": "xxs", "color": "#ffcc00", "weight": "bold", "flex": 3, "align": "center" },
-                { "type": "text", "text": "ขา1", "size": "xxs", "color": "#ffffff", "weight": "bold", "flex": 4, "align": "center" },
-                { "type": "text", "text": "ขา2", "size": "xxs", "color": "#ffffff", "weight": "bold", "flex": 4, "align": "center" },
-                { "type": "text", "text": "ขา3", "size": "xxs", "color": "#ffffff", "weight": "bold", "flex": 4, "align": "center" },
-                { "type": "text", "text": "ขา4", "size": "xxs", "color": "#ffffff", "weight": "bold", "flex": 4, "align": "center" },
-                { "type": "text", "text": "ขา5", "size": "xxs", "color": "#ffffff", "weight": "bold", "flex": 4, "align": "center" },
-                { "type": "text", "text": "ขา6", "size": "xxs", "color": "#ffffff", "weight": "bold", "flex": 4, "align": "center" }
-            ]
-        });
-
-        // ฟังก์ชันคำนวณสีตัวอักษร: ชนะ = เขียว (#2ebd6e), แพ้ = แดง (#ff4d4d), เสมอ = เหลือง (#ffcc00)
-        const getCardColor = (playerCard, dealerCard) => {
-            if (!playerCard || !dealerCard) return "#ffffff"; 
+        // ฟังก์ชันคำนวณสีพื้นหลังกรอบ: ชนะ = เขียว (#2ebd6e), แพ้ = แดง (#d32f2f), เสมอ = เหลือง (#f57f17)
+        const getBgColor = (playerCard, dealerCard) => {
+            if (!playerCard || !dealerCard) return "#424242"; // สีเทา (ไม่มีข้อมูล)
             let pScore = playerCard.score;
             let dScore = dealerCard.score;
 
             if (pScore > dScore) return "#2ebd6e"; // เขียว (ชนะ)
-            if (pScore < dScore) return "#ff4d4d"; // แดง (แพ้)
-            return "#ffcc00"; // เหลือง (เสมอ)
+            if (pScore < dScore) return "#d32f2f"; // แดง (แพ้)
+            return "#f57f17"; // เหลืองเข้ม (เสมอ)
         };
 
-        // 2. แถวข้อมูลสถิติแต่ละรอบ
         if (matchHistory && matchHistory.length > 0) {
             const historyCopy = [...matchHistory].reverse();
             
             historyCopy.forEach(item => {
                 if (typeof item === 'object' && item.legs) {
                     
-                    let rowCells = [
+                    // --- 1. แถวหัวข้อ รอบ & เจ้ามือ & ขา 1-3 ---
+                    let row1Contents = [
+                        { "type": "text", "text": `#${item.round}`, "size": "xxs", "color": "#ffcc00", "weight": "bold", "flex": 2, "align": "center", "gravity": "center" },
                         { 
-                            "type": "text", 
-                            "text": `#${item.round}`, 
-                            "size": "xxs", 
-                            "color": "#aaaaaa", 
-                            "flex": 3, 
-                            "align": "center", 
-                            "gravity": "center" 
-                        },
-                        { 
-                            "type": "box", 
-                            "layout": "vertical", 
-                            "flex": 3, 
-                            "backgroundColor": "#d32f2f", 
-                            "cornerRadius": "sm", 
-                            "paddingAll": "xs",
-                            "contents": [
-                                { "type": "text", "text": `${item.dealer}`, "size": "xxs", "color": "#ffffff", "weight": "bold", "align": "center" }
-                            ] 
+                            "type": "box", "layout": "vertical", "flex": 3, "backgroundColor": "#0288d1", "cornerRadius": "sm", "paddingAll": "xs",
+                            "contents": [{ "type": "text", "text": `เจ้า:${item.dealer}`, "size": "xxs", "color": "#ffffff", "weight": "bold", "align": "center" }] 
                         }
                     ];
 
-                    for (let l = 1; l <= 6; l++) {
-                        const legData = item.legs[l];
-                        
-                        // คำนวณสี
-                        const color2 = getCardColor(legData ? legData.two : null, item.dealerObj);
-                        const color3 = getCardColor(legData ? legData.three : null, item.dealerObj);
+                    // ลูปสร้าง ขา 1 - 3
+                    for (let l = 1; l <= 3; l++) {
+                        const legData = item.legs[l] || { display2: '-', display3: '-' };
+                        const bg2 = getBgColor(legData.two, item.dealerObj);
+                        const bg3 = getBgColor(legData.three, item.dealerObj);
 
-                        const parts = legData && legData.display ? legData.display.split('|') : ['-', '-'];
-                        const text2 = parts[0] ? parts[0].trim() : '-';
-                        const text3 = parts[1] ? parts[1].trim() : '-';
-
-                        // สร้างกล่องใส่ขา (แยกส่วน text ชัดเจน เพื่อไม่ให้ซ้อนโดน padding)
-                        rowCells.push({
-                            "type": "box",
-                            "layout": "horizontal",
-                            "flex": 4,
-                            "backgroundColor": "#1d1626",
-                            "cornerRadius": "sm",
-                            "paddingTop": "xs",
-                            "paddingBottom": "xs",
-                            "paddingStart": "none",
-                            "paddingEnd": "none",
+                        row1Contents.push({
+                            "type": "box", "layout": "horizontal", "flex": 4, "spacing": "none",
                             "contents": [
-                                { "type": "text", "text": text2, "size": "xxs", "color": color2, "align": "center", "weight": "bold", "flex": 1 },
-                                { "type": "text", "text": "|", "size": "xxs", "color": "#555555", "align": "center" },
-                                { "type": "text", "text": text3, "size": "xxs", "color": color3, "align": "center", "weight": "bold", "flex": 1 }
+                                {
+                                    "type": "box", "layout": "vertical", "flex": 1, "backgroundColor": bg2, "cornerRadius": "xs", "paddingAll": "xs",
+                                    "contents": [{ "type": "text", "text": `${legData.display2}`, "size": "xxs", "color": "#ffffff", "align": "center", "weight": "bold" }]
+                                },
+                                { "type": "text", "text": "|", "size": "xxs", "color": "#ffffff", "align": "center", "gravity": "center", "flex": 0 },
+                                {
+                                    "type": "box", "layout": "vertical", "flex": 1, "backgroundColor": bg3, "cornerRadius": "xs", "paddingAll": "xs",
+                                    "contents": [{ "type": "text", "text": `${legData.display3}`, "size": "xxs", "color": "#ffffff", "align": "center", "weight": "bold" }]
+                                }
                             ]
                         });
                     }
 
-                    // บรรทัดสรุปผลป๊อกเด้ง 6 ขา
+                    // --- 2. แถวขา 4-6 ---
+                    let row2Contents = [
+                        { "type": "text", "text": "", "flex": 2 }, // เว้นช่องให้ตรงกับคำว่า รอบ
+                        { "type": "text", "text": "", "flex": 3 }  // เว้นช่องให้ตรงกับคำว่า เจ้า
+                    ];
+
+                    // ลูปสร้าง ขา 4 - 6
+                    for (let l = 4; l <= 6; l++) {
+                        const legData = item.legs[l] || { display2: '-', display3: '-' };
+                        const bg2 = getBgColor(legData.two, item.dealerObj);
+                        const bg3 = getBgColor(legData.three, item.dealerObj);
+
+                        row2Contents.push({
+                            "type": "box", "layout": "horizontal", "flex": 4, "spacing": "none",
+                            "contents": [
+                                {
+                                    "type": "box", "layout": "vertical", "flex": 1, "backgroundColor": bg2, "cornerRadius": "xs", "paddingAll": "xs",
+                                    "contents": [{ "type": "text", "text": `${legData.display2}`, "size": "xxs", "color": "#ffffff", "align": "center", "weight": "bold" }]
+                                },
+                                { "type": "text", "text": "|", "size": "xxs", "color": "#ffffff", "align": "center", "gravity": "center", "flex": 0 },
+                                {
+                                    "type": "box", "layout": "vertical", "flex": 1, "backgroundColor": bg3, "cornerRadius": "xs", "paddingAll": "xs",
+                                    "contents": [{ "type": "text", "text": `${legData.display3}`, "size": "xxs", "color": "#ffffff", "align": "center", "weight": "bold" }]
+                                }
+                            ]
+                        });
+                    }
+
+                    // รวมเข้า historyFlexContents
                     historyFlexContents.push({
-                        "type": "box",
-                        "layout": "horizontal",
-                        "spacing": "xs",
-                        "margin": "xs",
-                        "contents": rowCells
+                        "type": "box", "layout": "horizontal", "spacing": "xs", "margin": "xs", "contents": row1Contents
+                    });
+                    historyFlexContents.push({
+                        "type": "box", "layout": "horizontal", "spacing": "xs", "margin": "xs", "contents": row2Contents
                     });
 
-                    // บรรทัดสรุปผลไฮโล
+                    // --- 3. บรรทัดสรุปผลไฮโล ---
                     if (item.hilo && item.hilo !== '-') {
                         historyFlexContents.push({
-                            "type": "box",
-                            "layout": "horizontal",
-                            "backgroundColor": "#1a1222",
-                            "paddingAll": "xs",
-                            "margin": "xs",
-                            "cornerRadius": "xs",
+                            "type": "box", "layout": "horizontal", "backgroundColor": "#1a1222", "paddingAll": "xs", "margin": "xs", "cornerRadius": "xs",
                             "contents": [
-                                { "type": "text", "text": `   └ 🎲 ไฮโล: ${item.hilo}`, "size": "xxs", "color": "#ffb74d", "wrap": true }
+                                { "type": "text", "text": `└ 🎲 ไฮโล: ${item.hilo}`, "size": "xxs", "color": "#ffb74d", "wrap": true }
                             ]
                         });
                     }
 
-                    historyFlexContents.push({ "type": "separator", "color": "#2a2233", "margin": "xs" });
+                    historyFlexContents.push({ "type": "separator", "color": "#2a2233", "margin": "sm" });
 
                 } else {
-                    // รองรับข้อความเก่า
                     historyFlexContents.push({
-                        "type": "text",
-                        "text": typeof item === 'object' ? JSON.stringify(item) : String(item),
-                        "size": "xxs",
-                        "color": "#E2E1E4",
-                        "wrap": true
+                        "type": "text", "text": String(item), "size": "xxs", "color": "#E2E1E4", "wrap": true
                     });
                 }
             });
         } else {
             historyFlexContents.push({
-                "type": "text",
-                "text": "• ยังไม่มีข้อมูลสถิติย้อนหลัง",
-                "size": "xs",
-                "color": "#E2E1E4",
-                "style": "italic",
-                "align": "center"
+                "type": "text", "text": "• ยังไม่มีข้อมูลสถิติย้อนหลัง", "size": "xs", "color": "#E2E1E4", "style": "italic", "align": "center"
             });
         }
 
@@ -1556,11 +1526,18 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                                     { "type": "separator", "color": "#2a2233" },
                                     { "type": "text", "text": "📊 สถิติผลการเล่น 5 รอบล่าสุด", "size": "xs", "color": "#ffcc00", "weight": "bold" },
                                     
+                                    // หัวตารางแนะนำขา
+                                    {
+                                        "type": "box", "layout": "horizontal", "backgroundColor": "#2a1b38", "paddingAll": "xs", "cornerRadius": "xs",
+                                        "contents": [
+                                            { "type": "text", "text": "รอบ", "size": "xxs", "color": "#aaaaaa", "flex": 2, "align": "center" },
+                                            { "type": "text", "text": "เจ้า", "size": "xxs", "color": "#0288d1", "flex": 3, "align": "center", "weight": "bold" },
+                                            { "type": "text", "text": "ขา 1-3 (แถวบน) / ขา 4-6 (แถวล่าง)", "size": "xxs", "color": "#ffffff", "flex": 12, "align": "center" }
+                                        ]
+                                    },
+
                                     { 
-                                        "type": "box", 
-                                        "layout": "vertical", 
-                                        "spacing": "xs", 
-                                        "contents": historyFlexContents 
+                                        "type": "box", "layout": "vertical", "spacing": "xs", "contents": historyFlexContents 
                                     },
                                     
                                     { "type": "separator", "color": "#2a2233" },
@@ -3762,23 +3739,20 @@ const userTotalWinLoss = pokdengWinLoss + hiloNetWinLoss;
             let dealerDisplay = ""; 
             if (tempDealerResult.name.includes("ป๊อก 9")) dealerDisplay = "P9";
             else if (tempDealerResult.name.includes("ป๊อก 8")) dealerDisplay = "P8";
-            else if (tempDealerResult.name.includes("ตอง")) dealerDisplay = "ตอง";
-            else if (tempDealerResult.name.includes("สเตฟฟลัช")) dealerDisplay = "เรียงสี";
-            else if (tempDealerResult.name.includes("เซียน")) dealerDisplay = "เซียน";
-            else if (tempDealerResult.name.includes("เรียง")) dealerDisplay = "เรียง";
+            else if (tempDealerResult.name.includes("ตอง")) dealerDisplay = "ต";
+            else if (tempDealerResult.name.includes("สเตฟฟลัช")) dealerDisplay = "รส";
+            else if (tempDealerResult.name.includes("เซียน")) dealerDisplay = "ซ";
+            else if (tempDealerResult.name.includes("เรียง")) dealerDisplay = "ร";
             else dealerDisplay = `${tempDealerResult.score}`; // แต้มปกติ
 
-            // 2. จัดการชื่อไพ่และข้อมูลของแต่ละขา (ขา 1-6)
             let legHistoryData = {};
             for (let leg = 1; leg <= 6; leg++) {
                 if (tempRoomResults[leg]) {
                     const legRes = tempRoomResults[leg];
 
-                    // แปลงชื่อไพ่ 2 ใบ และ 3 ใบ ไม่ให้หลุดเป็นตัวเลขคะแนนดิบ (500/800)
                     let name2 = legRes.twoCards ? legRes.twoCards.name.replace("แต้มปกติ", "").replace("แต้ม", "").trim() : '-';
                     let name3 = legRes.threeCards ? legRes.threeCards.name.replace("แต้มปกติ", "").replace("แต้ม", "").trim() : '-';
 
-                    // ปรับแต่งชื่อสั้นๆ ให้พอดีตาราง
                     if (name2.includes("ป๊อก 9")) name2 = "P9";
                     else if (name2.includes("ป๊อก 8")) name2 = "P8";
                     
@@ -3788,32 +3762,30 @@ const userTotalWinLoss = pokdengWinLoss + hiloNetWinLoss;
                     else if (name3.includes("เรียง")) name3 = "เรียง";
 
                     legHistoryData[leg] = {
-                        display: `${name2} | ${name3}`,
+                        display2: name2,
+                        display3: name3,
                         two: legRes.twoCards ? JSON.parse(JSON.stringify(legRes.twoCards)) : null,
                         three: legRes.threeCards ? JSON.parse(JSON.stringify(legRes.threeCards)) : null
                     };
                 } else {
-                    legHistoryData[leg] = { display: "- | -", two: null, three: null };
+                    legHistoryData[leg] = { display2: "-", display3: "-", two: null, three: null };
                 }
             }
 
-            // 3. เตรียมข้อมูลสถิติไฮโล
+            // ดึงผลไฮโล
             let hiloSummaryText = "-";
             if (typeof hiloDices !== 'undefined' && hiloDices.length === 3) {
-                // ตัวอย่างผล: 4-2-3 (9แต้ม) ต่ำ
                 hiloSummaryText = `${hiloDices.join("-")} (${hiloTotalScore}แต้ม) ${hiloResultText}`;
             }
 
-            // 4. บันทึกเข้า matchHistory เป็น Object แบบสมบูรณ์
             matchHistory.push({
                 round: currentRound,
                 dealer: dealerDisplay,
-                dealerObj: JSON.parse(JSON.stringify(tempDealerResult)), // สำหรับนำไปเทียบสีชนะ/แพ้
+                dealerObj: JSON.parse(JSON.stringify(tempDealerResult)),
                 legs: legHistoryData,
-                hilo: hiloSummaryText // เก็บสถิติไฮโล
+                hilo: hiloSummaryText
             });
 
-            // เก็บประวัติสูงสุด 5 รอบล่าสุด
             if (matchHistory.length > 5) matchHistory.shift(); 
 
             pastRoundsData[currentRound] = {

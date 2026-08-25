@@ -4310,21 +4310,21 @@ if (userMsg === 'c') {
         turnStatusColor = "#ff5555";
     }
 
-    // 🏆 4.คำนวณปุ่มรับโบนัส VIP
+    // 🏆 4. คำนวณหลอด EXP และปุ่มรับโบนัส VIP
     const userTurn = user.totalTurnover || 0;
     const currentVip = user.vipLevel || 0;
     
     const vipConfig = [
-            { level: 1, reqTurn: 500, reward: 10 },
-            { level: 2, reqTurn: 1000, reward: 15 },
-            { level: 3, reqTurn: 3000, reward: 30 },
-            { level: 4, reqTurn: 5000, reward: 50 },
-            { level: 5, reqTurn: 10000, reward: 120 },
-            { level: 6, reqTurn: 30000, reward: 300 },
-            { level: 7, reqTurn: 50000, reward: 600 },
-            { level: 8, reqTurn: 100000, reward: 1200 },
-            { level: 9, reqTurn: 150000, reward: 1800 },
-            { level: 10, reqTurn: 250000, reward: 4000 }
+        { level: 1, reqTurn: 500, reward: 10 },
+        { level: 2, reqTurn: 1000, reward: 15 },
+        { level: 3, reqTurn: 3000, reward: 30 },
+        { level: 4, reqTurn: 5000, reward: 50 },
+        { level: 5, reqTurn: 10000, reward: 120 },
+        { level: 6, reqTurn: 30000, reward: 300 },
+        { level: 7, reqTurn: 50000, reward: 600 },
+        { level: 8, reqTurn: 100000, reward: 1200 },
+        { level: 9, reqTurn: 150000, reward: 1800 },
+        { level: 10, reqTurn: 250000, reward: 4000 }
     ];
 
     const nextVip = vipConfig.find(v => v.level > currentVip);
@@ -4332,7 +4332,8 @@ if (userMsg === 'c') {
 
     if (nextVip) {
         const canClaim = userTurn >= nextVip.reqTurn;
-    if (canClaim) {
+
+        if (canClaim) {
             // ✅ ผ่านเงื่อนไข: ซ่อนหลอด EXP แล้วโชว์ปุ่มทองให้กดรับรางวัล
             vipButtonBox = {
                 type: "box",
@@ -4353,7 +4354,7 @@ if (userMsg === 'c') {
                 ]
             };
         } else {
-            // ⏳ ยังไม่ผ่าน: คำนวณเปอร์เซ็นต์ + วาดหลอด EXP + ปุ่มล็อก
+            // ⏳ ยังไม่ผ่าน: คำนวณเปอร์เซ็นต์ + วาดหลอด EXP + กล่องแสดงปุ่มล็อก
             const percent = Math.min(Math.floor((userTurn / nextVip.reqTurn) * 100), 100);
             const barWidth = percent === 0 ? "5%" : `${percent}%`;
 
@@ -4412,7 +4413,7 @@ if (userMsg === 'c') {
                     }
                 ]
             };
-    }
+        }
     } else {
         // 👑 กรณี VIP ตันสูงสุดแล้ว (VIP 10)
         vipButtonBox = {

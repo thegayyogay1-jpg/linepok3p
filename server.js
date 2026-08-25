@@ -206,13 +206,14 @@ app.post('/callback', async (req, res) => {
         // 🎯 1. [ระบบจัดการการกดปุ่ม Postback VIP] (เมื่อมีคนเอานิ้วกดปุ่มบนการ์ด)
         // =================================================================
         if (event.type === 'postback') {
+            const postbackData = event.postback.data;
             const dataParams = new URLSearchParams(event.postback.data);
             const action = dataParams.get('action');
+            const userId = event.source.userId;
 
             if (action === 'claim_vip') {
                 const clickerId = event.source.userId;
                 const ownerId = dataParams.get('ownerId');
-
                 let replyMessages = [];
 
                 // ❌ 1.1 กันคนอื่นมาแอบกดปุ่มบัตรคนอื่น
@@ -407,72 +408,83 @@ app.post('/callback', async (req, res) => {
                                 'Authorization': `Bearer ${TOKEN}`
                             }
                         });
-                    } catch (error) {
-                        if (error.response) {
+                    }catch (error) {
                             console.error("LINE API Details Error:", JSON.stringify(error.response.data, null, 2));
-                        } else {
-                            console.error("Error Message:", error.message);
                         }
                     }
                 }
-            }
-            continue;
-        }
-        
-        // ==================== [ จัดการการกดปุ่มรับยอดเสีย (Postback) ] ====================
-if (postbackData.startsWith("action=claim_cashback")) {
-    const params = new URLSearchParams(postbackData);
-    const ownerId = params.get("ownerId");
+            // ==================== [ 1.2 รับคืนยอดเสีย ] ====================
+            else if (action === 'claim_cashback' || postbackData.startsWith("action=claim_cashback")) {
+                const ownerId = dataParams.get("ownerId");
+                let replyText = "";
 
-    // 🔒 ป้องกันคนอื่นมาแอบกดปุ่มในการ์ดคนอื่น
-    if (userId !== ownerId) {
-        replyText = "⚠️ คุณสามารถกดรับยอดเสียจากการ์ดข้อมูลของตัวเองเท่านั้นครับ!";
-    } else if (!global.isCashbackOpen) {
-        replyText = "⚠️ ขณะนี้ **ยังไม่ถึงเวลาเปิดให้รับยอดเสีย** หรือหมดเวลาไปแล้วครับ";
-    } else {
-        const userKey = Object.keys(usersWallets).find(key => key === userId || usersWallets[key].memberNumber === currentUserMemberNumber);
-        const user = usersWallets[userKey];
-
-        if (!user) {
-            replyText = "❌ ไม่พบข้อมูลสมาชิกในระบบครับ";
-        } else {
-            const totalDeposit = user.totalDeposit || 0;
-            const totalWithdraw = user.totalWithdraw || 0;
-            const currentBalance = user.balance || 0;
-
-            // 🧮 คำนวณยอดเสียสุทธิ
-            const netLoss = totalDeposit - totalWithdraw - currentBalance;
-
-            if (netLoss <= 0) {
-                replyText = `⚠️ คุณ ${user.name} (ID: ${user.memberNumber}) ยังไม่อยู่ในเงื่อนไขรับยอดเสียครับ\n(ยอดเสียสุทธิ: 0 บาท)`;
-            } else {
-                const cashBackRate = 0.05; // 5%
-                const cashbackAmount = Math.floor(netLoss * cashBackRate);
-
-                if (cashbackAmount <= 0) {
-                    replyText = `⚠️ ยอดเสียคงเหลือของคุณน้อยเกินไปที่จะคำนวณคืน 5% ครับ`;
+                // 🔒 ป้องกันคนอื่นมาแอบกดปุ่มในการ์ดคนอื่น
+                if (userId !== ownerId) {
+                    replyText = "⚠️ คุณสามารถกดรับยอดเสียจากการ์ดข้อมูลของตัวเองเท่านั้นครับ!";
+                } else if (!global.isCashbackOpen) {
+                    replyText = "⚠️ ขณะนี้ **ยังไม่ถึงเวลาเปิดให้รับยอดเสีย** หรือหมดเวลาไปแล้วครับ";
                 } else {
-                    // 💰 1. เติมเงินยอดเสียเข้า balance
-                    user.balance += cashbackAmount;
+                    const user = usersWallets[ownerId] || usersWallets[userId];
 
-                    // 🎯 2. ตั้งค่าเทิร์นโอเวอร์ 1 เท่า (สมมติใช้ตัวแปร targetTurnover หรือ requiredTurnover)
-                    // เพิ่มยอดเทิร์นที่ต้องทำอีก 1 เท่าของโบนัสที่ได้รับ
-                    user.requiredTurnover = (user.requiredTurnover || 0) + cashbackAmount;
-                    user.turnoverStatus = "ติดเทิร์น"; // หรืออัปเดตสถานะเทิร์นตามระบบเดิมของน้า
+                    if (!user) {
+                        replyText = "❌ ไม่พบข้อมูลสมาชิกในระบบครับ";
+                    } else {
+                        const totalDeposit = user.totalDeposit || 0;
+                        const totalWithdraw = user.totalWithdraw || 0;
+                        const currentBalance = user.balance || 0;
 
-                    // 🔄 3. รีเซ็ตค่าเพื่อไม่ให้กดรับซ้ำในรอบเดียวกันได้
-                    user.totalDeposit = user.balance;
-                    user.totalWithdraw = 0;
+                        // 🧮 คำนวณยอดเสียสุทธิ
+                        const netLoss = totalDeposit - totalWithdraw - currentBalance;
 
-                    await saveDataToFirebase();
+                        if (netLoss <= 0) {
+                            replyText = `⚠️ คุณ ${user.name} (ID: ${user.memberNumber}) ยังไม่อยู่ในเงื่อนไขรับยอดเสียครับ\n(ยอดเสียสุทธิ: 0 บาท)`;
+                        } else {
+                            const cashBackRate = 0.05; // 5%
+                            const cashbackAmount = Math.floor(netLoss * cashBackRate);
 
-                    replyText = `🎁 **รับคืนยอดเสียสำเร็จ!** 🎉\n──────────────────\n👤 คุณ: ${user.name} (ID: ${user.memberNumber})\n📉 ยอดเสียสุทธิ: ${netLoss.toLocaleString()} บาท\n💸 คืนยอดเสีย (5%): +${cashbackAmount.toLocaleString()} บาท\n🔒 เงื่อนไข: ติดเทิร์น 1 เท่า (${cashbackAmount.toLocaleString()} บาท)\n💰 เครดิตคงเหลือใหม่: ${user.balance.toLocaleString()} บาท`;
+                            if (cashbackAmount <= 0) {
+                                replyText = `⚠️ ยอดเสียคงเหลือของคุณน้อยเกินไปที่จะคำนวณคืน 5% ครับ`;
+                            } else {
+                                // 💰 1. เติมเงินยอดเสียเข้า balance
+                                user.balance = (user.balance || 0) + cashbackAmount;
+
+                                // 🎯 2. ตั้งค่าเทิร์นโอเวอร์ 1 เท่า
+                                user.turnoverTarget = (user.turnoverTarget || 0) + cashbackAmount;
+                                user.turnoverStatus = "ติดเทิร์น";
+
+                                // 🔄 3. รีเซ็ตค่าเพื่อไม่ให้กดรับซ้ำในรอบเดียวกันได้
+                                user.totalDeposit = user.balance;
+                                user.totalWithdraw = 0;
+
+                                await saveDataToFirebase();
+
+                                replyText = `🎁 **รับคืนยอดเสียสำเร็จ!** 🎉\n──────────────────\n👤 คุณ: ${user.name} (ID: ${user.memberNumber})\n📉 ยอดเสียสุทธิ: ${netLoss.toLocaleString()} บาท\n💸 คืนยอดเสีย (5%): +${cashbackAmount.toLocaleString()} บาท\n🔒 เงื่อนไข: ติดเทิร์น 1 เท่า (${cashbackAmount.toLocaleString()} บาท)\n💰 เครดิตคงเหลือใหม่: ${user.balance.toLocaleString()} บาท`;
+                            }
+                        }
+                    }
+                }
+
+                // 📤 ตอบกลับ LINE สำหรับคืนยอดเสีย
+                if (replyText) {
+                    try {
+                        await axios.post('https://api.line.me/v2/bot/message/reply', {
+                            replyToken: event.replyToken,
+                            messages: [{ type: 'text', text: replyText }]
+                        }, {
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${TOKEN}`
+                            }
+                        });
+                    } catch (error) {
+                        console.error("LINE API Cashback Reply Error:", error.response ? error.response.data : error.message);
+                    }
                 }
             }
+
+            return res.sendStatus(200);
         }
-    }
-}
-        
+    
       // =================================================================
         // 📸 [ระบบฟิวชั่น ร่างอัปเกรดเตือนภัย] ดักจับรูปภาพสลิป + เตือนแอดมินถ้าส่งช้าเกิน 5 นาที
         // =================================================================

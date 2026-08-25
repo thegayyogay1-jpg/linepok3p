@@ -458,18 +458,129 @@ app.post('/callback', async (req, res) => {
 
                                 await saveDataToFirebase();
 
-                                replyText = `🎁 **รับคืนยอดเสียสำเร็จ!** 🎉\n──────────────────\n👤 คุณ: ${user.name} (ID: ${user.memberNumber})\n📉 ยอดเสียสุทธิ: ${netLoss.toLocaleString()} บาท\n💸 คืนยอดเสีย (5%): +${cashbackAmount.toLocaleString()} บาท\n🔒 เงื่อนไข: ติดเทิร์น 1 เท่า (${cashbackAmount.toLocaleString()} บาท)\n💰 เครดิตคงเหลือใหม่: ${user.balance.toLocaleString()} บาท`;
+                                // 🎨 สร้าง Flex Message ตอบกลับแบบน่ารักสดใส
+                    const flexCashbackSuccess = {
+                        type: 'flex',
+                        altText: '🎁 คืนยอดเสียสำเร็จแล้วนะค้าบ!',
+                        contents: {
+                            type: 'bubble',
+                            size: 'kilo',
+                            header: {
+                                type: 'box',
+                                layout: 'vertical',
+                                backgroundColor: '#FFF0F5',
+                                paddingAll: 'lg',
+                                contents: [
+                                    {
+                                        type: 'text',
+                                        text: '🎁 คืนยอดเสียสำเร็จ! ✨',
+                                        weight: 'bold',
+                                        color: '#FF6B81',
+                                        size: 'lg',
+                                        align: 'center'
+                                    },
+                                    {
+                                        type: 'text',
+                                        text: `ไม่ต้องเสียใจน้า ต่อทุนรอบนี้แตกแน่นอน! 💕`,
+                                        color: '#A0808B',
+                                        size: 'xs',
+                                        align: 'center',
+                                        margin: 'xs'
+                                    }
+                                ]
+                            },
+                            body: {
+                                type: 'box',
+                                layout: 'vertical',
+                                backgroundColor: '#FFFFFF',
+                                paddingAll: 'md',
+                                contents: [
+                                    {
+                                        type: 'box',
+                                        layout: 'vertical',
+                                        backgroundColor: '#FFF9F0',
+                                        cornerRadius: 'md',
+                                        paddingAll: 'md',
+                                        contents: [
+                                            {
+                                                type: 'box',
+                                                layout: 'horizontal',
+                                                contents: [
+                                                    { type: 'text', text: '👤 สมาชิก:', color: '#8A7A80', size: 'xs' },
+                                                    { type: 'text', text: `${user.name || 'สมาชิก'}`, color: '#4A3B40', size: 'xs', align: 'end', weight: 'bold' }
+                                                ]
+                                            },
+                                            {
+                                                type: 'box',
+                                                layout: 'horizontal',
+                                                margin: 'xs',
+                                                contents: [
+                                                    { type: 'text', text: '📉 ยอดเสียสุทธิ:', color: '#8A7A80', size: 'xs' },
+                                                    { type: 'text', text: `${netLoss.toLocaleString()} บาท`, color: '#FF4757', size: 'xs', align: 'end', weight: 'bold' }
+                                                ]
+                                            },
+                                            {
+                                                type: 'box',
+                                                layout: 'horizontal',
+                                                margin: 'xs',
+                                                contents: [
+                                                    { type: 'text', text: '💸 อัตราคืนเงิน:', color: '#8A7A80', size: 'xs' },
+                                                    { type: 'text', text: '5%', color: '#FFA502', size: 'xs', align: 'end', weight: 'bold' }
+                                                ]
+                                            },
+                                            { type: 'separator', color: '#FFE0B2', margin: 'md' },
+                                            {
+                                                type: 'box',
+                                                layout: 'horizontal',
+                                                margin: 'md',
+                                                contents: [
+                                                    { type: 'text', text: '💰 เครดิตเข้ากระเป๋า:', color: '#2ED573', weight: 'bold', size: 'sm' },
+                                                    { type: 'text', text: `+${cashbackAmount.toLocaleString()} บาท`, color: '#2ED573', weight: 'bold', size: 'md', align: 'end' }
+                                                ]
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        type: 'box',
+                                        layout: 'vertical',
+                                        margin: 'sm',
+                                        contents: [
+                                            {
+                                                type: 'text',
+                                                text: `🔒 ติดเทิร์น 1 เท่า (${cashbackAmount.toLocaleString()} บาท) | ยอดคงเหลือใหม่: ${user.balance.toLocaleString()} บาท`,
+                                                color: '#B5A6AD',
+                                                size: 'xxs',
+                                                align: 'center',
+                                                wrap: true
+                                            }
+                                        ]
+                                    }
+                                ]
+                            },
+                            footer: {
+                                type: 'box',
+                                layout: 'vertical',
+                                backgroundColor: '#FFF0F5',
+                                paddingAll: 'sm',
+                                contents: [
+                                    {
+                                        type: 'text',
+                                        text: '💳 ยอดฝาก-ถอนสะสมถูกรีเซ็ตเพื่อเริ่มรอบใหม่แล้วครับ 🚀',
+                                        color: '#FF6B81',
+                                        size: 'xxs',
+                                        align: 'center',
+                                        wrap: true
+                                    }
+                                ]
                             }
                         }
-                    }
-                }
+                    };
 
-                // 📤 ตอบกลับ LINE สำหรับคืนยอดเสีย
-                if (replyText) {
+                // 📤 ส่งตอบกลับเป็น Flex Message
                     try {
                         await axios.post('https://api.line.me/v2/bot/message/reply', {
                             replyToken: event.replyToken,
-                            messages: [{ type: 'text', text: replyText }]
+                            messages: [flexCashbackSuccess]
                         }, {
                             headers: {
                                 'Content-Type': 'application/json',
@@ -477,7 +588,7 @@ app.post('/callback', async (req, res) => {
                             }
                         });
                     } catch (error) {
-                        console.error("LINE API Cashback Reply Error:", error.response ? error.response.data : error.message);
+                        console.error("LINE API Cashback Flex Reply Error:", error.response ? error.response.data : error.message);
                     }
                 }
             }

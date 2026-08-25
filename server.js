@@ -420,15 +420,19 @@ else if (action === 'ยอดเสีย' || postbackData.includes("action=ย
 
     // 🔒 ป้องกันคนอื่นมาแอบกดปุ่มในการ์ดคนอื่น
     if (!ownerId || ownerId === 'undefined' || userId !== ownerId) {
-        replyText = "⚠️ คุณสามารถกดรับยอดเสียจากการ์ดข้อมูลของตัวเองเท่านั้นครับ!";
+        replyText = "⚠️ คุณสามารถกดรับยอดเสียจากการ์ดข้อมูลของตัวเองเท่านั้น!";
     } else if (!global.isCashbackOpen) {
-        replyText = "⚠️ ขณะนี้ **ยังไม่ถึงเวลาเปิดให้รับยอดเสีย** หรือหมดเวลาไปแล้วครับ";
+        replyText = "⚠️ ขณะนี้ **ยังไม่ถึงเวลาเปิดให้รับยอดเสีย**";
     } else {
         const user = usersWallets[ownerId] || usersWallets[userId];
 
         if (!user) {
             replyText = "❌ ไม่พบข้อมูลสมาชิกในระบบครับ";
-        } else {
+        }
+        // 🛑 1. เช็กว่าเคยรับยอดเสียของรอบนี้ไปหรือยัง
+        else if (user.hasClaimedCashback === true) {
+            replyText = `⚠️ คุณ ${user.name} ได้รับยอดเสียของรอบนี้ไปเรียบร้อยแล้ว!\n(สามารถกดรับได้เพียง 1 ครั้ง/วัน)`;
+        }else {
             const totalDeposit = user.totalDeposit || 0;
             const totalWithdraw = user.totalWithdraw || 0;
             const currentBalance = user.balance || 0;
@@ -5145,6 +5149,15 @@ if (command === "เปิดยอดเสีย") {
     if (!ADMIN_IDS.includes(userId)) return res.sendStatus(200);
 
     global.isCashbackOpen = true;
+    
+    // 🔄 [รีเซ็ตสิทธิ์รับยอดเสีย] เคลียร์สถานะการกดรับของสมาชิกทุกคนให้เป็น false เพื่อให้รับรอบใหม่ได้
+    for (let key in usersWallets) {
+        usersWallets[key].hasClaimedCashback = false;
+    }
+
+    // 💾 บันทึกการรีเซ็ตสิทธิ์ลง Firebase
+    await saveDataToFirebase();
+    
     replyText = "🔓 **เปิดระบบรับคืนยอดเสียเรียบร้อยแล้ว!**\nสมาชิกสามารถพิมพ์ \"รับยอดเสีย\" เพื่อกดรับเครดิตคืนได้เลยครับ";
 
 } else if (command === "ปิดยอดเสีย") {

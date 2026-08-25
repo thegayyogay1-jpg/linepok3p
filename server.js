@@ -4715,7 +4715,8 @@ if (userMsg === 'c') {
     }
 
     // 🟢 [เพิ่มจุดนี้] ถ้าแอดมินเปิดระบบยอดเสียอยู่ ให้ต่อปุ่มรับยอดเสียไว้ข้างใต้ VIP ทันที
-    if (global.isCashbackOpen) {
+    const userData = usersWallets[userId]; // ดึงข้อมูลยูสเซอร์ (ตรวจสอบชื่อตัวแปร user ของคุณอีกทีนะครับ)
+    if (global.isCashbackOpen && (!userData || !userData.hasClaimedCashback)) {
         bodyElements.push({
             type: "box",
             layout: "vertical",
@@ -4735,7 +4736,6 @@ if (userMsg === 'c') {
             ]
         });
     }
-
     global.currentReplyFlex = {
         type: "flex",
         altText: "📊 บัตรข้อมูลสมาชิกและยอดเงินของคุณ",

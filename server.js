@@ -4639,7 +4639,7 @@ if (userMsg === 'c') {
     const displayName = user.nickname || user.name || "สมาชิก";
 
     const bodyElements = [
-        // 4.1 แถบโปรไฟล์ (รูปวงกลม + ชื่อ + ID + VIP)
+        // 4.1 แถบโปรไฟล์ (รูปวงกลมขนาดพอดี + ชื่อ + ID + VIP)
         {
             type: "box",
             layout: "horizontal",
@@ -4647,9 +4647,20 @@ if (userMsg === 'c') {
             spacing: "md",
             contents: [
                 {
-                    type: "image",
-                    url: profileImg,
-                    size: "md"
+                    type: "box",
+                    layout: "vertical",
+                    cornerRadius: "100px",
+                    width: "40px",
+                    height: "40px",
+                    contents: [
+                        {
+                            type: "image",
+                            url: profileImg,
+                            size: "full",
+                            aspectRatio: "1:1",
+                            aspectMode: "cover"
+                        }
+                    ]
                 },
                 {
                     type: "box",
@@ -4749,7 +4760,7 @@ if (userMsg === 'c') {
         bodyElements.push(vipButtonBox);
     }
 
-    // 4.6 🟢 ปุ่มรับคืนยอดเสีย (แสดงเฉพาะตอนเปิดระบบ + ยังไม่ได้กดรับ)
+    // 4.6 🟢 ปุ่มรับคืนยอดเสีย
     const userData = usersWallets[userId];
     if (global.isCashbackOpen && (!userData || !userData.hasClaimedCashback)) {
         bodyElements.push({
@@ -4772,10 +4783,10 @@ if (userMsg === 'c') {
         });
     }
 
-    // 5. ประกอบ Flex Message ส่งออก
+    // 5. ประกอบ Flex Message ส่งออก (Header ปรับให้สั้นลง + ซ้อนตัวอักษร POKNAJA)
     global.currentReplyFlex = {
         type: "flex",
-        altText: "📊 บัตรข้อมูลสมาชิก VIP",
+        altText: "📊 บัตรข้อมูลสมาชิก POKNAJA VIP",
         contents: {
             type: "bubble",
             size: "mega",
@@ -4792,8 +4803,38 @@ if (userMsg === 'c') {
                         type: "image",
                         url: "https://img.freepik.com/free-vector/black-luxury-background-with-golden-elements_52683-10068.jpg",
                         size: "full",
-                        aspectRatio: "20:6",
+                        aspectRatio: "20:4",
                         aspectMode: "cover"
+                    },
+                    {
+                        type: "box",
+                        layout: "vertical",
+                        position: "absolute",
+                        offsetTop: "0px",
+                        offsetBottom: "0px",
+                        offsetStart: "0px",
+                        offsetEnd: "0px",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: "#00000055",
+                        contents: [
+                            {
+                                type: "text",
+                                text: "✨ POKNAJA ✨",
+                                color: "#ffd700",
+                                weight: "bold",
+                                size: "md",
+                                align: "center"
+                            },
+                            {
+                                type: "text",
+                                text: "CARD MEMBER VIP",
+                                color: "#ffffff",
+                                size: "xxs",
+                                align: "center",
+                                margin: "xs"
+                            }
+                        ]
                     }
                 ]
             },

@@ -3014,7 +3014,7 @@ else if (originalMsg.startsWith('>')) {
                 else if (hiloTotalScore >= 12) highLowText = "สูง 🔴";
                 else highLowText = "ต่ำ 🔵";
 
-                hiloResultText = `🎲 ลูกเต๋า: [ ${hiloDices.join(" - ")} ] | ผล: ${hiloTotalScore} แต้ม (${highLowText})`;
+                hiloResultText = `🎲${hiloTotalScore} แต้ม (${highLowText})`;
             }
         }
 

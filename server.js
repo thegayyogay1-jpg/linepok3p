@@ -4643,7 +4643,7 @@ if (userMsg === 'c') {
         {
             type: "box",
             layout: "horizontal",
-            gravity: "center",
+            alignItems: "center",
             spacing: "md",
             contents: [
                 {

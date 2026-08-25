@@ -1394,7 +1394,7 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                 // 📊 --- [สร้างตารางสถิติแบบย่อยบรรทัด อ่านง่ายไม่ล้นจอ] ---
         let historyFlexContents = [];
 
-        // ฟังก์ชันคำนวณสีพื้นหลังกรอบ: ชนะ = เขียว (#2ebd6e), แพ้ = แดง (#d32f2f), เสมอ = เหลือง (#f57f17)
+        // ฟังก์ชันคำนวณสีพื้นหลังกรอบ: ชนะ = เขียว, แพ้ = แดง, เสมอ = เหลือง
         const getBgColor = (playerCard, dealerCard) => {
             if (!playerCard || !dealerCard) return "#424242"; // สีเทา (ไม่มีข้อมูล)
             let pScore = playerCard.score;
@@ -1411,7 +1411,7 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
             historyCopy.forEach(item => {
                 if (typeof item === 'object' && item.legs) {
                     
-                    // --- 1. แถวหัวข้อ รอบ & เจ้ามือ & ขา 1-3 ---
+                    // --- 1. แถวบน: รอบ + เจ้ามือ + ขา 1-3 ---
                     let row1Contents = [
                         { "type": "text", "text": `#${item.round}`, "size": "xxs", "color": "#ffcc00", "weight": "bold", "flex": 2, "align": "center", "gravity": "center" },
                         { 
@@ -1420,7 +1420,6 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                         }
                     ];
 
-                    // ลูปสร้าง ขา 1 - 3
                     for (let l = 1; l <= 3; l++) {
                         const legData = item.legs[l] || { display2: '-', display3: '-' };
                         const bg2 = getBgColor(legData.two, item.dealerObj);
@@ -1442,13 +1441,12 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                         });
                     }
 
-                    // --- 2. แถวขา 4-6 ---
+                    // --- 2. แถวล่าง: เว้นช่องรอบ/เจ้ามือ ด้วย Box เปล่า + ขา 4-6 ---
                     let row2Contents = [
                         { "type": "box", "layout": "vertical", "flex": 2 }, // เว้นช่องให้ตรงกับ "รอบ"
                         { "type": "box", "layout": "vertical", "flex": 3 }  // เว้นช่องให้ตรงกับ "เจ้า"
                     ];
 
-                    // ลูปสร้าง ขา 4 - 6
                     for (let l = 4; l <= 6; l++) {
                         const legData = item.legs[l] || { display2: '-', display3: '-' };
                         const bg2 = getBgColor(legData.two, item.dealerObj);

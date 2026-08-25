@@ -202,7 +202,7 @@ app.post('/callback', async (req, res) => {
 
     for (let event of events) {
         
-        // =================================================================
+       // =================================================================
         // 🎯 1. [ระบบจัดการการกดปุ่ม Postback VIP] (เมื่อมีคนเอานิ้วกดปุ่มบนการ์ด)
         // =================================================================
         if (event.type === 'postback') {
@@ -212,13 +212,29 @@ app.post('/callback', async (req, res) => {
             if (action === 'claim_vip') {
                 const clickerId = event.source.userId;
                 const ownerId = dataParams.get('ownerId');
-                const targetLevel = parseInt(dataParams.get('targetLevel'));
 
-                let replyText = "";
+                let replyMessages = [];
 
-                // ❌ 1.1 กันคนอื่นมาแอบกดปุ่มบัตรคนอื่น
+                // ❌ 1.1 กันคนอื่นมาแอบกดปุ่มบัตรคนอื่น (สไตล์เตือนแบบนุ่มนวล)
                 if (clickerId !== ownerId) {
-                    replyText = "⚠️ คุณไม่มีสิทธิ์กดรับรางวัลแทนผู้อื่นครับ!";
+                    replyMessages = [{
+                        type: 'flex',
+                        altText: '⚠️ แจ้งเตือนสิทธิ์',
+                        contents: {
+                            type: 'bubble',
+                            size: 'shrink',
+                            body: {
+                                type: 'box',
+                                layout: 'vertical',
+                                backgroundColor: '#FFF0F3',
+                                paddingAll: 'lg',
+                                contents: [
+                                    { type: 'text', text: '🎀 ปฏิเสธการทำรายการ', weight: 'bold', color: '#FF4D6D', size: 'md' },
+                                    { type: 'text', text: 'คุณไม่มีสิทธิ์กดรับรางวัลแทนผู้อื่นครับ!', color: '#594A4E', size: 'sm', margin: 'md', wrap: true }
+                                ]
+                            }
+                        }
+                    }];
                 } else {
                     const user = usersWallets[ownerId];
 
@@ -238,35 +254,156 @@ app.post('/callback', async (req, res) => {
 
                         const userTurn = user.totalTurnover || 0;
                         const currentVip = user.vipLevel || 0;
-                        const targetConfig = vipConfig.find(v => v.level === targetLevel);
 
-                        if (targetConfig) {
-                            // ❌ 1.2 เช็กว่าเคยรับไปแล้วหรือยัง
-                            if (currentVip >= targetLevel) {
-                                replyText = `❌ คุณเคยรับโบนัส VIP ${targetLevel} ไปแล้วครับ!`;
-                            } 
-                            // ❌ 1.3 เช็กยอดเทิร์นสะสม
-                            else if (userTurn < targetConfig.reqTurn) {
-                                const diff = targetConfig.reqTurn - userTurn;
-                                replyText = `❌ เงื่อนไขยังไม่ครบ! คุณต้องสะสมยอดได้-เสียอีก ${diff.toLocaleString()} บาท ถึงจะรับ VIP ${targetLevel} ได้ครับ`;
-                            } 
-                            // ✅ 1.4 ผ่านเงื่อนไข! เติมเงินอัปเลเวลทันที
-                            else {
-                                user.vipLevel = targetLevel;
-                                user.balance = (user.balance || 0) + targetConfig.reward;
-                                await saveDataToFirebase();
+                        let totalRewardToClaim = 0;
+                        let newVipLevel = currentVip;
 
-                                replyText = `🎉 ยินดีด้วยครับคุณ ${user.nickname || user.name}!\nคุณได้รับโบนัสอัพเกรด VIP ${targetLevel} จำนวน +${targetConfig.reward.toLocaleString()} บาท เข้ากระเป๋าเรียบร้อยแล้ว 💵✨`;
+                        // 🔄 1.2 วนลูปคำนวณขั้น VIP ที่สิทธิ์ถึงทั้งหมด (ข้ามขั้นรวดเดียว)
+                        for (let config of vipConfig) {
+                            if (config.level > currentVip && userTurn >= config.reqTurn) {
+                                totalRewardToClaim += config.reward;
+                                newVipLevel = config.level;
                             }
+                        }
+
+                        // ❌ กรณีเลเวลไม่เพิ่มขึ้นเลย (ยอดเทิร์นยังไม่ถึงขั้นถัดไป หรือ รับครบแล้ว)
+                        if (newVipLevel === currentVip) {
+                            const nextConfig = vipConfig.find(v => v.level === currentVip + 1);
+                            
+                            let warningTitle = '🌸 เงื่อนไขยังไม่ครบ';
+                            let warningDetail = '';
+
+                            if (nextConfig) {
+                                const diff = nextConfig.reqTurn - userTurn;
+                                warningDetail = `คุณต้องสะสมยอดได้-เสียอีก ${diff.toLocaleString()} ฿ ถึงจะรับ VIP ${nextConfig.level} ได้ครับ`;
+                            } else {
+                                warningTitle = '💖 ระดับสูงสุดแล้ว';
+                                warningDetail = 'คุณได้รับโบนัส VIP ครบทุกระดับเรียบร้อยแล้วครับ!';
+                            }
+
+                            replyMessages = [{
+                                type: 'flex',
+                                altText: '🌸 แจ้งเตือน VIP',
+                                contents: {
+                                    type: 'bubble',
+                                    size: 'shrink',
+                                    body: {
+                                        type: 'box',
+                                        layout: 'vertical',
+                                        backgroundColor: '#FFF0F5',
+                                        paddingAll: 'lg',
+                                        contents: [
+                                            { type: 'text', text: warningTitle, weight: 'bold', color: '#D47FA6', size: 'md' },
+                                            { type: 'text', text: warningDetail, color: '#5C4A52', size: 'sm', margin: 'md', wrap: true },
+                                            { type: 'separator', color: '#F7C5D9', margin: 'md' },
+                                            {
+                                                type: 'box',
+                                                layout: 'horizontal',
+                                                margin: 'md',
+                                                contents: [
+                                                    { type: 'text', text: 'ยอดสะสมปัจจุบัน:', color: '#8A737C', size: 'xs' },
+                                                    { type: 'text', text: `${userTurn.toLocaleString()} ฿`, color: '#B56587', size: 'xs', align: 'end', weight: 'bold' }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                }
+                            }];
+                        } 
+                        // ✅ 1.3 ผ่านเงื่อนไข! การ์ดโทนชมพู-ทอง น่ารักหรูหรา
+                        else {
+                            // อัปเดต VIP ล่าสุด
+                            user.vipLevel = newVipLevel;
+                            
+                            // เติมเงินโบนัสเข้ากระเป๋า
+                            user.balance = (user.balance || 0) + totalRewardToClaim;
+
+                            // 🎯 ติดเทิร์นโอเวอร์ 1 เท่าของยอดโบนัสรวมที่ได้รับ
+                            user.turnoverTarget = (user.turnoverTarget || 0) + totalRewardToClaim;
+
+                            await saveDataToFirebase();
+
+                            // 🎨 สรุปข้อความแบบการ์ด Flex Message ชมพูพาสเทล ขอบทองหรูหรา
+                            replyMessages = [{
+                                type: 'flex',
+                                altText: `👑 ยินดีด้วย! อัปเกรด VIP ${newVipLevel}`,
+                                contents: {
+                                    type: 'bubble',
+                                    size: 'md',
+                                    header: {
+                                        type: 'box',
+                                        layout: 'vertical',
+                                        backgroundColor: '#FFB6C1', // ชมพูพาสเทลสดใส
+                                        paddingAll: 'lg',
+                                        contents: [
+                                            { type: 'text', text: '👑 อัปเกรดระดับ VIP สำเร็จ! ✨', weight: 'bold', color: '#FFFFFF', size: 'md', align: 'center' },
+                                            { type: 'text', text: `ยินดีด้วยนะค้าบคุณ ${user.nickname || user.name} 💕`, color: '#FFF0F5', size: 'xs', align: 'center', margin: 'xs' }
+                                        ]
+                                    },
+                                    body: {
+                                        type: 'box',
+                                        layout: 'vertical',
+                                        backgroundColor: '#FFF8FA', // ชมพูอ่อนมากๆ สะอาดตา
+                                        paddingAll: 'lg',
+                                        contents: [
+                                            {
+                                                type: 'box',
+                                                layout: 'horizontal',
+                                                contents: [
+                                                    { type: 'text', text: 'ระดับใหม่:', color: '#8C7A82', size: 'sm' },
+                                                    { type: 'text', text: `VIP ${newVipLevel}`, color: '#D4AF37', weight: 'bold', size: 'sm', align: 'end' }
+                                                ]
+                                            },
+                                            {
+                                                type: 'box',
+                                                layout: 'horizontal',
+                                                margin: 'sm',
+                                                contents: [
+                                                    { type: 'text', text: 'โบนัสรวมที่ได้รับ:', color: '#8C7A82', size: 'sm' },
+                                                    { type: 'text', text: `+${totalRewardToClaim.toLocaleString()} ฿`, color: '#2E8B57', weight: 'bold', size: 'sm', align: 'end' }
+                                                ]
+                                            },
+                                            {
+                                                type: 'box',
+                                                layout: 'horizontal',
+                                                margin: 'sm',
+                                                contents: [
+                                                    { type: 'text', text: 'ติดเทิร์นเพิ่ม (1x):', color: '#8C7A82', size: 'sm' },
+                                                    { type: 'text', text: `${totalRewardToClaim.toLocaleString()} ฿`, color: '#E65C00', weight: 'bold', size: 'sm', align: 'end' }
+                                                ]
+                                            },
+                                            { type: 'separator', color: '#F4CFDF', margin: 'lg' },
+                                            {
+                                                type: 'box',
+                                                layout: 'horizontal',
+                                                margin: 'lg',
+                                                contents: [
+                                                    { type: 'text', text: '💳 ยอดเงินคงเหลือ:', color: '#4A3B40', size: 'sm', weight: 'bold' },
+                                                    { type: 'text', text: `${user.balance.toLocaleString()} ฿`, color: '#B8860B', weight: 'bold', size: 'sm', align: 'end' }
+                                                ]
+                                            }
+                                        ]
+                                    },
+                                    footer: {
+                                        type: 'box',
+                                        layout: 'vertical',
+                                        backgroundColor: '#FFF0F5',
+                                        paddingAll: 'md',
+                                        contents: [
+                                            { type: 'text', text: '💖 ขอบคุณที่ร่วมสนุกกับเรา ขอให้โชคดีนะค้าบ 💖', color: '#A0808B', size: 'xxs', align: 'center' }
+                                        ]
+                                    }
+                                }
+                            }];
                         }
                     }
                 }
 
-                // ส่งข้อความตอบกลับหาผู้ใช้
-                if (replyText) {
+                // 📤 ส่ง Flex Message ตอบกลับหาผู้ใช้
+                if (replyMessages.length > 0) {
                     await axios.post('https://api.line.me/v2/bot/message/reply', {
                         replyToken: event.replyToken,
-                        messages: [{ type: 'text', text: replyText }]
+                        messages: replyMessages
                     }, {
                         headers: {
                             'Content-Type': 'application/json',

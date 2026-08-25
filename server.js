@@ -1444,8 +1444,8 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
 
                     // --- 2. แถวขา 4-6 ---
                     let row2Contents = [
-                        { "type": "text", "text": "", "flex": 2 }, // เว้นช่องให้ตรงกับคำว่า รอบ
-                        { "type": "text", "text": "", "flex": 3 }  // เว้นช่องให้ตรงกับคำว่า เจ้า
+                        { "type": "box", "layout": "vertical", "flex": 2 }, // เว้นช่องให้ตรงกับ "รอบ"
+                        { "type": "box", "layout": "vertical", "flex": 3 }  // เว้นช่องให้ตรงกับ "เจ้า"
                     ];
 
                     // ลูปสร้าง ขา 4 - 6

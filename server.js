@@ -4387,7 +4387,8 @@ if (userMsg === 'c') {
                                 backgroundColor: "#d4af37",
                                 height: "6px",
                                 width: barWidth,
-                                cornerRadius: "3px"
+                                cornerRadius: "3px",
+                                contents: [{ type: "spacer", size: "xs" }]
                             }
                         ]
                     },

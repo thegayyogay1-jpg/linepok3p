@@ -222,7 +222,7 @@ app.post('/callback', async (req, res) => {
                         altText: '⚠️ แจ้งเตือนสิทธิ์',
                         contents: {
                             type: 'bubble',
-                            size: 'shrink',
+                            size: 'kilo',
                             body: {
                                 type: 'box',
                                 layout: 'vertical',
@@ -286,7 +286,7 @@ app.post('/callback', async (req, res) => {
                                 altText: '🌸 แจ้งเตือน VIP',
                                 contents: {
                                     type: 'bubble',
-                                    size: 'shrink',
+                                    size: 'kilo',
                                     body: {
                                         type: 'box',
                                         layout: 'vertical',

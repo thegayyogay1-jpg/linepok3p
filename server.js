@@ -322,7 +322,6 @@ app.post('/callback', async (req, res) => {
                                 altText: `ยินดีด้วย! อัปเกรด VIP ${newVipLevel}`,
                                 contents: {
                                     type: 'bubble',
-                                    size: 'md',
                                     header: {
                                         type: 'box',
                                         layout: 'vertical',

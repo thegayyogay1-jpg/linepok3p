@@ -4647,7 +4647,7 @@ if (userMsg === 'c') {
             spacing: "md",
             contents: [
                 {
-                    type: "avatar",
+                    type: "image",
                     url: profileImg,
                     size: "md"
                 },

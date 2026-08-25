@@ -2918,7 +2918,7 @@ else if (originalMsg.startsWith('>')) {
 
             // แปลงแต้มพิเศษ (รองรับทั้งไทยและอังกฤษ)
             if (clean === 't' || clean === 'ต') { rawScore = 700; multiplier = 5; typeName = "ตอง"; }    
-            else if (clean === 'sf') { rawScore = 600; multiplier = 5; typeName = "สเตฟฟลัช"; } 
+            else if (clean === 'f') { rawScore = 600; multiplier = 5; typeName = "เรียงสี"; } 
             else if (clean === 'h') { rawScore = 400; multiplier = 3; typeName = "เซียน/3เหลือง"; } 
             else if (clean === 's' || clean === 'ร') { rawScore = 500; multiplier = 3; typeName = "เรียง"; }
             else if (clean === '7.5') { rawScore = 7.5; typeName = "7.5"; }

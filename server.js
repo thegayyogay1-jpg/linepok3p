@@ -414,7 +414,7 @@ app.post('/callback', async (req, res) => {
                     }
                 }
             // ==================== [ 1.2 รับคืนยอดเสีย ] ====================
-            else if (action === 'claim_cashback' || postbackData.startsWith("action=claim_cashback")) {
+            else if (action === 'ยอดเสีย' || postbackData.startsWith("ยอดเสีย")) {
                 const ownerId = dataParams.get("ownerId");
                 let replyText = "";
 
@@ -4597,7 +4597,7 @@ if (userMsg === 'c') {
                     action: {
                         type: "postback",
                         label: "🎁 กดรับคืนยอดเสีย 5%",
-                        data: "aaction=claim_cashback&ownerId=${userId}"
+                        data: "aaction=ยอดเสีย&ownerId=${userId}"
                     },
                     style: "primary",
                     color: "#e67e22", // สีส้มเด่นๆ สไตล์ Flex

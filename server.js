@@ -1391,101 +1391,83 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                 hiloRoundBets = {}; // 🎲 [จุดที่ 1] ล้างข้อมูลโพยไฮโลเก่า
                 await saveDataToFirebase();
                 
-                // 📊 --- [สร้างตารางสถิติแบบ Grid สไตล์ภาพตัวอย่าง] ---
+                // 📊 --- [สร้างตารางสถิติแบบย่อยบรรทัด อ่านง่ายไม่ล้นจอ] ---
         let historyFlexContents = [];
 
-        // 1. หัวตาราง (Header Row)
-        historyFlexContents.push({
-            "type": "box",
-            "layout": "horizontal",
-            "backgroundColor": "#3b2354",
-            "paddingAll": "xs",
-            "cornerRadius": "xs",
-            "contents": [
-                { "type": "text", "text": "รอบ", "size": "xs", "color": "#ffffff", "weight": "bold", "flex": 2, "align": "center" },
-                { "type": "text", "text": "เจ้า", "size": "xs", "color": "#ffcc00", "weight": "bold", "flex": 2, "align": "center" },
-                { "type": "text", "text": "ขา1", "size": "xs", "color": "#ffffff", "weight": "bold", "flex": 3, "align": "center" },
-                { "type": "text", "text": "ขา2", "size": "xs", "color": "#ffffff", "weight": "bold", "flex": 3, "align": "center" },
-                { "type": "text", "text": "ขา3", "size": "xs", "color": "#ffffff", "weight": "bold", "flex": 3, "align": "center" },
-                { "type": "text", "text": "ขา4", "size": "xs", "color": "#ffffff", "weight": "bold", "flex": 3, "align": "center" },
-                { "type": "text", "text": "ขา5", "size": "xs", "color": "#ffffff", "weight": "bold", "flex": 3, "align": "center" },
-                { "type": "text", "text": "ขา6", "size": "xs", "color": "#ffffff", "weight": "bold", "flex": 3, "align": "center" }
-            ]
-        });
-
-        // 2. แถวข้อมูลผลการเล่นแต่ละรอบ (Data Rows)
         if (matchHistory && matchHistory.length > 0) {
-            // วนลูปย้อนหลังจากรอบล่าสุดลงไป
             const historyCopy = [...matchHistory].reverse();
             
             historyCopy.forEach(item => {
-                // หากเป็น Object โครงสร้างใหม่
                 if (typeof item === 'object' && item.legs) {
-                    let rowCells = [
-                        { "type": "text", "text": `#${item.round}`, "size": "xs", "color": "#aaaaaa", "flex": 2, "align": "center", "gravity": "center" },
-                        { 
-                            "type": "box", "layout": "vertical", "flex": 2, "backgroundColor": "#d32f2f", "cornerRadius": "md", "paddingAll": "xs",
-                            "contents": [{ "type": "text", "text": `${item.dealer}`, "size": "xs", "color": "#ffffff", "weight": "bold", "align": "center" }] 
-                        }
-                    ];
+                    
+                    // 1. ส่วนหัวรอบ + ผลเจ้ามือ
+                    historyFlexContents.push({
+                        "type": "box",
+                        "layout": "horizontal",
+                        "backgroundColor": "#2a1b38",
+                        "paddingAll": "xs",
+                        "cornerRadius": "xs",
+                        "contents": [
+                            { "type": "text", "text": `รอบที่ ${item.round}`, "size": "xs", "color": "#ffcc00", "weight": "bold", "flex": 1 },
+                            { "type": "text", "text": `เจ้ามือ: ${item.dealer}`, "size": "xs", "color": "#ff5252", "weight": "bold", "align": "end", "flex": 1 }
+                        ]
+                    });
 
-                    for (let l = 1; l <= 6; l++) {
-                        rowCells.push({
-                            "type": "box",
-                            "layout": "vertical",
-                            "flex": 3,
-                            "backgroundColor": "#2c2235",
-                            "cornerRadius": "sm",
-                            "paddingAll": "xs",
+                    // 2. แสดงผล ขา 1 - 3 (แถวแรก)
+                    let row1 = [];
+                    for (let l = 1; l <= 3; l++) {
+                        row1.push({
+                            "type": "box", "layout": "vertical", "flex": 1, "backgroundColor": "#1d1626", "paddingAll": "xs", "cornerRadius": "xs",
                             "contents": [
-                                { "type": "text", "text": item.legs[l] || "-", "size": "xs", "color": "#4fc3f7", "align": "center", "weight": "bold" }
+                                { "type": "text", "text": `ขา ${l}`, "size": "xxs", "color": "#aaaaaa", "align": "center" },
+                                { "type": "text", "text": `${item.legs[l] || '-'}`, "size": "xs", "color": "#4fc3f7", "weight": "bold", "align": "center" }
                             ]
                         });
                     }
 
-                    // แถวป๊อกเด้ง (ขา 1-6)
+                    // 3. แสดงผล ขา 4 - 6 (แถวสอง)
+                    let row2 = [];
+                    for (let l = 4; l <= 6; l++) {
+                        row2.push({
+                            "type": "box", "layout": "vertical", "flex": 1, "backgroundColor": "#1d1626", "paddingAll": "xs", "cornerRadius": "xs",
+                            "contents": [
+                                { "type": "text", "text": `ขา ${l}`, "size": "xxs", "color": "#aaaaaa", "align": "center" },
+                                { "type": "text", "text": `${item.legs[l] || '-'}`, "size": "xs", "color": "#4fc3f7", "weight": "bold", "align": "center" }
+                            ]
+                        });
+                    }
+
+                    // รวมขา 1-3
                     historyFlexContents.push({
-                        "type": "box",
-                        "layout": "horizontal",
-                        "spacing": "xs",
-                        "margin": "xs",
-                        "contents": rowCells
+                        "type": "box", "layout": "horizontal", "spacing": "xs", "margin": "xs",
+                        "contents": row1
                     });
 
-                    // แถวไฮโล ต่อท้ายด้านล่างของรอบนั้นๆ
+                    // รวมขา 4-6
                     historyFlexContents.push({
-                        "type": "box",
-                        "layout": "horizontal",
-                        "backgroundColor": "#1a1222",
-                        "paddingAll": "xs",
-                        "margin": "xs",
-                        "cornerRadius": "xs",
-                        "contents": [
-                            { "type": "text", "text": `   └ ${item.hilo}`, "size": "xs", "color": "#ffb74d", "wrap": true }
-                        ]
+                        "type": "box", "layout": "horizontal", "spacing": "xs", "margin": "xs",
+                        "contents": row2
                     });
 
-                    historyFlexContents.push({ "type": "separator", "color": "#2a2233", "margin": "xs" });
+                    // 4. แถวสรุปผลไฮโล
+                    if (item.hilo && item.hilo !== '-') {
+                        historyFlexContents.push({
+                            "type": "box", "layout": "horizontal", "backgroundColor": "#120e17", "paddingAll": "xs", "margin": "xs", "cornerRadius": "xs",
+                            "contents": [
+                                { "type": "text", "text": `${item.hilo}`, "size": "xxs", "color": "#ffb74d", "wrap": true }
+                            ]
+                        });
+                    }
+
+                    historyFlexContents.push({ "type": "separator", "color": "#332442", "margin": "sm" });
 
                 } else {
-                    // รองรับกรณีข้อมูลเก่าที่เป็น String
-                    historyFlexContents.push({
-                        "type": "text",
-                        "text": typeof item === 'object' ? JSON.stringify(item) : item,
-                        "size": "xs",
-                        "color": "#E2E1E4",
-                        "wrap": true
-                    });
+                    // ข้อมูลเก่าลบ/ละเว้นไม่ให้โชว์ข้อความมั่วๆ
                 }
             });
         } else {
             historyFlexContents.push({
-                "type": "text",
-                "text": "• ยังไม่มีข้อมูลสถิติย้อนหลัง",
-                "size": "xs",
-                "color": "#E2E1E4",
-                "style": "italic",
-                "align": "center"
+                "type": "text", "text": "• ยังไม่มีข้อมูลสถิติย้อนหลัง", "size": "xs", "color": "#E2E1E4", "style": "italic", "align": "center"
             });
         }
 

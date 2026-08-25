@@ -2679,71 +2679,46 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
         }
     }
 }
-                // ==================== [ คำสั่งสมาชิก: กดรับคืนยอดเสีย (พิมพ์: คืนยอดเสีย) ] ====================
-else if (userMsg === 'คืนยอดเสีย' || userMsg === 'cashback') {
-    const user = usersWallets[userId];
-    if (!user) return res.sendStatus(200);
-
-    const totalDeposit = user.totalDeposit || 0;
-    const totalWithdraw = user.totalWithdraw || 0;
-    const cashbackRate = 0.05; // 💡 ตั้งค่า % คืนยอดเสีย (0.05 = 5%)
-
-    // 1. คำนวณยอดเสียสุทธิ
-    const netLoss = totalDeposit - totalWithdraw;
-
-    if (netLoss <= 0) {
-        // ❌ ไม่เข้าเงื่อนไข (กำไรอยู่ หรือไม่ได้ฝากเงิน)
-        global.currentReplyText = `❌ **คุณยังไม่อยู่ในเงื่อนไขรับยอดเสีย**\n──────────────────\n📥 ยอดฝากรวม: ${totalDeposit.toLocaleString()} บ.\n📤 ยอดถอนรวม: ${totalWithdraw.toLocaleString()} บ.\n✨ ปัจจุบันคุณยังมียอดกำไรอยู่นะครับ สู้ๆ!`;
+                // ==================== [ คำสั่งสมาชิก: กดรับคืนยอดเสีย 5% ] ====================
+else if (userMsg === "รับยอดเสีย" || userMsg === "ยอดเสีย") {
+    // 1. เช็กก่อนว่าแอดมินเปิดระบบอยู่ไหม
+    if (!global.isCashbackOpen) {
+        replyText = "⚠️ ขณะนี้ **ยังไม่ถึงเวลาเปิดให้รับยอดเสีย** หรือหมดเวลาไปแล้วครับ\nโปรดรอติดตามประกาศจากแอดมินครับ";
     } else {
-        // ✅ ขาดทุน: คำนวณเงินคืน
-        const cashbackAmount = Math.floor(netLoss * cashbackRate);
+        const userKey = Object.keys(usersWallets).find(key => key === userId || usersWallets[key].memberNumber === currentUserMemberNumber);
+        const user = usersWallets[userKey];
 
-        if (cashbackAmount < 1) {
-            global.currentReplyText = `⚠️ **ยอดคืนของคุณน้อยเกินไป** (ต้องสะสมยอดเสียให้ได้เงินคืนขั้นต่ำ 1 บาทขึ้นไปครับ)`;
+        if (!user) {
+            replyText = "❌ ไม่พบข้อมูลสมาชิกในระบบครับ";
         } else {
-            // 💰 อัปเดตเงินเข้ากระเป๋าหลักทันที
-            user.balance = (user.balance || 0) + cashbackAmount;
+            const totalDeposit = user.totalDeposit || 0;
+            const totalWithdraw = user.totalWithdraw || 0;
+            const currentBalance = user.balance || 0;
 
-            // 🔄 ล้างยอดฝาก-ถอนสะสม เพื่อเริ่มนับรอบใหม่ (หรือตั้งค่าตามรอบของน้าได้เลย)
-            user.totalDeposit = 0;
-            user.totalWithdraw = 0;
+            // 🧮 คำนวณยอดเสียสุทธิ
+            const netLoss = totalDeposit - totalWithdraw - currentBalance;
 
-            // 💾 เซฟข้อมูล
-            if (typeof saveUsersWallets === 'function') saveUsersWallets();
+            if (netLoss <= 0) {
+                replyText = `⚠️ คุณ ${user.name} (ID: ${user.memberNumber}) ยังไม่อยู่ในเงื่อนไขรับยอดเสียครับ\n(ยอดเสียสุทธิ: 0 บาท)`;
+            } else {
+                const cashBackRate = 0.05; // 5% (ปรับเปอร์เซ็นต์ได้ตามต้องการ)
+                const cashbackAmount = Math.floor(netLoss * cashBackRate); // ปัดเศษทศนิยมออก
 
-            // 📊 ส่งการ์ดแจ้งรับเงินสำเร็จ
-            global.currentReplyFlex = {
-                "type": "flex",
-                "altText": `🎁 คุณได้รับเงินคืนยอดเสีย ${cashbackAmount.toLocaleString()} บาท`,
-                "contents": {
-                    "type": "bubble",
-                    "styles": { "body": { "backgroundColor": "#121214" } },
-                    "body": {
-                        "type": "box",
-                        "layout": "vertical",
-                        "spacing": "md",
-                        "contents": [
-                            { "type": "text", "text": "🎁 คืนยอดเสียสำเร็จ!", "weight": "bold", "color": "#00ff66", "size": "md", "align": "center" },
-                            { "type": "separator", "color": "#2a2a35" },
-                            {
-                                "type": "box",
-                                "layout": "vertical",
-                                "backgroundColor": "#1e1e24",
-                                "cornerRadius": "md",
-                                "paddingAll": "md",
-                                "spacing": "xs",
-                                "contents": [
-                                    { "type": "text", "text": `• ยอดเสียสุทธิ: ${netLoss.toLocaleString()} บาท`, "color": "#aaaaaa", "size": "xs" },
-                                    { "type": "text", "text": `• อัตราคืนเงิน: ${(cashbackRate * 100)}%`, "color": "#aaaaaa", "size": "xs" },
-                                    { "type": "text", "text": `💰 เครดิตเข้ากระเป๋า: +${cashbackAmount.toLocaleString()} บาท`, "color": "#ffd700", "weight": "bold", "size": "sm" }
-                                ]
-                            },
-                            { "type": "separator", "color": "#2a2a35" },
-                            { "type": "text", "text": "💳 ยอดฝาก-ถอนสะสมถูกรีเซ็ตเพื่อเริ่มรอบใหม่แล้วครับ", "size": "xxs", "color": "#8e8e93", "align": "center" }
-                        ]
-                    }
+                if (cashbackAmount <= 0) {
+                    replyText = `⚠️ ยอดเสียคงเหลือของคุณน้อยเกินไปที่จะคำนวณคืน 5% ครับ`;
+                } else {
+                    // 💰 เติมยอดเสียเข้า balance
+                    user.balance += cashbackAmount;
+
+                    // 🔄 รีเซ็ตค่าเพื่อไม่ให้กดรับซ้ำในรอบเดียวกันได้
+                    user.totalDeposit = user.balance;
+                    user.totalWithdraw = 0;
+
+                    await saveDataToFirebase();
+
+                    replyText = `🎁 **รับคืนยอดเสียสำเร็จ!** 🎉\n──────────────────\n👤 คุณ: ${user.name} (ID: ${user.memberNumber})\n📉 ยอดเสียสุทธิ: ${netLoss.toLocaleString()} บาท\n💸 คืนยอดเสีย (5%): +${cashbackAmount.toLocaleString()} บาท\n💰 เครดิตคงเหลือใหม่: ${user.balance.toLocaleString()} บาท`;
                 }
-            };
+            }
         }
     }
 }
@@ -5006,6 +4981,28 @@ else if (userMsg.toLowerCase() === 'cancel_reset_vip') {
     
     // ตั้งค่าข้อความตอบกลับธรรมดา (ปรับตามโครงสร้างส่งข้อความของน้าได้เลยครับ)
     global.currentReplyText = "❌ **ยกเลิกการรีเซ็ต VIP เรียบร้อยแล้ว** (ข้อมูลยังคงเหมือนเดิม)";
+}
+    // ==================== [ คำสั่งแอดมิน: เปิด/ปิด การรับคืนยอดเสีย ] ====================
+if (command === "เปิดยอดเสีย") {
+    if (!ADMIN_IDS.includes(userId)) return res.sendStatus(200);
+
+    global.isCashbackOpen = true;
+    replyText = "🔓 **เปิดระบบรับคืนยอดเสียเรียบร้อยแล้ว!**\nสมาชิกสามารถพิมพ์ \"รับยอดเสีย\" เพื่อกดรับเครดิตคืนได้เลยครับ";
+
+} else if (command === "ปิดยอดเสีย") {
+    if (!ADMIN_IDS.includes(userId)) return res.sendStatus(200);
+
+    global.isCashbackOpen = false;
+
+    // 🧹 [ล้างสิทธิ์หมดอายุ] ปรับยอดฝาก-ถอนสะสม ให้เท่ากับ balance ปัจจุบัน เพื่อเซ็ตยอดเสียเหลือ 0
+    for (let key in usersWallets) {
+        const currentBal = usersWallets[key].balance || 0;
+        usersWallets[key].totalDeposit = currentBal;
+        usersWallets[key].totalWithdraw = 0;
+    }
+
+    await saveDataToFirebase();
+    replyText = "🔒 **ปิดระบบรับคืนยอดเสียแล้ว!**\nยอดเสียที่ไม่ถูกกดรับในช่วงเวลาที่กำหนด ถือว่าหมดอายุและถูกรีเซ็ตเป็น 0 เรียบร้อยครับ";
 }
             // ==================== [ เพิ่มใหม่: คำสั่งแอดมินลบสมาชิกรายคนผ่านแชทส่วนตัว (del1, del2...) ] ====================
             else if (userMsg.startsWith('d') && !userMsg.includes('-') && !userMsg.endsWith('+')) {

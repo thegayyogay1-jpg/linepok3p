@@ -3010,11 +3010,11 @@ else if (originalMsg.startsWith('>')) {
                 const isTriple = (hiloDices[0] === hiloDices[1] && hiloDices[1] === hiloDices[2]);
                 let highLowText = "";
                 if (isTriple) highLowText = "ตอง 💥";
-                else if (hiloTotalScore === 11) highLowText = "11 ไฮโล 🎲";
+                else if (hiloTotalScore === 11) highLowText = "ไฮโล 🎲";
                 else if (hiloTotalScore >= 12) highLowText = "สูง 🔴";
                 else highLowText = "ต่ำ 🔵";
 
-                hiloResultText = `🎲${hiloTotalScore} แต้ม (${highLowText})`;
+                hiloResultText = `${highLowText}`;
             }
         }
 

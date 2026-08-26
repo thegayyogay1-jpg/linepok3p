@@ -3135,6 +3135,7 @@ if (clean.includes('*')) {
                     result3Cards = parseCardStr(innerContent, false, true, false);
                 }
             }
+           }
             roomResults[currentLeg] = {
                 leg: currentLeg,
                 twoCards: result2Cards,

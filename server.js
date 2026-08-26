@@ -1416,7 +1416,7 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                         { "type": "text", "text": `#${item.round}`, "size": "xxs", "color": "#ffcc00", "weight": "bold", "flex": 2, "align": "center", "gravity": "center" },
                         { 
                             "type": "box", "layout": "vertical", "flex": 3, "backgroundColor": "#0288d1", "cornerRadius": "sm", "paddingAll": "xs",
-                            "contents": [{ "type": "text", "text": `เจ้า:${item.dealer}`, "size": "xxs", "color": "#ffffff", "weight": "bold", "align": "center" }] 
+                            "contents": [{ "type": "text", "text": `${item.dealer}`, "size": "xxs", "color": "#ffffff", "weight": "bold", "align": "center" }] 
                         }
                     ];
 
@@ -1508,7 +1508,7 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                                 // ช่อง 3: รวมแต้ม
                                 {
                                     "type": "box", "layout": "vertical", "flex": 4, "backgroundColor": "#1a1222", "cornerRadius": "xs", "paddingAll": "xs",
-                                    "contents": [{ "type": "text", "text": scoreText, "size": "xxs", "color": "#aaaaaa", "align": "center" }]
+                                    "contents": [{ "type": "text", "text": scoreText, "size": "xxs", "color": "#ffcc00", "align": "center" }]
                                 },
                                 // ช่อง 4: ผล สูง/ต่ำ
                                 {
@@ -3820,7 +3820,7 @@ const userTotalWinLoss = pokdengWinLoss + hiloNetWinLoss;
             else if (typeof hiloDices !== 'undefined' && Array.isArray(hiloDices) && hiloDices.length > 0) {
                 let scoreText = typeof hiloTotalScore !== 'undefined' ? hiloTotalScore : '';
                 let resultText = typeof hiloResultText !== 'undefined' ? hiloResultText : '';
-                hiloSummaryText = `${hiloDices.join("-")} (${scoreText}แต้ม) ${resultText}`.trim();
+                hiloSummaryText = `${hiloDices.join("-")} ${scoreText}แต้ม ${resultText}`.trim();
             } 
             // 3. เผื่อใช้ lastHiloResult
             else if (typeof lastHiloResult !== 'undefined' && lastHiloResult) {

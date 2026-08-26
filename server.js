@@ -1474,12 +1474,18 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                         "type": "box", "layout": "horizontal", "spacing": "sm", "margin": "xs", "contents": row2Contents
                     });
 
-                    // --- 3. บรรทัดสรุปผลไฮโล ---
-                    if (item.hilo && item.hilo !== '-') {
+                    // --- 3. บรรทัดสรุปผลไฮโล (ปรับเงื่อนไขให้แสดงลงมาแน่นอน) ---
+                    const hiloDisplay = (item.hilo && item.hilo !== '') ? item.hilo : '-';
+                    if (hiloDisplay !== '-') {
                         historyFlexContents.push({
-                            "type": "box", "layout": "horizontal", "backgroundColor": "#1a1222", "paddingAll": "xs", "margin": "xs", "cornerRadius": "xs",
+                            "type": "box", 
+                            "layout": "horizontal", 
+                            "backgroundColor": "#1a1222", 
+                            "paddingAll": "xs", 
+                            "margin": "xs", 
+                            "cornerRadius": "xs",
                             "contents": [
-                                { "type": "text", "text": `└ 🎲 ไฮโล: ${item.hilo}`, "size": "xxs", "color": "#ffb74d", "wrap": true }
+                                { "type": "text", "text": `🎲 ไฮโล: ${hiloDisplay}`, "size": "xxs", "color": "#ffb74d", "wrap": true }
                             ]
                         });
                     }
@@ -3772,10 +3778,15 @@ const userTotalWinLoss = pokdengWinLoss + hiloNetWinLoss;
                 }
             }
 
-            // ดึงผลไฮโล
+            // 🎲 ตรวจสอบและดึงผลไฮโลให้ชัวร์
             let hiloSummaryText = "-";
-            if (typeof hiloDices !== 'undefined' && hiloDices.length === 3) {
-                hiloSummaryText = `${hiloDices.join("-")} (${hiloTotalScore}แต้ม) ${hiloResultText}`;
+            if (typeof hiloDices !== 'undefined' && Array.isArray(hiloDices) && hiloDices.length > 0) {
+                let scoreText = typeof hiloTotalScore !== 'undefined' ? hiloTotalScore : '';
+                let resultText = typeof hiloResultText !== 'undefined' ? hiloResultText : '';
+                hiloSummaryText = `${hiloDices.join("-")} (${scoreText}แต้ม) ${resultText}`.trim();
+            } else if (typeof lastHiloResult !== 'undefined' && lastHiloResult) {
+                // เผื่อใช้ตัวแปรชื่อ lastHiloResult
+                hiloSummaryText = lastHiloResult;
             }
 
             matchHistory.push({
@@ -3783,7 +3794,7 @@ const userTotalWinLoss = pokdengWinLoss + hiloNetWinLoss;
                 dealer: dealerDisplay,
                 dealerObj: JSON.parse(JSON.stringify(tempDealerResult)),
                 legs: legHistoryData,
-                hilo: hiloSummaryText
+                hilo: hiloSummaryText // บันทึกผลไฮโลลง Array
             });
 
             if (matchHistory.length > 5) matchHistory.shift(); 

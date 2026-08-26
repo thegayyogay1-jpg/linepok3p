@@ -1425,6 +1425,11 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                         const bg2 = getBgColor(legData.two, item.dealerObj);
                         const bg3 = getBgColor(legData.three, item.dealerObj);
 
+                        // 📌 เพิ่มเส้นคั่นแนวตั้งระหว่างขาก่อนหน้า
+                        if (l > 1) {
+                            row1Contents.push({ "type": "separator", "color": "#3d2b4e" });
+                        }
+
                         row1Contents.push({
                             "type": "box", "layout": "horizontal", "flex": 4, "spacing": "xs",
                             "contents": [
@@ -1450,6 +1455,11 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                         const legData = item.legs[l] || { display2: '-', display3: '-' };
                         const bg2 = getBgColor(legData.two, item.dealerObj);
                         const bg3 = getBgColor(legData.three, item.dealerObj);
+
+                        // 📌 เพิ่มเส้นคั่นแนวตั้งระหว่างขาก่อนหน้า
+                        if (l > 4) {
+                            row2Contents.push({ "type": "separator", "color": "#3d2b4e" });
+                        }
 
                         row2Contents.push({
                             "type": "box", "layout": "horizontal", "flex": 4, "spacing": "xs",
@@ -1488,6 +1498,13 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                         let resultBgColor = "#0288d1"; 
                         if (resultText.includes("สูง")) resultBgColor = "#d32f2f";
                         if (resultText.includes("11")) resultBgColor = "#ffb74d";
+
+                        // 📌 เส้นแบ่งแนวนอน คั่นระหว่างไพ่ป๊อกเด้ง กับ แถวไฮโล
+                        historyFlexContents.push({ 
+                            "type": "separator", 
+                            "color": "#e8eaf6", 
+                            "margin": "sm" 
+                        });
 
                         historyFlexContents.push({
                             "type": "box",

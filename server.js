@@ -1536,7 +1536,7 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                         });
                     }
 
-                    historyFlexContents.push({ "type": "separator", "color": "#2a2233", "margin": "sm" });
+                    historyFlexContents.push({ "type": "separator", "color": "#F2E9D3", "margin": "sm" });
 
                 } else {
                     historyFlexContents.push({
@@ -1571,7 +1571,7 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                                 "contents": [
                                     { "type": "text", "text": "🎰 เริ่มเปิดรอบแทงแล้วครับ 🎉", "weight": "bold", "color": "#00ff66", "size": "md", "align": "center" },
                                     { "type": "text", "text": `รอบที่: ${currentRound}`, "weight": "bold", "color": "#ffffff", "size": "xl", "align": "center", "margin": "none" },
-                                    { "type": "separator", "color": "#2a2233" },
+                                    { "type": "separator", "color": "#F2E9D3" },
                                     { "type": "text", "text": "📊 สถิติผลการเล่น 5 รอบล่าสุด", "size": "xs", "color": "#ffcc00", "weight": "bold" },
                                     
                                     // หัวตารางแบบชัดเจน (ขา 1/4 | ขา 2/5 | ขา 3/6)
@@ -1590,7 +1590,7 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                                         "type": "box", "layout": "vertical", "spacing": "xs", "contents": historyFlexContents 
                                     },
                                     
-                                    { "type": "separator", "color": "#2a2233" },
+                                    { "type": "separator", "color": "#F2E9D3" },
                                     { "type": "text", "text": "✨ สมาชิกสามารถส่งโพยเข้ามาได้เลยครับ 🎰", "size": "sm", "color": "#ffffff", "wrap": true, "align": "center", "weight": "bold" }
                                 ]
                             }
@@ -3805,6 +3805,10 @@ const userTotalWinLoss = pokdengWinLoss + hiloNetWinLoss;
 
                     if (name2.includes("ป๊อก 9")) name2 = "P9";
                     else if (name2.includes("ป๊อก 8")) name2 = "P8";
+                    else if (name2.includes("สเตฟฟลัช")) name3 = "รส";
+                    else if (name2.includes("ตอง")) name3 = "ต";
+                    else if (name2.includes("เซียน")) name3 = "ซ";
+                    else if (name2.includes("เรียง")) name3 = "ร";
                     
                     if (name3.includes("ตอง")) name3 = "ต";
                     else if (name3.includes("สเตฟฟลัช")) name3 = "รส";

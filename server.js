@@ -3130,9 +3130,10 @@ if (clean.includes('*')) {
                     result2Cards = parseCardStr(part1, false, false);
                     result3Cards = parseCardStr(part2, false, true);
                 } else {
-                    // กรณีพิมพ์ตัวเดียวโดดๆ (ต้องมี * ถึงจะเป็นป๊อก ถ้าไม่มีจะเป็นแต้มธรรมดา)
-                    result2Cards = parseCardStr(innerContent, false, false, false);
-                    result3Cards = parseCardStr(innerContent, false, true, false);
+                    // 3. กรณีพิมพ์ตัวเดียวโดดๆ เช่น 8* หรือ 8 (ไม่มีจั่วใบที่ 3)
+                    const singleResult = parseCardStr(innerContent, false, false);
+                    result2Cards = singleResult;
+                    result3Cards = singleResult; // ใช้ผลเดียวกันทั้ง 2 ใบและ 3 ใบ
                 }
             }
            }

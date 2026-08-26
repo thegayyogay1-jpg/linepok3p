@@ -3780,12 +3780,21 @@ const userTotalWinLoss = pokdengWinLoss + hiloNetWinLoss;
 
             // 🎲 ตรวจสอบและดึงผลไฮโลให้ชัวร์
             let hiloSummaryText = "-";
-            if (typeof hiloDices !== 'undefined' && Array.isArray(hiloDices) && hiloDices.length > 0) {
+            
+            // 1. เช็คจาก tempHiloDices (ตามที่เก็บใน Firebase)
+            if (typeof tempHiloDices !== 'undefined' && Array.isArray(tempHiloDices) && tempHiloDices.length > 0) {
+                const totalScore = tempHiloDices.reduce((a, b) => a + Number(b), 0);
+                const hiLoResult = totalScore >= 12 ? "สูง" : "ต่ำ";
+                hiloSummaryText = `${tempHiloDices.join("-")} (${totalScore}แต้ม) ${hiLoResult}`;
+            } 
+            // 2. เผื่อใช้ตัวแปร hiloDices
+            else if (typeof hiloDices !== 'undefined' && Array.isArray(hiloDices) && hiloDices.length > 0) {
                 let scoreText = typeof hiloTotalScore !== 'undefined' ? hiloTotalScore : '';
                 let resultText = typeof hiloResultText !== 'undefined' ? hiloResultText : '';
                 hiloSummaryText = `${hiloDices.join("-")} (${scoreText}แต้ม) ${resultText}`.trim();
-            } else if (typeof lastHiloResult !== 'undefined' && lastHiloResult) {
-                // เผื่อใช้ตัวแปรชื่อ lastHiloResult
+            } 
+            // 3. เผื่อใช้ lastHiloResult
+            else if (typeof lastHiloResult !== 'undefined' && lastHiloResult) {
                 hiloSummaryText = lastHiloResult;
             }
 
@@ -3802,7 +3811,8 @@ const userTotalWinLoss = pokdengWinLoss + hiloNetWinLoss;
             pastRoundsData[currentRound] = {
                 dealer: JSON.parse(JSON.stringify(tempDealerResult)),
                 rooms: JSON.parse(JSON.stringify(tempRoomResults)),
-                bets: JSON.parse(JSON.stringify(roundBets))
+                bets: JSON.parse(JSON.stringify(roundBets)),
+                hilo: hiloSummaryText // 👈 ยัดเก็บไว้ใน pastRoundsData ด้วย
             };
             
            // ==================== [ส่วนแปลงเป็น CAROUSEL สไลด์ข้าง] ====================

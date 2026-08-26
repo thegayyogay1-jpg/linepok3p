@@ -1474,18 +1474,47 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                         "type": "box", "layout": "horizontal", "spacing": "sm", "margin": "xs", "contents": row2Contents
                     });
 
-                    // --- 3. บรรทัดสรุปผลไฮโล (ปรับเงื่อนไขให้แสดงลงมาแน่นอน) ---
-                    const hiloDisplay = (item.hilo && item.hilo !== '') ? item.hilo : '-';
-                    if (hiloDisplay !== '-') {
+                    // --- 3. บรรทัดสรุปผลไฮโล (จัด UI ใหม่เข้าเซ็ตกับตาราง) ---
+                    const hiloDisplay = (item && item.hilo && item.hilo !== '-') ? item.hilo : null;
+
+                    if (hiloDisplay) {
+                        // แยกข้อความ เช่น "4-2-3 (9แต้ม) ต่ำ" ออกเป็นชิ้นๆ
+                        const parts = hiloDisplay.split(" ");
+                        const diceText = parts[0] || "-";
+                        const scoreText = parts[1] || "";
+                        const resultText = parts[2] || "";
+
+                        // เลือกสีเน้นผลลัพธ์: สูง = แดง, ต่ำ = ฟ้า/น้ำเงิน, 11ไฮโล = ทอง
+                        let resultBgColor = "#0288d1"; 
+                        if (resultText.includes("สูง")) resultBgColor = "#d32f2f";
+                        if (resultText.includes("11")) resultBgColor = "#ffb74d";
+
                         historyFlexContents.push({
-                            "type": "box", 
-                            "layout": "horizontal", 
-                            "backgroundColor": "#1a1222", 
-                            "paddingAll": "xs", 
-                            "margin": "xs", 
-                            "cornerRadius": "xs",
+                            "type": "box",
+                            "layout": "horizontal",
+                            "margin": "xs",
+                            "spacing": "xs",
                             "contents": [
-                                { "type": "text", "text": `🎲 ไฮโล: ${hiloDisplay}`, "size": "xxs", "color": "#ffb74d", "wrap": true }
+                                // ช่อง 1: หัวข้อ ไฮโล
+                                {
+                                    "type": "box", "layout": "vertical", "flex": 3, "backgroundColor": "#2a1b38", "cornerRadius": "xs", "paddingAll": "xs",
+                                    "contents": [{ "type": "text", "text": "🎲 ไฮโล", "size": "xxs", "color": "#ffcc00", "weight": "bold", "align": "center" }]
+                                },
+                                // ช่อง 2: หน้าเต๋า
+                                {
+                                    "type": "box", "layout": "vertical", "flex": 5, "backgroundColor": "#1a1222", "cornerRadius": "xs", "paddingAll": "xs",
+                                    "contents": [{ "type": "text", "text": diceText, "size": "xxs", "color": "#ffffff", "weight": "bold", "align": "center" }]
+                                },
+                                // ช่อง 3: รวมแต้ม
+                                {
+                                    "type": "box", "layout": "vertical", "flex": 4, "backgroundColor": "#1a1222", "cornerRadius": "xs", "paddingAll": "xs",
+                                    "contents": [{ "type": "text", "text": scoreText, "size": "xxs", "color": "#aaaaaa", "align": "center" }]
+                                },
+                                // ช่อง 4: ผล สูง/ต่ำ
+                                {
+                                    "type": "box", "layout": "vertical", "flex": 3, "backgroundColor": resultBgColor, "cornerRadius": "xs", "paddingAll": "xs",
+                                    "contents": [{ "type": "text", "text": resultText || "ผล", "size": "xxs", "color": "#ffffff", "weight": "bold", "align": "center" }]
+                                }
                             ]
                         });
                     }

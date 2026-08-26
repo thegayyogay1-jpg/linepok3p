@@ -3120,23 +3120,12 @@ if (clean.includes('*')) {
         result2Cards = parseCardStr(part1, false, false);
         result3Cards = parseCardStr(part2, false, true);
     } else {
-            // 2. ถ้าพิมพ์ติดกันแบบปกติ ให้ใช้ RegEx ช่วยผ่า (รองรับเครื่องหมาย * แล้ว)
-                const match = innerContent.match(/^([0-9tshfตร\*]+(?:\/*))([0-9tshfตร\*]+(?:\/*))$/i);
-                
-                if (match) {
-                    const part1 = match[1]; 
-                    const part2 = match[2]; 
-                    
-                    result2Cards = parseCardStr(part1, false, false);
-                    result3Cards = parseCardStr(part2, false, true);
-                } else {
-                    // 3. กรณีพิมพ์ตัวเดียวโดดๆ เช่น 8* หรือ 8 (ไม่มีจั่วใบที่ 3)
+            // 3. กรณีพิมพ์ตัวเดียวโดดๆ เช่น 8* หรือ 8 (ไม่มีจั่วใบที่ 3)
                     const singleResult = parseCardStr(innerContent, false, false);
                     result2Cards = singleResult;
                     result3Cards = singleResult; // ใช้ผลเดียวกันทั้ง 2 ใบและ 3 ใบ
                 }
             }
-           }
             roomResults[currentLeg] = {
                 leg: currentLeg,
                 twoCards: result2Cards,

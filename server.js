@@ -3055,9 +3055,12 @@ else if (originalMsg.startsWith('>')) {
             clean = clean.replace(/\//g, '');
 
             // เช็กป๊อกเจ้ามือ
-            if (isDealer && clean.includes('*')) { isPok = true; clean = clean.replace('*', ''); }
+            // ✅ โค้ดใหม่ (เช็ก * ทั้งผู้เล่นและเจ้ามือ)
+if (clean.includes('*')) { 
+    isPok = true; 
+    clean = clean.replace(/\*/g, ''); 
+}
             
-
             // แปลงแต้มพิเศษ (รองรับทั้งไทยและอังกฤษ)
             if (clean === 't' || clean === 'ต') { rawScore = 700; multiplier = 5; typeName = "ตอง"; }    
             else if (clean === 'f') { rawScore = 600; multiplier = 5; typeName = "เรียงสี"; } 
@@ -3117,17 +3120,21 @@ else if (originalMsg.startsWith('>')) {
         result2Cards = parseCardStr(part1, false, false);
         result3Cards = parseCardStr(part2, false, true);
     } else {
-            // กรณีพิมพ์ตัวเดียวโดดๆ
-                let pts = parseInt(innerContent);
-                if (!isNaN(pts) && (pts === 8 || pts === 9)) {
-                    result2Cards = parseCardStr(innerContent, false, false, true);
-                    result3Cards = parseCardStr(innerContent, false, true, true);
+            // 2. ถ้าพิมพ์ติดกันแบบปกติ ให้ใช้ RegEx ช่วยผ่า (รองรับเครื่องหมาย * แล้ว)
+                const match = innerContent.match(/^([0-9tshfตร\*]+(?:\/*))([0-9tshfตร\*]+(?:\/*))$/i);
+                
+                if (match) {
+                    const part1 = match[1]; 
+                    const part2 = match[2]; 
+                    
+                    result2Cards = parseCardStr(part1, false, false);
+                    result3Cards = parseCardStr(part2, false, true);
                 } else {
+                    // กรณีพิมพ์ตัวเดียวโดดๆ (ต้องมี * ถึงจะเป็นป๊อก ถ้าไม่มีจะเป็นแต้มธรรมดา)
                     result2Cards = parseCardStr(innerContent, false, false, false);
                     result3Cards = parseCardStr(innerContent, false, true, false);
                 }
             }
-           }
             roomResults[currentLeg] = {
                 leg: currentLeg,
                 twoCards: result2Cards,

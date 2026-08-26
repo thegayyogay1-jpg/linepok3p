@@ -1502,13 +1502,13 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                                 },
                                 // ช่อง 2: หน้าเต๋า
                                 {
-                                    "type": "box", "layout": "vertical", "flex": 5, "backgroundColor": "#1a1222", "cornerRadius": "xs", "paddingAll": "xs",
+                                    "type": "box", "layout": "vertical", "flex": 5, "backgroundColor": "#31234a", "cornerRadius": "xs", "paddingAll": "xs",
                                     "contents": [{ "type": "text", "text": diceText, "size": "xxs", "color": "#ffffff", "weight": "bold", "align": "center" }]
                                 },
                                 // ช่อง 3: รวมแต้ม
                                 {
-                                    "type": "box", "layout": "vertical", "flex": 4, "backgroundColor": "#1a1222", "cornerRadius": "xs", "paddingAll": "xs",
-                                    "contents": [{ "type": "text", "text": scoreText, "size": "xxs", "color": "#ffcc00", "align": "center" }]
+                                    "type": "box", "layout": "vertical", "flex": 4, "backgroundColor": "#1e293b", "cornerRadius": "xs", "paddingAll": "xs",
+                                    "contents": [{ "type": "text", "text": scoreText, "size": "xxs", "color": "#ffcc00", "weight": "bold", "align": "center" }]
                                 },
                                 // ช่อง 4: ผล สูง/ต่ำ
                                 {

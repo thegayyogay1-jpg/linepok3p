@@ -1406,7 +1406,7 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
         };
 
         if (matchHistory && matchHistory.length > 0) {
-            const historyCopy = [...matchHistory].reverse();
+            const historyCopy = [...matchHistory];
             
             historyCopy.forEach(item => {
                 if (typeof item === 'object' && item.legs) {

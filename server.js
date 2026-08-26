@@ -1427,7 +1427,7 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
 
                         // 📌 เพิ่มเส้นคั่นแนวตั้งระหว่างขาก่อนหน้า
                         if (l > 1) {
-                            row1Contents.push({ "type": "separator", "color": "#3d2b4e" });
+                            row1Contents.push({ "type": "separator", "color": "#e8eaf6" });
                         }
 
                         row1Contents.push({
@@ -1458,7 +1458,7 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
 
                         // 📌 เพิ่มเส้นคั่นแนวตั้งระหว่างขาก่อนหน้า
                         if (l > 4) {
-                            row2Contents.push({ "type": "separator", "color": "#3d2b4e" });
+                            row2Contents.push({ "type": "separator", "color": "#e8eaf6" });
                         }
 
                         row2Contents.push({

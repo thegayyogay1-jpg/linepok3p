@@ -3830,9 +3830,6 @@ const userTotalWinLoss = pokdengWinLoss + hiloNetWinLoss;
                     legHistoryData[leg] = { display2: "-", display3: "-", two: null, three: null };
                 }
             }
-
-            // 🎲 ตรวจสอบและดึงผลไฮโลให้ชัวร์
-            let hiloSummaryText = "-";
             
             // 🎲 ตรวจสอบและดึงผลไฮโลให้ชัวร์
             let hiloSummaryText = "-";

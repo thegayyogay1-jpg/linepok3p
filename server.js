@@ -2115,50 +2115,6 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
         }
     }
 }
-   // ==================== [ คำสั่งตั้งค่า ขา และ ใบ ] ====================
-// รองรับ: "ขา4 2", "ขา4 บ2", "ขา 4 2", "เปลี่ยน4 2", "ขา4"
-const changeModeMatch = userMsg.match(/^(?:เปลี่ยน|ขา)\s*([1-6])(?:\s*(?:บ)?([2-3]))?$/i);
-
-if (changeModeMatch) {
-    if (!ADMIN_IDS.includes(userId)) {
-        replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งนี้ครับ";
-    } else {
-        const targetLegs = parseInt(changeModeMatch[1]);
-        const targetCards = changeModeMatch[2] ? parseInt(changeModeMatch[2]) : 3; // ถ้าไม่พิมพ์เลขใบมา ให้ Default เป็น 3 ใบ
-
-        maxLegs = targetLegs;
-        cardMode = targetCards;
-
-        // 1. บันทึกลง Firebase
-        await saveDataToFirebase();
-
-        // 2. สร้างข้อความที่จะตอบกลับ
-        const modeNotice = `✅ ตั้งค่าระบบเรียบร้อย:\n• จำนวนขาผู้เล่น: ${maxLegs} ขา (+เจ้ามือ 1)\n• โหมดการเล่น: ${cardMode} ใบ`;
-
-        // 3. 🚀 ยิงข้อความตอบกลับทาง LINE API ทันที
-        try {
-            await axios.post('https://api.line.me/v2/bot/message/reply', {
-                replyToken: replyToken,
-                messages: [
-                    {
-                        "type": "text",
-                        "text": modeNotice
-                    }
-                ]
-            }, {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${TOKEN}`
-                }
-            });
-        } catch (error) {
-            console.error("❌ สั่งตอบกลับการตั้งค่าล้มเหลว:", error.response ? error.response.data : error.message);
-        }
-    }
-    
-    // จบการทำงานของคำสั่งนี้อย่างถูกต้อง
-    return res.sendStatus(200);
-}
         // ==================== [ 4. ระบบรับโพยป๊อกเด้ง + หักค้ำประกัน 3 เด้ง ] ====================
         else if (originalMsg.includes('-') && !originalMsg.trim().toLowerCase().startsWith('c/') && !originalMsg.trim().toLowerCase().startsWith('z')) {
                 if (!isRoundOpen) {

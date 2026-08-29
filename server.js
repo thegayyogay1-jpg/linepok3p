@@ -1496,8 +1496,13 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
 
                         // เลือกสีเน้นผลลัพธ์: สูง = แดง, ต่ำ = ฟ้า/น้ำเงิน, 11ไฮโล = ทอง
                         let resultBgColor = "#0288d1"; 
-                        if (resultText.includes("สูง")) resultBgColor = "#d32f2f";
-                        if (resultText.includes("11")) resultBgColor = "#ffb74d";
+                        if (resultText.includes("ตอง")) {
+                            resultBgColor = "#9c27b0"; // ตอง = สีม่วงนีออน/ม่วงสด
+                        } else if (resultText.includes("11")) {
+                            resultBgColor = "#ffb74d"; // 11 ไฮโล = สีทอง/ส้ม
+                        } else if (resultText.includes("สูง")) {
+                            resultBgColor = "#d32f2f"; // สูง = สีแดง
+                        }
 
                         // 📌 เส้นแบ่งแนวนอน คั่นระหว่างไพ่ป๊อกเด้ง กับ แถวไฮโล
                         historyFlexContents.push({ 
@@ -3829,10 +3834,28 @@ const userTotalWinLoss = pokdengWinLoss + hiloNetWinLoss;
             // 🎲 ตรวจสอบและดึงผลไฮโลให้ชัวร์
             let hiloSummaryText = "-";
             
-            // 1. เช็คจาก tempHiloDices (ตามที่เก็บใน Firebase)
-            if (typeof tempHiloDices !== 'undefined' && Array.isArray(tempHiloDices) && tempHiloDices.length > 0) {
+            // 🎲 ตรวจสอบและดึงผลไฮโลให้ชัวร์
+            let hiloSummaryText = "-";
+            
+            // 1. เช็กจาก tempHiloDices (ตามที่เก็บใน Firebase)
+            if (typeof tempHiloDices !== 'undefined' && Array.isArray(tempHiloDices) && tempHiloDices.length === 3) {
                 const totalScore = tempHiloDices.reduce((a, b) => a + Number(b), 0);
-                const hiLoResult = totalScore >= 12 ? "สูง" : "ต่ำ";
+                
+                let hiLoResult = "";
+                
+                // 📌 เช็กตอง (ถ้าเต๋า 3 ลูกเท่ากันหมด)
+                const isTriple = tempHiloDices[0] == tempHiloDices[1] && tempHiloDices[1] == tempHiloDices[2];
+                
+                if (isTriple) {
+                    hiLoResult = "ตอง";
+                } else if (totalScore === 11) {
+                    hiLoResult = "11 ไฮโล";
+                } else if (totalScore >= 12) {
+                    hiLoResult = "สูง";
+                } else {
+                    hiLoResult = "ต่ำ";
+                }
+
                 hiloSummaryText = `${tempHiloDices.join("-")} (${totalScore}แต้ม) ${hiLoResult}`;
             } 
             // 2. เผื่อใช้ตัวแปร hiloDices

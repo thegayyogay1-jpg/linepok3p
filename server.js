@@ -19,6 +19,7 @@ const FIREBASE_URL = "https://my-pokdeng-bot-default-rtdb.asia-southeast1.fireba
 
 let usersWallets = {};
 let nextMemberId = 1;
+let maxLegs = 6; // ค่าเริ่มต้นคือ 6 ขาผู้เล่น
 let isRoundOpen = false; // ตัวแปรจำสถานะ เปิด/ปิด รอบ
 let roundBets = {};      // ตัวแปรสำหรับจำโพยแทงในแต่ละรอบ
 let hiloUserTrackers = {}; // ตัวแปรเก็บประวัติการแทงสวน/กั๊กไฮโลของผู้เล่นแต่ละคนในรอบนั้นๆ
@@ -44,6 +45,7 @@ async function loadDataFromFirebase() {
         if (response.data) {
             usersWallets = response.data.usersWallets || {};
             nextMemberId = response.data.nextMemberId || 1;
+            maxLegs = response.data.maxLegs || 1;
             isRoundOpen = response.data.isRoundOpen !== undefined ? response.data.isRoundOpen : false;
             roundBets = response.data.roundBets || {};
             currentRound = response.data.currentRound || 0;
@@ -180,6 +182,7 @@ async function saveDataToFirebase() {
         await axios.put(`${FIREBASE_URL}system_data.json`, {
             usersWallets: usersWallets,
             nextMemberId: nextMemberId,
+            maxLegs: maxLegs,
             isRoundOpen: isRoundOpen,         // 💾 จำสถานะ เปิด/ปิด รอบ
             roundBets: roundBets,             // 💾 จำโพยแทงในแต่ละรอบ
             hiloRoundBets: hiloRoundBets,   // 💾บันทึกโหนดไฮโลแยกต่างหาก
@@ -1445,44 +1448,45 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                         });
                     }
 
-                    // --- 2. แถวล่าง: ช่องว่าง + ขา 4, 5, 6 ---
-                    let row2Contents = [
-                        { "type": "box", "layout": "vertical", "flex": 2, "contents": [{ "type": "text", "text": " ", "size": "xxs" }] },
-                        { "type": "box", "layout": "vertical", "flex": 3, "contents": [{ "type": "text", "text": " ", "size": "xxs" }] }
-                    ];
-
-                    for (let l = 4; l <= 6; l++) {
-                        const legData = item.legs[l] || { display2: '-', display3: '-' };
-                        const bg2 = getBgColor(legData.two, item.dealerObj);
-                        const bg3 = getBgColor(legData.three, item.dealerObj);
-
-                        // 📌 เพิ่มเส้นคั่นแนวตั้งระหว่างขาก่อนหน้า
-                        if (l > 4) {
-                            row2Contents.push({ "type": "separator", "color": "#e8eaf6" });
-                        }
-
-                        row2Contents.push({
-                            "type": "box", "layout": "horizontal", "flex": 4, "spacing": "xs",
-                            "contents": [
-                                {
-                                    "type": "box", "layout": "vertical", "flex": 1, "backgroundColor": bg2, "cornerRadius": "xs", "paddingAll": "xs",
-                                    "contents": [{ "type": "text", "text": `${legData.display2}`, "size": "xxs", "color": "#ffffff", "align": "center", "weight": "bold" }]
-                                },
-                                {
-                                    "type": "box", "layout": "vertical", "flex": 1, "backgroundColor": bg3, "cornerRadius": "xs", "paddingAll": "xs",
-                                    "contents": [{ "type": "text", "text": `${legData.display3}`, "size": "xxs", "color": "#ffffff", "align": "center", "weight": "bold" }]
-                                }
-                            ]
-                        });
-                    }
-
-                    // ประกอบกล่องรอบป๊อกเด้ง
                     historyFlexContents.push({
-                        "type": "box", "layout": "horizontal", "spacing": "sm", "margin": "xs", "contents": row1Contents
-                    });
-                    historyFlexContents.push({
-                        "type": "box", "layout": "horizontal", "spacing": "sm", "margin": "xs", "contents": row2Contents
-                    });
+    "type": "box", "layout": "horizontal", "spacing": "xs", "margin": "xs", "contents": row1Contents
+});
+
+// --- 2. แถวล่าง: ขา 4 ถึง 6 (แสดงเฉพาะเมื่อ maxLegs > 3 เท่านั้น) ---
+if (maxLegs > 3) {
+    let row2Contents = [
+        { "type": "box", "layout": "vertical", "flex": 2, "contents": [{ "type": "text", "text": " ", "size": "xxs" }] },
+        { "type": "box", "layout": "vertical", "flex": 3, "contents": [{ "type": "text", "text": " ", "size": "xxs" }] }
+    ];
+
+    for (let l = 4; l <= maxLegs; l++) {
+        const legData = item.legs[l] || { display2: '-', display3: '-' };
+        const bg2 = getBgColor(legData.two, item.dealerObj);
+        const bg3 = getBgColor(legData.three, item.dealerObj);
+
+        if (l > 4) {
+            row2Contents.push({ "type": "separator", "color": "#3d2b4e" });
+        }
+
+        row2Contents.push({
+            "type": "box", "layout": "horizontal", "flex": 4, "spacing": "xs",
+            "contents": [
+                {
+                    "type": "box", "layout": "vertical", "flex": 1, "backgroundColor": bg2, "cornerRadius": "xs", "paddingAll": "xs",
+                    "contents": [{ "type": "text", "text": `${legData.display2}`, "size": "xxs", "color": "#ffffff", "align": "center", "weight": "bold" }]
+                },
+                {
+                    "type": "box", "layout": "vertical", "flex": 1, "backgroundColor": bg3, "cornerRadius": "xs", "paddingAll": "xs",
+                    "contents": [{ "type": "text", "text": `${legData.display3}`, "size": "xxs", "color": "#ffffff", "align": "center", "weight": "bold" }]
+                }
+            ]
+        });
+    }
+
+    historyFlexContents.push({
+        "type": "box", "layout": "horizontal", "spacing": "xs", "margin": "xs", "contents": row2Contents
+    });
+}
 
                     // --- 3. บรรทัดสรุปผลไฮโล (จัด UI ใหม่เข้าเซ็ตกับตาราง) ---
                     const hiloDisplay = (item && item.hilo && item.hilo !== '-') ? item.hilo : null;
@@ -2077,6 +2081,20 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
             }
         }
     }
+}
+    // ==================== [ คำสั่งตั้งค่าจำนวนขาผู้เล่น ] ====================
+// รองรับพิมพ์ "เปลี่ยน4", "เปลี่ยน 4", "ขา4", "ขา 4"
+const changeLegMatch = userMsg.match(/^(?:เปลี่ยน|ขา)\s*([1-6])$/i);
+
+if (changeLegMatch) {
+    const targetTotal = parseInt(changeLegMatch[1]); // จำนวนรวมขาผู้เล่นที่ต้องการ
+    maxLegs = targetTotal;
+    
+    await saveDataToFirebase(); // บันทึกค่าลง Firebase
+    
+    replyText = `✅ ปรับจำนวนขาผู้เล่นเป็น ${maxLegs} ขา (+ เจ้ามือ 1 รวมเป็น ${maxLegs + 1} ขา) เรียบร้อยครับ!`;
+    // ... ส่ง replyText กลับ LINE ตามปกติ ...
+    return res.sendStatus(200);
 }
         // ==================== [ 4. ระบบรับโพยป๊อกเด้ง + หักค้ำประกัน 3 เด้ง ] ====================
         else if (originalMsg.includes('-') && !originalMsg.trim().toLowerCase().startsWith('c/') && !originalMsg.trim().toLowerCase().startsWith('z')) {
@@ -3099,7 +3117,7 @@ if (clean.includes('*')) {
         const dealerResult = parseCardStr(dealerRawStr, true, false);
 
         let roomResults = {}; 
-        const totalLegsToSend = Math.min(parts.length - 1, 6);
+        const totalLegsToSend = Math.min(parts.length - 1, maxLegs);
 
         // 🔄 วนลูปแกะรหัสผู้เล่นรายขา
         for (let i = 0; i < totalLegsToSend; i++) {
@@ -3804,7 +3822,7 @@ const userTotalWinLoss = pokdengWinLoss + hiloNetWinLoss;
             else dealerDisplay = `${tempDealerResult.score}`; // แต้มปกติ
 
             let legHistoryData = {};
-            for (let leg = 1; leg <= 6; leg++) {
+            for (let leg = 1; leg <= maxLegs; leg++) {
                 if (tempRoomResults[leg]) {
                     const legRes = tempRoomResults[leg];
 

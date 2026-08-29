@@ -1424,69 +1424,78 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                     ];
 
                     for (let l = 1; l <= 3; l++) {
-                        const legData = item.legs[l] || { display2: '-', display3: '-' };
-                        const bg2 = getBgColor(legData.two, item.dealerObj);
-                        const bg3 = getBgColor(legData.three, item.dealerObj);
-
-                        // 📌 เพิ่มเส้นคั่นแนวตั้งระหว่างขาก่อนหน้า
+                        const legData = (l <= maxLegs) ? (item.legs[l] || { display2: '-', display3: '-' }) : null;
                         if (l > 1) {
-                            row1Contents.push({ "type": "separator", "color": "#e8eaf6" });
+                            row1Contents.push({ "type": "separator", "color": "#3d2b4e" });
                         }
 
-                        row1Contents.push({
-                            "type": "box", "layout": "horizontal", "flex": 4, "spacing": "xs",
-                            "contents": [
-                                {
-                                    "type": "box", "layout": "vertical", "flex": 1, "backgroundColor": bg2, "cornerRadius": "xs", "paddingAll": "xs",
-                                    "contents": [{ "type": "text", "text": `${legData.display2}`, "size": "xxs", "color": "#ffffff", "align": "center", "weight": "bold" }]
-                                },
-                                {
-                                    "type": "box", "layout": "vertical", "flex": 1, "backgroundColor": bg3, "cornerRadius": "xs", "paddingAll": "xs",
-                                    "contents": [{ "type": "text", "text": `${legData.display3}`, "size": "xxs", "color": "#ffffff", "align": "center", "weight": "bold" }]
-                                }
-                            ]
-                        });
+                        if (legData) {
+                            const bg2 = getBgColor(legData.two, item.dealerObj);
+                            const bg3 = getBgColor(legData.three, item.dealerObj);
+                            row1Contents.push({
+                                "type": "box", "layout": "horizontal", "flex": 4, "spacing": "xs",
+                                "contents": [
+                                    {
+                                        "type": "box", "layout": "vertical", "flex": 1, "backgroundColor": bg2, "cornerRadius": "xs", "paddingAll": "xs",
+                                        "contents": [{ "type": "text", "text": `${legData.display2}`, "size": "xxs", "color": "#ffffff", "align": "center", "weight": "bold" }]
+                                    },
+                                    {
+                                        "type": "box", "layout": "vertical", "flex": 1, "backgroundColor": bg3, "cornerRadius": "xs", "paddingAll": "xs",
+                                        "contents": [{ "type": "text", "text": `${legData.display3}`, "size": "xxs", "color": "#ffffff", "align": "center", "weight": "bold" }]
+                                    }
+                                ]
+                            });
+                        } else {
+                            // ช่องว่างดันทรงสัดส่วน (Spacer)
+                            row1Contents.push({ "type": "box", "layout": "vertical", "flex": 4, "contents": [{ "type": "text", "text": " ", "size": "xxs" }] });
+                        }
                     }
 
                     historyFlexContents.push({
-    "type": "box", "layout": "horizontal", "spacing": "xs", "margin": "xs", "contents": row1Contents
-});
+                        "type": "box", "layout": "horizontal", "spacing": "xs", "margin": "xs", "contents": row1Contents
+                    });
 
-// --- 2. แถวล่าง: ขา 4 ถึง 6 (แสดงเฉพาะเมื่อ maxLegs > 3 เท่านั้น) ---
-if (maxLegs > 3) {
-    let row2Contents = [
-        { "type": "box", "layout": "vertical", "flex": 2, "contents": [{ "type": "text", "text": " ", "size": "xxs" }] },
-        { "type": "box", "layout": "vertical", "flex": 3, "contents": [{ "type": "text", "text": " ", "size": "xxs" }] }
-    ];
+                    // --- 2. แถวล่าง: ขา 4 ถึง 6 (แสดงเฉพาะเมื่อ maxLegs > 3) ---
+                    if (maxLegs > 3) {
+                        let row2Contents = [
+                            { "type": "box", "layout": "vertical", "flex": 2, "contents": [{ "type": "text", "text": " ", "size": "xxs" }] },
+                            { "type": "box", "layout": "vertical", "flex": 3, "contents": [{ "type": "text", "text": " ", "size": "xxs" }] }
+                        ];
 
-    for (let l = 4; l <= maxLegs; l++) {
-        const legData = item.legs[l] || { display2: '-', display3: '-' };
-        const bg2 = getBgColor(legData.two, item.dealerObj);
-        const bg3 = getBgColor(legData.three, item.dealerObj);
+                        for (let l = 4; l <= 6; l++) {
+                            // ถ้าขาไม่ถึง (เช่น กรณีเล่น 4 ขา แต่ลูปวิ่งถึงขา 5 และ 6) ให้สร้าง Spacer
+                            const legData = (l <= maxLegs) ? (item.legs[l] || { display2: '-', display3: '-' }) : null;
 
-        if (l > 4) {
-            row2Contents.push({ "type": "separator", "color": "#3d2b4e" });
-        }
+                            if (l > 4) {
+                                row2Contents.push({ "type": "separator", "color": "#3d2b4e" });
+                            }
 
-        row2Contents.push({
-            "type": "box", "layout": "horizontal", "flex": 4, "spacing": "xs",
-            "contents": [
-                {
-                    "type": "box", "layout": "vertical", "flex": 1, "backgroundColor": bg2, "cornerRadius": "xs", "paddingAll": "xs",
-                    "contents": [{ "type": "text", "text": `${legData.display2}`, "size": "xxs", "color": "#ffffff", "align": "center", "weight": "bold" }]
-                },
-                {
-                    "type": "box", "layout": "vertical", "flex": 1, "backgroundColor": bg3, "cornerRadius": "xs", "paddingAll": "xs",
-                    "contents": [{ "type": "text", "text": `${legData.display3}`, "size": "xxs", "color": "#ffffff", "align": "center", "weight": "bold" }]
-                }
-            ]
-        });
-    }
+                            if (legData) {
+                                const bg2 = getBgColor(legData.two, item.dealerObj);
+                                const bg3 = getBgColor(legData.three, item.dealerObj);
+                                row2Contents.push({
+                                    "type": "box", "layout": "horizontal", "flex": 4, "spacing": "xs",
+                                    "contents": [
+                                        {
+                                            "type": "box", "layout": "vertical", "flex": 1, "backgroundColor": bg2, "cornerRadius": "xs", "paddingAll": "xs",
+                                            "contents": [{ "type": "text", "text": `${legData.display2}`, "size": "xxs", "color": "#ffffff", "align": "center", "weight": "bold" }]
+                                        },
+                                        {
+                                            "type": "box", "layout": "vertical", "flex": 1, "backgroundColor": bg3, "cornerRadius": "xs", "paddingAll": "xs",
+                                            "contents": [{ "type": "text", "text": `${legData.display3}`, "size": "xxs", "color": "#ffffff", "align": "center", "weight": "bold" }]
+                                        }
+                                    ]
+                                });
+                            } else {
+                                // 📌 ช่องว่างดันสัดส่วนให้ขา 4 อยู่ตรงช่อง "ขา 1/4" ด้านบนพอดี
+                                row2Contents.push({ "type": "box", "layout": "vertical", "flex": 4, "contents": [{ "type": "text", "text": " ", "size": "xxs" }] });
+                            }
+                        }
 
-    historyFlexContents.push({
-        "type": "box", "layout": "horizontal", "spacing": "xs", "margin": "xs", "contents": row2Contents
-    });
-}
+                        historyFlexContents.push({
+                            "type": "box", "layout": "horizontal", "spacing": "xs", "margin": "xs", "contents": row2Contents
+                        });
+                    }
 
                     // --- 3. บรรทัดสรุปผลไฮโล (จัด UI ใหม่เข้าเซ็ตกับตาราง) ---
                     const hiloDisplay = (item && item.hilo && item.hilo !== '-') ? item.hilo : null;

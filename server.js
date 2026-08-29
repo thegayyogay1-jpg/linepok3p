@@ -1371,7 +1371,24 @@ try {
                         replyText = queueText;
                     }
                 }
-            }    
+            }
+                // ==================== [ 2. คำสั่งเปลี่ยน ขา / ใบ ] ====================
+else if (/^(?:เปลี่ยน|ขา)\s*([1-6])(?:\s*(?:บ)?([2-3]))?$/i.test(userMsg)) {
+    if (!ADMIN_IDS.includes(userId)) {
+        replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งนี้ครับ";
+    } else {
+        const match = userMsg.match(/^(?:เปลี่ยน|ขา)\s*([1-6])(?:\s*(?:บ)?([2-3]))?$/i);
+        const targetLegs = parseInt(match[1]);
+        const targetCards = match[2] ? parseInt(match[2]) : 3;
+
+        maxLegs = targetLegs;
+        cardMode = targetCards;
+
+        await saveDataToFirebase();
+
+        replyText = `✅ ตั้งค่าระบบเรียบร้อย:\n• จำนวนขาผู้เล่น: ${maxLegs} ขา (+เจ้ามือ 1)\n• โหมดการเล่น: ${cardMode} ใบ`;
+    }
+}
            // ==================== [ 2. แอดมิน เปิด/ปิดรอบแทง - เวอร์ชันป้องกันมือลั่น ] ====================
 else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
     if (!ADMIN_IDS.includes(userId)) {

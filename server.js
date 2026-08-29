@@ -1423,8 +1423,7 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                         }
                     ];
 
-                    for (let l = 1; l <= 3; l++) {
-                        const legData = (l <= maxLegs) ? (item.legs[l] || { display2: '-', display3: '-' }) : null;
+                    // 📌 ใส่เส้นแบ่งเฉพาะกรณีที่ไม่ใช่คอลัมน์แรก
                         if (l > 1) {
                             row1Contents.push({ "type": "separator", "color": "#80deea" });
                         }
@@ -1466,8 +1465,12 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                             // ถ้าขาไม่ถึง (เช่น กรณีเล่น 4 ขา แต่ลูปวิ่งถึงขา 5 และ 6) ให้สร้าง Spacer
                             const legData = (l <= maxLegs) ? (item.legs[l] || { display2: '-', display3: '-' }) : null;
 
-                            if (l > 4) {
+                            // 📌 ปรับแก้ไข: ใส่เส้นแบ่งเฉพาะเมื่อมีปุ่มสถิติจริงทั้งช่องก่อนหน้าและช่องนี้
+                            if (l > 4 && l <= maxLegs) {
                                 row2Contents.push({ "type": "separator", "color": "#80deea" });
+                            } else if (l > 4) {
+                                // ถ้าเป็นช่องว่าง Spacer ให้ใส่กล่องใสไร้เส้นแทนเพื่อรักษาความกว้างเท่ากับ separator
+                                row2Contents.push({ "type": "box", "layout": "vertical", "width": "1px", "contents": [{ "type": "text", "text": " ", "size": "xxs" }] });
                             }
 
                             if (legData) {

@@ -1492,7 +1492,7 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                         const parts = hiloDisplay.split(" ");
                         const diceText = parts[0] || "-";
                         const scoreText = (parts[1] || "").replace(/[\(\)]/g, '');
-                        const resultText = parts[2] || "";
+                        let resultText = parts[2] || "";
 
                         // เลือกสีเน้นผลลัพธ์: สูง = แดง, ต่ำ = ฟ้า/น้ำเงิน, 11ไฮโล = ทอง
                         let resultBgColor = "#0288d1"; 

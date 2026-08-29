@@ -20,6 +20,7 @@ const FIREBASE_URL = "https://my-pokdeng-bot-default-rtdb.asia-southeast1.fireba
 let usersWallets = {};
 let nextMemberId = 1;
 let maxLegs = 6; // ค่าเริ่มต้นคือ 6 ขาผู้เล่น
+let cardMode = 3;  // จำนวนใบไพ่ (ค่าเริ่มต้น 3 ใบ)
 let isRoundOpen = false; // ตัวแปรจำสถานะ เปิด/ปิด รอบ
 let roundBets = {};      // ตัวแปรสำหรับจำโพยแทงในแต่ละรอบ
 let hiloUserTrackers = {}; // ตัวแปรเก็บประวัติการแทงสวน/กั๊กไฮโลของผู้เล่นแต่ละคนในรอบนั้นๆ
@@ -46,6 +47,7 @@ async function loadDataFromFirebase() {
             usersWallets = response.data.usersWallets || {};
             nextMemberId = response.data.nextMemberId || 1;
             maxLegs = response.data.maxLegs || 6;
+            cardMode = response.data.cardMode || 3;
             isRoundOpen = response.data.isRoundOpen !== undefined ? response.data.isRoundOpen : false;
             roundBets = response.data.roundBets || {};
             currentRound = response.data.currentRound || 0;
@@ -183,6 +185,7 @@ async function saveDataToFirebase() {
             usersWallets: usersWallets,
             nextMemberId: nextMemberId,
             maxLegs: maxLegs,
+            cardMode: cardMode,
             isRoundOpen: isRoundOpen,         // 💾 จำสถานะ เปิด/ปิด รอบ
             roundBets: roundBets,             // 💾 จำโพยแทงในแต่ละรอบ
             hiloRoundBets: hiloRoundBets,   // 💾บันทึกโหนดไฮโลแยกต่างหาก
@@ -1434,18 +1437,26 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                         if (legData) {
                             const bg2 = getBgColor(legData.two, item.dealerObj);
                             const bg3 = getBgColor(legData.three, item.dealerObj);
+                            
+                            // 📌 1. สร้างบล็อกของใบที่ 1-2 ไว้เสมอ
+                            let legBoxContents = [
+                                {
+                                    "type": "box", "layout": "vertical", "flex": 1, "backgroundColor": bg2, "cornerRadius": "xs", "paddingAll": "xs",
+                                    "contents": [{ "type": "text", "text": `${legData.display2}`, "size": "xxs", "color": "#ffffff", "align": "center", "weight": "bold" }]
+                                }
+                            ];
+
+                            // 📌 2. ถ้าเป็นโหมด 3 ใบ ค่อยดันบล็อกใบที่ 3 เพิ่มเข้าไป
+                            if (cardMode === 3) {
+                                legBoxContents.push({
+                                    "type": "box", "layout": "vertical", "flex": 1, "backgroundColor": bg3, "cornerRadius": "xs", "paddingAll": "xs",
+                                    "contents": [{ "type": "text", "text": `${legData.display3}`, "size": "xxs", "color": "#ffffff", "align": "center", "weight": "bold" }]
+                                });
+                            }
+
                             row1Contents.push({
                                 "type": "box", "layout": "horizontal", "flex": 4, "spacing": "xs",
-                                "contents": [
-                                    {
-                                        "type": "box", "layout": "vertical", "flex": 1, "backgroundColor": bg2, "cornerRadius": "xs", "paddingAll": "xs",
-                                        "contents": [{ "type": "text", "text": `${legData.display2}`, "size": "xxs", "color": "#ffffff", "align": "center", "weight": "bold" }]
-                                    },
-                                    {
-                                        "type": "box", "layout": "vertical", "flex": 1, "backgroundColor": bg3, "cornerRadius": "xs", "paddingAll": "xs",
-                                        "contents": [{ "type": "text", "text": `${legData.display3}`, "size": "xxs", "color": "#ffffff", "align": "center", "weight": "bold" }]
-                                    }
-                                ]
+                                "contents": legBoxContents
                             });
                         } else {
                             // ช่องว่างดันทรงสัดส่วน (Spacer)
@@ -2096,18 +2107,22 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
         }
     }
 }
-    // ==================== [ คำสั่งตั้งค่าจำนวนขาผู้เล่น ] ====================
-// รองรับพิมพ์ "เปลี่ยน4", "เปลี่ยน 4", "ขา4", "ขา 4"
-const changeLegMatch = userMsg.match(/^(?:เปลี่ยน|ขา)\s*([1-6])$/i);
+    // ==================== [ คำสั่งตั้งค่า ขา และ ใบ ] ====================
+// รองรับ: "ขา4 2", "ขา4 บ2", "ขา 4 2", "เปลี่ยน4 2", "ขา4"
+const changeModeMatch = userMsg.match(/^(?:เปลี่ยน|ขา)\s*([1-6])(?:\s*(?:บ)?([2-3]))?$/i);
 
-if (changeLegMatch) {
-    const targetTotal = parseInt(changeLegMatch[1]); // จำนวนรวมขาผู้เล่นที่ต้องการ
-    maxLegs = targetTotal;
+if (changeModeMatch) {
+    const targetLegs = parseInt(changeModeMatch[1]);
+    const targetCards = changeModeMatch[2] ? parseInt(changeModeMatch[2]) : 3; // ถ้าไม่พิมพ์เลขใบมา ให้ Default เป็น 3 ใบ
+
+    maxLegs = targetLegs;
+    cardMode = targetCards;
+
+    await saveDataToFirebase();
+
+    replyText = `✅ ตั้งค่าระบบเรียบร้อย:\n• จำนวนขาผู้เล่น: ${maxLegs} ขา (+เจ้ามือ 1)\n• โหมดการเล่น: ${cardMode} ใบ`;
     
-    await saveDataToFirebase(); // บันทึกค่าลง Firebase
-    
-    replyText = `✅ ปรับจำนวนขาผู้เล่นเป็น ${maxLegs} ขา (+ เจ้ามือ 1 รวมเป็น ${maxLegs + 1} ขา) เรียบร้อยครับ!`;
-    // ... ส่ง replyText กลับ LINE ตามปกติ ...
+    // ... โค้ดส่ง replyText กลับ LINE ตามปกติ ...
     return res.sendStatus(200);
 }
         // ==================== [ 4. ระบบรับโพยป๊อกเด้ง + หักค้ำประกัน 3 เด้ง ] ====================

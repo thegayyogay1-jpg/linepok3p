@@ -1426,7 +1426,7 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                     for (let l = 1; l <= 3; l++) {
                         const legData = (l <= maxLegs) ? (item.legs[l] || { display2: '-', display3: '-' }) : null;
                         if (l > 1) {
-                            row1Contents.push({ "type": "separator", "color": "#3d2b4e" });
+                            row1Contents.push({ "type": "separator", "color": "#80deea" });
                         }
 
                         if (legData) {
@@ -1467,7 +1467,7 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                             const legData = (l <= maxLegs) ? (item.legs[l] || { display2: '-', display3: '-' }) : null;
 
                             if (l > 4) {
-                                row2Contents.push({ "type": "separator", "color": "#3d2b4e" });
+                                row2Contents.push({ "type": "separator", "color": "#80deea" });
                             }
 
                             if (legData) {

@@ -1497,13 +1497,18 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                         // เลือกสีเน้นผลลัพธ์: สูง = แดง, ต่ำ = ฟ้า/น้ำเงิน, 11ไฮโล = ทอง
                         let resultBgColor = "#0288d1"; 
                         if (resultText.includes("ตอง")) {
-                            resultBgColor = "#9c27b0"; // ตอง = สีม่วงนีออน/ม่วงสด
-                        } else if (resultText.includes("11")) {
-                            resultBgColor = "#ffb74d"; // 11 ไฮโล = สีทอง/ส้ม
+                            resultBgColor = "#9c27b0"; // สีม่วง
+                            resultText = "ตอง";
+                        } else if (resultText.includes("11") || resultText.includes("ไฮโล")) {
+                            resultBgColor = "#ffb74d"; // สีส้ม/ทอง
+                            resultText = "ไฮโล"; // 👈 เปลี่ยนเป็น "11ไฮโล" (หรือเปลี่ยนเป็น "ไฮโล" ตามที่ชอบได้เลยครับ)
                         } else if (resultText.includes("สูง")) {
-                            resultBgColor = "#d32f2f"; // สูง = สีแดง
+                            resultBgColor = "#d32f2f"; // สีแดง
+                            resultText = "สูง";
+                        } else if (resultText.includes("ต่ำ")) {
+                            resultBgColor = "#0288d1"; // สีฟ้า
+                            resultText = "ต่ำ";
                         }
-
                         // 📌 เส้นแบ่งแนวนอน คั่นระหว่างไพ่ป๊อกเด้ง กับ แถวไฮโล
                         historyFlexContents.push({ 
                             "type": "separator", 
@@ -3846,7 +3851,7 @@ const userTotalWinLoss = pokdengWinLoss + hiloNetWinLoss;
                 if (isTriple) {
                     hiLoResult = "ตอง";
                 } else if (totalScore === 11) {
-                    hiLoResult = "11 ไฮโล";
+                    hiLoResult = "11ไฮโล";
                 } else if (totalScore >= 12) {
                     hiLoResult = "สูง";
                 } else {

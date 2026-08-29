@@ -1486,21 +1486,29 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                                 row2Contents.push({ "type": "box", "layout": "vertical", "width": "1px", "contents": [{ "type": "text", "text": " ", "size": "xxs" }] });
                             }
 
-                            if (legData) {
+                           if (legData) {
                                 const bg2 = getBgColor(legData.two, item.dealerObj);
                                 const bg3 = getBgColor(legData.three, item.dealerObj);
+
+                                // 📌 สร้างบล็อกใบที่ 1-2 ไว้ก่อน
+                                let legBoxContents = [
+                                    {
+                                        "type": "box", "layout": "vertical", "flex": 1, "backgroundColor": bg2, "cornerRadius": "xs", "paddingAll": "xs",
+                                        "contents": [{ "type": "text", "text": `${legData.display2}`, "size": "xxs", "color": "#ffffff", "align": "center", "weight": "bold" }]
+                                    }
+                                ];
+
+                                // 📌 ถ้าเป็นโหมด 3 ใบ ค่อยดันบล็อกใบที่ 3 เพิ่มเข้ามา
+                                if (cardMode === 3) {
+                                    legBoxContents.push({
+                                        "type": "box", "layout": "vertical", "flex": 1, "backgroundColor": bg3, "cornerRadius": "xs", "paddingAll": "xs",
+                                        "contents": [{ "type": "text", "text": `${legData.display3}`, "size": "xxs", "color": "#ffffff", "align": "center", "weight": "bold" }]
+                                });
+                                }
+
                                 row2Contents.push({
                                     "type": "box", "layout": "horizontal", "flex": 4, "spacing": "xs",
-                                    "contents": [
-                                        {
-                                            "type": "box", "layout": "vertical", "flex": 1, "backgroundColor": bg2, "cornerRadius": "xs", "paddingAll": "xs",
-                                            "contents": [{ "type": "text", "text": `${legData.display2}`, "size": "xxs", "color": "#ffffff", "align": "center", "weight": "bold" }]
-                                        },
-                                        {
-                                            "type": "box", "layout": "vertical", "flex": 1, "backgroundColor": bg3, "cornerRadius": "xs", "paddingAll": "xs",
-                                            "contents": [{ "type": "text", "text": `${legData.display3}`, "size": "xxs", "color": "#ffffff", "align": "center", "weight": "bold" }]
-                                        }
-                                    ]
+                                    "contents": legBoxContents
                                 });
                             } else {
                                 // 📌 ช่องว่าง Spacer ดันตำแหน่งให้อยู่ตรงกับขา 1 ด้านบนพอดี

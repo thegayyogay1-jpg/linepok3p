@@ -45,7 +45,7 @@ async function loadDataFromFirebase() {
         if (response.data) {
             usersWallets = response.data.usersWallets || {};
             nextMemberId = response.data.nextMemberId || 1;
-            maxLegs = response.data.maxLegs || 1;
+            maxLegs = response.data.maxLegs || 6;
             isRoundOpen = response.data.isRoundOpen !== undefined ? response.data.isRoundOpen : false;
             roundBets = response.data.roundBets || {};
             currentRound = response.data.currentRound || 0;

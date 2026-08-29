@@ -1498,7 +1498,7 @@ else if (userMsg === 'o' || userMsg === 'x' || userMsg === 'rst') {
                         let resultBgColor = "#0288d1"; 
                         if (resultText.includes("ตอง")) {
                             resultBgColor = "#9c27b0"; // ตอง = สีม่วงนีออน/ม่วงสด
-                        } else if (resultText.includes("ไฮโล")) {
+                        } else if (resultText.includes("11")) {
                             resultBgColor = "#ffb74d"; // 11 ไฮโล = สีทอง/ส้ม
                         } else if (resultText.includes("สูง")) {
                             resultBgColor = "#d32f2f"; // สูง = สีแดง

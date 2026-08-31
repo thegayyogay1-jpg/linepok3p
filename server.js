@@ -850,7 +850,7 @@ else if (action === 'ยอดเสีย' || postbackData.includes("action=ย
 
                     // ล้างค่าโปรโมชั่นและเทิร์นโอเวอร์เก่าทิ้ง
                     user.activePromotion = null;
-                    user.currentTurnoverRequired = 0;
+                    user.turnoverTarget = 0;
                     user.activeBonusAmount = 0;
                     
                     console.log(`🧹 ล้างโปรโมชั่นติดค้างของสมาชิกที่ ${user.memberNumber} เรียบร้อยแล้ว`);
@@ -929,7 +929,7 @@ else if (action === 'ยอดเสีย' || postbackData.includes("action=ย
             
                                         // ล้างค่าโปรโมชั่นและเทิร์นโอเวอร์เก่าทิ้ง
                                         user.activePromotion = null;
-                                        user.currentTurnoverRequired = 0;
+                                        user.turnoverTarget = 0;
                                         user.activeBonusAmount = 0;
                                     }
             
@@ -2294,22 +2294,29 @@ else if (userMsg === "เช็คโปร" || userMsg === "โปรโมช�
         replyText = text;
     }
 }
-    // ==================== [ 2. ส่วนของสมาชิก: พิมพ์รหัสเพื่อขอรับโปรโมชั่น ] ====================
-// ตรวจสอบว่าข้อความที่พิมพ์เข้ามา ตรงกับรหัสโปรที่มีอยู่ในระบบหรือไม่
+   // ==================== [ 2. ส่วนของสมาชิก: พิมพ์รหัสเพื่อขอรับโปรโมชั่น ] ====================
 else if (promotions[userMsg.trim()]) {
     const promoCode = userMsg.trim();
     const promo = promotions[promoCode];
 
     // ดึงข้อมูลผู้ใช้ (หากยังไม่มีโครงสร้าง ให้สร้างค่าเริ่มต้น)
     if (!usersWallets[userId]) {
-        usersWallets[userId] = { balance: 0, lastDeposit: 0, activePromotion: null, currentTurnoverRequired: 0, claimedPromotions: [] };
+        usersWallets[userId] = { 
+            balance: 0, 
+            lastDeposit: 0, 
+            activePromotion: null, 
+            turnoverTarget: 0, 
+            activeBonusAmount: 0, 
+            claimedPromotions: [] 
+        };
     }
     const user = usersWallets[userId];
 
     // จัดการค่า Array/Field เพื่อป้องกัน Error กรณีเป็นผู้เล่นเก่า
     if (!user.claimedPromotions) user.claimedPromotions = [];
     if (user.activePromotion === undefined) user.activePromotion = null;
-    if (user.currentTurnoverRequired === undefined) user.currentTurnoverRequired = 0;
+    if (user.turnoverTarget === undefined) user.turnoverTarget = 0;
+    if (user.activeBonusAmount === undefined) user.activeBonusAmount = 0;
 
     // 🔴 [เงื่อนไขที่ 1] เช็กว่ากำลังติดโปรโมชั่นอื่นอยู่หรือไม่ (ห้ามรับซ้อน)
     if (user.activePromotion !== null) {
@@ -2340,7 +2347,8 @@ else if (promotions[userMsg.trim()]) {
         // 💾 อัปเดตข้อมูลผู้เล่น
         user.balance = (user.balance || 0) + bonusAmount; // เพิ่มโบนัสเข้ายอดเงิน
         user.activePromotion = promoCode;                 // บันทึกโปรที่กำลังใช้งาน
-        user.currentTurnoverRequired = totalTurnoverRequired; // บันทึกยอดเทิร์นที่ต้องทำ
+        user.activeBonusAmount = bonusAmount;             // 🌟 บันทึกยอดโบนัสไว้ (ใช้สำหรับหักออกเวลาฝากใหม่)
+        user.turnoverTarget = totalTurnoverRequired;      // 🌟 ใช้ turnoverTarget ตัวเดิมที่ตรงกับ Firebase
         user.claimedPromotions.push(promoCode);            // บันทึกประวัติว่าเคยรับโปรนี้แล้ว
 
         await saveDataToFirebase(); // บันทึกลง Firebase
@@ -4729,7 +4737,7 @@ else if (command.toLowerCase() === "y") {
 
                         // 🌟 [วางตรงนี้] ถ้าถอนเงินจนเครดิตหมดกระเป๋า (balance เหลือ 0) ให้ล้างโปรโมชั่นและเทิร์นทันที
                         user.activePromotion = null;
-                        user.currentTurnoverRequired = 0;
+                        user.turnoverTarget = 0;
                         
                         // 🔓 2. ทำการปลดล็อกบัญชีให้ส่งโพยใหม่ได้ตามปกติ
                         user.isWithdrawLocked = false;

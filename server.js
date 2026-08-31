@@ -5737,13 +5737,32 @@ if (userMsg === '3' || userMsg === '2' || userMsg === '1') {
     }
 }
 
-            // ==================== [ จุดตรวจสอบคัดกรอง: ป้องกันไม่ให้บุคคลทั่วไปใช้งานบอทในแชทส่วนตัว ] ====================
-            if (event.source.type === 'user') {
-                // 👥 เช็กว่า ID คนทักอยู่ในกล่องแอดมินรวมไหม ถ้ายืนยันว่าไม่ใช่แอดมิน ให้บอท "นิ่งเงียบสนิท" ทันที
-                if (!ADMIN_IDS.includes(userId)) {
-                    return res.sendStatus(200);
-                }
-            }
+           // ==================== [ จุดตรวจสอบคัดกรอง: ป้องกันไม่ให้บุคคลทั่วไปใช้งานบอทในแชทส่วนตัว ] ====================
+if (event.source.type === 'user') {
+    // 👥 ถ้าไม่ใช่แอดมิน ให้เช็กก่อนว่าข้อความตรงกับคำสั่งที่อนุญาตให้สมาชิกทั่วไปใช้ได้ไหม
+    if (!ADMIN_IDS.includes(userId)) {
+        
+        const cleanMsg = userMsg.trim();
+        const origMsg = originalMsg ? originalMsg.trim() : cleanMsg;
+
+        // 1. คำสั่งเช็กยอด/โพย: "c" หรือ "C"
+        const isCheckBalance = cleanMsg.toLowerCase() === 'c' || cleanMsg === 'เช็คยอด' || cleanMsg === 'ยอด';
+
+        // 2. คำสั่งลงทะเบียน: ขึ้นต้นด้วย "c/" หรือ "C/"
+        const isRegisterCode = origMsg.toLowerCase().startsWith('c/');
+
+        // 3. คำสั่งแจ้งฝากเงิน: ขึ้นต้นด้วย "ฝาก" (เช่น "ฝาก", "ฝาก500", "ฝาก 500")
+        const isDeposit = cleanMsg.startsWith('ฝาก');
+
+        // 4. คำสั่งแจ้งถอนเงิน: ขึ้นต้นด้วย "ถอน" (เช่น "ถอน", "ถอน500", "ถอน 500")
+        const isWithdraw = cleanMsg.startsWith('ถอน');
+
+        // ❌ หากข้อความที่พิมพ์เข้ามา **ไม่ใช่** 1 ใน 4 คำสั่งด้านบนนี้ ให้ตัดการทำงานทันที (บอทเงียบใส่)
+        if (!isCheckBalance && !isRegisterCode && !isDeposit && !isWithdraw) {
+            return res.sendStatus(200);
+        }
+    }
+}
 
             //==========================================================
         

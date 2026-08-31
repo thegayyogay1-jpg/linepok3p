@@ -2365,7 +2365,7 @@ else if (promotions[userMsg.trim()]) {
     }
         // 🔴 [เงื่อนไขที่ 4 - เพิ่มใหม่ตามวิธีที่ 1] เช็กยอดเงินค้างในกระเป๋าเดิมก่อนฝากใหม่ (ต้องไม่เกิน 5 บาท)
     else if (previousBalance > 5) {
-        replyText = `❌ ไม่สามารถรับโปรโมชั่นได้ครับ!\n📌 คุณมียอดเงินคงค้างเดิมในกระเป๋า (${previousBalance} บาท)\n⚠️ กรุณาทำการถอนเงินออกก่อน หรือ มียอดไม่เกิน 5 บาท\nจึงจะรับโปรโมชั่นฝากใหม่ได้ครับ`;
+        replyText = `❌ ไม่สามารถรับโปรโมชั่นได้ครับ!\n📌 คุณมียอดเงินคงค้างเดิมในกระเป๋า (${previousBalance} บาท)\n⚠️ กรุณาทำการถอนเงินออกก่อน หรือ มียอดไม่เกิน 5 บาท จึงจะรับโปรโมชั่นฝากใหม่ได้ครับ`;
     }
     else {
         let bonusAmount = 0;
@@ -2447,7 +2447,7 @@ else if (promotions[userMsg.trim()]) {
                                     "type": "box", "layout": "horizontal",
                                     "contents": [
                                         { "type": "text", "text": "🎁 โบนัสที่ได้รับ:", "color": "#666666", "size": "sm", "flex": 5 },
-                                        { "type": "text", "text": `+${bonusAmount.toLocaleString()} บาท (${bonusDetail})`, "color": "#2E7D32", "weight": "bold", "size": "sm", "align": "end", "flex": 5 }
+                                        { "type": "text", "text": `+${bonusAmount.toLocaleString()} บาท`, "color": "#2E7D32", "weight": "bold", "size": "sm", "align": "end", "flex": 5 }
                                     ],
                                     "margin": "md"
                                 },
@@ -2463,8 +2463,8 @@ else if (promotions[userMsg.trim()]) {
                                 {
                                     "type": "box", "layout": "horizontal",
                                     "contents": [
-                                        { "type": "text", "text": "💳 เครดิตคงเหลือใหม่:", "color": "#1A237E", "weight": "bold", "size": "md", "flex": 6 },
-                                        { "type": "text", "text": `${user.balance.toLocaleString()} บาท`, "color": "#E65100", "weight": "bold", "size": "lg", "align": "end", "flex": 4 }
+                                        { "type": "text", "text": "💳 เครดิตคงเหลือ:", "color": "#1A237E", "weight": "bold", "size": "sm", "flex": 6 },
+                                        { "type": "text", "text": `${user.balance.toLocaleString()} บาท`, "color": "#E65100", "weight": "bold", "size": "sm", "align": "end", "flex": 4 }
                                     ],
                                     "margin": "lg"
                                 }

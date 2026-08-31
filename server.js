@@ -2242,6 +2242,7 @@ else if (userMsg.startsWith("+")) {
                     await saveDataToFirebase(); // บันทึกลง Firebase
 
                     const typeText = bonusType === 'percent' ? `${bonusValue}% (จากยอดฝากล่าสุด)` : `${bonusValue} บาท`;
+                    const limitText = maxBonus ? `\n🛑 โบนัสสูงสุด: ${maxBonus.toLocaleString()} บาท` : `\n🛑 โบนัสสูงสุด: ไม่จำกัด`;
                     replyText = `✅ เพิ่มโปรโมชั่นสำเร็จเรียบร้อย!\n📌 รหัสโปร: ${promoCode}\n🎁 โบนัส: ${typeText}\n🔄 เงื่อนไขเทิร์น: ${turnoverMultiplier} เท่า`;
                 }
             }

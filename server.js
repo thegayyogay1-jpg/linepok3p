@@ -2315,6 +2315,7 @@ else if (userMsg === "เช็คโปร" || userMsg === "โปรโมช�
             const bonusStr = p.type === 'percent' ? `${p.value}%` : `${p.value} บาท`;
             text += `${index + 1}. รหัสพิมพ์รับ: [ ${p.code} ]\n`;
             text += `   • โบนัส: ${bonusStr}\n`;
+            text += `   • สูงสุด: ${p.maxBonus} บาท\n`;
             text += `   • ติดเทิร์น: ${p.turnoverMultiplier} เท่า\n`;
             text += `──────────────────\n`;
         });

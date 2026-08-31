@@ -4737,36 +4737,53 @@ else if (command.toLowerCase() === "y") {
 
                     } else {
                         // ==================== [ 📢 Flex Message แจ้งเตือนคนยังไม่สมัคร ] ====================
-                        try {
-                            await axios.post('https://api.line.me/v2/bot/message/reply', {
-                                replyToken: replyToken,
-                                messages: [
-                                    {
-                                        "type": "flex",
-                                        "altText": "📢 ยินดีต้อนรับครับสมาชิกใหม่ กรุณาลงทะเบียน",
-                                        "contents": {
-                                            "type": "bubble",
-                                            "styles": { "body": { "backgroundColor": "#0d161b" } },
-                                            "body": {
-                                                "type": "box",
-                                                "layout": "vertical",
-                                                "spacing": "md",
-                                                "contents": [
-                                                    { "type": "text", "text": "📢 ยินดีต้อนรับครับสมาชิกใหม่ 🤝", "weight": "bold", "color": "#00ffcc", "size": "md", "align": "center" },
-                                                    { "type": "separator", "color": "#1d2d35" },
-                                                    { "type": "text", "text": "⚠️ คุณยังไม่ได้ลงทะเบียนในระบบ", "size": "xs", "color": "#ffcc00", "align": "center", "weight": "bold" },
-                                                    { "type": "separator", "color": "#1d2d35" },
-                                                    { "type": "text", "text": "กรุณาลงทะเบียนผ่านเว็บสมัครสมาชิก จากนั้นคัดลอกรหัส (เช่น C/748100) มาวางในกลุ่มนี้เพื่อเปิดใช้งานครับ", "size": "xs", "color": "#cccccc", "wrap": true },
-                                                    { "type": "separator", "color": "#1d2d35" },
-                                                    { "type": "text", "text": "📌 ตัวอย่างการยืนยัน: C/748100", "size": "xs", "color": "#00ffcc", "align": "center", "weight": "bold" }
-                                                ]
-                                            }
-                                        }
-                                    }
-                                ]
-                            }, { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` } });
-                        } catch (err) { console.error("Error sending alert non-registered flex:", err); }
-                        return res.sendStatus(200);
+try {
+    await axios.post('https://api.line.me/v2/bot/message/reply', {
+        replyToken: replyToken,
+        messages: [
+            {
+                "type": "flex",
+                "altText": "📢 ยินดีต้อนรับครับสมาชิกใหม่ กรุณาลงทะเบียน",
+                "contents": {
+                    "type": "bubble",
+                    "styles": { "body": { "backgroundColor": "#0d161b" }, "footer": { "backgroundColor": "#0d161b" } },
+                    "body": {
+                        "type": "box",
+                        "layout": "vertical",
+                        "spacing": "md",
+                        "contents": [
+                            { "type": "text", "text": "📢 ยินดีต้อนรับครับสมาชิกใหม่ 🤝", "weight": "bold", "color": "#00ffcc", "size": "md", "align": "center" },
+                            { "type": "separator", "color": "#1d2d35" },
+                            { "type": "text", "text": "⚠️ คุณยังไม่ได้ลงทะเบียนในระบบ", "size": "xs", "color": "#ffcc00", "align": "center", "weight": "bold" },
+                            { "type": "separator", "color": "#1d2d35" },
+                            { "type": "text", "text": "กรุณาลงทะเบียนผ่านเว็บสมัครสมาชิก จากนั้นคัดลอกรหัส (เช่น C/748100) มาวางในกลุ่มนี้เพื่อเปิดใช้งานครับ", "size": "xs", "color": "#cccccc", "wrap": true },
+                            { "type": "separator", "color": "#1d2d35" },
+                            { "type": "text", "text": "📌 ตัวอย่างการยืนยัน: C/748100", "size": "xs", "color": "#00ffcc", "align": "center", "weight": "bold" }
+                        ]
+                    },
+                    "footer": {
+                        "type": "box",
+                        "layout": "vertical",
+                        "contents": [
+                            {
+                                "type": "button",
+                                "action": {
+                                    "type": "uri",
+                                    "label": "🌐 กดที่นี่เพื่อสมัครสมาชิก",
+                                    "uri": "https://thegayyogay1-jpg.github.io/pokdeng-register/register.html" // 👈 เปลี่ยนตรงนี้เป็นลิงก์สมัครสมาชิกของคุณ
+                                },
+                                "style": "primary",
+                                "color": "#00ffcc",
+                                "height": "sm"
+                            }
+                        ]
+                    }
+                }
+            }
+        ]
+    }, { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` } });
+} catch (err) { console.error("Error sending alert non-registered flex:", err); }
+return res.sendStatus(200);
                     }
                 } else {
                     // 🟢 กรณีที่เป็นสมาชิกเก่าที่ลงทะเบียนเรียบร้อยแล้ว

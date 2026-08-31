@@ -2242,7 +2242,7 @@ else if (userMsg.startsWith("+")) {
         }
     }
 }
-// ==================== [ 2. คำสั่งแอดมิน: ลบโปรโมชั่นรายตัว ] ====================
+// ==================== [ 2. คำสั่งแอดมิน: ลบโปรโมชั่นรายตัว + ล้างประวัติสมาชิกอัตโนมัติ ] ====================
 // รูปแบบ: "ลบโปร รับ1"
 else if (userMsg.startsWith("ลบโปร")) {
     if (!ADMIN_IDS.includes(userId)) {
@@ -2254,22 +2254,43 @@ else if (userMsg.startsWith("ลบโปร")) {
         } else if (!promotions[promoCode]) {
             replyText = `❌ ไม่พบรหัสโปรโมชั่น [ ${promoCode} ] ในระบบครับ`;
         } else {
+            // 1. ลบโปรโมชั่นออกจากระบบหลัก
             delete promotions[promoCode];
+
+            // 2. 🟢 [เพิ่มส่วนนี้] วนลูปตามไปล้างประวัติการรับโปรนี้ออกจากสมาชิกทุกคน
+            let clearedCount = 0;
+            for (let uKey in usersWallets) {
+                const user = usersWallets[uKey];
+                if (user.claimedPromotions && user.claimedPromotions.includes(promoCode)) {
+                    user.claimedPromotions = user.claimedPromotions.filter(code => code !== promoCode);
+                    clearedCount++;
+                }
+            }
+
             await saveDataToFirebase();
-            replyText = `🗑️ ลบโปรโมชั่น [ ${promoCode} ] ออกจากระบบเรียบร้อยแล้วครับ`;
+            replyText = `🗑️ ลบโปรโมชั่น [ ${promoCode} ] เรียบร้อยแล้ว!\n🧹 ล้างประวัติออกจากสมาชิก: ${clearedCount} คน`;
         }
     }
 }
 
-// ==================== [ 3. คำสั่งแอดมิน: รีเซ็ตโปรทั้งหมดในระบบเป็น 0 ] ====================
+// ==================== [ 3. คำสั่งแอดมิน: รีเซ็ตโปรทั้งหมด + ล้างประวัติสมาชิกทั้งหมดเป็น 0 ] ====================
 // รูปแบบ: "รีเซ็ตโปร" หรือ "ล้างโปร"
 else if (userMsg === "รีเซ็ตโปร" || userMsg === "ล้างโปร") {
     if (!ADMIN_IDS.includes(userId)) {
         replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งนี้ครับ";
     } else {
-        promotions = {}; // ล้างโปรโมชั่นทั้งหมดในระบบเป็น 0
+        // 1. ล้างรายการโปรโมชั่นทั้งหมดในระบบ
+        promotions = {}; 
+
+        // 2. 🟢 [เพิ่มส่วนนี้] วนลูปตามไปล้างประวัติ claimedPromotions ของสมาชิกทุกคนให้เป็น Array ว่าง
+        for (let uKey in usersWallets) {
+            if (usersWallets[uKey]) {
+                usersWallets[uKey].claimedPromotions = [];
+            }
+        }
+
         await saveDataToFirebase();
-        replyText = "🧹 รีเซ็ตและล้างรายการโปรโมชั่นทั้งหมดในระบบเป็น 0 เรียบร้อยแล้วครับ!";
+        replyText = "🧹 รีเซ็ตและล้างรายการโปรโมชั่นพร้อมประวัติการรับของสมาชิกทั้งหมดเรียบร้อยแล้วครับ!";
     }
 }
 

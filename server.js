@@ -2135,70 +2135,71 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
         }
     }
 }
-   // ==================== [ 1. คำสั่งแอดมิน: เพิ่มโปรโมชั่น รูปแบบยืดหยุ่นแบบป๊อกเด้ง ] ====================
+   // ==================== [ 1. คำสั่งแอดมิน: เพิ่มโปรโมชั่น ] ====================
 else if (userMsg.startsWith("+")) {
     if (!ADMIN_IDS.includes(userId)) {
         replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งนี้ครับ";
     } else {
-        // 1. แยกข้อความด้วยช่องว่าง / ขึ้นบรรทัดใหม่ แบบเดียวกับป๊อกเด้ง
-        const parts = userMsg.trim().split(/\s+/);
+        // ใช้ข้อความดั้งเดิมเพื่อป้องกันปัญหารูปแบบอักขระ
+        const rawText = (typeof originalMsg !== 'undefined' && originalMsg) ? originalMsg.trim() : userMsg.trim();
         
-        // parts[0] จะเป็น "+รับ1" หรือ "+"
+        // แยกข้อความด้วยช่องว่าง
+        const parts = rawText.split(/\s+/).filter(p => p !== "");
+
         let promoCode = "";
         let rawBonus = "";
         let rawTurnover = "";
 
+        // กรณีที่ 1: พิมพ์แบบเว้นวรรค เช่น "+ รับ1 20ป 2ท" (parts จะมี 4 ชิ้น: ["+", "รับ1", "20ป", "2ท"])
         if (parts[0] === "+" && parts.length >= 4) {
-            // กรณีพิมพ์เว้นวรรคหลัง + เช่น: "+ รับ1 20ป 2ท"
             promoCode = parts[1];
             rawBonus = parts[2];
             rawTurnover = parts[3];
-        } else if (parts[0].startsWith("+") && parts[0].length > 1 && parts.length >= 3) {
-            // กรณีพิมพ์ติด + เช่น: "+รับ1 20ป 2ท"
+        } 
+        // กรณีที่ 2: พิมพ์ติดกัน เช่น "+รับ1 20ป 2ท" (parts จะมี 3 ชิ้น: ["+รับ1", "20ป", "2ท"])
+        else if (parts[0].startsWith("+") && parts[0].length > 1 && parts.length >= 3) {
             promoCode = parts[0].substring(1);
             rawBonus = parts[1];
             rawTurnover = parts[2];
         }
 
-        // ตรวจสอบว่าแกะค่าออกมาได้ครบทั้ง 3 ชิ้นหรือไม่
         if (!promoCode || !rawBonus || !rawTurnover) {
             replyText = "⚠️ รูปแบบคำสั่งไม่ถูกต้องครับน้า\n👉 พิมพ์: + [รหัส] [โบนัส] [เทิร์น]ท\n• แบบ %: + รับ1 20ป 2ท\n• แบบบาท: + รับ2 50 2ท";
         } else {
-            // 2. แกะประเภทโบนัส (% หรือ บาท)
-            let bonusType = 'fixed';
-            let bonusValue = 0;
+            // ดึงเฉพาะตัวเลขออกมาจากช่องโบนัสและเทิร์น
+            const bonusNumMatch = rawBonus.match(/\d+(?:\.\d+)?/);
+            const turnoverNumMatch = rawTurnover.match(/\d+(?:\.\d+)?/);
 
-            if (rawBonus.includes('ป') || rawBonus.includes('P') || rawBonus.includes('%')) {
-                bonusType = 'percent';
-                bonusValue = parseFloat(rawBonus.replace(/[ปP%]/gi, ''));
+            if (!bonusNumMatch || !turnoverNumMatch) {
+                replyText = "⚠️ ตัวเลขโบนัสหรือยอดเทิร์นไม่ถูกต้องครับน้า กรุณาระบุตัวเลขให้ชัดเจน";
             } else {
-                bonusType = 'fixed';
-                bonusValue = parseFloat(rawBonus);
-            }
+                const bonusValue = parseFloat(bonusNumMatch[0]);
+                const turnoverMultiplier = parseFloat(turnoverNumMatch[0]);
 
-            // 3. แกะเท่าเทิร์นโอเวอร์
-            let turnoverMultiplier = parseFloat(rawTurnover.replace(/[ทT]/gi, ''));
+                // เช็กว่ามีคำว่า 'ป', 'p', '%' หรือไม่ เพื่อกำหนดประเภท
+                const isPercent = /[ปp%]/i.test(rawBonus);
+                const bonusType = isPercent ? 'percent' : 'fixed';
 
-            if (isNaN(bonusValue) || bonusValue <= 0 || isNaN(turnoverMultiplier) || turnoverMultiplier <= 0) {
-                replyText = "⚠️ จำนวนโบนัส หรือ ยอดเทิร์นโอเวอร์ไม่ถูกต้องครับน้า กรุณาเช็กตัวเลขอีกครั้ง";
-            } else {
-                // 💾 บันทึกโปรโมชั่นลงระบบ
-                promotions[promoCode] = {
-                    code: promoCode,
-                    type: bonusType,
-                    value: bonusValue,
-                    turnoverMultiplier: turnoverMultiplier
-                };
+                if (isNaN(bonusValue) || bonusValue <= 0 || isNaN(turnoverMultiplier) || turnoverMultiplier <= 0) {
+                    replyText = "⚠️ จำนวนโบนัส หรือ ยอดเทิร์นโอเวอร์ต้องมากกว่า 0 ครับน้า";
+                } else {
+                    // 💾 บันทึกโปรโมชั่นลงระบบ
+                    promotions[promoCode] = {
+                        code: promoCode,
+                        type: bonusType,
+                        value: bonusValue,
+                        turnoverMultiplier: turnoverMultiplier
+                    };
 
-                await saveDataToFirebase(); // บันทึกลง Firebase
+                    await saveDataToFirebase(); // บันทึกลง Firebase
 
-                const typeText = bonusType === 'percent' ? `${bonusValue}% (จากยอดฝากล่าสุด)` : `${bonusValue} บาท`;
-                replyText = `✅ เพิ่มโปรโมชั่นสำเร็จเรียบร้อย!\n📌 รหัสโปร: ${promoCode}\n🎁 โบนัส: ${typeText}\n🔄 เงื่อนไขเทิร์น: ${turnoverMultiplier} เท่า`;
+                    const typeText = bonusType === 'percent' ? `${bonusValue}% (จากยอดฝากล่าสุด)` : `${bonusValue} บาท`;
+                    replyText = `✅ เพิ่มโปรโมชั่นสำเร็จเรียบร้อย!\n📌 รหัสโปร: ${promoCode}\n🎁 โบนัส: ${typeText}\n🔄 เงื่อนไขเทิร์น: ${turnoverMultiplier} เท่า`;
+                }
             }
         }
     }
 }
-
 // ==================== [ 2. คำสั่งแอดมิน: ลบโปรโมชั่นรายตัว ] ====================
 // รูปแบบ: "ลบโปร รับ1"
 else if (userMsg.startsWith("ลบโปร")) {

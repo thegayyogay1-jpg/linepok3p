@@ -27,6 +27,7 @@ let hiloUserTrackers = {}; // ตัวแปรเก็บประวัต�
 let isHiloRoundOpen = false; // 🎲 ตัวแปรจำสถานะ เปิด/ปิด รับแทงไฮโล
 let hiloRoundBets = {};      // 🎲 ตัวแปรเก็บโพยแทงไฮโลประจำรอบ
 let tempHiloDices = [];
+let promotions = {};
 let currentRound = 0;    // บรรทัดนี้เพื่อจำลำดับรอบปัจจุบัน
 let isDrawOpen = false;  // บรรทัดนี้เพื่อเช็กสถานะรอบจั่วไพ่
 let tempRoomResults = null; // ใช้พักข้อมูลผลแต้มชั่วคราวที่แอดมินพึ่งพิมพ์ส่งมา
@@ -51,6 +52,7 @@ async function loadDataFromFirebase() {
             isRoundOpen = response.data.isRoundOpen !== undefined ? response.data.isRoundOpen : false;
             roundBets = response.data.roundBets || {};
             currentRound = response.data.currentRound || 0;
+            promotions = response.data.promotions || {};
             isDrawOpen = response.data.isDrawOpen !== undefined ? response.data.isDrawOpen : false;
             matchHistory = response.data.matchHistory || [];
             detailedRoundHistory = response.data.detailedRoundHistory || {};
@@ -190,6 +192,7 @@ async function saveDataToFirebase() {
             roundBets: roundBets,             // 💾 จำโพยแทงในแต่ละรอบ
             hiloRoundBets: hiloRoundBets,   // 💾บันทึกโหนดไฮโลแยกต่างหาก
             tempHiloDices: tempHiloDices,
+            promotions : promotions,
             currentRound: currentRound,       // 💾 จำลำดับรอบปัจจุบัน
             isDrawOpen: isDrawOpen,           // 💾 จำสถานะรอบจั่วไพ่
             matchHistory: matchHistory,       // 💾 จำประวัติสถิติย้อนหลัง 5 รอบ
@@ -2130,6 +2133,106 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
                 return;
             }
         }
+    }
+}
+    // ==================== [ 1. คำสั่งแอดมิน: เพิ่มโปรโมชั่น ] ====================
+// รองรับรูปแบบ: "เพิ่มโปร รับ1 20ป 2ท" (เปอร์เซ็นต์) หรือ "เพิ่มโปร รับ2 50 3ท" (จำนวนเงินคงที่)
+else if (userMsg.startsWith("เพิ่มโปร")) {
+    if (!ADMIN_IDS.includes(userId)) {
+        replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งนี้ครับ";
+    } else {
+        const parts = userMsg.trim().split(/\s+/);
+        // parts[0] = เพิ่มโปร, parts[1] = รหัสโปร(เช่น รับ1), parts[2] = ยอดโบนัส(20ป หรือ 50), parts[3] = เท่าเทิร์น(2ท)
+        
+        if (parts.length < 4) {
+            replyText = "⚠️ รูปแบบคำสั่งไม่ถูกต้องครับน้า\n👉 แบบเปอร์เซ็นต์: เพิ่มโปร [รหัส] [โบนัส]ป [เทิร์น]ท\nตัวอย่าง: เพิ่มโปร รับ1 20ป 2ท\n\n👉 แบบจำนวนเงิน: เพิ่มโปร [รหัส] [จำนวนเงิน] [เทิร์น]ท\nตัวอย่าง: เพิ่มโปร รับ2 50 3ท";
+        } else {
+            const promoCode = parts[1].trim();
+            const rawBonus = parts[2].trim();
+            const rawTurnover = parts[3].trim();
+
+            let bonusType = 'fixed'; // 'percent' หรือ 'fixed'
+            let bonusValue = 0;
+            let turnoverMultiplier = parseFloat(rawTurnover.replace('ท', '').trim()) || 0;
+
+            if (rawBonus.includes('ป') || rawBonus.includes('P') || rawBonus.includes('%')) {
+                bonusType = 'percent';
+                bonusValue = parseFloat(rawBonus.replace(/[ปP%]/g, '').trim());
+            } else {
+                bonusType = 'fixed';
+                bonusValue = parseFloat(rawBonus);
+            }
+
+            if (isNaN(bonusValue) || bonusValue <= 0 || isNaN(turnoverMultiplier) || turnoverMultiplier <= 0) {
+                replyText = "⚠️ จำนวนโบนัส หรือ ยอดเทิร์นโอเวอร์ไม่ถูกต้องครับน้า กรุณาเช็กตัวเลขอีกครั้ง";
+            } else {
+                // 💾 บันทึกโปรโมชั่นลงระบบ
+                promotions[promoCode] = {
+                    code: promoCode,
+                    type: bonusType,
+                    value: bonusValue,
+                    turnoverMultiplier: turnoverMultiplier
+                };
+
+                await saveDataToFirebase(); // บันทึกลง Firebase
+
+                const typeText = bonusType === 'percent' ? `${bonusValue}% (จากยอดฝากล่าสุด)` : `${bonusValue} บาท`;
+                replyText = `✅ เพิ่มโปรโมชั่นสำเร็จเรียบร้อย!\n📌 รหัสโปร: ${promoCode}\n🎁 โบนัส: ${typeText}\n🔄 เงื่อนไขเทิร์น: ${turnoverMultiplier} เท่า`;
+            }
+        }
+    }
+}
+
+// ==================== [ 2. คำสั่งแอดมิน: ลบโปรโมชั่นรายตัว ] ====================
+// รูปแบบ: "ลบโปร รับ1"
+else if (userMsg.startsWith("ลบโปร")) {
+    if (!ADMIN_IDS.includes(userId)) {
+        replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งนี้ครับ";
+    } else {
+        const promoCode = userMsg.replace("ลบโปร", "").trim();
+        if (!promoCode) {
+            replyText = "⚠️ กรุณาระบุรหัสโปรโมชั่นที่ต้องการลบ เช่น: ลบโปร รับ1";
+        } else if (!promotions[promoCode]) {
+            replyText = `❌ ไม่พบรหัสโปรโมชั่น [ ${promoCode} ] ในระบบครับ`;
+        } else {
+            delete promotions[promoCode];
+            await saveDataToFirebase();
+            replyText = `🗑️ ลบโปรโมชั่น [ ${promoCode} ] ออกจากระบบเรียบร้อยแล้วครับ`;
+        }
+    }
+}
+
+// ==================== [ 3. คำสั่งแอดมิน: รีเซ็ตโปรทั้งหมดในระบบเป็น 0 ] ====================
+// รูปแบบ: "รีเซ็ตโปร" หรือ "ล้างโปร"
+else if (userMsg === "รีเซ็ตโปร" || userMsg === "ล้างโปร") {
+    if (!ADMIN_IDS.includes(userId)) {
+        replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งนี้ครับ";
+    } else {
+        promotions = {}; // ล้างโปรโมชั่นทั้งหมดในระบบเป็น 0
+        await saveDataToFirebase();
+        replyText = "🧹 รีเซ็ตและล้างรายการโปรโมชั่นทั้งหมดในระบบเป็น 0 เรียบร้อยแล้วครับ!";
+    }
+}
+
+// ==================== [ 4. คำสั่งเช็กโปรโมชั่นทั้งหมด (ทุกคนใช้ได้) ] ====================
+// รูปแบบ: "เช็คโปร" หรือ "โปรโมชั่น"
+else if (userMsg === "เช็คโปร" || userMsg === "โปรโมชั่น" || userMsg === "โปร") {
+    const promoList = Object.keys(promotions);
+
+    if (promoList.length === 0) {
+        replyText = "📢 ตอนนี้ยังไม่มีโปรโมชั่นเปิดใช้งานในระบบครับน้า";
+    } else {
+        let text = "🎁 [ รายการโปรโมชั่นทั้งหมด ] 🎁\n──────────────────\n";
+        promoList.forEach((code, index) => {
+            const p = promotions[code];
+            const bonusStr = p.type === 'percent' ? `${p.value}%` : `${p.value} บาท`;
+            text += `${index + 1}. รหัสพิมพ์รับ: [ ${p.code} ]\n`;
+            text += `   • โบนัส: ${bonusStr}\n`;
+            text += `   • ติดเทิร์น: ${p.turnoverMultiplier} เท่า\n`;
+            text += `──────────────────\n`;
+        });
+        text += "👉 วิธีรับโปร: พิมพ์รหัสโปรโมชั่นได้เลย เช่น รับ1";
+        replyText = text;
     }
 }
         // ==================== [ 4. ระบบรับโพยป๊อกเด้ง + หักค้ำประกัน 3 เด้ง ] ====================

@@ -2135,25 +2135,26 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
         }
     }
 }
-    // ==================== [ 1. คำสั่งแอดมิน: เพิ่มโปรโมชั่น ] ====================
-// รองรับรูปแบบ: "เพิ่มโปร รับ1 20ป 2ท" (เปอร์เซ็นต์) หรือ "เพิ่มโปร รับ2 50 3ท" (จำนวนเงินคงที่)
-else if (userMsg.startsWith("เพิ่มโปร")) {
+    // ==================== [ 1. คำสั่งแอดมิน: เพิ่มโปรโมชั่น รูปแบบ "+ รหัส โบนัส เทิร์น" ] ====================
+else if (userMsg.startsWith("+")) {
     if (!ADMIN_IDS.includes(userId)) {
         replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งนี้ครับ";
     } else {
-        const parts = userMsg.trim().split(/\s+/);
-        // parts[0] = เพิ่มโปร, parts[1] = รหัสโปร(เช่น รับ1), parts[2] = ยอดโบนัส(20ป หรือ 50), parts[3] = เท่าเทิร์น(2ท)
+        // ลบเครื่องหมาย + ออก แล้วตัดช่องว่างส่วนเกิน
+        const cleanContent = userMsg.substring(1).trim();
+        const parts = cleanContent.split(/\s+/);
         
-        if (parts.length < 4) {
-            replyText = "⚠️ รูปแบบคำสั่งไม่ถูกต้องครับน้า\n👉 แบบเปอร์เซ็นต์: เพิ่มโปร [รหัส] [โบนัส]ป [เทิร์น]ท\nตัวอย่าง: เพิ่มโปร รับ1 20ป 2ท\n\n👉 แบบจำนวนเงิน: เพิ่มโปร [รหัส] [จำนวนเงิน] [เทิร์น]ท\nตัวอย่าง: เพิ่มโปร รับ2 50 3ท";
+        // parts[0] = รหัสโปร (เช่น รับ1), parts[1] = โบนัส (เช่น 20ป หรือ 50), parts[2] = เทิร์น (เช่น 3ท)
+        if (parts.length < 3 || !parts[0]) {
+            replyText = "⚠️ รูปแบบคำสั่งไม่ถูกต้องครับน้า\n👉 พิมพ์: + [รหัส] [โบนัส] [เทิร์น]ท\n• แบบ %: + รับ1 20ป 3ท\n• แบบบาท: + รับ2 50 3ท";
         } else {
-            const promoCode = parts[1].trim();
-            const rawBonus = parts[2].trim();
-            const rawTurnover = parts[3].trim();
+            const promoCode = parts[0].trim();
+            const rawBonus = parts[1].trim();
+            const rawTurnover = parts[2].trim();
 
             let bonusType = 'fixed'; // 'percent' หรือ 'fixed'
             let bonusValue = 0;
-            let turnoverMultiplier = parseFloat(rawTurnover.replace('ท', '').trim()) || 0;
+            let turnoverMultiplier = parseFloat(rawTurnover.replace(/[ทT]/g, '').trim()) || 0;
 
             if (rawBonus.includes('ป') || rawBonus.includes('P') || rawBonus.includes('%')) {
                 bonusType = 'percent';

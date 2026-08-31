@@ -836,11 +836,34 @@ else if (action === 'ยอดเสีย' || postbackData.includes("action=ย
                     const matchedQueue = global.depositQueue[foundUserId];
                     
                     // 💰 1. เติมเครดิตเข้ากระเป๋าของลูกค้า
-                    if (usersWallets[foundUserId]) {
-                        usersWallets[foundUserId].balance += matchedQueue.rawAmount;
+            if (usersWallets[foundUserId]) {
+                const user = usersWallets[foundUserId];
 
-                        // 🟢 [เพิ่มบรรทัดนี้] สะสมยอดฝากสำเร็จของสมาชิกออโต้
-                        usersWallets[foundUserId].totalDeposit = (usersWallets[foundUserId].totalDeposit || 0) + matchedQueue.rawAmount;
+                // 🔄 [เพิ่มจุดนี้] เช็กและตัดโบนัสเก่าออกก่อนฝากใหม่
+                if (user.activePromotion) {
+                    const previousBonus = user.activeBonusAmount || 0;
+                    user.balance = user.balance - previousBonus;
+                    
+                    if (user.balance < 0) {
+                        user.balance = 0; // ถ้าหักโบนัสแล้วติดลบ ให้เซ็ตเป็น 0
+                    }
+
+                    // ล้างค่าโปรโมชั่นและเทิร์นโอเวอร์เก่าทิ้ง
+                    user.activePromotion = null;
+                    user.currentTurnoverRequired = 0;
+                    user.activeBonusAmount = 0;
+                    
+                    console.log(`🧹 ล้างโปรโมชั่นติดค้างของสมาชิกที่ ${user.memberNumber} เรียบร้อยแล้ว`);
+                }
+
+                // 💵 บวกเงินฝากใหม่เข้ากระเป๋า
+                user.balance += matchedQueue.rawAmount;
+
+                // 🟢 สะสมยอดฝากสำเร็จของสมาชิกออโต้
+                user.totalDeposit = (user.totalDeposit || 0) + matchedQueue.rawAmount;
+                
+                // 🌟 บันทึกยอดฝากล่าสุดของสมาชิก
+                user.lastDeposit = matchedQueue.rawAmount;
                         
                         console.log(`✅ [จับคู่สำเร็จ] เติมเงินให้สมาชิกที่ ${usersWallets[foundUserId].memberNumber} จำนวน ${matchedQueue.rawAmount} บาท!`);
 
@@ -893,12 +916,31 @@ else if (action === 'ยอดเสีย' || postbackData.includes("action=ย
                                 if (!global.depositQueue || !global.depositQueue[foundUserKey] || global.depositQueue[foundUserKey].status !== 'WAITING_ADMIN') {
                                     replyText = `❌ เติมเงินไม่สำเร็จ! \n สมาชิกเลข ${targetMemberId} ยังไม่ได้พิมพ์ฝากเข้ามาในระบบ หรือยอดนี้เคยเติมไป`;
                                 } else {
-                                    usersWallets[foundUserKey].balance += amount;
-
-                                    // 🟢 2. [เพิ่มบรรทัดนี้] สะสมยอดฝากสำเร็จ
-                                    usersWallets[foundUserKey].totalDeposit = (usersWallets[foundUserKey].totalDeposit || 0) + amount;
-                                    
                                     const user = usersWallets[foundUserKey];
+
+                                    // 🔄 [เพิ่มจุดนี้] เช็กและตัดโบนัสเก่าออกก่อนฝากใหม่
+                                    if (user.activePromotion) {
+                                        const previousBonus = user.activeBonusAmount || 0;
+                                        user.balance = user.balance - previousBonus;
+                                        
+                                        if (user.balance < 0) {
+                                            user.balance = 0;
+                                        }
+            
+                                        // ล้างค่าโปรโมชั่นและเทิร์นโอเวอร์เก่าทิ้ง
+                                        user.activePromotion = null;
+                                        user.currentTurnoverRequired = 0;
+                                        user.activeBonusAmount = 0;
+                                    }
+            
+                                    // 💵 บวกเงินเติมใหม่เข้ากระเป๋า
+                                    user.balance += amount;
+            
+                                    // 🟢 สะสมยอดฝากสำเร็จ
+                                    user.totalDeposit = (user.totalDeposit || 0) + amount;
+                                    
+                                    // 🌟 บันทึกยอดฝากล่าสุดของสมาชิก
+                                    user.lastDeposit = amount;
                                     
                                     // 🧼 ล้างคิวฝากทิ้งทันที
                                     delete global.depositQueue[foundUserKey]; 
@@ -2250,6 +2292,62 @@ else if (userMsg === "เช็คโปร" || userMsg === "โปรโมช�
         });
         text += "👉 วิธีรับโปร: พิมพ์รหัสโปรโมชั่นได้เลย เช่น รับ1";
         replyText = text;
+    }
+}
+    // ==================== [ 2. ส่วนของสมาชิก: พิมพ์รหัสเพื่อขอรับโปรโมชั่น ] ====================
+// ตรวจสอบว่าข้อความที่พิมพ์เข้ามา ตรงกับรหัสโปรที่มีอยู่ในระบบหรือไม่
+else if (promotions[userMsg.trim()]) {
+    const promoCode = userMsg.trim();
+    const promo = promotions[promoCode];
+
+    // ดึงข้อมูลผู้ใช้ (หากยังไม่มีโครงสร้าง ให้สร้างค่าเริ่มต้น)
+    if (!usersWallets[userId]) {
+        usersWallets[userId] = { balance: 0, lastDeposit: 0, activePromotion: null, currentTurnoverRequired: 0, claimedPromotions: [] };
+    }
+    const user = usersWallets[userId];
+
+    // จัดการค่า Array/Field เพื่อป้องกัน Error กรณีเป็นผู้เล่นเก่า
+    if (!user.claimedPromotions) user.claimedPromotions = [];
+    if (user.activePromotion === undefined) user.activePromotion = null;
+    if (user.currentTurnoverRequired === undefined) user.currentTurnoverRequired = 0;
+
+    // 🔴 [เงื่อนไขที่ 1] เช็กว่ากำลังติดโปรโมชั่นอื่นอยู่หรือไม่ (ห้ามรับซ้อน)
+    if (user.activePromotion !== null) {
+        replyText = `❌ คุณไม่สามารถรับโปรโมชั่นซ้อนได้ครับ\n📌 โปรที่ใช้งานอยู่ปัจจุบัน: [ ${user.activePromotion} ]\n⚠️ ต้องทำเทิร์นให้ครบ หรือยอดเงินเป็น 0 ก่อนจึงจะรับโปรใหม่ได้ครับ`;
+    }
+    // 🔴 [เงื่อนไขที่ 2] เช็กว่าเคยรับโปรโมชั่นนี้ไปแล้วหรือยัง (รับได้แค่ 1 ครั้ง)
+    else if (user.claimedPromotions.includes(promoCode)) {
+        replyText = `❌ โปรโมชั่น [ ${promoCode} ] สามารถรับได้เพียง 1 ครั้งเท่านั้นครับ`;
+    }
+    // 🔴 [เงื่อนไขที่ 3] เช็กยอดฝากล่าสุด
+    else if (!user.lastDeposit || user.lastDeposit <= 0) {
+        replyText = `⚠️ ไม่พบยอดฝากล่าสุดของคุณ ไม่สามารถรับโปรโมชั่นได้ครับ`;
+    }
+    else {
+        // 🟢 ผ่านทุกเงื่อนไข -> คำนวณโบนัสและยอดเทิร์น
+        const depositAmount = user.lastDeposit;
+        let bonusAmount = 0;
+
+        if (promo.type === 'percent') {
+            bonusAmount = Math.floor(depositAmount * (promo.value / 100)); // คำนวณโบนัสแบบ %
+        } else {
+            bonusAmount = promo.value; // คำนวณโบนัสแบบจำนวนเงินคงที่
+        }
+
+        // คำนวณยอดเทิร์นโอเวอร์ที่ต้องทำ = (ยอดฝากล่าสุด + โบนัส) * เท่าเทิร์น
+        const totalTurnoverRequired = Math.floor((depositAmount + bonusAmount) * promo.turnoverMultiplier);
+
+        // 💾 อัปเดตข้อมูลผู้เล่น
+        user.balance = (user.balance || 0) + bonusAmount; // เพิ่มโบนัสเข้ายอดเงิน
+        user.activePromotion = promoCode;                 // บันทึกโปรที่กำลังใช้งาน
+        user.currentTurnoverRequired = totalTurnoverRequired; // บันทึกยอดเทิร์นที่ต้องทำ
+        user.claimedPromotions.push(promoCode);            // บันทึกประวัติว่าเคยรับโปรนี้แล้ว
+
+        await saveDataToFirebase(); // บันทึกลง Firebase
+
+        const bonusDetail = promo.type === 'percent' ? `${promo.value}% (${bonusAmount} บาท)` : `${bonusAmount} บาท`;
+        
+        replyText = `🎉 [ รับโปรโมชั่นสำเร็จ! ] 🎉\n──────────────────\n📌 รหัสโปร: ${promoCode}\n💰 ยอดฝากอ้างอิง: ${depositAmount} บาท\n🎁 โบนัสได้รับ: ${bonusDetail}\n💵 เครดิตคงเหลือใหม่: ${user.balance} บาท\n🔄 ยอดเทิร์นที่ต้องทำ: ${totalTurnoverRequired} บาท\n──────────────────\n⚡ สู้ๆ ขอให้โชคดีครับ!`;
     }
 }
         // ==================== [ 4. ระบบรับโพยป๊อกเด้ง + หักค้ำประกัน 3 เด้ง ] ====================
@@ -4628,6 +4726,10 @@ else if (command.toLowerCase() === "y") {
 
                         // 🟢 [เพิ่มบรรทัดนี้ลงไปครับ] สะสมยอดถอนสำเร็จของสมาชิกคนนี้
                         user.totalWithdraw = (user.totalWithdraw || 0) + finalAmount;
+
+                        // 🌟 [วางตรงนี้] ถ้าถอนเงินจนเครดิตหมดกระเป๋า (balance เหลือ 0) ให้ล้างโปรโมชั่นและเทิร์นทันที
+                        user.activePromotion = null;
+                        user.currentTurnoverRequired = 0;
                         
                         // 🔓 2. ทำการปลดล็อกบัญชีให้ส่งโพยใหม่ได้ตามปกติ
                         user.isWithdrawLocked = false;

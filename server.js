@@ -2135,33 +2135,49 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
         }
     }
 }
-   // ==================== [ 1. คำสั่งแอดมิน: เพิ่มโปรโมชั่น รูปแบบ "+ รหัส โบนัส เทิร์น" ] ====================
+   // ==================== [ 1. คำสั่งแอดมิน: เพิ่มโปรโมชั่น รูปแบบยืดหยุ่นแบบป๊อกเด้ง ] ====================
 else if (userMsg.startsWith("+")) {
     if (!ADMIN_IDS.includes(userId)) {
         replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งนี้ครับ";
     } else {
-        // ใช้ Regex แกะรูปแบบ: + [รหัส] [โบนัส] [เทิร์น]
-        // รองรับทั้งเว้นวรรคและไม่เว้นวรรค เช่น "+ รับ1 20ป 2ท" หรือ "+รับ1 20ป 2ท"
-        const match = userMsg.match(/^\+\s*(\S+)\s+(\d+(?:\.\d+)?[ปP%]?)\s+(\d+(?:\.\d+)?[ทT]?)$/i);
+        // 1. แยกข้อความด้วยช่องว่าง / ขึ้นบรรทัดใหม่ แบบเดียวกับป๊อกเด้ง
+        const parts = userMsg.trim().split(/\s+/);
+        
+        // parts[0] จะเป็น "+รับ1" หรือ "+"
+        let promoCode = "";
+        let rawBonus = "";
+        let rawTurnover = "";
 
-        if (!match) {
+        if (parts[0] === "+" && parts.length >= 4) {
+            // กรณีพิมพ์เว้นวรรคหลัง + เช่น: "+ รับ1 20ป 2ท"
+            promoCode = parts[1];
+            rawBonus = parts[2];
+            rawTurnover = parts[3];
+        } else if (parts[0].startsWith("+") && parts[0].length > 1 && parts.length >= 3) {
+            // กรณีพิมพ์ติด + เช่น: "+รับ1 20ป 2ท"
+            promoCode = parts[0].substring(1);
+            rawBonus = parts[1];
+            rawTurnover = parts[2];
+        }
+
+        // ตรวจสอบว่าแกะค่าออกมาได้ครบทั้ง 3 ชิ้นหรือไม่
+        if (!promoCode || !rawBonus || !rawTurnover) {
             replyText = "⚠️ รูปแบบคำสั่งไม่ถูกต้องครับน้า\n👉 พิมพ์: + [รหัส] [โบนัส] [เทิร์น]ท\n• แบบ %: + รับ1 20ป 2ท\n• แบบบาท: + รับ2 50 2ท";
         } else {
-            const promoCode = match[1].trim();
-            const rawBonus = match[2].trim();
-            const rawTurnover = match[3].trim();
-
+            // 2. แกะประเภทโบนัส (% หรือ บาท)
             let bonusType = 'fixed';
             let bonusValue = 0;
-            let turnoverMultiplier = parseFloat(rawTurnover.replace(/[ทT]/gi, '').trim()) || 0;
 
-            if (/[ปP%]/i.test(rawBonus)) {
+            if (rawBonus.includes('ป') || rawBonus.includes('P') || rawBonus.includes('%')) {
                 bonusType = 'percent';
-                bonusValue = parseFloat(rawBonus.replace(/[ปP%]/gi, '').trim());
+                bonusValue = parseFloat(rawBonus.replace(/[ปP%]/gi, ''));
             } else {
                 bonusType = 'fixed';
                 bonusValue = parseFloat(rawBonus);
             }
+
+            // 3. แกะเท่าเทิร์นโอเวอร์
+            let turnoverMultiplier = parseFloat(rawTurnover.replace(/[ทT]/gi, ''));
 
             if (isNaN(bonusValue) || bonusValue <= 0 || isNaN(turnoverMultiplier) || turnoverMultiplier <= 0) {
                 replyText = "⚠️ จำนวนโบนัส หรือ ยอดเทิร์นโอเวอร์ไม่ถูกต้องครับน้า กรุณาเช็กตัวเลขอีกครั้ง";

@@ -2383,7 +2383,95 @@ else if (promotions[userMsg.trim()]) {
 
         const bonusDetail = promo.type === 'percent' ? `${promo.value}% (${bonusAmount} บาท)` : `${bonusAmount} บาท`;
         
-        replyText = `🎉 [ รับโปรโมชั่นสำเร็จ! ] 🎉\n──────────────────\n📌 รหัสโปร: ${promoCode}\n💰 ยอดฝากอ้างอิง: ${depositAmount} บาท\n🎁 โบนัสได้รับ: ${bonusDetail}\n💵 เครดิตคงเหลือใหม่: ${user.balance} บาท\n🔄 ยอดเทิร์นที่ต้องทำ: ${totalTurnoverRequired} บาท\n──────────────────\n⚡ สู้ๆ ขอให้โชคดีครับ!`;
+        // 🚀 สั่งยิง Flex Message ดีไซน์ส้ม-ทอง-ไฟ แจ้งรับโปรโมชั่นสำเร็จทันทีตรงนี้
+        try {
+            await axios.post('https://api.line.me/v2/bot/message/reply', {
+                replyToken: replyToken,
+                messages: [{
+                    "type": "flex",
+                    "altText": "🔥 คุณได้รับโปรโมชั่นสำเร็จเรียบร้อยแล้ว!",
+                    "contents": {
+                        "type": "bubble",
+                        "size": "mega",
+                        "header": {
+                            "type": "box",
+                            "layout": "vertical",
+                            "contents": [
+                                { "type": "text", "text": "🔥 รับโปรโมชั่นสำเร็จ! 🔥", "weight": "bold", "color": "#FFFFFF", "size": "xl", "align": "center" },
+                                { "type": "text", "text": "จัดเต็มโบนัส พร้อมลุยแล้ววันนี้! 🚀", "color": "#FFE0B2", "size": "xs", "align": "center", "margin": "xs" }
+                            ],
+                            "backgroundColor": "#FF6F00",
+                            "paddingAll": "15px"
+                        },
+                        "body": {
+                            "type": "box",
+                            "layout": "vertical",
+                            "contents": [
+                                {
+                                    "type": "box", "layout": "horizontal",
+                                    "contents": [
+                                        { "type": "text", "text": "📌 รหัสโปรโมชั่น:", "color": "#666666", "size": "sm", "flex": 5 },
+                                        { "type": "text", "text": `${promoCode}`, "color": "#D84315", "weight": "bold", "size": "sm", "align": "end", "flex": 5 }
+                                    ],
+                                    "margin": "md"
+                                },
+                                {
+                                    "type": "box", "layout": "horizontal",
+                                    "contents": [
+                                        { "type": "text", "text": "💰 ยอดฝากอ้างอิง:", "color": "#666666", "size": "sm", "flex": 5 },
+                                        { "type": "text", "text": `${depositAmount.toLocaleString()} บาท`, "color": "#333333", "weight": "bold", "size": "sm", "align": "end", "flex": 5 }
+                                    ],
+                                    "margin": "md"
+                                },
+                                {
+                                    "type": "box", "layout": "horizontal",
+                                    "contents": [
+                                        { "type": "text", "text": "🎁 โบนัสที่ได้รับ:", "color": "#666666", "size": "sm", "flex": 5 },
+                                        { "type": "text", "text": `+${bonusAmount.toLocaleString()} บาท (${bonusDetail})`, "color": "#2E7D32", "weight": "bold", "size": "sm", "align": "end", "flex": 5 }
+                                    ],
+                                    "margin": "md"
+                                },
+                                {
+                                    "type": "box", "layout": "horizontal",
+                                    "contents": [
+                                        { "type": "text", "text": "🔄 ยอดเทิร์นที่ต้องทำ:", "color": "#666666", "size": "sm", "flex": 5 },
+                                        { "type": "text", "text": `${totalTurnoverRequired.toLocaleString()} บาท`, "color": "#E65100", "weight": "bold", "size": "sm", "align": "end", "flex": 5 }
+                                    ],
+                                    "margin": "md"
+                                },
+                                { "type": "separator", "margin": "lg", "color": "#FFE0B2" },
+                                {
+                                    "type": "box", "layout": "horizontal",
+                                    "contents": [
+                                        { "type": "text", "text": "💳 เครดิตคงเหลือใหม่:", "color": "#1A237E", "weight": "bold", "size": "md", "flex": 6 },
+                                        { "type": "text", "text": `${user.balance.toLocaleString()} บาท`, "color": "#E65100", "weight": "bold", "size": "lg", "align": "end", "flex": 4 }
+                                    ],
+                                    "margin": "lg"
+                                }
+                            ],
+                            "backgroundColor": "#FFF8E1",
+                            "paddingAll": "18px"
+                        },
+                        "footer": {
+                            "type": "box", "layout": "vertical",
+                            "contents": [
+                                { "type": "text", "text": "⚡ ขอให้โชคดี ระเบิดแจ็กพอตแตกหนักๆ นะครับ! ⚡", "color": "#BF360C", "weight": "bold", "size": "xs", "align": "center" }
+                            ],
+                            "backgroundColor": "#FFE0B2",
+                            "paddingAll": "12px"
+                        }
+                    }
+                }]
+            }, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${TOKEN}`
+                }
+            });
+        } catch (error) {
+            console.error("❌ ส่ง Flex Message รับโปรโมชั่นล้มเหลว:", error.response ? error.response.data : error.message);
+        }
+        return; // 🌟 ทำงานเสร็จแล้วจบคำสั่งตรงนี้เลย
     }
 }
         // ==================== [ 4. ระบบรับโพยป๊อกเด้ง + หักค้ำประกัน 3 เด้ง ] ====================

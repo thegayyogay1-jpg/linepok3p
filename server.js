@@ -2370,7 +2370,8 @@ else if (promotions[userMsg.trim()]) {
         user.activePromotion = promoCode;                 // บันทึกโปรที่กำลังใช้งาน
         user.activeBonusAmount = bonusAmount;             // 🌟 บันทึกยอดโบนัสไว้ (ใช้สำหรับหักออกเวลาฝากใหม่)
         user.turnoverTarget = totalTurnoverRequired;      // 🌟 ใช้ turnoverTarget ตัวเดิมที่ตรงกับ Firebase
-        user.claimedPromotions.push(promoCode);            // บันทึกประวัติว่าเคยรับโปรนี้แล้ว
+        user.claimedPromotions.push(promoCode);           // บันทึกประวัติว่าเคยรับโปรนี้แล้ว
+        user.lastDeposit = 0;                             // 🔒 ล้างยอดฝากล่าสุดทิ้งทันที! เพื่อป้องกันไม่ให้เอายอดฝากนี้ไปกดรับโปรอื่นซ้ำ
 
         await saveDataToFirebase(); // บันทึกลง Firebase
 

@@ -2339,6 +2339,10 @@ else if (promotions[userMsg.trim()]) {
     if (user.turnoverTarget === undefined) user.turnoverTarget = 0;
     if (user.activeBonusAmount === undefined) user.activeBonusAmount = 0;
 
+    // คำนวณยอดเงินคงค้างเดิม ก่อนที่จะรวมยอดฝากรอบล่าสุด
+    const depositAmount = user.lastDeposit || 0;
+    const previousBalance = (user.balance || 0) - depositAmount;
+
     // 🔴 [เงื่อนไขที่ 1] เช็กว่ากำลังติดโปรโมชั่นอื่นอยู่หรือไม่ (ห้ามรับซ้อน)
     if (user.activePromotion !== null) {
         replyText = `❌ คุณไม่สามารถรับโปรโมชั่นซ้อนได้ครับ\n📌 โปรที่ใช้งานอยู่ปัจจุบัน: [ ${user.activePromotion} ]\n⚠️ ต้องทำเทิร์นให้ครบ หรือยอดเงินเป็น 0 ก่อนจึงจะรับโปรใหม่ได้ครับ`;
@@ -2351,9 +2355,11 @@ else if (promotions[userMsg.trim()]) {
     else if (!user.lastDeposit || user.lastDeposit <= 0) {
         replyText = `⚠️ ไม่พบยอดฝากล่าสุดของคุณ ไม่สามารถรับโปรโมชั่นได้ครับ`;
     }
+        // 🔴 [เงื่อนไขที่ 4 - เพิ่มใหม่ตามวิธีที่ 1] เช็กยอดเงินค้างในกระเป๋าเดิมก่อนฝากใหม่ (ต้องไม่เกิน 5 บาท)
+    else if (previousBalance > 5) {
+        replyText = `❌ ไม่สามารถรับโปรโมชั่นได้ครับ!\n📌 คุณมียอดเงินคงค้างเดิมในกระเป๋า (${previousBalance} บาท)\n⚠️ กรุณาทำการถอนเงินออกก่อน หรือเล่นให้เหลือไม่เกิน 5 บาท จึงจะรับโปรโมชั่นฝากใหม่ได้ครับ`;
+    }
     else {
-        // 🟢 ผ่านทุกเงื่อนไข -> คำนวณโบนัสและยอดเทิร์น
-        const depositAmount = user.lastDeposit;
         let bonusAmount = 0;
 
         if (promo.type === 'percent') {

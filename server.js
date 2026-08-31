@@ -2191,18 +2191,21 @@ else if (userMsg.startsWith("+")) {
         let promoCode = "";
         let rawBonus = "";
         let rawTurnover = "";
+        let rawMaxBonus = "";
 
         // กรณีที่ 1: พิมพ์แบบเว้นวรรค เช่น "+ รับ1 20ป 2ท" (parts จะมี 4 ชิ้น: ["+", "รับ1", "20ป", "2ท"])
         if (parts[0] === "+" && parts.length >= 4) {
             promoCode = parts[1];
             rawBonus = parts[2];
             rawTurnover = parts[3];
+            if (parts[4]) rawMaxBonus = parts[4];
         } 
         // กรณีที่ 2: พิมพ์ติดกัน เช่น "+รับ1 20ป 2ท" (parts จะมี 3 ชิ้น: ["+รับ1", "20ป", "2ท"])
         else if (parts[0].startsWith("+") && parts[0].length > 1 && parts.length >= 3) {
             promoCode = parts[0].substring(1);
             rawBonus = parts[1];
             rawTurnover = parts[2];
+            if (parts[3]) rawMaxBonus = parts[3];
         }
 
         if (!promoCode || !rawBonus || !rawTurnover) {
@@ -2211,12 +2214,14 @@ else if (userMsg.startsWith("+")) {
             // ดึงเฉพาะตัวเลขออกมาจากช่องโบนัสและเทิร์น
             const bonusNumMatch = rawBonus.match(/\d+(?:\.\d+)?/);
             const turnoverNumMatch = rawTurnover.match(/\d+(?:\.\d+)?/);
+            const maxBonusMatch = rawMaxBonus ? rawMaxBonus.match(/\d+(?:\.\d+)?/) : null;
 
             if (!bonusNumMatch || !turnoverNumMatch) {
                 replyText = "⚠️ ตัวเลขโบนัสหรือยอดเทิร์นไม่ถูกต้องครับน้า กรุณาระบุตัวเลขให้ชัดเจน";
             } else {
                 const bonusValue = parseFloat(bonusNumMatch[0]);
                 const turnoverMultiplier = parseFloat(turnoverNumMatch[0]);
+                const maxBonus = maxBonusMatch ? parseFloat(maxBonusMatch[0]) : null; // ถ้าไม่ใส่ ให้เป็น null
 
                 // เช็กว่ามีคำว่า 'ป', 'p', '%' หรือไม่ เพื่อกำหนดประเภท
                 const isPercent = /[ปp%]/i.test(rawBonus);
@@ -2230,7 +2235,8 @@ else if (userMsg.startsWith("+")) {
                         code: promoCode,
                         type: bonusType,
                         value: bonusValue,
-                        turnoverMultiplier: turnoverMultiplier
+                        turnoverMultiplier: turnoverMultiplier,
+                        maxBonus: maxBonus
                     };
 
                     await saveDataToFirebase(); // บันทึกลง Firebase
@@ -2362,27 +2368,39 @@ else if (promotions[userMsg.trim()]) {
     else {
         let bonusAmount = 0;
 
-        if (promo.type === 'percent') {
-            bonusAmount = Math.floor(depositAmount * (promo.value / 100)); // คำนวณโบนัสแบบ %
+       if (promo.type === 'percent') {
+            // 1. คำนวณโบนัสตาม %
+            let calculatedBonus = Math.floor(depositAmount * (promo.value / 100));
+
+            // 2. 🛑 เช็กเพดานสูงสุด (Limit): ถ้ามีตั้งค่า maxBonus ไว้ ให้ใช้ค่าน้อยกว่า
+            if (promo.maxBonus && promo.maxBonus > 0) {
+                bonusAmount = Math.min(calculatedBonus, promo.maxBonus);
+            } else {
+                bonusAmount = calculatedBonus;
+            }
         } else {
             bonusAmount = promo.value; // คำนวณโบนัสแบบจำนวนเงินคงที่
         }
 
-        // คำนวณยอดเทิร์นโอเวอร์ที่ต้องทำ = (ยอดฝากล่าสุด + โบนัส) * เท่าเทิร์น
+        // คำนวณยอดเทิร์นโอเวอร์ที่ต้องทำ = (ยอดฝากล่าสุด + โบนัสที่ได้รับจริง) * เท่าเทิร์น
         const totalTurnoverRequired = Math.floor((depositAmount + bonusAmount) * promo.turnoverMultiplier);
 
         // 💾 อัปเดตข้อมูลผู้เล่น
-        user.balance = (user.balance || 0) + bonusAmount; // เพิ่มโบนัสเข้ายอดเงิน
-        user.activePromotion = promoCode;                 // บันทึกโปรที่กำลังใช้งาน
-        user.activeBonusAmount = bonusAmount;             // 🌟 บันทึกยอดโบนัสไว้ (ใช้สำหรับหักออกเวลาฝากใหม่)
-        user.turnoverTarget = totalTurnoverRequired;      // 🌟 ใช้ turnoverTarget ตัวเดิมที่ตรงกับ Firebase
-        user.claimedPromotions.push(promoCode);           // บันทึกประวัติว่าเคยรับโปรนี้แล้ว
-        user.lastDeposit = 0;                             // 🔒 ล้างยอดฝากล่าสุดทิ้งทันที! เพื่อป้องกันไม่ให้เอายอดฝากนี้ไปกดรับโปรอื่นซ้ำ
+        user.balance = (user.balance || 0) + bonusAmount;
+        user.activePromotion = promoCode;
+        user.activeBonusAmount = bonusAmount;
+        user.turnoverTarget = totalTurnoverRequired;
+        user.claimedPromotions.push(promoCode);
+        user.lastDeposit = 0;
 
         await saveDataToFirebase(); // บันทึกลง Firebase
 
-        const bonusDetail = promo.type === 'percent' ? `${promo.value}% (${bonusAmount} บาท)` : `${bonusAmount} บาท`;
-        
+        // สรุปข้อความโบนัสสำหรับแสดงใน Flex
+        let bonusDetail = promo.type === 'percent' ? `${promo.value}%` : `คงที่`;
+        if (promo.maxBonus) {
+            bonusDetail += ` (สูงสุด ${promo.maxBonus.toLocaleString()}฿)`;
+        }
+
         // 🚀 สั่งยิง Flex Message ดีไซน์ส้ม-ทอง-ไฟ แจ้งรับโปรโมชั่นสำเร็จทันทีตรงนี้
         try {
             await axios.post('https://api.line.me/v2/bot/message/reply', {
@@ -2471,7 +2489,7 @@ else if (promotions[userMsg.trim()]) {
         } catch (error) {
             console.error("❌ ส่ง Flex Message รับโปรโมชั่นล้มเหลว:", error.response ? error.response.data : error.message);
         }
-        return; // 🌟 ทำงานเสร็จแล้วจบคำสั่งตรงนี้เลย
+        return;
     }
 }
         // ==================== [ 4. ระบบรับโพยป๊อกเด้ง + หักค้ำประกัน 3 เด้ง ] ====================

@@ -2135,30 +2135,29 @@ else if (userMsg === 'oo' || userMsg === 'xx') {
         }
     }
 }
-    // ==================== [ 1. คำสั่งแอดมิน: เพิ่มโปรโมชั่น รูปแบบ "+ รหัส โบนัส เทิร์น" ] ====================
+   // ==================== [ 1. คำสั่งแอดมิน: เพิ่มโปรโมชั่น รูปแบบ "+ รหัส โบนัส เทิร์น" ] ====================
 else if (userMsg.startsWith("+")) {
     if (!ADMIN_IDS.includes(userId)) {
         replyText = "❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งนี้ครับ";
     } else {
-        // ลบเครื่องหมาย + ออก แล้วตัดช่องว่างส่วนเกิน
-        const cleanContent = userMsg.substring(1).trim();
-        const parts = cleanContent.split(/\s+/);
-        
-        // parts[0] = รหัสโปร (เช่น รับ1), parts[1] = โบนัส (เช่น 20ป หรือ 50), parts[2] = เทิร์น (เช่น 3ท)
-        if (parts.length < 3 || !parts[0]) {
-            replyText = "⚠️ รูปแบบคำสั่งไม่ถูกต้องครับน้า\n👉 พิมพ์: + [รหัส] [โบนัส] [เทิร์น]ท\n• แบบ %: + รับ1 20ป 3ท\n• แบบบาท: + รับ2 50 3ท";
+        // ใช้ Regex แกะรูปแบบ: + [รหัส] [โบนัส] [เทิร์น]
+        // รองรับทั้งเว้นวรรคและไม่เว้นวรรค เช่น "+ รับ1 20ป 2ท" หรือ "+รับ1 20ป 2ท"
+        const match = userMsg.match(/^\+\s*(\S+)\s+(\d+(?:\.\d+)?[ปP%]?)\s+(\d+(?:\.\d+)?[ทT]?)$/i);
+
+        if (!match) {
+            replyText = "⚠️ รูปแบบคำสั่งไม่ถูกต้องครับน้า\n👉 พิมพ์: + [รหัส] [โบนัส] [เทิร์น]ท\n• แบบ %: + รับ1 20ป 2ท\n• แบบบาท: + รับ2 50 2ท";
         } else {
-            const promoCode = parts[0].trim();
-            const rawBonus = parts[1].trim();
-            const rawTurnover = parts[2].trim();
+            const promoCode = match[1].trim();
+            const rawBonus = match[2].trim();
+            const rawTurnover = match[3].trim();
 
-            let bonusType = 'fixed'; // 'percent' หรือ 'fixed'
+            let bonusType = 'fixed';
             let bonusValue = 0;
-            let turnoverMultiplier = parseFloat(rawTurnover.replace(/[ทT]/g, '').trim()) || 0;
+            let turnoverMultiplier = parseFloat(rawTurnover.replace(/[ทT]/gi, '').trim()) || 0;
 
-            if (rawBonus.includes('ป') || rawBonus.includes('P') || rawBonus.includes('%')) {
+            if (/[ปP%]/i.test(rawBonus)) {
                 bonusType = 'percent';
-                bonusValue = parseFloat(rawBonus.replace(/[ปP%]/g, '').trim());
+                bonusValue = parseFloat(rawBonus.replace(/[ปP%]/gi, '').trim());
             } else {
                 bonusType = 'fixed';
                 bonusValue = parseFloat(rawBonus);

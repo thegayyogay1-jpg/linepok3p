@@ -1,6 +1,7 @@
 const express = require('express');
 const axios = require('axios');
 const fs = require('fs'); // 📁 เติมตรงนี้เพื่อให้ระบบรู้จักการเขียนไฟล์ลงเครื่องครับน้า
+const admin = require('firebase-admin'); // 👈 เพิ่มการดึง Library Firebase Admin
 const app = express();
 app.use(express.json());
 global.currentReplyFlex = null; // 👈 แทรกบรรทัดนี้ลงไปตรงนี้ครับ
@@ -16,6 +17,21 @@ const ADMIN_IDS = [
 
 // 📡 ลิงก์เชื่อมโยงไปยังฐานข้อมูล Firebase ถาวร 
 const FIREBASE_URL = "https://my-pokdeng-bot-default-rtdb.asia-southeast1.firebasedatabase.app/"; 
+
+// 🔥 [แก้ไขจุดนี้] ตั้งค่าเชื่อมต่อ Firebase Admin สำหรับ API ของหน้าเว็บ LIFF
+if (!admin.apps.length) {
+    admin.initializeApp({
+        credential: admin.credential.cert({
+            projectId: process.env.FIREBASE_PROJECT_ID,
+            clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+            privateKey: process.env.FIREBASE_PRIVATE_KEY ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n') : undefined,
+        }),
+        databaseURL: FIREBASE_URL
+    });
+}
+
+// 📌 [สำคัญที่สุด] ประกาศตัวแปร db ให้ระบบรู้จัก (แก้ปัญหา Server Error: db is not defined)
+const db = admin.database();
 
 let usersWallets = {};
 let nextMemberId = 1;

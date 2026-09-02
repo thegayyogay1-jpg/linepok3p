@@ -41,7 +41,6 @@ let usersRoundCrossCheck = {}; // 🌟 เพิ่มบรรทัดนี�
 // ==================== [ เชื่อมต่อ Firebase Real-time SDK ] ====================
 const admin = require('firebase-admin');
 
-// ⚠️ หมายเหตุ: ถ้าน้ามีไฟล์ serviceAccountKey.json ให้ใส่ path ไฟล์ หรือใช้ databaseURL อย่างเดียวได้ครับ
 if (!admin.apps.length) {
     admin.initializeApp({
         databaseURL: FIREBASE_URL
@@ -57,7 +56,10 @@ db.ref('system_data/usersWallets').on('value', (snapshot) => {
         usersWallets = data;
         console.log("⚡ [Real-time Sync] กระเป๋าเงินในบอทซิงค์ตรงกับ Firebase เรียบร้อย!");
     }
+}, (errorObject) => {
+    console.error("❌ Firebase Real-time Sync Error:", errorObject.message);
 });
+
 global.depositQueue = {}; // 👈 เพิ่มบรรทัดนี้เพื่อเตรียมถังคิวฝากเงินออโต้ไม่ให้เป็นค่าว่างครับน้า!
 if (!global.satangCounter) global.satangCounter = 0;
 

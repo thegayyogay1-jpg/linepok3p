@@ -40,6 +40,27 @@ let usersRoundCrossCheck = {}; // 🌟 เพิ่มบรรทัดนี�
 global.depositQueue = {}; // 👈 เพิ่มบรรทัดนี้เพื่อเตรียมถังคิวฝากเงินออโต้ไม่ให้เป็นค่าว่างครับน้า!
 if (!global.satangCounter) global.satangCounter = 0;
 
+// ==================== [ เชื่อมต่อ Firebase Real-time SDK ] ====================
+const admin = require('firebase-admin');
+
+// ⚠️ หมายเหตุ: ถ้าน้ามีไฟล์ serviceAccountKey.json ให้ใส่ path ไฟล์ หรือใช้ databaseURL อย่างเดียวได้ครับ
+if (!admin.apps.length) {
+    admin.initializeApp({
+        databaseURL: FIREBASE_URL
+    });
+}
+
+const db = admin.database();
+
+// ⚡ ให้บอทเกาะฟัง Real-time! หน้าเว็บอัปเดต Firebase ปุ๊บ RAM ในบอทเปลี่ยนปั๊บทันที!
+db.ref('system_data/usersWallets').on('value', (snapshot) => {
+    const data = snapshot.val();
+    if (data) {
+        usersWallets = data;
+        console.log("⚡ [Real-time Sync] กระเป๋าเงินในบอทซิงค์ตรงกับ Firebase เรียบร้อย!");
+    }
+});
+
 // 🔄 ฟังก์ชันอัตโนมัติ: ดึงข้อมูลจาก Firebase มาอัปเดตลงในบอททันทีที่เปิดเครื่อง (แก้ไขดึงครบทุกกล่องแล้ว)
 async function loadDataFromFirebase() {
     try {

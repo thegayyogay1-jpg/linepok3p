@@ -6279,8 +6279,16 @@ app.post('/api/place-bet', async (req, res) => {
                 message: `❌ บัญชีถูกล็อกชั่วคราว อยู่ระหว่างรออนุมัติยอดถอน (${userData.pendingWithdrawAmount || 0} บาท)` 
             });
         }
+        
+        // 3. เช็กยอดเงินคงเหลือ
+        const currentBalance = userData.balance || 0;
+        if (currentBalance < amount) {
+            return res.json({ success: false, message: '❌ ยอดเงินคงเหลือไม่พอสำหรับการแทง' });
+        }
 
-        const userBalance = userData.balance || 0;
+        // 4. ตัดเงินสมาชิก
+        const newBalance = currentBalance - amount;
+        await userWalletRef.update({ balance: newBalance });
 
         // 3. จำแนกประเภทการแทง (ไฮโล vs ป๊อกเด้ง)
         const isHilo = type.startsWith('z') || ['สูง', 'ต่ำ', '11ไฮโล', '123', '456', 'ตองรวม'].includes(type) || type.startsWith('ตอง');

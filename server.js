@@ -2732,27 +2732,32 @@ else if (promotions[userMsg.trim()]) {
                             }
 
                             if (!hasError) {
-                                user.balance -= finalHoldCost; 
-                                await saveDataToFirebase();
-                                
-                                if (!roundBets[userId]) {
-                                    roundBets[userId] = [];
-                                }
+    user.balance -= finalHoldCost; 
+    
+    // 1. ตรวจสอบว่ามี Array roundBets ของยูสเซอร์นี้หรือยัง ถ้ายังไม่มีให้สร้างใหม่
+    if (!roundBets[userId]) {
+        roundBets[userId] = [];
+    }
 
-                                let itemsFlexContents = [];
-                                
-                                processedBets.forEach((bet) => {
-                                    roundBets[userId].push({
-                                        name: displayName,
-                                        memberNumber: user.memberNumber,
-                                        betType: bet.type,
-                                        detail: bet.detail,
-                                        pricePerLeg: bet.pricePerLeg,
-                                        actualBet: bet.actualBet,
-                                        holdCost: (bet.actualBet * maxHandMultiplier), 
-                                        maxMultiplier: maxHandMultiplier, 
-                                        time: new Date().toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok' })
-                                    });
+    // 2. นำโพยจากไลน์ (processedBets) Push ต่อท้ายใน roundBets เดิม (เพื่อไม่ให้โพยหน้าเว็บหาย)
+    processedBets.forEach((bet) => {
+        roundBets[userId].push({
+            name: displayName,
+            memberNumber: user.memberNumber,
+            betType: bet.type,
+            detail: bet.detail,
+            pricePerLeg: bet.pricePerLeg,
+            actualBet: bet.actualBet,
+            holdCost: (bet.actualBet * maxHandMultiplier), 
+            maxMultiplier: maxHandMultiplier, 
+            time: new Date().toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok' }),
+            source: 'line' // ระบุว่ามาจากไลน์
+        });
+    });
+
+                                // 3. 🌟 บันทึกตัวแปร roundBets[userId] ลง Firebase Realtime Database ทันที
+    await db.ref(`system_data/roundBets/${userId}`).set(roundBets[userId]);
+    await saveDataToFirebase();
 
                                     itemsFlexContents.push({
                                         "type": "text",
@@ -6296,7 +6301,7 @@ app.post('/api/place-bet', async (req, res) => {
             });
         }
         
-        // 3. กำหนดตัวแปร ยอดเงินคงเหลือ (แก้ไขจุดประกาศตัวแปรให้ตรงกัน)
+        // 3. กำหนดตัวแปร ยอดเงินคงเหลือ
         const userBalance = Number(userData.balance || 0);
         const betAmount = Number(amount);
 
@@ -6338,9 +6343,14 @@ app.post('/api/place-bet', async (req, res) => {
                 return res.json({ success: false, message: `❌ เครดิตไม่พอ (ต้องการ ${betAmount} ฿ / มี ${userBalance} ฿)` });
             }
 
-            // บันทึกโพยไฮโล (ใช้ push เพื่อให้ตรงกับบอท LINE และไม่เกิด Index ซ้อน)
-            const hiloBetRef = db.ref(`system_data/hiloRoundBets/${userId}`);
-            await hiloBetRef.push({
+            // --- ดึงข้อมูล hiloRoundBets เดิมจาก Firebase มาเป็น Array ---
+            const hiloSnap = await db.ref(`system_data/hiloRoundBets/${userId}`).once('value');
+            let currentHiloBets = hiloSnap.val() || [];
+            if (!Array.isArray(currentHiloBets)) {
+                currentHiloBets = Object.values(currentHiloBets);
+            }
+
+            const newHiloBet = {
                 category: type,
                 type: type,
                 actualBet: betAmount,
@@ -6348,10 +6358,19 @@ app.post('/api/place-bet', async (req, res) => {
                 amount: betAmount,
                 timestamp: Date.now(),
                 via: 'LIFF_WEB'
-            });
+            };
 
-            // หักเงินผู้ใช้
-            await userWalletRef.update({ balance: userBalance - betAmount });
+            currentHiloBets.push(newHiloBet);
+
+            // บันทึกกลับเป็น Array
+            await db.ref(`system_data/hiloRoundBets/${userId}`).set(currentHiloBets);
+
+            // หักเงินผู้ใช้ (อัปเดตใน Memory บอท LINE ด้วยถ้ามี)
+            const newBalance = userBalance - betAmount;
+            await userWalletRef.update({ balance: newBalance });
+            if (typeof usersWallets !== 'undefined' && usersWallets[userId]) {
+                usersWallets[userId].balance = newBalance;
+            }
 
             return res.json({ success: true, message: 'บันทึกโพยไฮโลสำเร็จ' });
         } 
@@ -6371,7 +6390,7 @@ app.post('/api/place-bet', async (req, res) => {
             let finalHoldCost = 0;
             let maxHandMultiplier = 3;
 
-            // ตรวจสอบเงื่อนไขค้ำประกันแบบเดียวกับโค้ด LINE Bot
+            // ตรวจสอบเงื่อนไขค้ำประกัน
             if (userBalance < doubleHoldCost) {
                 return res.json({ 
                     success: false, 
@@ -6385,7 +6404,7 @@ app.post('/api/place-bet', async (req, res) => {
                 finalHoldCost = tripleHoldCost;
             }
 
-            // แปลงรูปแบบขาแทงให้บอทอ่านได้
+            // แปลงรูปแบบขาแทง
             let formattedType = type;
             if (isDealerPok) {
                 formattedType = `จ${type.replace('เจ้าสู้ขา', '').trim()}`;
@@ -6395,13 +6414,21 @@ app.post('/api/place-bet', async (req, res) => {
 
             const displayName = userData.nickname || userData.name || "ไม่ระบุชื่อ";
 
-            // บันทึกโพยป๊อกเด้ง (ใช้ push เพื่อให้ตรงกับโครงสร้างบอท LINE)
-            const pokBetRef = db.ref(`system_data/roundBets/${userId}`);
-            await pokBetRef.push({
+            // --- 🌟 ดึงข้อมูล roundBets เดิมจาก Firebase มาเป็น Array ---
+            const pokSnap = await db.ref(`system_data/roundBets/${userId}`).once('value');
+            let currentPokBets = pokSnap.val() || [];
+            
+            // ป้องกันกรณีที่ Firebase เคยเก็บเป็น Object ให้แปลงกลับเป็น Array
+            if (!Array.isArray(currentPokBets)) {
+                currentPokBets = Object.values(currentPokBets);
+            }
+
+            const newPokBet = {
                 name: displayName,
                 memberNumber: userData.memberNumber || "-",
                 betType: formattedType,
                 type: formattedType,
+                detail: `${formattedType}-${betAmount}`,
                 pricePerLeg: betAmount,
                 actualBet: betAmount,
                 holdCost: finalHoldCost,
@@ -6409,10 +6436,26 @@ app.post('/api/place-bet', async (req, res) => {
                 time: new Date().toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok' }),
                 timestamp: Date.now(),
                 via: 'LIFF_WEB'
-            });
+            };
 
-            // อัปเดตเงินค้ำประกัน
-            await userWalletRef.update({ balance: userBalance - finalHoldCost });
+            // ดันโพยใหม่เข้าไปใน Array
+            currentPokBets.push(newPokBet);
+
+            // 1. อัปเดตลง Firebase Realtime Database
+            await db.ref(`system_data/roundBets/${userId}`).set(currentPokBets);
+
+            // 2. 🌟 Sync เข้าตัวแปรแรม (RAM) ของ Node.js เพื่อให้ LINE Bot มองเห็นทันที
+            if (typeof roundBets !== 'undefined') {
+                roundBets[userId] = currentPokBets;
+            }
+
+            // 3. หักเงินผู้ใช้ (อัปเดตทั้ง Firebase และตัวแปร RAM)
+            const newBalance = userBalance - finalHoldCost;
+            await userWalletRef.update({ balance: newBalance });
+
+            if (typeof usersWallets !== 'undefined' && usersWallets[userId]) {
+                usersWallets[userId].balance = newBalance;
+            }
 
             return res.json({ 
                 success: true, 
@@ -6422,11 +6465,9 @@ app.post('/api/place-bet', async (req, res) => {
 
     } catch (error) {
         console.error('Place Bet Error:', error);
-        // ส่งข้อความ error จริงออกไปดูที่หน้าเว็บเพื่อการแก้ไข
         return res.json({ success: false, message: `Server Error: ${error.message}` });
     }
 });
-
 // 📥 3. API รับโพยแทงจากหน้าเว็บ LIFF (ปรับปรุงใหม่)
 app.post('/api/place-bet', async (req, res) => {
     const { userId, amount, type } = req.body;

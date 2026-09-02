@@ -6260,7 +6260,7 @@ app.get('/liff', (req, res) => {
         <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
         <style>
             * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Kanit', sans-serif; user-select: none; }
-            body { background: #0b0c10; color: #fff; overflow-x: hidden; min-height: 100vh; pb: 120px; }
+            body { background: #0b0c10; color: #fff; overflow-x: hidden; min-height: 100vh; pb: 140px; }
             
             /* Header */
             .header { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #1f2833; border-bottom: 2px solid #c5a059; }
@@ -6270,45 +6270,43 @@ app.get('/liff', (req, res) => {
             .balance-card { background: #0b0c10; border: 1px solid #45a29e; color: #66fcf1; padding: 2px 8px; border-radius: 4px; font-weight: bold; }
             .btn-slip { background: #45a29e; border: none; color: #0b0c10; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; }
 
-            /* Tabs & Slider */
+            /* Tabs */
             .tabs { display: flex; background: #1f2833; border-bottom: 1px solid #45a29e; }
             .tab-btn { flex: 1; text-align: center; padding: 10px; font-size: 14px; font-weight: bold; color: #c5c6c7; cursor: pointer; }
             .tab-btn.active { color: #66fcf1; border-bottom: 3px solid #66fcf1; background: #0b0c10; }
 
             .slider { display: flex; width: 200vw; transition: transform 0.3s ease; }
-            .page { width: 100vw; padding: 8px; box-sizing: border-box; }
+            .page { width: 100vw; padding: 4px; box-sizing: border-box; }
 
-            /* Shared Cell Styles */
-            .cell { background: #1f2833; border: 1px solid #45a29e; border-radius: 4px; text-align: center; cursor: pointer; position: relative; display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 11px; transition: 0.1s; min-height: 40px; }
-            .cell:active, .cell.active { background: #45a29e; color: #0b0c10; font-weight: bold; }
-            .chip-badge { position: absolute; top: 2px; right: 2px; background: #c5a059; color: #000; font-size: 10px; font-weight: bold; border-radius: 8px; padding: 0 4px; display: none; }
-
-            /* Pokdeng Layout */
+            /* Pokdeng Grid */
             .pok-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
-            .pok-cell { min-height: 55px; font-size: 13px; font-weight: 600; }
+            .pok-cell { background: #1f2833; border: 1px solid #45a29e; border-radius: 6px; min-height: 55px; font-size: 13px; font-weight: 600; display: flex; flex-direction: column; justify-content: center; align-items: center; position: relative; cursor: pointer; }
+            .pok-cell.active { background: #45a29e; color: #0b0c10; }
 
-            /* Hilo Exact Felt Board Layout */
-            .hilo-felt { display: flex; flex-direction: column; gap: 4px; background: #0b0c10; border: 2px solid #c5a059; padding: 6px; border-radius: 6px; }
-            .hilo-row { display: flex; gap: 4px; width: 100%; }
-            .flex-1 { flex: 1; } .flex-2 { flex: 2; } .flex-3 { flex: 3; }
+            /* Hilo Felt Seamless Board (กระดานไฮโลติดกันชิดขอบ) */
+            .hilo-board { display: flex; flex-direction: column; background: #161920; border: 2px solid #c5a059; width: 100%; border-collapse: collapse; position: relative; }
+            .hilo-row { display: flex; width: 100%; }
+            .cell { background: #1f2833; border: 1px solid #3a4756; text-align: center; cursor: pointer; position: relative; display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 11px; min-height: 38px; flex: 1; margin: -0.5px; }
+            .cell:active, .cell.active { background: #45a29e; color: #0b0c10; font-weight: bold; }
             
-            /* Mini Grid for ตองระบุ 1-6 */
-            .tong-spec-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; width: 100%; }
-            .tong-spec-grid .cell { min-height: 25px; font-size: 10px; }
+            /* แถบสีฟ้ากั๊กขอบ/โต๊ด 2 ตัว (Intersection Overlay) */
+            .guk-spot { position: absolute; background: rgba(52, 152, 219, 0.85); border: 1px solid #fff; border-radius: 4px; z-index: 10; cursor: pointer; display: flex; justify-content: center; align-items: center; font-size: 9px; font-weight: bold; color: #fff; }
+            .guk-spot.active { background: #f39c12; color: #000; box-shadow: 0 0 6px #f39c12; }
+            .guk-v { width: 14px; height: 28px; top: 50%; transform: translateY(-50%); }
+            .guk-h { width: 28px; height: 14px; left: 50%; transform: translateX(-50%); }
 
-            /* Dots / Dice Graphics */
-            .dice-dots { display: flex; gap: 4px; margin-top: 2px; }
-            .dot { width: 6px; height: 6px; background: #66fcf1; border-radius: 50%; display: inline-block; }
+            .chip-badge { position: absolute; top: 1px; right: 1px; background: #c5a059; color: #000; font-size: 9px; font-weight: bold; border-radius: 8px; padding: 0 3px; display: none; z-index: 12; }
 
-            /* Controls Bar */
+            /* Bottom Control Panel */
             .control-panel { position: fixed; bottom: 0; left: 0; right: 0; background: #1f2833; border-top: 2px solid #c5a059; padding: 8px; z-index: 100; }
+            .total-bar { text-align: center; font-size: 14px; font-weight: bold; color: #66fcf1; margin-bottom: 6px; background: #0b0c10; padding: 3px 0; border-radius: 4px; border: 1px solid #45a29e; }
             .action-row { display: flex; justify-content: center; gap: 12px; margin-bottom: 6px; }
             .btn-act { padding: 6px 24px; border-radius: 15px; font-weight: bold; font-size: 13px; border: none; cursor: pointer; }
             .btn-confirm { background: #66fcf1; color: #0b0c10; }
             .btn-cancel { background: #c5c6c7; color: #0b0c10; }
 
             .chips-row { display: flex; justify-content: space-around; align-items: center; }
-            .chip { width: 38px; height: 38px; border-radius: 50%; border: 2px dashed #fff; display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 11px; cursor: pointer; }
+            .chip { width: 36px; height: 36px; border-radius: 50%; border: 2px dashed #fff; display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 11px; cursor: pointer; }
             .chip.active { border-style: solid; transform: scale(1.15); box-shadow: 0 0 8px #66fcf1; }
             .c-1 { background: #8e44ad; } .c-5 { background: #2980b9; } .c-10 { background: #27ae60; }
             .c-25 { background: #d35400; } .c-50 { background: #c0392b; } .c-100 { background: #f39c12; color: #000; } .c-500 { background: #16a085; }
@@ -6332,139 +6330,138 @@ app.get('/liff', (req, res) => {
             <div class="tab-btn" id="tab-hilo" onclick="switchTab(1)">🎲 ไฮโล</div>
         </div>
 
-        <!-- Slider -->
+        <!-- Slider Content -->
         <div class="slider" id="mainSlider">
             
             <!-- PAGE 1: POKDENG -->
             <div class="page">
                 <div style="text-align:center; font-size:12px; color:#c5a059; margin:4px 0;">-- เลือกแทงขาผู้เล่น --</div>
                 <div class="pok-grid">
-                    <div class="cell pok-cell" onclick="handleBet('ผู้เล่น1', this)">ผู้เล่น 1<span class="chip-badge">0</span></div>
-                    <div class="cell pok-cell" onclick="handleBet('ผู้เล่น2', this)">ผู้เล่น 2<span class="chip-badge">0</span></div>
-                    <div class="cell pok-cell" onclick="handleBet('ผู้เล่น3', this)">ผู้เล่น 3<span class="chip-badge">0</span></div>
-                    <div class="cell pok-cell" onclick="handleBet('ผู้เล่น4', this)">ผู้เล่น 4<span class="chip-badge">0</span></div>
-                    <div class="cell pok-cell" onclick="handleBet('ผู้เล่น5', this)">ผู้เล่น 5<span class="chip-badge">0</span></div>
-                    <div class="cell pok-cell" onclick="handleBet('ผู้เล่น6', this)">ผู้เล่น 6<span class="chip-badge">0</span></div>
+                    <div class="pok-cell" onclick="handleBet('ผู้เล่น1', this)">ผู้เล่น 1<span class="chip-badge">0</span></div>
+                    <div class="pok-cell" onclick="handleBet('ผู้เล่น2', this)">ผู้เล่น 2<span class="chip-badge">0</span></div>
+                    <div class="pok-cell" onclick="handleBet('ผู้เล่น3', this)">ผู้เล่น 3<span class="chip-badge">0</span></div>
+                    <div class="pok-cell" onclick="handleBet('ผู้เล่น4', this)">ผู้เล่น 4<span class="chip-badge">0</span></div>
+                    <div class="pok-cell" onclick="handleBet('ผู้เล่น5', this)">ผู้เล่น 5<span class="chip-badge">0</span></div>
+                    <div class="pok-cell" onclick="handleBet('ผู้เล่น6', this)">ผู้เล่น 6<span class="chip-badge">0</span></div>
                 </div>
 
                 <div style="text-align:center; font-size:12px; color:#c5a059; margin:4px 0;">-- เลือกแทงเจ้ามือสู้ --</div>
                 <div class="pok-grid">
-                    <div class="cell pok-cell" onclick="handleBet('เจ้ามือสู้1', this)">เจ้ามือสู้ 1<span class="chip-badge">0</span></div>
-                    <div class="cell pok-cell" onclick="handleBet('เจ้ามือสู้2', this)">เจ้ามือสู้ 2<span class="chip-badge">0</span></div>
-                    <div class="cell pok-cell" onclick="handleBet('เจ้ามือสู้3', this)">เจ้ามือสู้ 3<span class="chip-badge">0</span></div>
-                    <div class="cell pok-cell" onclick="handleBet('เจ้ามือสู้4', this)">เจ้ามือสู้ 4<span class="chip-badge">0</span></div>
-                    <div class="cell pok-cell" onclick="handleBet('เจ้ามือสู้5', this)">เจ้ามือสู้ 5<span class="chip-badge">0</span></div>
-                    <div class="cell pok-cell" onclick="handleBet('เจ้ามือสู้6', this)">เจ้ามือสู้ 6<span class="chip-badge">0</span></div>
+                    <div class="pok-cell" onclick="handleBet('เจ้ามือสู้1', this)">เจ้ามือสู้ 1<span class="chip-badge">0</span></div>
+                    <div class="pok-cell" onclick="handleBet('เจ้ามือสู้2', this)">เจ้ามือสู้ 2<span class="chip-badge">0</span></div>
+                    <div class="pok-cell" onclick="handleBet('เจ้ามือสู้3', this)">เจ้ามือสู้ 3<span class="chip-badge">0</span></div>
+                    <div class="pok-cell" onclick="handleBet('เจ้ามือสู้4', this)">เจ้ามือสู้ 4<span class="chip-badge">0</span></div>
+                    <div class="pok-cell" onclick="handleBet('เจ้ามือสู้5', this)">เจ้ามือสู้ 5<span class="chip-badge">0</span></div>
+                    <div class="pok-cell" onclick="handleBet('เจ้ามือสู้6', this)">เจ้ามือสู้ 6<span class="chip-badge">0</span></div>
                 </div>
             </div>
 
-            <!-- PAGE 2: HILO BOARD (ตามภาพ Wireframe) -->
+            <!-- PAGE 2: HILO BOARD (ไร้ช่องว่าง + ย้ายตองลงล่าง + จุดกั๊กโต๊ดสีฟ้า) -->
             <div class="page">
-                <div class="hilo-felt">
-                    <!-- Top Row: ตองใดๆ & ตองระบุ -->
+                <div class="hilo-board">
+                    
+                    <!-- Row 1: 1-2-3 | 11ไฮโล | 4-5-6 -->
                     <div class="hilo-row">
-                        <div class="cell flex-2" onclick="handleBet('ตองใดๆ', this)">ตองใดๆ<span class="chip-badge">0</span></div>
-                        <div class="flex-3" style="text-align:center;">
-                            <div style="font-size:10px; color:#c5a059;">ตองระบุ</div>
-                            <div class="tong-spec-grid">
-                                <div class="cell" onclick="handleBet('ตอง1', this)">1<span class="chip-badge">0</span></div>
-                                <div class="cell" onclick="handleBet('ตอง2', this)">2<span class="chip-badge">0</span></div>
-                                <div class="cell" onclick="handleBet('ตอง3', this)">3<span class="chip-badge">0</span></div>
-                                <div class="cell" onclick="handleBet('ตอง4', this)">4<span class="chip-badge">0</span></div>
-                                <div class="cell" onclick="handleBet('ตอง5', this)">5<span class="chip-badge">0</span></div>
-                                <div class="cell" onclick="handleBet('ตอง6', this)">6<span class="chip-badge">0</span></div>
-                            </div>
-                        </div>
+                        <div class="cell" onclick="handleBet('1-2-3', this)">1-2-3<span class="chip-badge">0</span></div>
+                        <div class="cell" style="color:#e74c3c; font-weight:bold;" onclick="handleBet('11ไฮโล', this)">11 ไฮโล<span class="chip-badge">0</span></div>
+                        <div class="cell" onclick="handleBet('4-5-6', this)">4-5-6<span class="chip-badge">0</span></div>
                     </div>
 
-                    <!-- Row 2: 1-2-3 | 11ไฮโล | 4-5-6 -->
+                    <!-- Main Grid: ต่ำ2-5 / โต๊ด / แต้มเต็ง 1-6 / สูง1-5 -->
                     <div class="hilo-row">
-                        <div class="cell flex-1" onclick="handleBet('1-2-3', this)">1-2-3<span class="chip-badge">0</span></div>
-                        <div class="cell flex-1" style="border-color:#e74c3c; color:#e74c3c; font-weight:bold;" onclick="handleBet('11ไฮโล', this)">11 ไฮโล<span class="chip-badge">0</span></div>
-                        <div class="cell flex-1" onclick="handleBet('4-5-6', this)">4-5-6<span class="chip-badge">0</span></div>
-                    </div>
-
-                    <!-- Main Center Row: ต่ำ2 / 13 / แต้มเต็ง / 46 / สูง5 -->
-                    <div class="hilo-row">
-                        <div style="display:flex; flex-direction:column; gap:4px; width:50px;">
-                            <div class="cell" style="flex:1;" onclick="handleBet('ต่ำ2', this)">ต่ำ2<span class="chip-badge">0</span></div>
-                            <div class="cell" style="flex:1;" onclick="handleBet('ต่ำ4', this)">ต่ำ4<span class="chip-badge">0</span></div>
-                            <div class="cell" style="flex:1;" onclick="handleBet('ต่ำ5', this)">ต่ำ5<span class="chip-badge">0</span></div>
+                        <div style="display:flex; flex-direction:column; width:45px;">
+                            <div class="cell" onclick="handleBet('ต่ำ2', this)">ต่ำ2<span class="chip-badge">0</span></div>
+                            <div class="cell" onclick="handleBet('ต่ำ4', this)">ต่ำ4<span class="chip-badge">0</span></div>
+                            <div class="cell" onclick="handleBet('ต่ำ5', this)">ต่ำ5<span class="chip-badge">0</span></div>
                         </div>
 
-                        <div style="display:flex; flex-direction:column; gap:4px; width:45px;">
-                            <div class="cell" style="flex:1;" onclick="handleBet('13', this)">13<span class="chip-badge">0</span></div>
-                            <div class="cell" style="flex:1;" onclick="handleBet('14', this)">14<span class="chip-badge">0</span></div>
-                            <div class="cell" style="flex:1;" onclick="handleBet('15', this)">15<span class="chip-badge">0</span></div>
+                        <div style="display:flex; flex-direction:column; width:40px;">
+                            <div class="cell" onclick="handleBet('13', this)">13<span class="chip-badge">0</span></div>
+                            <div class="cell" onclick="handleBet('14', this)">14<span class="chip-badge">0</span></div>
+                            <div class="cell" onclick="handleBet('15', this)">15<span class="chip-badge">0</span></div>
                         </div>
 
-                        <!-- Single Dice Points Grid -->
-                        <div style="flex:1; display:flex; flex-direction:column; gap:4px;">
-                            <div class="hilo-row" style="flex:1;">
-                                <div class="cell flex-1" onclick="handleBet('เต็ง1', this)">
-                                    <div class="dice-dots"><span class="dot"></span></div>
-                                    <span class="chip-badge">0</span>
-                                </div>
-                                <div class="cell flex-1" onclick="handleBet('ต่ำ', this)" style="font-size:14px; font-weight:bold; color:#2ecc71;">ต่ำ<span class="chip-badge">0</span></div>
-                                <div class="cell flex-1" onclick="handleBet('สูง', this)" style="font-size:14px; font-weight:bold; color:#e74c3c;">สูง<span class="chip-badge">0</span></div>
-                                <div class="cell flex-1" onclick="handleBet('เต็ง6', this)">
-                                    <div class="dice-dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
-                                    <span class="chip-badge">0</span>
-                                </div>
+                        <!-- โซนเต็งและกั๊กสีฟ้า -->
+                        <div style="flex:1; display:flex; flex-direction:column; position:relative;">
+                            
+                            <!-- โต๊ด 1-2 (แทงกั๊กสีฟ้าตรงกลางระหว่าง 1 กับ 2) -->
+                            <div class="guk-spot guk-v" style="left:-7px;" onclick="handleBet('โต๊ด_1_2', this)"><span class="chip-badge">0</span></div>
+                            <!-- โต๊ด ต่ำ-สูง (แทงกั๊กตรงกลาง) -->
+                            <div class="guk-spot guk-v" style="left:50%; margin-left:-7px;" onclick="handleBet('โต๊ด_ต่ำ_สูง', this)"><span class="chip-badge">0</span></div>
+                            <!-- โต๊ด 5-6 (แทงกั๊กสีฟ้าตรงกลางระหว่าง 5 กับ 6) -->
+                            <div class="guk-spot guk-v" style="right:-7px;" onclick="handleBet('โต๊ด_5_6', this)"><span class="chip-badge">0</span></div>
+
+                            <div class="hilo-row">
+                                <div class="cell" onclick="handleBet('เต็ง1', this)">1<span class="chip-badge">0</span></div>
+                                <div class="cell" onclick="handleBet('ต่ำ', this)" style="font-size:14px; font-weight:bold; color:#2ecc71;">ต่ำ<span class="chip-badge">0</span></div>
+                                <div class="cell" onclick="handleBet('สูง', this)" style="font-size:14px; font-weight:bold; color:#e74c3c;">สูง<span class="chip-badge">0</span></div>
+                                <div class="cell" onclick="handleBet('เต็ง6', this)">6<span class="chip-badge">0</span></div>
                             </div>
-                            <div class="hilo-row" style="flex:1;">
-                                <div class="cell flex-1" onclick="handleBet('เต็ง2', this)">
-                                    <div class="dice-dots"><span class="dot"></span><span class="dot"></span></div>
-                                    <span class="chip-badge">0</span>
-                                </div>
-                                <div class="cell flex-1" onclick="handleBet('เต็ง3', this)">
-                                    <div class="dice-dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
-                                    <span class="chip-badge">0</span>
-                                </div>
-                                <div class="cell flex-1" onclick="handleBet('เต็ง4', this)">
-                                    <div class="dice-dots"><span class="dot"></span><span class="dot"></span></div>
-                                    <span class="chip-badge">0</span>
-                                </div>
-                                <div class="cell flex-1" onclick="handleBet('เต็ง5', this)">
-                                    <div class="dice-dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
-                                    <span class="chip-badge">0</span>
-                                </div>
+
+                            <div class="hilo-row">
+                                <div class="cell" onclick="handleBet('เต็ง2', this)">2<span class="chip-badge">0</span></div>
+                                <div class="cell" onclick="handleBet('เต็ง3', this)">3<span class="chip-badge">0</span></div>
+                                <div class="cell" onclick="handleBet('เต็ง4', this)">4<span class="chip-badge">0</span></div>
+                                <div class="cell" onclick="handleBet('เต็ง5', this)">5<span class="chip-badge">0</span></div>
                             </div>
-                            <div class="hilo-row" style="flex:1;">
-                                <div class="cell flex-1" onclick="handleBet('16', this)">16<span class="chip-badge">0</span></div>
-                                <div class="cell flex-1" onclick="handleBet('24', this)">24<span class="chip-badge">0</span></div>
-                                <div class="cell flex-1" onclick="handleBet('25', this)">25<span class="chip-badge">0</span></div>
-                                <div class="cell flex-1" onclick="handleBet('26', this)">26<span class="chip-badge">0</span></div>
+
+                            <div class="hilo-row">
+                                <div class="cell" onclick="handleBet('16', this)">16<span class="chip-badge">0</span></div>
+                                <div class="cell" onclick="handleBet('24', this)">24<span class="chip-badge">0</span></div>
+                                <div class="cell" onclick="handleBet('25', this)">25<span class="chip-badge">0</span></div>
+                                <div class="cell" onclick="handleBet('26', this)">26<span class="chip-badge">0</span></div>
                             </div>
                         </div>
 
-                        <div style="display:flex; flex-direction:column; gap:4px; width:45px;">
-                            <div class="cell" style="flex:1;" onclick="handleBet('46', this)">46<span class="chip-badge">0</span></div>
-                            <div class="cell" style="flex:1;" onclick="handleBet('36', this)">36<span class="chip-badge">0</span></div>
-                            <div class="cell" style="flex:1;" onclick="handleBet('35', this)">35<span class="chip-badge">0</span></div>
+                        <div style="display:flex; flex-direction:column; width:40px;">
+                            <div class="cell" onclick="handleBet('46', this)">46<span class="chip-badge">0</span></div>
+                            <div class="cell" onclick="handleBet('36', this)">36<span class="chip-badge">0</span></div>
+                            <div class="cell" onclick="handleBet('35', this)">35<span class="chip-badge">0</span></div>
                         </div>
 
-                        <div style="display:flex; flex-direction:column; gap:4px; width:50px;">
-                            <div class="cell" style="flex:1;" onclick="handleBet('สูง5', this)">สูง5<span class="chip-badge">0</span></div>
+                        <div style="display:flex; flex-direction:column; width:45px;">
+                            <div class="cell" onclick="handleBet('สูง5', this)">สูง5<span class="chip-badge">0</span></div>
                             <div class="cell" style="flex:1;" onclick="handleBet('สูง3', this)">สูง3<span class="chip-badge">0</span></div>
                             <div class="cell" style="flex:1;" onclick="handleBet('สูง2', this)">สูง2<span class="chip-badge">0</span></div>
                         </div>
                     </div>
 
-                    <!-- Bottom Row: 2-3-4 | 3-4-5 | มุมต่ำ6 / สูง1 -->
+                    <!-- Bottom Sub-Row: 2-3-4 | 3-4-5 -->
                     <div class="hilo-row">
-                        <div class="cell flex-1" onclick="handleBet('ต่ำ6', this)">ต่ำ6<span class="chip-badge">0</span></div>
-                        <div class="cell flex-3" onclick="handleBet('2-3-4', this)">2-3-4<span class="chip-badge">0</span></div>
-                        <div class="cell flex-3" onclick="handleBet('3-4-5', this)">3-4-5<span class="chip-badge">0</span></div>
-                        <div class="cell flex-1" onclick="handleBet('สูง1', this)">สูง1<span class="chip-badge">0</span></div>
+                        <div class="cell" onclick="handleBet('ต่ำ6', this)">ต่ำ6<span class="chip-badge">0</span></div>
+                        <div class="cell" style="flex:3;" onclick="handleBet('2-3-4', this)">2-3-4<span class="chip-badge">0</span></div>
+                        <div class="cell" style="flex:3;" onclick="handleBet('3-4-5', this)">3-4-5<span class="chip-badge">0</span></div>
+                        <div class="cell" onclick="handleBet('สูง1', this)">สูง1<span class="chip-badge">0</span></div>
                     </div>
+
+                    <!-- 🔴 ย้ายตองลงมาล่างสุด + ขยายขนาดปุ่มให้ใหญ่ขึ้นตามต้องการ -->
+                    <div class="hilo-row" style="border-top:2px solid #c5a059;">
+                        <div class="cell" style="flex:1.2; min-height:50px; font-weight:bold; color:#f39c12; font-size:13px;" onclick="handleBet('ตองใดๆ', this)">
+                            ตองใดๆ<span class="chip-badge">0</span>
+                        </div>
+                        <div style="flex:2; display:flex; flex-direction:column;">
+                            <div style="text-align:center; font-size:10px; color:#c5a059; background:#0b0c10;">ตองระบุ</div>
+                            <div class="hilo-row">
+                                <div class="cell" style="min-height:35px; font-weight:bold;" onclick="handleBet('ตอง1', this)">1<span class="chip-badge">0</span></div>
+                                <div class="cell" style="min-height:35px; font-weight:bold;" onclick="handleBet('ตอง2', this)">2<span class="chip-badge">0</span></div>
+                                <div class="cell" style="min-height:35px; font-weight:bold;" onclick="handleBet('ตอง3', this)">3<span class="chip-badge">0</span></div>
+                                <div class="cell" style="min-height:35px; font-weight:bold;" onclick="handleBet('ตอง4', this)">4<span class="chip-badge">0</span></div>
+                                <div class="cell" style="min-height:35px; font-weight:bold;" onclick="handleBet('ตอง5', this)">5<span class="chip-badge">0</span></div>
+                                <div class="cell" style="min-height:35px; font-weight:bold;" onclick="handleBet('ตอง6', this)">6<span class="chip-badge">0</span></div>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
 
         </div>
 
-        <!-- Controls & Chips -->
+        <!-- Bottom Controls & Chips -->
         <div class="control-panel">
+            <!-- 🟢 เพิ่มแถบยอดเงินรวมแทงรอบนี้ -->
+            <div class="total-bar" id="totalBetDisplay">รวมแทง: 0 ฿</div>
+
             <div class="action-row">
                 <button class="btn-act btn-confirm" onclick="submitBet()">ยืนยัน</button>
                 <button class="btn-act btn-cancel" onclick="clearSelection()">ยกเลิก</button>
@@ -6488,7 +6485,7 @@ app.get('/liff', (req, res) => {
 
             async function main() {
                 try {
-                    await liff.init({ liffId: "2011386687-zkayS6js" });
+                    await liff.init({ liffId: "2011387264-7B981j5N" });
 
                     if (!liff.isLoggedIn()) {
                         liff.login();
@@ -6519,13 +6516,10 @@ app.get('/liff', (req, res) => {
                 el.classList.add('active');
             }
 
-            // 🎯 ระบบเริ่มแทงที่ 10 บาทในครั้งแรก
             function handleBet(optionName, el) {
                 if (!currentBets[optionName]) {
-                    // กดครั้งแรก ตั้งต้นที่ 10 บาทเสมอ
-                    currentBets[optionName] = 10;
+                    currentBets[optionName] = 10; // กดครั้งแรกเริ่ม 10 บาท
                 } else {
-                    // กดครั้งต่อไป บวกเพิ่มตามมูลค่าชิป
                     currentBets[optionName] += selectedChipValue;
                 }
                 
@@ -6535,15 +6529,24 @@ app.get('/liff', (req, res) => {
                     badge.innerText = currentBets[optionName];
                     badge.style.display = 'block';
                 }
+
+                updateTotalDisplay();
+            }
+
+            // คำนวณและอัปเดตยอดรวมแทง
+            function updateTotalDisplay() {
+                const total = Object.values(currentBets).reduce((a, b) => a + b, 0);
+                document.getElementById('totalBetDisplay').innerText = "รวมแทง: " + total.toLocaleString() + " ฿";
             }
 
             function clearSelection() {
                 currentBets = {};
-                document.querySelectorAll('.cell').forEach(el => {
+                document.querySelectorAll('.cell, .pok-cell, .guk-spot').forEach(el => {
                     el.classList.remove('active');
                     const badge = el.querySelector('.chip-badge');
                     if (badge) badge.style.display = 'none';
                 });
+                updateTotalDisplay();
             }
 
             async function loadUserData() {

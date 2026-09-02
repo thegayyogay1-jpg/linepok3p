@@ -2766,7 +2766,7 @@ else if (promotions[userMsg.trim()]) {
                                         "color": "#dddddd",
                                         "wrap": true
                                     });
-                                });
+                
                                 
                                 try {
                                     await axios.post('https://api.line.me/v2/bot/message/reply', {

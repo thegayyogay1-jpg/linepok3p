@@ -6343,29 +6343,52 @@ app.get('/liff', (req, res) => {
     `);
 });
 
-// ==================== [ 🔄 2. API ดึงข้อมูลสมาชิกไปแสดงบนเว็บ ] ====================
+// 🔄 2. API ดึงข้อมูลสมาชิกไปแสดงบนเว็บ (ปรับปรุงใหม่)
 app.get('/api/user/:userId', async (req, res) => {
     const { userId } = req.params;
-    const userData = await getLatestWallet(userId);
-    if (userData) {
-        res.json({ success: true, balance: userData.balance || 0 });
-    } else {
-        res.json({ success: false, message: 'ไม่พบข้อมูลสมาชิก' });
+    try {
+        let userData = await getLatestWallet(userId);
+        
+        // ถ้าค้นหาตรงๆ ไม่เจอ ให้ดึงจาก usersWallets ใน RAM
+        if (!userData && usersWallets[userId]) {
+            userData = usersWallets[userId];
+        }
+
+        if (userData) {
+            res.json({ success: true, balance: userData.balance || 0 });
+        } else {
+            // ถ้าไม่พบ user ให้ส่ง 0 กลับไปพร้อมตอบ success เพื่อไม่ให้หน้าเว็บค้าง
+            res.json({ success: true, balance: 0, message: 'ไม่พบ User ID ในระบบ' });
+        }
+    } catch (e) {
+        res.json({ success: false, message: e.message });
     }
 });
 
-// ==================== [ 📥 3. API รับโพยแทงจากหน้าเว็บ LIFF ] ====================
+// 📥 3. API รับโพยแทงจากหน้าเว็บ LIFF (ปรับปรุงใหม่)
 app.post('/api/place-bet', async (req, res) => {
     const { userId, amount, type } = req.body;
     
-    const user = await getLatestWallet(userId);
-    if (!user) return res.json({ success: false, message: 'ไม่พบผู้ใช้งาน' });
+    // ดึงข้อมูลล่าสุด
+    let user = await getLatestWallet(userId);
+    if (!user && usersWallets[userId]) {
+        user = usersWallets[userId];
+    }
 
-    if (user.balance < amount) {
+    if (!user) {
+        return res.json({ success: false, message: `ไม่พบผู้ใช้งาน (ID: ${userId})` });
+    }
+
+    const currentBalance = user.balance || 0;
+    if (currentBalance < amount) {
         return res.json({ success: false, message: 'ยอดเงินไม่พอ' });
     }
 
-    user.balance -= amount;
+    // หักเงิน
+    user.balance = currentBalance - amount;
+    usersWallets[userId] = user; // อัปเดต RAM
+
+    // บันทึกลง Firebase
     await updateSingleUserWallet(userId, user);
 
     res.json({ success: true, newBalance: user.balance });

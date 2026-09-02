@@ -6245,6 +6245,133 @@ if (event.source.type === 'user') {
 });
 
 app.get('/', (req, res) => { res.send('ระบบลงทะเบียนรันปกติ'); });
+
+// ==================== [ 🌐 1. Route เปิดหน้าเว็บแทง LIFF ] ====================
+app.get('/liff', (req, res) => {
+    res.send(`
+    <!DOCTYPE html>
+    <html lang="th">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>หน้าเว็บแทง</title>
+        <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+        <style>
+            body { font-family: sans-serif; background: #121212; color: #fff; text-align: center; padding: 20px; }
+            .card { background: #1e1e1e; padding: 20px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #333; }
+            .btn { background: #e5c158; color: #000; font-weight: bold; padding: 12px 24px; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; }
+            .btn:disabled { background: #555; color: #888; }
+            input { padding: 10px; border-radius: 6px; border: 1px solid #444; background: #222; color: #fff; width: 80%; margin-bottom: 15px; font-size: 16px; text-align: center; }
+        </style>
+    </head>
+    <body>
+        <h2>🎲 ระบบแทงผ่านเว็บ</h2>
+        
+        <div class="card">
+            <p>สมาชิก: <b id="userName">กำลังโหลด...</b></p>
+            <p>ยอดเงินคงเหลือ: <b id="userBalance" style="color:#2ecc71;">0</b> ฿</p>
+        </div>
+
+        <div class="card">
+            <h3>กรอกจำนวนเงินแทง</h3>
+            <input type="number" id="betAmount" placeholder="ระบุจำนวนเงิน" min="1">
+            <br>
+            <button class="btn" onclick="submitBet('ป๊อกเด้ง')">แทงป๊อกเด้ง</button>
+        </div>
+
+        <script>
+            let currentUserId = "";
+
+            async function main() {
+                // ⚠️ อย่าลืมนำ LIFF ID ที่ได้จากระบบ LIFF ใน LINE Developer มาวางตรงนี้นะครับน้า
+                await liff.init({ liffId: "2011386687-zkayS6js" });
+
+                if (!liff.isLoggedIn()) {
+                    liff.login();
+                    return;
+                }
+
+                const profile = await liff.getProfile();
+                currentUserId = profile.userId;
+                document.getElementById('userName').innerText = profile.displayName;
+
+                loadUserData();
+            }
+
+            async function loadUserData() {
+                try {
+                    const res = await axios.get('/api/user/' + currentUserId);
+                    if (res.data.success) {
+                        document.getElementById('userBalance').innerText = res.data.balance.toLocaleString();
+                    }
+                } catch (e) {
+                    console.error("Error loading user data:", e);
+                }
+            }
+
+            async function submitBet(betType) {
+                const amount = parseInt(document.getElementById('betAmount').value);
+                if (!amount || amount <= 0) {
+                    alert("กรุณากรอกจำนวนเงินให้ถูกต้อง");
+                    return;
+                }
+
+                try {
+                    const res = await axios.post('/api/place-bet', {
+                        userId: currentUserId,
+                        amount: amount,
+                        type: betType
+                    });
+
+                    if (res.data.success) {
+                        alert("ส่งโพยแทงสำเร็จ!");
+                        loadUserData();
+                        liff.closeWindow();
+                    } else {
+                        alert("ล้มเหลว: " + res.data.message);
+                    }
+                } catch (e) {
+                    alert("เกิดข้อผิดพลาดในการส่งโพย");
+                }
+            }
+
+            main();
+        </script>
+    </body>
+    </html>
+    `);
+});
+
+// ==================== [ 🔄 2. API ดึงข้อมูลสมาชิกไปแสดงบนเว็บ ] ====================
+app.get('/api/user/:userId', async (req, res) => {
+    const { userId } = req.params;
+    const userData = await getLatestWallet(userId);
+    if (userData) {
+        res.json({ success: true, balance: userData.balance || 0 });
+    } else {
+        res.json({ success: false, message: 'ไม่พบข้อมูลสมาชิก' });
+    }
+});
+
+// ==================== [ 📥 3. API รับโพยแทงจากหน้าเว็บ LIFF ] ====================
+app.post('/api/place-bet', async (req, res) => {
+    const { userId, amount, type } = req.body;
+    
+    const user = await getLatestWallet(userId);
+    if (!user) return res.json({ success: false, message: 'ไม่พบผู้ใช้งาน' });
+
+    if (user.balance < amount) {
+        return res.json({ success: false, message: 'ยอดเงินไม่พอ' });
+    }
+
+    user.balance -= amount;
+    await updateSingleUserWallet(userId, user);
+
+    res.json({ success: true, newBalance: user.balance });
+});
+
+// ==================== [ จุดรัน Server ] ====================
 app.listen(process.env.PORT || 3000, () => { console.log('Server is running...'); });
 // เปิดทางให้เข้าถึงไฟล์รูปภาพสลิปที่เซฟไว้ในเครื่องได้ตรงๆ
 app.use(express.static(__dirname));

@@ -41,12 +41,11 @@ let usersRoundCrossCheck = {}; // 🌟 เพิ่มบรรทัดนี�
 // ==================== [ Firebase Real-time via EventSource ] ====================
 const EventSource = require('eventsource');
 
-// ต้องเปิด Header text/event-stream เพื่อให้ Firebase ส่งข้อมูลแบบ Real-time Stream
+// ดักฟังท่อ Real-time ของ usersWallets
 const walletStream = new EventSource(`${FIREBASE_URL}system_data/usersWallets.json`, {
     headers: { 'Accept': 'text/event-stream' }
 });
 
-// ทำงานทันทีเมื่อเชื่อมต่อท่อสำเร็จ
 walletStream.onopen = () => {
     console.log("📡 [EventSource] เชื่อมต่อท่อ Real-time กับ Firebase สำเร็จ!");
 };
@@ -54,18 +53,34 @@ walletStream.onopen = () => {
 walletStream.onmessage = (event) => {
     try {
         const parsed = JSON.parse(event.data);
-        if (parsed && parsed.data !== undefined) {
-            if (parsed.path === "/") {
-                // โหลดครั้งแรก ดึงกระเป๋าเงินทุกคนเข้า RAM ทันที
-                usersWallets = parsed.data || {};
-            } else if (parsed.path) {
-                // อัปเดตรายคนทันทีที่มีการแก้ไขใน Firebase
-                const userId = parsed.path.replace('/', '');
-                if (userId) {
-                    usersWallets[userId] = parsed.data;
-                }
+        if (!parsed || parsed.data === undefined) return;
+
+        const path = parsed.path || "";
+        const data = parsed.data;
+
+        if (path === "/") {
+            // โหลดครั้งแรก ดึงข้อมูลยกถัง
+            usersWallets = data || {};
+            console.log("⚡ [Real-time Sync] โหลดข้อมูลกระเป๋าเงินทั้งหมดสำเร็จ!");
+        } else {
+            // แยก path เพื่อดูว่าเปลี่ยนที่ ID ไหน หรือ field ไหน
+            const parts = path.split('/').filter(Boolean); // เช่น ["U2fb...", "balance"]
+            
+            if (parts.length === 1) {
+                // แก้ไขข้อมูลทั้ง Object ของผู้เล่นคนนั้น
+                const userId = parts[0];
+                usersWallets[userId] = data;
+                console.log(`⚡ [Real-time Sync] อัปเดตข้อมูลยูสเซอร์ ${userId} เรียบร้อย!`);
+            } else if (parts.length >= 2) {
+                // แก้ไขเฉพาะฟิลด์ย่อย เช่น balance, totalDeposit ฯลฯ
+                const userId = parts[0];
+                const field = parts[1];
+                
+                if (!usersWallets[userId]) usersWallets[userId] = {};
+                usersWallets[userId][field] = data;
+                
+                console.log(`⚡ [Real-time Sync] อัปเดต ${field} ของ ${userId} เป็น ${JSON.stringify(data)} เรียบร้อย!`);
             }
-            console.log("⚡ [Real-time Sync] กระเป๋าเงินอัปเดตตรงกับ Firebase แล้ว!");
         }
     } catch (e) {
         console.error("❌ Sync Error:", e.message);

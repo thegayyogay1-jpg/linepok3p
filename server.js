@@ -6280,23 +6280,28 @@ app.post('/api/place-bet', async (req, res) => {
             });
         }
         
-        // 3. เช็กยอดเงินคงเหลือ
-        const currentBalance = userData.balance || 0;
-        if (currentBalance < amount) {
-            return res.json({ success: false, message: '❌ ยอดเงินคงเหลือไม่พอสำหรับการแทง' });
-        }
+        // 3. กำหนดตัวแปร ยอดเงินคงเหลือ (แก้ไขจุดประกาศตัวแปรให้ตรงกัน)
+        const userBalance = Number(userData.balance || 0);
+        const betAmount = Number(amount);
 
-        // 4. ตัดเงินสมาชิก
-        const newBalance = currentBalance - amount;
-        await userWalletRef.update({ balance: newBalance });
-
-        // 3. จำแนกประเภทการแทง (ไฮโล vs ป๊อกเด้ง)
+        // 4. จำแนกประเภทการแทง (ไฮโล vs ป๊อกเด้ง)
         const isHilo = type.startsWith('z') || ['สูง', 'ต่ำ', '11ไฮโล', '123', '456', 'ตองรวม'].includes(type) || type.startsWith('ตอง');
         const isDealerPok = type.startsWith('เจ้าสู้ขา');
 
         // ==================== [ กรณีแทงไฮโล ] ====================
         if (isHilo) {
-            if (amount < MIN_BET) {
+            const MIN_BET = 10;
+            const MAX_BET_MAP = {
+                "ส/ต": 5000,
+                "11": 1000,
+                "โต๊ด3": 2000,
+                "โต๊ด2": 2000,
+                "ตองรวม": 1000,
+                "ตองเจาะ": 500,
+                "เต็ง": 3000
+            };
+
+            if (betAmount < MIN_BET) {
                 return res.json({ success: false, message: `ไฮโลแทงขั้นต่ำ ${MIN_BET} บาท` });
             }
 
@@ -6309,31 +6314,28 @@ app.post('/api/place-bet', async (req, res) => {
             else if (type.length === 2 && !isNaN(type)) hiloCategory = "โต๊ด2";
 
             const maxLimit = MAX_BET_MAP[hiloCategory] || 1000;
-            if (amount > maxLimit) {
+            if (betAmount > maxLimit) {
                 return res.json({ success: false, message: `ไฮโลหมวด [${hiloCategory}] แทงได้สูงสุดไม่เกิน ${maxLimit} บาท` });
             }
 
-            if (userBalance < amount) {
-                return res.json({ success: false, message: `❌ เครดิตไม่พอ (ต้องการ ${amount} ฿ / มี ${userBalance} ฿)` });
+            if (userBalance < betAmount) {
+                return res.json({ success: false, message: `❌ เครดิตไม่พอ (ต้องการ ${betAmount} ฿ / มี ${userBalance} ฿)` });
             }
 
-            // บันทึกโพยไฮโล
+            // บันทึกโพยไฮโล (ใช้ push เพื่อให้ตรงกับบอท LINE และไม่เกิด Index ซ้อน)
             const hiloBetRef = db.ref(`system_data/hiloRoundBets/${userId}`);
-            const hiloSnap = await hiloBetRef.once('value');
-            let currentHiloBets = hiloSnap.val() || [];
-
-            currentHiloBets.push({
+            await hiloBetRef.push({
                 category: type,
-                actualBet: amount,
-                totalPrice: amount,
+                type: type,
+                actualBet: betAmount,
+                totalPrice: betAmount,
+                amount: betAmount,
                 timestamp: Date.now(),
                 via: 'LIFF_WEB'
             });
 
-            await db.ref().update({
-                [`system_data/hiloRoundBets/${userId}`]: currentHiloBets,
-                [`system_data/usersWallets/${userId}/balance`]: userBalance - amount
-            });
+            // หักเงินผู้ใช้
+            await userWalletRef.update({ balance: userBalance - betAmount });
 
             return res.json({ success: true, message: 'บันทึกโพยไฮโลสำเร็จ' });
         } 
@@ -6343,12 +6345,12 @@ app.post('/api/place-bet', async (req, res) => {
             const POK_MIN_BET = 10;
             const POK_MAX_BET = 2500;
 
-            if (amount < POK_MIN_BET || amount > POK_MAX_BET) {
+            if (betAmount < POK_MIN_BET || betAmount > POK_MAX_BET) {
                 return res.json({ success: false, message: `❌ ยอดแทงต่อขาต้องอยู่ระหว่าง ${POK_MIN_BET} ถึง ${POK_MAX_BET} บาท` });
             }
 
-            const doubleHoldCost = amount * 2;
-            const tripleHoldCost = amount * 3;
+            const doubleHoldCost = betAmount * 2;
+            const tripleHoldCost = betAmount * 3;
 
             let finalHoldCost = 0;
             let maxHandMultiplier = 3;
@@ -6357,7 +6359,7 @@ app.post('/api/place-bet', async (req, res) => {
             if (userBalance < doubleHoldCost) {
                 return res.json({ 
                     success: false, 
-                    message: `❌ เครดิตไม่พอสำหรับค้ำประกันขั้นต่ำ (2 เด้ง)\n💸 ยอดแทง: ${amount} ฿\n🔒 ต้องใช้ค้ำขั้นต่ำ (x2): ${doubleHoldCost} ฿\n💰 เครดิตที่มี: ${userBalance} ฿` 
+                    message: `❌ เครดิตไม่พอสำหรับค้ำประกันขั้นต่ำ (2 เด้ง)\n💸 ยอดแทง: ${betAmount} ฿\n🔒 ต้องใช้ค้ำขั้นต่ำ (x2): ${doubleHoldCost} ฿\n💰 เครดิตที่มี: ${userBalance} ฿` 
                 });
             } else if (userBalance >= doubleHoldCost && userBalance < tripleHoldCost) {
                 maxHandMultiplier = 2;
@@ -6367,36 +6369,34 @@ app.post('/api/place-bet', async (req, res) => {
                 finalHoldCost = tripleHoldCost;
             }
 
-            // แปลงรูปแบบขาแทงให้บอทอ่านได้ (เช่น เจ้าสู้ขา 1 -> จ1)
+            // แปลงรูปแบบขาแทงให้บอทอ่านได้
             let formattedType = type;
             if (isDealerPok) {
-                formattedType = `จ${type.replace('เจ้าสู้ขา', '')}`;
+                formattedType = `จ${type.replace('เจ้าสู้ขา', '').trim()}`;
+            } else {
+                formattedType = type.replace('ขาที่', '').trim();
             }
 
             const displayName = userData.nickname || userData.name || "ไม่ระบุชื่อ";
 
-            // บันทึกโพยป๊อกเด้งลงโหนดเดียวกับ LINE Bot
+            // บันทึกโพยป๊อกเด้ง (ใช้ push เพื่อให้ตรงกับโครงสร้างบอท LINE)
             const pokBetRef = db.ref(`system_data/roundBets/${userId}`);
-            const pokSnap = await pokBetRef.once('value');
-            let currentPokBets = pokSnap.val() || [];
-
-            currentPokBets.push({
+            await pokBetRef.push({
                 name: displayName,
                 memberNumber: userData.memberNumber || "-",
                 betType: formattedType,
-                pricePerLeg: amount,
-                actualBet: amount,
+                type: formattedType,
+                pricePerLeg: betAmount,
+                actualBet: betAmount,
                 holdCost: finalHoldCost,
-                maxMultiplier: maxHandMultiplier, // 2 หรือ 3 เด้ง ตามเครดิตค้ำจริง
+                maxMultiplier: maxHandMultiplier,
                 time: new Date().toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok' }),
+                timestamp: Date.now(),
                 via: 'LIFF_WEB'
             });
 
-            // อัปเดตโพย และตัดเงินค้ำประกันออกจาก balance
-            await db.ref().update({
-                [`system_data/roundBets/${userId}`]: currentPokBets,
-                [`system_data/usersWallets/${userId}/balance`]: userBalance - finalHoldCost
-            });
+            // อัปเดตเงินค้ำประกัน
+            await userWalletRef.update({ balance: userBalance - finalHoldCost });
 
             return res.json({ 
                 success: true, 

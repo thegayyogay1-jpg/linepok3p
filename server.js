@@ -5198,7 +5198,7 @@ if (userMsg === 'c') {
         const freshRes = await axios.get(`${FIREBASE_URL}system_data/usersWallets/${userId}.json`);
         if (freshRes.data) {
             usersWallets[userId] = freshRes.data; // อัปเดต RAM หลัก
-            user = freshRes.data;                  // อัปเดตตัวแปร user ของคำสั่ง c ทันที
+            Object.assign(user, freshRes.data);   // ⚡ อัปเดตข้อมูลเข้าไปในตัวแปร user โดยไม่ต้อง Re-assign                  // อัปเดตตัวแปร user ของคำสั่ง c ทันที
         }
     } catch (e) {
         console.error("❌ Sync error on c command:", e.message);

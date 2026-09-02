@@ -41,26 +41,39 @@ let usersRoundCrossCheck = {}; // 🌟 เพิ่มบรรทัดนี�
 // ==================== [ Firebase Real-time via EventSource ] ====================
 const EventSource = require('eventsource');
 
-// ดักฟังการเปลี่ยนแปลงของ usersWallets โดยตรงจาก Firebase REST API
-const walletStream = new EventSource(`${FIREBASE_URL}system_data/usersWallets.json`);
+// ต้องเปิด Header text/event-stream เพื่อให้ Firebase ส่งข้อมูลแบบ Real-time Stream
+const walletStream = new EventSource(`${FIREBASE_URL}system_data/usersWallets.json`, {
+    headers: { 'Accept': 'text/event-stream' }
+});
+
+// ทำงานทันทีเมื่อเชื่อมต่อท่อสำเร็จ
+walletStream.onopen = () => {
+    console.log("📡 [EventSource] เชื่อมต่อท่อ Real-time กับ Firebase สำเร็จ!");
+};
 
 walletStream.onmessage = (event) => {
     try {
         const parsed = JSON.parse(event.data);
-        if (parsed) {
-            // รองรับทั้งการโหลดครั้งแรก (path: "/") และตอนมีการแก้ไขข้อมูล (path: "/USER_ID")
+        if (parsed && parsed.data !== undefined) {
             if (parsed.path === "/") {
+                // โหลดครั้งแรก ดึงกระเป๋าเงินทุกคนเข้า RAM ทันที
                 usersWallets = parsed.data || {};
-            } else if (parsed.path && parsed.data !== undefined) {
-                // อัปเดตรายคนทันทีที่มีการเปลี่ยนยอดเงิน
+            } else if (parsed.path) {
+                // อัปเดตรายคนทันทีที่มีการแก้ไขใน Firebase
                 const userId = parsed.path.replace('/', '');
-                usersWallets[userId] = parsed.data;
+                if (userId) {
+                    usersWallets[userId] = parsed.data;
+                }
             }
             console.log("⚡ [Real-time Sync] กระเป๋าเงินอัปเดตตรงกับ Firebase แล้ว!");
         }
     } catch (e) {
         console.error("❌ Sync Error:", e.message);
     }
+};
+
+walletStream.onerror = (err) => {
+    console.error("⚠️ EventSource Connection Error:", err);
 };
 
 global.depositQueue = {}; // 👈 เพิ่มบรรทัดนี้เพื่อเตรียมถังคิวฝากเงินออโต้ไม่ให้เป็นค่าว่างครับน้า!

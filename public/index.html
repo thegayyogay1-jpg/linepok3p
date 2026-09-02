@@ -189,217 +189,231 @@
 
     </main>
 
-    <script>
-        // 1. Firebase Config
-        const firebaseConfig = {
-            databaseURL: "https://my-pokdeng-bot-default-rtdb.asia-southeast1.firebasedatabase.app/"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
+<script>
+    // 1. Firebase Config
+    const firebaseConfig = {
+        databaseURL: "https://my-pokdeng-bot-default-rtdb.asia-southeast1.firebasedatabase.app/"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
-        let currentUserId = null;
-        let currentUserData = null;
-        let isRoundOpen = false;
-        let currentRound = 0;
+    let currentUserId = null;
+    let currentUserData = null;
+    let isRoundOpen = false;
+    let currentRound = 0;
 
-        // สถานะกระดานเดิมพัน
-        let activeTab = 'pok'; // 'pok' หรือ 'hilo'
-        let pokMode = 'player'; // 'player' หรือ 'dealer'
-        let selectedChipValue = 10;
-        let pendingBets = {}; // เก็บรายการชิปที่วางชั่วคราว { "ขา 1": 50, "สูง": 100 }
+    let activeTab = 'pok'; // 'pok' หรือ 'hilo'
+    let pokMode = 'player'; // 'player' หรือ 'dealer'
+    let selectedChipValue = 10;
+    let pendingBets = {}; 
 
-        // 2. เริ่มต้น LIFF
-        async function initLIFF() {
-            try {
-                await liff.init({ liffId: "2011387264-7B981j5N" });
-                if (liff.isLoggedIn()) {
-                    const profile = await liff.getProfile();
-                    currentUserId = profile.userId;
-                } else {
-                    liff.login();
-                }
-            } catch (err) {
-                console.error("LIFF Init Error:", err);
-                currentUserId = "U2fb9233e5c539ae3970cbd698e2e18db";
-            }
-            listenToUserData();
-            listenToSystemState();
-        }
-
-        // 3. ฟังข้อมูล Real-time
-        // 3. ฟังข้อมูล Real-time (ปรับปรุงให้กรองโพยยกเลิก/โพยว่างอัตโนมัติ)
-        function listenToUserData() {
-            // ฟังข้อมูลเงินคงเหลือ
-            db.ref(`system_data/usersWallets/${currentUserId}`).on('value', (snapshot) => {
-                currentUserData = snapshot.val();
-                if (currentUserData) {
-                    document.getElementById('user-name').innerText = currentUserData.nickname || currentUserData.name || "สมาชิก";
-                    document.getElementById('user-id').innerText = `ID: ${currentUserData.memberNumber || '-'}`;
-                    document.getElementById('user-balance').innerText = `${(currentUserData.balance || 0).toLocaleString()} ฿`;
-                }
-            });
-
-            // ฟังรายการโพยในรอบปัจจุบัน
-            db.ref(`system_data`).on('value', (snapshot) => {
-                const data = snapshot.val() || {};
-                
-                // 1. ดึงข้อมูลดิบ
-                const rawPokBets = (data.roundBets && data.roundBets[currentUserId]) ? data.roundBets[currentUserId] : [];
-                const rawHiloBets = (data.hiloRoundBets && data.hiloRoundBets[currentUserId]) ? data.hiloRoundBets[currentUserId] : [];
-
-                // 2. กรองข้อมูลเฉพาะโพยที่มีอยู่จริง (ป้องกันโพยเด้งตอนยกเลิก)
-                const pokBets = Array.isArray(rawPokBets) 
-                    ? rawPokBets.filter(b => b && (b.actualBet || b.pricePerLeg || b.amount))
-                    : [];
-
-                const hiloBets = Array.isArray(rawHiloBets) 
-                    ? rawHiloBets.filter(hb => hb && (hb.totalPrice || hb.actualBet || hb.price || hb.amount))
-                    : [];
-
-                // 3. แสดงผลลง UI
-                let html = '';
-                
-                pokBets.forEach(b => {
-                    const price = b.actualBet || b.pricePerLeg || b.amount || 0;
-                    html += `<div class="flex justify-between bg-gray-700 p-2 rounded"><span>🎴 ป๊อกเด้ง: ${b.betType || b.type}</span><span class="text-yellow-400 font-bold">${price.toLocaleString()} ฿</span></div>`;
-                });
-
-                hiloBets.forEach(hb => {
-                    const price = hb.totalPrice || hb.actualBet || hb.price || hb.amount || 0;
-                    html += `<div class="flex justify-between bg-gray-700 p-2 rounded"><span>🎲 ไฮโล: ${hb.category || hb.type}</span><span class="text-purple-400 font-bold">${price.toLocaleString()} ฿</span></div>`;
-                });
-
-                document.getElementById('my-bets-list').innerHTML = html || 'ยังไม่มีรายการแทงในรอบนี้';
-            });
-        }
-
-        // 4. ระบบเลือกชิปและวางลงบนกระดาน
-        function selectChip(value) {
-            selectedChipValue = value;
-            document.querySelectorAll('.chip').forEach(el => el.classList.remove('chip-active'));
-            document.getElementById(`chip-btn-${value}`).classList.add('chip-active');
-        }
-
-        function setPokMode(mode) {
-            pokMode = mode;
-            const btnPlayer = document.getElementById('btn-pok-player');
-            const btnDealer = document.getElementById('btn-pok-dealer');
-
-            if (mode === 'player') {
-                btnPlayer.className = "px-4 py-2 text-sm font-bold rounded-lg border-2 border-cyan-400 bg-cyan-900 text-cyan-200 shadow-md";
-                btnDealer.className = "px-4 py-2 text-sm font-bold rounded-md border border-gray-600 bg-gray-700 text-gray-400";
+    // 2. เริ่มต้น LIFF
+    async function initLIFF() {
+        try {
+            await liff.init({ liffId: "2011387264-7B981j5N" });
+            if (liff.isLoggedIn()) {
+                const profile = await liff.getProfile();
+                currentUserId = profile.userId;
             } else {
-                btnDealer.className = "px-4 py-2 text-sm font-bold rounded-lg border-2 border-amber-400 bg-amber-900 text-amber-200 shadow-md";
-                btnPlayer.className = "px-4 py-2 text-sm font-bold rounded-md border border-gray-600 bg-gray-700 text-gray-400";
+                liff.login();
             }
-
-            for (let i = 1; i <= 6; i++) {
-                const label = document.getElementById(`pok-label-${i}`);
-                if (label) {
-                    label.innerText = mode === 'player' ? `ขาที่ ${i}` : `เจ้าสู้ขา ${i}`;
-                    label.className = mode === 'player' ? 'font-bold text-cyan-300 text-sm' : 'font-bold text-amber-300 text-sm';
-                }
-            }
-            clearPendingBets();
+        } catch (err) {
+            console.error("LIFF Init Error:", err);
+            currentUserId = "U2fb9233e5c539ae3970cbd698e2e18db";
         }
+        listenToUserData();
+        listenToSystemState();
+    }
 
-        function placeBet(game, key) {
-            if (!isRoundOpen) return alert('⚠️ ขณะนี้ปิดรับแทงอยู่ครับ');
+    // ฟังสถานะรอบเปิด/ปิด Real-time
+    function listenToSystemState() {
+        db.ref('system_data').on('value', (snapshot) => {
+            const data = snapshot.val() || {};
+            isRoundOpen = !!data.isRoundOpen;
+            currentRound = data.currentRound || 0;
 
-            let betKey = key;
-            if (game === 'pok') {
-                betKey = pokMode === 'player' ? key : `เจ้าสู้ขา${key}`;
-            }
+            const statusEl = document.getElementById('round-status');
+            const roundTextEl = document.getElementById('current-round-text');
 
-            const currentAmount = pendingBets[betKey] || 0;
-            pendingBets[betKey] = currentAmount + selectedChipValue;
-            updateBoardUI();
-        }
-
-        function updateBoardUI() {
-            let total = 0;
-            // ล้างแสดงผลเดิม
-            document.querySelectorAll('[id^="pok-chip-"], [id^="hilo-chip-"]').forEach(el => {
-                el.innerText = '0';
-                el.classList.add('hidden');
-            });
-
-            for (const [key, amount] of Object.entries(pendingBets)) {
-                total += amount;
-                let elementId = '';
-                if (activeTab === 'pok') {
-                    const rawKey = key.replace('เจ้าสู้ขา', '');
-                    elementId = `pok-chip-${rawKey}`;
+            if (roundTextEl) roundTextEl.innerText = `รอบที่: ${currentRound}`;
+            if (statusEl) {
+                if (isRoundOpen) {
+                    statusEl.innerText = '🟢 เปิดรับแทง';
+                    statusEl.className = 'text-lg font-bold text-green-400';
                 } else {
-                    elementId = `hilo-chip-${key}`;
-                }
-
-                const chipEl = document.getElementById(elementId);
-                if (chipEl) {
-                    chipEl.innerText = `${amount}฿`;
-                    chipEl.classList.remove('hidden');
+                    statusEl.innerText = '🚫 ปิดรับแทง';
+                    statusEl.className = 'text-lg font-bold text-red-500';
                 }
             }
-            document.getElementById('total-pending-amount').innerText = `${total.toLocaleString()} ฿`;
-        }
+        });
+    }
 
-        function clearPendingBets() {
-            pendingBets = {};
-            updateBoardUI();
-        }
+    // ฟังข้อมูล Real-time (ซิงค์ตรงกับบอทไลน์อัตโนมัติ)
+    function listenToUserData() {
+        if (!currentUserId) return;
 
-        // 5. ส่งโพยไปยัง Express API /api/place-bet
-        async function submitBoardBets() {
-            if (!isRoundOpen) return alert('⚠️ ขณะนี้ปิดรับแทงอยู่ครับ');
+        // ดึงเครดิต
+        db.ref(`system_data/usersWallets/${currentUserId}`).on('value', (snapshot) => {
+            currentUserData = snapshot.val();
+            if (currentUserData) {
+                document.getElementById('user-name').innerText = currentUserData.nickname || currentUserData.name || "สมาชิก";
+                document.getElementById('user-id').innerText = `ID: ${currentUserData.memberNumber || '-'}`;
+                document.getElementById('user-balance').innerText = `${(currentUserData.balance || 0).toLocaleString()} ฿`;
+            }
+        });
+
+        // ดึงโพยในรอบปัจจุบัน (ถ้าไลน์มีการลบ/คืนโพย Node นี้จะถูกลบ ทำให้หน้าเว็บหายไปด้วยทันที)
+        db.ref(`system_data`).on('value', (snapshot) => {
+            const data = snapshot.val() || {};
             
-            const entries = Object.entries(pendingBets);
-            if (entries.length === 0) return alert('⚠️ กรุณาเลือกวางชิปบนกระดานก่อนครับ');
+            const rawPokBets = (data.roundBets && data.roundBets[currentUserId]) ? data.roundBets[currentUserId] : {};
+            const rawHiloBets = (data.hiloRoundBets && data.hiloRoundBets[currentUserId]) ? data.hiloRoundBets[currentUserId] : {};
 
-            try {
-                // ส่งทีละรายการที่มีการเลือกชิปไว้
-                for (const [type, amount] of entries) {
-                    const res = await fetch('/api/place-bet', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            userId: currentUserId,
-                            amount: amount,
-                            type: type
-                        })
-                    });
-                    const result = await res.json();
-                    if (!result.success) {
-                        alert(`⚠️ รายการ ${type} ไม่สำเร็จ: ${result.message}`);
-                        return;
-                    }
-                }
+            // แปลง Object / Array เป็น รายการ
+            const pokBets = Object.values(rawPokBets).filter(b => b && (b.actualBet || b.pricePerLeg || b.amount));
+            const hiloBets = Object.values(rawHiloBets).filter(hb => hb && (hb.totalPrice || hb.actualBet || hb.price || hb.amount));
 
-                alert('✅ ส่งโพยสำเร็จ!');
-                clearPendingBets();
-            } catch (err) {
-                console.error(err);
-                alert('⚠️ เกิดข้อผิดพลาดในการส่งข้อมูล');
-            }
+            let html = '';
+            
+            pokBets.forEach(b => {
+                const price = b.actualBet || b.pricePerLeg || b.amount || 0;
+                html += `<div class="flex justify-between bg-gray-700 p-2 rounded"><span>🎴 ป๊อกเด้ง: ${b.betType || b.type}</span><span class="text-yellow-400 font-bold">${price.toLocaleString()} ฿</span></div>`;
+            });
+
+            hiloBets.forEach(hb => {
+                const price = hb.totalPrice || hb.actualBet || hb.price || hb.amount || 0;
+                html += `<div class="flex justify-between bg-gray-700 p-2 rounded"><span>🎲 ไฮโล: ${hb.category || hb.type}</span><span class="text-purple-400 font-bold">${price.toLocaleString()} ฿</span></div>`;
+            });
+
+            document.getElementById('my-bets-list').innerHTML = html || 'ยังไม่มีรายการแทงในรอบนี้';
+        });
+    }
+
+    function selectChip(value) {
+        selectedChipValue = value;
+        document.querySelectorAll('.chip').forEach(el => el.classList.remove('chip-active'));
+        document.getElementById(`chip-btn-${value}`).classList.add('chip-active');
+    }
+
+    function setPokMode(mode) {
+        pokMode = mode;
+        const btnPlayer = document.getElementById('btn-pok-player');
+        const btnDealer = document.getElementById('btn-pok-dealer');
+
+        if (mode === 'player') {
+            btnPlayer.className = "px-4 py-2 text-sm font-bold rounded-lg border-2 border-cyan-400 bg-cyan-900 text-cyan-200 shadow-md";
+            btnDealer.className = "px-4 py-2 text-sm font-bold rounded-md border border-gray-600 bg-gray-700 text-gray-400";
+        } else {
+            btnDealer.className = "px-4 py-2 text-sm font-bold rounded-lg border-2 border-amber-400 bg-amber-900 text-amber-200 shadow-md";
+            btnPlayer.className = "px-4 py-2 text-sm font-bold rounded-md border border-gray-600 bg-gray-700 text-gray-400";
         }
 
-        // สลับแท็บ ป๊อกเด้ง / ไฮโล
-        function switchTab(tab) {
-            activeTab = tab;
-            clearPendingBets();
-            if (tab === 'pok') {
-                document.getElementById('section-pok').classList.remove('hidden');
-                document.getElementById('section-hilo').classList.add('hidden');
-                document.getElementById('tab-pok').className = 'flex-1 py-2 text-sm font-bold rounded-md bg-yellow-500 text-gray-900';
-                document.getElementById('tab-hilo').className = 'flex-1 py-2 text-sm font-bold rounded-md text-gray-400';
+        for (let i = 1; i <= 6; i++) {
+            const label = document.getElementById(`pok-label-${i}`);
+            if (label) {
+                label.innerText = mode === 'player' ? `ขาที่ ${i}` : `เจ้าสู้ขา ${i}`;
+                label.className = mode === 'player' ? 'font-bold text-cyan-300 text-sm' : 'font-bold text-amber-300 text-sm';
+            }
+        }
+        clearPendingBets();
+    }
+
+    function placeBet(game, key) {
+        if (!isRoundOpen) return alert('⚠️ ขณะนี้ปิดรับแทงอยู่ครับ');
+
+        let betKey = key;
+        if (game === 'pok') {
+            betKey = pokMode === 'player' ? key : `เจ้าสู้ขา${key}`;
+        }
+
+        const currentAmount = pendingBets[betKey] || 0;
+        pendingBets[betKey] = currentAmount + selectedChipValue;
+        updateBoardUI();
+    }
+
+    function updateBoardUI() {
+        let total = 0;
+        document.querySelectorAll('[id^="pok-chip-"], [id^="hilo-chip-"]').forEach(el => {
+            el.innerText = '0';
+            el.classList.add('hidden');
+        });
+
+        for (const [key, amount] of Object.entries(pendingBets)) {
+            total += amount;
+            let elementId = '';
+            if (activeTab === 'pok') {
+                const rawKey = key.replace('เจ้าสู้ขา', '');
+                elementId = `pok-chip-${rawKey}`;
             } else {
-                document.getElementById('section-hilo').classList.remove('hidden');
-                document.getElementById('section-pok').classList.add('hidden');
-                document.getElementById('tab-hilo').className = 'flex-1 py-2 text-sm font-bold rounded-md bg-purple-600 text-white';
-                document.getElementById('tab-tab-pok').className = 'flex-1 py-2 text-sm font-bold rounded-md text-gray-400';
+                elementId = `hilo-chip-${key}`;
+            }
+
+            const chipEl = document.getElementById(elementId);
+            if (chipEl) {
+                chipEl.innerText = `${amount}฿`;
+                chipEl.classList.remove('hidden');
             }
         }
+        document.getElementById('total-pending-amount').innerText = `${total.toLocaleString()} ฿`;
+    }
 
-        window.onload = initLIFF;
-    </script>
+    function clearPendingBets() {
+        pendingBets = {};
+        updateBoardUI();
+    }
+
+    // ยืนยันการส่งโพย
+    async function submitBoardBets() {
+        if (!isRoundOpen) return alert('⚠️ ขณะนี้ปิดรับแทงอยู่ครับ');
+        
+        const entries = Object.entries(pendingBets);
+        if (entries.length === 0) return alert('⚠️ กรุณาเลือกวางชิปบนกระดานก่อนครับ');
+
+        try {
+            for (const [type, amount] of entries) {
+                const res = await fetch('/api/place-bet', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: currentUserId,
+                        amount: amount,
+                        type: type,
+                        game: activeTab // ส่ง 'pok' หรือ 'hilo' ไปยัง Backend
+                    })
+                });
+                const result = await res.json();
+                if (!result.success) {
+                    alert(`⚠️ รายการ ${type} ไม่สำเร็จ: ${result.message}`);
+                    return;
+                }
+            }
+
+            alert('✅ ส่งโพยสำเร็จ!');
+            clearPendingBets();
+        } catch (err) {
+            console.error(err);
+            alert('⚠️ เกิดข้อผิดพลาดในการส่งข้อมูล');
+        }
+    }
+
+    // สลับแท็บ ป๊อกเด้ง / ไฮโล
+    function switchTab(tab) {
+        activeTab = tab;
+        clearPendingBets();
+        if (tab === 'pok') {
+            document.getElementById('section-pok').classList.remove('hidden');
+            document.getElementById('section-hilo').classList.add('hidden');
+            document.getElementById('tab-pok').className = 'flex-1 py-2 text-sm font-bold rounded-md bg-yellow-500 text-gray-900';
+            document.getElementById('tab-hilo').className = 'flex-1 py-2 text-sm font-bold rounded-md text-gray-400';
+        } else {
+            document.getElementById('section-hilo').classList.remove('hidden');
+            document.getElementById('section-pok').classList.add('hidden');
+            document.getElementById('tab-hilo').className = 'flex-1 py-2 text-sm font-bold rounded-md bg-purple-600 text-white';
+            document.getElementById('tab-pok').className = 'flex-1 py-2 text-sm font-bold rounded-md text-gray-400'; // แก้ไข id ตรงนี้ให้ถูกต้อง
+        }
+    }
+
+    window.onload = initLIFF;
+</script>
 </body>
 </html>

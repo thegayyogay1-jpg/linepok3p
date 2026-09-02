@@ -250,44 +250,50 @@
 
     // ฟังข้อมูล Real-time (ซิงค์ตรงกับบอทไลน์อัตโนมัติ)
     function listenToUserData() {
-        if (!currentUserId) return;
+    // ฟังข้อมูลเงินคงเหลือ
+    db.ref(`system_data/usersWallets/${currentUserId}`).on('value', (snapshot) => {
+        currentUserData = snapshot.val();
+        if (currentUserData) {
+            document.getElementById('user-name').innerText = currentUserData.nickname || currentUserData.name || "สมาชิก";
+            document.getElementById('user-id').innerText = `ID: ${currentUserData.memberNumber || '-'}`;
+            document.getElementById('user-balance').innerText = `${(currentUserData.balance || 0).toLocaleString()} ฿`;
+        }
+    });
 
-        // ดึงเครดิต
-        db.ref(`system_data/usersWallets/${currentUserId}`).on('value', (snapshot) => {
-            currentUserData = snapshot.val();
-            if (currentUserData) {
-                document.getElementById('user-name').innerText = currentUserData.nickname || currentUserData.name || "สมาชิก";
-                document.getElementById('user-id').innerText = `ID: ${currentUserData.memberNumber || '-'}`;
-                document.getElementById('user-balance').innerText = `${(currentUserData.balance || 0).toLocaleString()} ฿`;
+    // ฟังรายการโพยแบบ Realtime
+    db.ref(`system_data`).on('value', (snapshot) => {
+        const data = snapshot.val() || {};
+        
+        const rawPokBets = (data.roundBets && data.roundBets[currentUserId]) ? data.roundBets[currentUserId] : null;
+        const rawHiloBets = (data.hiloRoundBets && data.hiloRoundBets[currentUserId]) ? data.hiloRoundBets[currentUserId] : null;
+
+        let html = '';
+
+        // แปลงข้อมูลเป็น Array รองรับทั้ง Object และ Array จาก Line Bot/Web
+        const pokBets = rawPokBets ? Object.values(rawPokBets).filter(b => b && typeof b === 'object') : [];
+        const hiloBets = rawHiloBets ? Object.values(rawHiloBets).filter(hb => hb && typeof hb === 'object') : [];
+
+        // แสดงผลรายการป๊อกเด้ง
+        pokBets.forEach(b => {
+            const price = b.actualBet || b.pricePerLeg || b.amount || 0;
+            const typeName = b.betType || b.type || 'ป๊อกเด้ง';
+            if (price > 0) {
+                html += `<div class="flex justify-between bg-gray-700 p-2 rounded mb-1"><span>🎴 ป๊อกเด้ง: ${typeName}</span><span class="text-yellow-400 font-bold">${price.toLocaleString()} ฿</span></div>`;
             }
         });
 
-        // ดึงโพยในรอบปัจจุบัน (ถ้าไลน์มีการลบ/คืนโพย Node นี้จะถูกลบ ทำให้หน้าเว็บหายไปด้วยทันที)
-        db.ref(`system_data`).on('value', (snapshot) => {
-            const data = snapshot.val() || {};
-            
-            const rawPokBets = (data.roundBets && data.roundBets[currentUserId]) ? data.roundBets[currentUserId] : {};
-            const rawHiloBets = (data.hiloRoundBets && data.hiloRoundBets[currentUserId]) ? data.hiloRoundBets[currentUserId] : {};
-
-            // แปลง Object / Array เป็น รายการ
-            const pokBets = Object.values(rawPokBets).filter(b => b && (b.actualBet || b.pricePerLeg || b.amount));
-            const hiloBets = Object.values(rawHiloBets).filter(hb => hb && (hb.totalPrice || hb.actualBet || hb.price || hb.amount));
-
-            let html = '';
-            
-            pokBets.forEach(b => {
-                const price = b.actualBet || b.pricePerLeg || b.amount || 0;
-                html += `<div class="flex justify-between bg-gray-700 p-2 rounded"><span>🎴 ป๊อกเด้ง: ${b.betType || b.type}</span><span class="text-yellow-400 font-bold">${price.toLocaleString()} ฿</span></div>`;
-            });
-
-            hiloBets.forEach(hb => {
-                const price = hb.totalPrice || hb.actualBet || hb.price || hb.amount || 0;
-                html += `<div class="flex justify-between bg-gray-700 p-2 rounded"><span>🎲 ไฮโล: ${hb.category || hb.type}</span><span class="text-purple-400 font-bold">${price.toLocaleString()} ฿</span></div>`;
-            });
-
-            document.getElementById('my-bets-list').innerHTML = html || 'ยังไม่มีรายการแทงในรอบนี้';
+        // แสดงผลรายการไฮโล
+        hiloBets.forEach(hb => {
+            const price = hb.totalPrice || hb.actualBet || hb.price || hb.amount || 0;
+            const typeName = hb.category || hb.type || 'ไฮโล';
+            if (price > 0) {
+                html += `<div class="flex justify-between bg-gray-700 p-2 rounded mb-1"><span>🎲 ไฮโล: ${typeName}</span><span class="text-purple-400 font-bold">${price.toLocaleString()} ฿</span></div>`;
+            }
         });
-    }
+
+        document.getElementById('my-bets-list').innerHTML = html || 'ยังไม่มีรายการแทงในรอบนี้';
+    });
+}
 
     function selectChip(value) {
         selectedChipValue = value;
@@ -363,38 +369,44 @@
     }
 
     // ยืนยันการส่งโพย
-    async function submitBoardBets() {
-        if (!isRoundOpen) return alert('⚠️ ขณะนี้ปิดรับแทงอยู่ครับ');
-        
-        const entries = Object.entries(pendingBets);
-        if (entries.length === 0) return alert('⚠️ กรุณาเลือกวางชิปบนกระดานก่อนครับ');
+   async function submitBoardBets() {
+    if (!isRoundOpen) return alert('⚠️ ขณะนี้ปิดรับแทงอยู่ครับ');
+    
+    const entries = Object.entries(pendingBets);
+    if (entries.length === 0) return alert('⚠️ กรุณาเลือกวางชิปบนกระดานก่อนครับ');
 
-        try {
-            for (const [type, amount] of entries) {
-                const res = await fetch('/api/place-bet', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        userId: currentUserId,
-                        amount: amount,
-                        type: type,
-                        game: activeTab // ส่ง 'pok' หรือ 'hilo' ไปยัง Backend
-                    })
-                });
-                const result = await res.json();
-                if (!result.success) {
-                    alert(`⚠️ รายการ ${type} ไม่สำเร็จ: ${result.message}`);
-                    return;
-                }
+    try {
+        for (const [key, amount] of entries) {
+            // แปลงชนิดการแทงให้ตรงกับประเภทเกม
+            let formattedType = key;
+            if (activeTab === 'pok') {
+                formattedType = key.includes('เจ้าสู้ขา') ? key : `ขาที่ ${key}`;
             }
 
-            alert('✅ ส่งโพยสำเร็จ!');
-            clearPendingBets();
-        } catch (err) {
-            console.error(err);
-            alert('⚠️ เกิดข้อผิดพลาดในการส่งข้อมูล');
+            const res = await fetch('/api/place-bet', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: currentUserId,
+                    amount: amount,
+                    type: formattedType
+                })
+            });
+            
+            const result = await res.json();
+            if (!result.success) {
+                alert(`⚠️ รายการ ${formattedType} ไม่สำเร็จ: ${result.message}`);
+                return;
+            }
         }
+
+        alert('✅ ส่งโพยสำเร็จ!');
+        clearPendingBets();
+    } catch (err) {
+        console.error(err);
+        alert('⚠️ เกิดข้อผิดพลาดในการส่งข้อมูล');
     }
+}
 
     // สลับแท็บ ป๊อกเด้ง / ไฮโล
     function switchTab(tab) {

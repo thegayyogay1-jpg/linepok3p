@@ -227,7 +227,9 @@
         }
 
         // 3. ฟังข้อมูล Real-time
+        // 3. ฟังข้อมูล Real-time (ปรับปรุงให้กรองโพยยกเลิก/โพยว่างอัตโนมัติ)
         function listenToUserData() {
+            // ฟังข้อมูลเงินคงเหลือ
             db.ref(`system_data/usersWallets/${currentUserId}`).on('value', (snapshot) => {
                 currentUserData = snapshot.val();
                 if (currentUserData) {
@@ -237,40 +239,37 @@
                 }
             });
 
+            // ฟังรายการโพยในรอบปัจจุบัน
             db.ref(`system_data`).on('value', (snapshot) => {
                 const data = snapshot.val() || {};
-                const pokBets = (data.roundBets && data.roundBets[currentUserId]) ? data.roundBets[currentUserId] : [];
-                const hiloBets = (data.hiloRoundBets && data.hiloRoundBets[currentUserId]) ? data.hiloRoundBets[currentUserId] : [];
+                
+                // 1. ดึงข้อมูลดิบ
+                const rawPokBets = (data.roundBets && data.roundBets[currentUserId]) ? data.roundBets[currentUserId] : [];
+                const rawHiloBets = (data.hiloRoundBets && data.hiloRoundBets[currentUserId]) ? data.hiloRoundBets[currentUserId] : [];
 
+                // 2. กรองข้อมูลเฉพาะโพยที่มีอยู่จริง (ป้องกันโพยเด้งตอนยกเลิก)
+                const pokBets = Array.isArray(rawPokBets) 
+                    ? rawPokBets.filter(b => b && (b.actualBet || b.pricePerLeg || b.amount))
+                    : [];
+
+                const hiloBets = Array.isArray(rawHiloBets) 
+                    ? rawHiloBets.filter(hb => hb && (hb.totalPrice || hb.actualBet || hb.price || hb.amount))
+                    : [];
+
+                // 3. แสดงผลลง UI
                 let html = '';
+                
                 pokBets.forEach(b => {
-                    html += `<div class="flex justify-between bg-gray-700 p-2 rounded"><span>🎴 ป๊อกเด้ง: ${b.betType}</span><span class="text-yellow-400 font-bold">${b.actualBet} ฿</span></div>`;
+                    const price = b.actualBet || b.pricePerLeg || b.amount || 0;
+                    html += `<div class="flex justify-between bg-gray-700 p-2 rounded"><span>🎴 ป๊อกเด้ง: ${b.betType || b.type}</span><span class="text-yellow-400 font-bold">${price.toLocaleString()} ฿</span></div>`;
                 });
+
                 hiloBets.forEach(hb => {
-                    const price = hb.totalPrice || hb.actualBet || hb.price || 0;
-                    html += `<div class="flex justify-between bg-gray-700 p-2 rounded"><span>🎲 ไฮโล: ${hb.category || hb.type}</span><span class="text-purple-400 font-bold">${price} ฿</span></div>`;
+                    const price = hb.totalPrice || hb.actualBet || hb.price || hb.amount || 0;
+                    html += `<div class="flex justify-between bg-gray-700 p-2 rounded"><span>🎲 ไฮโล: ${hb.category || hb.type}</span><span class="text-purple-400 font-bold">${price.toLocaleString()} ฿</span></div>`;
                 });
 
                 document.getElementById('my-bets-list').innerHTML = html || 'ยังไม่มีรายการแทงในรอบนี้';
-            });
-        }
-
-        function listenToSystemState() {
-            db.ref('system_data').on('value', (snapshot) => {
-                const data = snapshot.val() || {};
-                isRoundOpen = data.isRoundOpen || false;
-                currentRound = data.currentRound || 0;
-
-                const statusEl = document.getElementById('round-status');
-                document.getElementById('current-round-text').innerText = `รอบที่: ${currentRound}`;
-
-                if (isRoundOpen) {
-                    statusEl.innerText = '🟢 เปิดรับแทง';
-                    statusEl.className = 'text-lg font-bold text-green-400 animate-pulse';
-                } else {
-                    statusEl.innerText = '🚫 ปิดรับแทง';
-                    statusEl.className = 'text-lg font-bold text-red-500';
-                }
             });
         }
 

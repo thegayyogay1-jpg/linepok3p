@@ -6285,7 +6285,7 @@ app.get('/liff', (req, res) => {
 
             async function main() {
                 // ⚠️ อย่าลืมนำ LIFF ID ที่ได้จากระบบ LIFF ใน LINE Developer มาวางตรงนี้นะครับน้า
-                await liff.init({ liffId: "2011386687-zkayS6js" });
+                await liff.init({ liffId: "2011387264-7B981j5N" });
 
                 if (!liff.isLoggedIn()) {
                     liff.login();

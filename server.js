@@ -47,8 +47,15 @@ const walletStream = new EventSource(`${FIREBASE_URL}system_data/usersWallets.js
 walletStream.onmessage = (event) => {
     try {
         const parsed = JSON.parse(event.data);
-        if (parsed && parsed.data) {
-            usersWallets = parsed.data;
+        if (parsed) {
+            // รองรับทั้งการโหลดครั้งแรก (path: "/") และตอนมีการแก้ไขข้อมูล (path: "/USER_ID")
+            if (parsed.path === "/") {
+                usersWallets = parsed.data || {};
+            } else if (parsed.path && parsed.data !== undefined) {
+                // อัปเดตรายคนทันทีที่มีการเปลี่ยนยอดเงิน
+                const userId = parsed.path.replace('/', '');
+                usersWallets[userId] = parsed.data;
+            }
             console.log("⚡ [Real-time Sync] กระเป๋าเงินอัปเดตตรงกับ Firebase แล้ว!");
         }
     } catch (e) {

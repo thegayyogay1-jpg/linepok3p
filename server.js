@@ -37,62 +37,32 @@ let detailedRoundHistory = {}; // ตัวแปรเก็บข้อมู�
 let pastRoundsData = {}; //  ถังเก็บประวัติโพยและผลไพ่แยกรายรอบ (สำหรับดึง v,m)
 let withdrawQueue = []; // 📦 ถังสำหรับเก็บคิวสมาชิกที่แจ้งถอนเงิน
 let usersRoundCrossCheck = {}; // 🌟 เพิ่มบรรทัดนี้ไว้บนสุดของไฟล์
-
-// ==================== [ Firebase Real-time via EventSource ] ====================
-const EventSource = require('eventsource');
-
-// ดักฟังท่อ Real-time ของ usersWallets
-const walletStream = new EventSource(`${FIREBASE_URL}system_data/usersWallets.json`, {
-    headers: { 'Accept': 'text/event-stream' }
-});
-
-walletStream.onopen = () => {
-    console.log("📡 [EventSource] เชื่อมต่อท่อ Real-time กับ Firebase สำเร็จ!");
-};
-
-walletStream.onmessage = (event) => {
-    try {
-        const parsed = JSON.parse(event.data);
-        if (!parsed || parsed.data === undefined) return;
-
-        const path = parsed.path || "";
-        const data = parsed.data;
-
-        if (path === "/") {
-            // โหลดครั้งแรก ดึงข้อมูลยกถัง
-            usersWallets = data || {};
-            console.log("⚡ [Real-time Sync] โหลดข้อมูลกระเป๋าเงินทั้งหมดสำเร็จ!");
-        } else {
-            // แยก path เพื่อดูว่าเปลี่ยนที่ ID ไหน หรือ field ไหน
-            const parts = path.split('/').filter(Boolean); // เช่น ["U2fb...", "balance"]
-            
-            if (parts.length === 1) {
-                // แก้ไขข้อมูลทั้ง Object ของผู้เล่นคนนั้น
-                const userId = parts[0];
-                usersWallets[userId] = data;
-                console.log(`⚡ [Real-time Sync] อัปเดตข้อมูลยูสเซอร์ ${userId} เรียบร้อย!`);
-            } else if (parts.length >= 2) {
-                // แก้ไขเฉพาะฟิลด์ย่อย เช่น balance, totalDeposit ฯลฯ
-                const userId = parts[0];
-                const field = parts[1];
-                
-                if (!usersWallets[userId]) usersWallets[userId] = {};
-                usersWallets[userId][field] = data;
-                
-                console.log(`⚡ [Real-time Sync] อัปเดต ${field} ของ ${userId} เป็น ${JSON.stringify(data)} เรียบร้อย!`);
-            }
-        }
-    } catch (e) {
-        console.error("❌ Sync Error:", e.message);
-    }
-};
-
-walletStream.onerror = (err) => {
-    console.error("⚠️ EventSource Connection Error:", err);
-};
-
 global.depositQueue = {}; // 👈 เพิ่มบรรทัดนี้เพื่อเตรียมถังคิวฝากเงินออโต้ไม่ให้เป็นค่าว่างครับน้า!
 if (!global.satangCounter) global.satangCounter = 0;
+
+// 🔄 ฟังก์ชันดึงยอดเงินล่าสุดจาก Firebase แบบตรงเป้า 100%
+async function getLatestWallet(userId) {
+    try {
+        const res = await axios.get(`${FIREBASE_URL}system_data/usersWallets/${userId}.json`);
+        if (res.data) {
+            usersWallets[userId] = res.data;
+            return res.data;
+        }
+    } catch (e) {
+        console.error("❌ Sync error:", e.message);
+    }
+    return usersWallets[userId];
+}
+// ⚡ ฟังก์ชันอัปเดตยอดเงินรายคนลง Firebase ทันที (วางไว้ตรงนี้ครับ)
+async function updateSingleUserWallet(userId, updatedData) {
+    usersWallets[userId] = updatedData; // อัปเดตใน RAM
+    try {
+        await axios.patch(`${FIREBASE_URL}system_data/usersWallets/${userId}.json`, updatedData);
+        console.log(`⚡ [Direct Sync] อัปเดตยอดเงินของ ${userId} เรียบร้อย!`);
+    } catch (e) {
+        console.error("❌ Update error:", e.message);
+    }
+}
 
 // 🔄 ฟังก์ชันอัตโนมัติ: ดึงข้อมูลจาก Firebase มาอัปเดตลงในบอททันทีที่เปิดเครื่อง (แก้ไขดึงครบทุกกล่องแล้ว)
 async function loadDataFromFirebase() {
@@ -5222,6 +5192,17 @@ if (userMsg === 'c') {
         return; 
     }
     global.cCooldowns.set(userId, now);
+
+    // 🔄 1.1 ดึงข้อมูลล่าสุดจาก Firebase แบบตรงเป้า ก่อนประมวลผลการ์ด c (เพิ่มตรงนี้!)
+    try {
+        const freshRes = await axios.get(`${FIREBASE_URL}system_data/usersWallets/${userId}.json`);
+        if (freshRes.data) {
+            usersWallets[userId] = freshRes.data; // อัปเดต RAM หลัก
+            user = freshRes.data;                  // อัปเดตตัวแปร user ของคำสั่ง c ทันที
+        }
+    } catch (e) {
+        console.error("❌ Sync error on c command:", e.message);
+    }
 
     replyText = null;
 

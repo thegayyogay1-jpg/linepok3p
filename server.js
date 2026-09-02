@@ -6406,7 +6406,8 @@ app.post('/api/place-bet', async (req, res) => {
 
     } catch (error) {
         console.error('Place Bet Error:', error);
-        return res.json({ success: false, message: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์' });
+        // ส่งข้อความ error จริงออกไปดูที่หน้าเว็บเพื่อการแก้ไข
+        return res.json({ success: false, message: `Server Error: ${error.message}` });
     }
 });
 

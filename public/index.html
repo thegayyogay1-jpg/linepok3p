@@ -4,15 +4,33 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ระบบแทงออนไลน์ - POKDENG & HILO</title>
-    <!-- Tailwind CSS สำหรับตกแต่ง UI -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Firebase SDK (v8) สำหรับ Real-time Sync -->
+    <!-- Firebase SDK (v8) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <!-- LINE LIFF SDK -->
     <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>
+        .chip {
+            transition: transform 0.1s ease, box-shadow 0.1s ease;
+        }
+        .chip-active {
+            transform: scale(1.15);
+            box-shadow: 0 0 12px rgba(234, 179, 8, 0.8);
+            border-color: #facc15 !important;
+        }
+        .bet-zone {
+            cursor: pointer;
+            user-select: none;
+            transition: background-color 0.15s;
+        }
+        .bet-zone:active {
+            opacity: 0.7;
+        }
+    </style>
 </head>
-<body class="bg-gray-900 text-white min-h-screen pb-10">
+<body class="bg-gray-900 text-white min-h-screen pb-24">
 
     <!-- Header / โปรไฟล์สมาชิก -->
     <header class="bg-gray-800 p-4 shadow-lg sticky top-0 z-50 flex justify-between items-center border-b border-gray-700">
@@ -26,7 +44,7 @@
         </div>
     </header>
 
-    <main class="max-w-md mx-auto p-4 space-y-4">
+    <main class="max-w-xl mx-auto p-2 sm:p-4 space-y-4">
         
         <!-- แถบสถานะรอบ -->
         <div id="status-card" class="bg-gray-800 p-3 rounded-lg border border-gray-700 text-center">
@@ -41,39 +59,127 @@
             <button id="tab-hilo" onclick="switchTab('hilo')" class="flex-1 py-2 text-sm font-bold rounded-md text-gray-400">🎲 ไฮโล</button>
         </div>
 
-        <!-- ฟอร์มแทงป๊อกเด้ง -->
-        <div id="section-pok" class="bg-gray-800 p-4 rounded-lg border border-gray-700 space-y-3">
-            <h3 class="font-bold text-yellow-400 border-b border-gray-700 pb-2">🎰 แทงป๊อกเด้ง</h3>
-            <div>
-                <label class="text-xs text-gray-300 block mb-1">เลือกขาที่ต้องการแทง (เช่น 1, 12, 123):</label>
-                <input type="text" id="pok-legs" placeholder="เช่น 1 หรือ 12" class="w-full p-2 bg-gray-700 rounded border border-gray-600 text-center text-lg font-bold text-yellow-300 focus:outline-none focus:border-yellow-500">
+        <!-- Section: กระดานป๊อกเด้ง -->
+        <div id="section-pok" class="bg-gray-800 p-3 rounded-lg border border-gray-700 space-y-3">
+            <h3 class="font-bold text-yellow-400 border-b border-gray-700 pb-2 text-center">🎰 โต๊ะแทงป๊อกเด้ง</h3>
+            
+            <!-- ปุ่มสลับโหมด แทงผู้เล่น / แทงเจ้ามือ -->
+            <div class="flex justify-center gap-2">
+                <button id="btn-pok-player" onclick="setPokMode('player')" class="px-4 py-2 text-sm font-bold rounded-lg border-2 border-cyan-400 bg-cyan-900 text-cyan-200 shadow-md">แทงผู้เล่น</button>
+                <button id="btn-pok-dealer" onclick="setPokMode('dealer')" class="px-4 py-2 text-sm font-bold rounded-md border border-gray-600 bg-gray-700 text-gray-400">แทงเจ้ามือ</button>
             </div>
-            <div>
-                <label class="text-xs text-gray-300 block mb-1">จำนวนเงินต่อขา (บาท):</label>
-                <input type="number" id="pok-price" placeholder="100" class="w-full p-2 bg-gray-700 rounded border border-gray-600 text-center text-lg font-bold text-green-400 focus:outline-none focus:border-green-500">
+
+            <!-- ช่องวางแทง ขา 1 - 6 -->
+            <div class="grid grid-cols-3 gap-2 pt-2">
+                <script>
+                    for(let i=1; i<=6; i++){
+                        document.write(`
+                            <div onclick="placeBet('pok', '${i}')" class="bet-zone bg-gray-700 hover:bg-gray-600 border-2 border-cyan-500/50 rounded-lg p-3 text-center flex flex-col items-center justify-between min-h-[90px] relative">
+                                <span id="pok-label-${i}" class="font-bold text-cyan-300 text-sm">ขาที่ ${i}</span>
+                                <span id="pok-chip-${i}" class="hidden mt-1 px-2 py-0.5 bg-yellow-500 text-gray-900 font-bold text-xs rounded-full shadow">0</span>
+                            </div>
+                        `);
+                    }
+                </script>
             </div>
-            <button onclick="submitPokBet()" class="w-full py-3 bg-gradient-to-r from-yellow-500 to-amber-600 text-gray-900 font-bold rounded-lg shadow-md hover:brightness-110 transition">
-                🚀 ส่งโพยป๊อกเด้ง
-            </button>
         </div>
 
-        <!-- ฟอร์มแทงไฮโล -->
-        <div id="section-hilo" class="bg-gray-800 p-4 rounded-lg border border-gray-700 space-y-3 hidden">
-            <h3 class="font-bold text-purple-400 border-b border-gray-700 pb-2">🎲 แทงไฮโล</h3>
-            <div>
-                <label class="text-xs text-gray-300 block mb-1">รูปแบบการแทง (สูง / ต่ำ / เต็ง 1-6 / โต๊ด 12):</label>
-                <input type="text" id="hilo-type" placeholder="เช่น สูง, ต่ำ, 5, 23" class="w-full p-2 bg-gray-700 rounded border border-gray-600 text-center text-lg font-bold text-purple-300 focus:outline-none focus:border-purple-500">
+        <!-- Section: กระดานไฮโล -->
+        <div id="section-hilo" class="bg-gray-800 p-3 rounded-lg border border-gray-700 space-y-2 hidden text-xs">
+            <h3 class="font-bold text-purple-400 border-b border-gray-700 pb-2 text-center text-sm">🎲 โต๊ะแทงไฮโล</h3>
+
+            <!-- ตองรวม / ตองระบุ -->
+            <div class="flex gap-1">
+                <div onclick="placeBet('hilo', 'ตองรวม')" class="bet-zone flex-1 bg-gray-700 border border-purple-500/50 rounded p-2 text-center relative">
+                    <div>ตองใดๆ</div>
+                    <span id="hilo-chip-ตองรวม" class="hidden px-1.5 py-0.5 bg-yellow-500 text-gray-900 font-bold text-[10px] rounded-full">0</span>
+                </div>
+                <div class="flex-1 bg-gray-700 border border-purple-500/50 rounded p-1 text-center">
+                    <div class="text-[10px] mb-1">ตองระบุ</div>
+                    <div class="grid grid-cols-3 gap-1">
+                        <button onclick="placeBet('hilo', 'ตอง1')" class="bg-gray-800 p-1 rounded font-bold hover:bg-purple-900 relative">1<span id="hilo-chip-ตอง1" class="hidden absolute -top-1 -right-1 px-1 bg-yellow-500 text-black text-[9px] rounded-full"></span></button>
+                        <button onclick="placeBet('hilo', 'ตอง2')" class="bg-gray-800 p-1 rounded font-bold hover:bg-purple-900 relative">2<span id="hilo-chip-ตอง2" class="hidden absolute -top-1 -right-1 px-1 bg-yellow-500 text-black text-[9px] rounded-full"></span></button>
+                        <button onclick="placeBet('hilo', 'ตอง3')" class="bg-gray-800 p-1 rounded font-bold hover:bg-purple-900 relative">3<span id="hilo-chip-ตอง3" class="hidden absolute -top-1 -right-1 px-1 bg-yellow-500 text-black text-[9px] rounded-full"></span></button>
+                        <button onclick="placeBet('hilo', 'ตอง4')" class="bg-gray-800 p-1 rounded font-bold hover:bg-purple-900 relative">4<span id="hilo-chip-ตอง4" class="hidden absolute -top-1 -right-1 px-1 bg-yellow-500 text-black text-[9px] rounded-full"></span></button>
+                        <button onclick="placeBet('hilo', 'ตอง5')" class="bg-gray-800 p-1 rounded font-bold hover:bg-purple-900 relative">5<span id="hilo-chip-ตอง5" class="hidden absolute -top-1 -right-1 px-1 bg-yellow-500 text-black text-[9px] rounded-full"></span></button>
+                        <button onclick="placeBet('hilo', 'ตอง6')" class="bg-gray-800 p-1 rounded font-bold hover:bg-purple-900 relative">6<span id="hilo-chip-ตอง6" class="hidden absolute -top-1 -right-1 px-1 bg-yellow-500 text-black text-[9px] rounded-full"></span></button>
+                    </div>
+                </div>
             </div>
-            <div>
-                <label class="text-xs text-gray-300 block mb-1">จำนวนเงิน (บาท):</label>
-                <input type="number" id="hilo-price" placeholder="100" class="w-full p-2 bg-gray-700 rounded border border-gray-600 text-center text-lg font-bold text-green-400 focus:outline-none focus:border-green-500">
+
+            <!-- สูง / ต่ำ & โต๊ดหลัก -->
+            <div class="grid grid-cols-5 gap-1">
+                <div onclick="placeBet('hilo', 'ต่ำ')" class="bet-zone bg-gray-700 border border-purple-500/50 rounded p-2 flex flex-col items-center justify-between min-h-[60px]">
+                    <span class="font-bold text-red-400">ต่ำ</span>
+                    <span id="hilo-chip-ต่ำ" class="hidden px-1.5 bg-yellow-500 text-black font-bold rounded-full">0</span>
+                </div>
+                <div onclick="placeBet('hilo', '123')" class="bet-zone bg-gray-700 border border-purple-500/50 rounded p-1 text-center flex flex-col justify-between">
+                    <span>1-2-3</span>
+                    <span id="hilo-chip-123" class="hidden px-1 bg-yellow-500 text-black rounded-full">0</span>
+                </div>
+                <div onclick="placeBet('hilo', '11ไฮโล')" class="bet-zone bg-gray-700 border border-purple-500/50 rounded p-1 text-center flex flex-col justify-between">
+                    <span class="font-bold text-yellow-300">11ไฮโล</span>
+                    <span id="hilo-chip-11ไฮโล" class="hidden px-1 bg-yellow-500 text-black rounded-full">0</span>
+                </div>
+                <div onclick="placeBet('hilo', '456')" class="bet-zone bg-gray-700 border border-purple-500/50 rounded p-1 text-center flex flex-col justify-between">
+                    <span>4-5-6</span>
+                    <span id="hilo-chip-456" class="hidden px-1 bg-yellow-500 text-black rounded-full">0</span>
+                </div>
+                <div onclick="placeBet('hilo', 'สูง')" class="bet-zone bg-gray-700 border border-purple-500/50 rounded p-2 flex flex-col items-center justify-between min-h-[60px]">
+                    <span class="font-bold text-green-400">สูง</span>
+                    <span id="hilo-chip-สูง" class="hidden px-1.5 bg-yellow-500 text-black font-bold rounded-full">0</span>
+                </div>
             </div>
-            <button onclick="submitHiloBet()" class="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold rounded-lg shadow-md hover:brightness-110 transition">
-                🎲 ส่งโพยไฮโล
-            </button>
+
+            <!-- เลขเต็ง 1-6 -->
+            <div class="grid grid-cols-6 gap-1">
+                <script>
+                    for(let i=1; i<=6; i++){
+                        document.write(`
+                            <div onclick="placeBet('hilo', '${i}')" class="bet-zone bg-gray-700 border border-purple-500/50 rounded p-2 text-center">
+                                <div class="font-bold text-purple-300">${i}</div>
+                                <span id="hilo-chip-${i}" class="hidden px-1 bg-yellow-500 text-black text-[10px] rounded-full">0</span>
+                            </div>
+                        `);
+                    }
+                </script>
+            </div>
         </div>
 
-        <!-- รายการโพยที่แทงไปแล้วในรอบนี้ -->
+        <!-- ยอดรวมเตรียมส่งโพย + ปุ่ม ยืนยัน / ยกเลิก -->
+        <div class="bg-gray-800 p-3 rounded-lg border border-gray-700 space-y-3">
+            <div class="flex justify-between items-center text-sm px-2">
+                <span class="text-gray-400">ยอดเงินลงโพยรอบนี้:</span>
+                <span id="total-pending-amount" class="text-xl font-bold text-yellow-400">0 ฿</span>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="clearPendingBets()" class="flex-1 py-2.5 bg-gray-600 hover:bg-gray-500 text-white font-bold rounded-lg shadow">
+                    ❌ ยกเลิก
+                </button>
+                <button onclick="submitBoardBets()" class="flex-2 w-2/3 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-gray-900 font-bold rounded-lg shadow hover:brightness-110">
+                    ✅ ยืนยันส่งโพย
+                </button>
+            </div>
+        </div>
+
+        <!-- Selector ชิปเลือกราคา (ตรึงอยู่ด้านล่าง) -->
+        <div class="fixed bottom-0 left-0 right-0 bg-gray-800/95 backdrop-blur-md border-t border-gray-700 p-2 z-40">
+            <div class="max-w-md mx-auto flex justify-between items-center gap-1 overflow-x-auto px-1">
+                <script>
+                    const chips = [1, 5, 10, 25, 50, 100, 500];
+                    chips.forEach((val, idx) => {
+                        const active = idx === 2 ? 'chip-active' : '';
+                        document.write(`
+                            <button id="chip-btn-${val}" onclick="selectChip(${val})" class="chip ${active} flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-yellow-500 bg-gray-900 text-yellow-400 font-bold text-xs sm:text-sm flex items-center justify-center shadow-lg">
+                                ${val}
+                            </button>
+                        `);
+                    });
+                </script>
+            </div>
+        </div>
+
+        <!-- รายการโพยที่บันทึกแล้ว -->
         <div class="bg-gray-800 p-4 rounded-lg border border-gray-700 space-y-2">
             <h4 class="font-bold text-sm text-gray-300 border-b border-gray-700 pb-1">📋 โพยของคุณในรอบนี้</h4>
             <div id="my-bets-list" class="text-xs text-gray-400 space-y-1">
@@ -84,7 +190,7 @@
     </main>
 
     <script>
-        // 1. คอนฟิก Firebase (ดึงจาก Firebase URL เดียวกับใน Node.js)
+        // 1. Firebase Config
         const firebaseConfig = {
             databaseURL: "https://my-pokdeng-bot-default-rtdb.asia-southeast1.firebasedatabase.app/"
         };
@@ -96,29 +202,31 @@
         let isRoundOpen = false;
         let currentRound = 0;
 
-        // 2. เริ่มต้นเชื่อมต่อ LIFF
+        // สถานะกระดานเดิมพัน
+        let activeTab = 'pok'; // 'pok' หรือ 'hilo'
+        let pokMode = 'player'; // 'player' หรือ 'dealer'
+        let selectedChipValue = 10;
+        let pendingBets = {}; // เก็บรายการชิปที่วางชั่วคราว { "ขา 1": 50, "สูง": 100 }
+
+        // 2. เริ่มต้น LIFF
         async function initLIFF() {
             try {
-                // เปลี่ยน YOUR_LIFF_ID เป็น LIFF ID จาก LINE Developer Console ของน้า
                 await liff.init({ liffId: "2011387264-7B981j5N" });
                 if (liff.isLoggedIn()) {
                     const profile = await liff.getProfile();
                     currentUserId = profile.userId;
-                    listenToUserData();
-                    listenToSystemState();
                 } else {
                     liff.login();
                 }
             } catch (err) {
                 console.error("LIFF Init Error:", err);
-                // สำหรับทดสอบบนคอมพิวเตอร์ (จำลอง UserId)
-                currentUserId = "U2fb9233e5c539ae3970cbd698e2e18db"; 
-                listenToUserData();
-                listenToSystemState();
+                currentUserId = "U2fb9233e5c539ae3970cbd698e2e18db";
             }
+            listenToUserData();
+            listenToSystemState();
         }
 
-        // 3. ฟังการเปลี่ยนแปลงข้อมูลยูสเซอร์จาก Firebase แบบ Real-time
+        // 3. ฟังข้อมูล Real-time
         function listenToUserData() {
             db.ref(`system_data/usersWallets/${currentUserId}`).on('value', (snapshot) => {
                 currentUserData = snapshot.val();
@@ -129,7 +237,6 @@
                 }
             });
 
-            // ดึงรายการแทงของตัวเองในรอบปัจจุบัน
             db.ref(`system_data`).on('value', (snapshot) => {
                 const data = snapshot.val() || {};
                 const pokBets = (data.roundBets && data.roundBets[currentUserId]) ? data.roundBets[currentUserId] : [];
@@ -137,7 +244,7 @@
 
                 let html = '';
                 pokBets.forEach(b => {
-                    html += `<div class="flex justify-between bg-gray-700 p-2 rounded"><span>🎴 ป๊อกเด้ง: ขา ${b.betType}</span><span class="text-yellow-400 font-bold">${b.actualBet} ฿</span></div>`;
+                    html += `<div class="flex justify-between bg-gray-700 p-2 rounded"><span>🎴 ป๊อกเด้ง: ${b.betType}</span><span class="text-yellow-400 font-bold">${b.actualBet} ฿</span></div>`;
                 });
                 hiloBets.forEach(hb => {
                     const price = hb.totalPrice || hb.actualBet || hb.price || 0;
@@ -148,7 +255,6 @@
             });
         }
 
-        // 4. ฟังสถานะการเปิด/ปิดรอบ Real-time
         function listenToSystemState() {
             db.ref('system_data').on('value', (snapshot) => {
                 const data = snapshot.val() || {};
@@ -168,75 +274,119 @@
             });
         }
 
-        // 5. ฟังก์ชันส่งโพยป๊อกเด้ง (บันทึกตรงลง Firebase ลิ้งค์กับกลุ่มทันที)
-       async function submitPokBet() {
-    if (!isRoundOpen) return alert('⚠️ ขณะนี้ปิดรับแทงอยู่ครับ');
-    const legs = document.getElementById('pok-legs').value.trim();
-    const price = parseFloat(document.getElementById('pok-price').value);
-
-    if (!legs || isNaN(price) || price <= 0) return alert('⚠️ กรุณากรอกข้อมูลขาและจำนวนเงินให้ถูกต้อง');
-
-    try {
-        // ยิง request ไปที่ API /api/place-bet ใน server.js
-        const res = await fetch('/api/place-bet', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                userId: currentUserId,
-                amount: price,
-                type: legs
-            })
-        });
-
-        const result = await res.json();
-        if (result.success) {
-            alert('✅ ส่งโพยป๊อกเด้งสำเร็จ!');
-            document.getElementById('pok-legs').value = '';
-            document.getElementById('pok-price').value = '';
-        } else {
-            alert('⚠️ ไม่สามารถส่งโพยได้: ' + result.message);
+        // 4. ระบบเลือกชิปและวางลงบนกระดาน
+        function selectChip(value) {
+            selectedChipValue = value;
+            document.querySelectorAll('.chip').forEach(el => el.classList.remove('chip-active'));
+            document.getElementById(`chip-btn-${value}`).classList.add('chip-active');
         }
-    } catch (err) {
-        console.error(err);
-        alert('⚠️ เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์');
-    }
-}
 
-        // 6. ฟังก์ชันส่งโพยไฮโล
-        async function submitHiloBet() {
-    if (!isRoundOpen) return alert('⚠️ ขณะนี้ปิดรับแทงอยู่ครับ');
-    const type = document.getElementById('hilo-type').value.trim();
-    const price = parseFloat(document.getElementById('hilo-price').value);
+        function setPokMode(mode) {
+            pokMode = mode;
+            const btnPlayer = document.getElementById('btn-pok-player');
+            const btnDealer = document.getElementById('btn-pok-dealer');
 
-    if (!type || isNaN(price) || price <= 0) return alert('⚠️ กรุณากรอกรูปแบบและจำนวนเงิน');
+            if (mode === 'player') {
+                btnPlayer.className = "px-4 py-2 text-sm font-bold rounded-lg border-2 border-cyan-400 bg-cyan-900 text-cyan-200 shadow-md";
+                btnDealer.className = "px-4 py-2 text-sm font-bold rounded-md border border-gray-600 bg-gray-700 text-gray-400";
+            } else {
+                btnDealer.className = "px-4 py-2 text-sm font-bold rounded-lg border-2 border-amber-400 bg-amber-900 text-amber-200 shadow-md";
+                btnPlayer.className = "px-4 py-2 text-sm font-bold rounded-md border border-gray-600 bg-gray-700 text-gray-400";
+            }
 
-    try {
-        const res = await fetch('/api/place-bet', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                userId: currentUserId,
-                amount: price,
-                type: type
-            })
-        });
-
-        const result = await res.json();
-        if (result.success) {
-            alert('✅ ส่งโพยไฮโลสำเร็จ!');
-            document.getElementById('hilo-type').value = '';
-            document.getElementById('hilo-price').value = '';
-        } else {
-            alert('⚠️ ไม่สามารถส่งโพยได้: ' + result.message);
+            for (let i = 1; i <= 6; i++) {
+                const label = document.getElementById(`pok-label-${i}`);
+                if (label) {
+                    label.innerText = mode === 'player' ? `ขาที่ ${i}` : `เจ้าสู้ขา ${i}`;
+                    label.className = mode === 'player' ? 'font-bold text-cyan-300 text-sm' : 'font-bold text-amber-300 text-sm';
+                }
+            }
+            clearPendingBets();
         }
-    } catch (err) {
-        console.error(err);
-        alert('⚠️ เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์');
-    }
-}
 
-        // สลับแท็บ UI
+        function placeBet(game, key) {
+            if (!isRoundOpen) return alert('⚠️ ขณะนี้ปิดรับแทงอยู่ครับ');
+
+            let betKey = key;
+            if (game === 'pok') {
+                betKey = pokMode === 'player' ? key : `เจ้าสู้ขา${key}`;
+            }
+
+            const currentAmount = pendingBets[betKey] || 0;
+            pendingBets[betKey] = currentAmount + selectedChipValue;
+            updateBoardUI();
+        }
+
+        function updateBoardUI() {
+            let total = 0;
+            // ล้างแสดงผลเดิม
+            document.querySelectorAll('[id^="pok-chip-"], [id^="hilo-chip-"]').forEach(el => {
+                el.innerText = '0';
+                el.classList.add('hidden');
+            });
+
+            for (const [key, amount] of Object.entries(pendingBets)) {
+                total += amount;
+                let elementId = '';
+                if (activeTab === 'pok') {
+                    const rawKey = key.replace('เจ้าสู้ขา', '');
+                    elementId = `pok-chip-${rawKey}`;
+                } else {
+                    elementId = `hilo-chip-${key}`;
+                }
+
+                const chipEl = document.getElementById(elementId);
+                if (chipEl) {
+                    chipEl.innerText = `${amount}฿`;
+                    chipEl.classList.remove('hidden');
+                }
+            }
+            document.getElementById('total-pending-amount').innerText = `${total.toLocaleString()} ฿`;
+        }
+
+        function clearPendingBets() {
+            pendingBets = {};
+            updateBoardUI();
+        }
+
+        // 5. ส่งโพยไปยัง Express API /api/place-bet
+        async function submitBoardBets() {
+            if (!isRoundOpen) return alert('⚠️ ขณะนี้ปิดรับแทงอยู่ครับ');
+            
+            const entries = Object.entries(pendingBets);
+            if (entries.length === 0) return alert('⚠️ กรุณาเลือกวางชิปบนกระดานก่อนครับ');
+
+            try {
+                // ส่งทีละรายการที่มีการเลือกชิปไว้
+                for (const [type, amount] of entries) {
+                    const res = await fetch('/api/place-bet', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            userId: currentUserId,
+                            amount: amount,
+                            type: type
+                        })
+                    });
+                    const result = await res.json();
+                    if (!result.success) {
+                        alert(`⚠️ รายการ ${type} ไม่สำเร็จ: ${result.message}`);
+                        return;
+                    }
+                }
+
+                alert('✅ ส่งโพยสำเร็จ!');
+                clearPendingBets();
+            } catch (err) {
+                console.error(err);
+                alert('⚠️ เกิดข้อผิดพลาดในการส่งข้อมูล');
+            }
+        }
+
+        // สลับแท็บ ป๊อกเด้ง / ไฮโล
         function switchTab(tab) {
+            activeTab = tab;
+            clearPendingBets();
             if (tab === 'pok') {
                 document.getElementById('section-pok').classList.remove('hidden');
                 document.getElementById('section-hilo').classList.add('hidden');
@@ -246,7 +396,7 @@
                 document.getElementById('section-hilo').classList.remove('hidden');
                 document.getElementById('section-pok').classList.add('hidden');
                 document.getElementById('tab-hilo').className = 'flex-1 py-2 text-sm font-bold rounded-md bg-purple-600 text-white';
-                document.getElementById('tab-pok').className = 'flex-1 py-2 text-sm font-bold rounded-md text-gray-400';
+                document.getElementById('tab-tab-pok').className = 'flex-1 py-2 text-sm font-bold rounded-md text-gray-400';
             }
         }
 

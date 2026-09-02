@@ -38,26 +38,26 @@ let pastRoundsData = {}; //  ถังเก็บประวัติโพย
 let withdrawQueue = []; // 📦 ถังสำหรับเก็บคิวสมาชิกที่แจ้งถอนเงิน
 let usersRoundCrossCheck = {}; // 🌟 เพิ่มบรรทัดนี้ไว้บนสุดของไฟล์
 
-// ==================== [ เชื่อมต่อ Firebase Real-time SDK ] ====================
-const admin = require('firebase-admin');
+// ==================== [ เชื่อมต่อ Firebase Real-time Client SDK ] ====================
+const firebase = require('firebase/app');
+require('firebase/database');
 
-if (!admin.apps.length) {
-    admin.initializeApp({
+// ตั้งค่าเชื่อมต่อโดยระบุแค่ databaseURL
+if (!firebase.apps.length) {
+    firebase.initializeApp({
         databaseURL: FIREBASE_URL
     });
 }
 
-const db = admin.database();
+const db = firebase.database();
 
-// ⚡ ให้บอทเกาะฟัง Real-time! หน้าเว็บอัปเดต Firebase ปุ๊บ RAM ในบอทเปลี่ยนปั๊บทันที!
+// ⚡ ให้บอทเกาะฟัง Real-time แบบไร้เตือน Error
 db.ref('system_data/usersWallets').on('value', (snapshot) => {
     const data = snapshot.val();
     if (data) {
         usersWallets = data;
         console.log("⚡ [Real-time Sync] กระเป๋าเงินในบอทซิงค์ตรงกับ Firebase เรียบร้อย!");
     }
-}, (errorObject) => {
-    console.error("❌ Firebase Real-time Sync Error:", errorObject.message);
 });
 
 global.depositQueue = {}; // 👈 เพิ่มบรรทัดนี้เพื่อเตรียมถังคิวฝากเงินออโต้ไม่ให้เป็นค่าว่างครับน้า!

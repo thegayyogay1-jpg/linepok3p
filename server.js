@@ -37,8 +37,6 @@ let detailedRoundHistory = {}; // ตัวแปรเก็บข้อมู�
 let pastRoundsData = {}; //  ถังเก็บประวัติโพยและผลไพ่แยกรายรอบ (สำหรับดึง v,m)
 let withdrawQueue = []; // 📦 ถังสำหรับเก็บคิวสมาชิกที่แจ้งถอนเงิน
 let usersRoundCrossCheck = {}; // 🌟 เพิ่มบรรทัดนี้ไว้บนสุดของไฟล์
-global.depositQueue = {}; // 👈 เพิ่มบรรทัดนี้เพื่อเตรียมถังคิวฝากเงินออโต้ไม่ให้เป็นค่าว่างครับน้า!
-if (!global.satangCounter) global.satangCounter = 0;
 
 // ==================== [ เชื่อมต่อ Firebase Real-time SDK ] ====================
 const admin = require('firebase-admin');
@@ -60,6 +58,8 @@ db.ref('system_data/usersWallets').on('value', (snapshot) => {
         console.log("⚡ [Real-time Sync] กระเป๋าเงินในบอทซิงค์ตรงกับ Firebase เรียบร้อย!");
     }
 });
+global.depositQueue = {}; // 👈 เพิ่มบรรทัดนี้เพื่อเตรียมถังคิวฝากเงินออโต้ไม่ให้เป็นค่าว่างครับน้า!
+if (!global.satangCounter) global.satangCounter = 0;
 
 // 🔄 ฟังก์ชันอัตโนมัติ: ดึงข้อมูลจาก Firebase มาอัปเดตลงในบอททันทีที่เปิดเครื่อง (แก้ไขดึงครบทุกกล่องแล้ว)
 async function loadDataFromFirebase() {

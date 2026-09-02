@@ -2569,7 +2569,7 @@ else if (promotions[userMsg.trim()]) {
                         }
                         let betTracker = usersRoundCrossCheck[userId];
 
-                        const allowedLegs = [1,2,3,4,5,6];
+                        const allowedLegs = ['1', '2', '3', '4', '5', '6'];
                         const MIN_BET = 10;
                         const MAX_BET = 2500;
 

@@ -1,7 +1,6 @@
 const express = require('express');
 const axios = require('axios');
 const fs = require('fs'); // 📁 เติมตรงนี้เพื่อให้ระบบรู้จักการเขียนไฟล์ลงเครื่องครับน้า
-const admin = require('firebase-admin'); // 👈 เพิ่มการดึง Library Firebase Admin
 const app = express();
 app.use(express.json());
 global.currentReplyFlex = null; // 👈 แทรกบรรทัดนี้ลงไปตรงนี้ครับ
@@ -17,21 +16,6 @@ const ADMIN_IDS = [
 
 // 📡 ลิงก์เชื่อมโยงไปยังฐานข้อมูล Firebase ถาวร 
 const FIREBASE_URL = "https://my-pokdeng-bot-default-rtdb.asia-southeast1.firebasedatabase.app/"; 
-
-// 🔥 [แก้ไขจุดนี้] ตั้งค่าเชื่อมต่อ Firebase Admin สำหรับ API ของหน้าเว็บ LIFF
-if (!admin.apps.length) {
-    admin.initializeApp({
-        credential: admin.credential.cert({
-            projectId: process.env.FIREBASE_PROJECT_ID,
-            clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-            privateKey: process.env.FIREBASE_PRIVATE_KEY ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n') : undefined,
-        }),
-        databaseURL: FIREBASE_URL
-    });
-}
-
-// 📌 [สำคัญที่สุด] ประกาศตัวแปร db ให้ระบบรู้จัก (แก้ปัญหา Server Error: db is not defined)
-const db = admin.database();
 
 let usersWallets = {};
 let nextMemberId = 1;
@@ -55,30 +39,6 @@ let withdrawQueue = []; // 📦 ถังสำหรับเก็บคิว
 let usersRoundCrossCheck = {}; // 🌟 เพิ่มบรรทัดนี้ไว้บนสุดของไฟล์
 global.depositQueue = {}; // 👈 เพิ่มบรรทัดนี้เพื่อเตรียมถังคิวฝากเงินออโต้ไม่ให้เป็นค่าว่างครับน้า!
 if (!global.satangCounter) global.satangCounter = 0;
-
-// 🔄 ฟังก์ชันดึงยอดเงินล่าสุดจาก Firebase แบบตรงเป้า 100%
-async function getLatestWallet(userId) {
-    try {
-        const res = await axios.get(`${FIREBASE_URL}system_data/usersWallets/${userId}.json`);
-        if (res.data) {
-            usersWallets[userId] = res.data;
-            return res.data;
-        }
-    } catch (e) {
-        console.error("❌ Sync error:", e.message);
-    }
-    return usersWallets[userId];
-}
-// ⚡ ฟังก์ชันอัปเดตยอดเงินรายคนลง Firebase ทันที (วางไว้ตรงนี้ครับ)
-async function updateSingleUserWallet(userId, updatedData) {
-    usersWallets[userId] = updatedData; // อัปเดตใน RAM
-    try {
-        await axios.patch(`${FIREBASE_URL}system_data/usersWallets/${userId}.json`, updatedData);
-        console.log(`⚡ [Direct Sync] อัปเดตยอดเงินของ ${userId} เรียบร้อย!`);
-    } catch (e) {
-        console.error("❌ Update error:", e.message);
-    }
-}
 
 // 🔄 ฟังก์ชันอัตโนมัติ: ดึงข้อมูลจาก Firebase มาอัปเดตลงในบอททันทีที่เปิดเครื่อง (แก้ไขดึงครบทุกกล่องแล้ว)
 async function loadDataFromFirebase() {
@@ -2619,7 +2579,7 @@ else if (promotions[userMsg.trim()]) {
                             let betTypeDetail = "";
 
                             if (targetStr === "รข") {
-                                legsCount = maxLegs;
+                                legsCount = 6;
                                 betTypeDetail = `เหมาขาผู้เล่นสู้เจ้ามือ (6 ขา) ขาละ ${price} บาท`;
                                 for (let c = 1; c <= 6; c++) {
                                     if (betTracker[c] && betTracker[c] === 'dealer') {
@@ -2632,7 +2592,7 @@ else if (promotions[userMsg.trim()]) {
                                 for (let c = 1; c <= 6; c++) { betTracker[c] = 'player'; }
                                 
                             } else if (targetStr === "รจ") {
-                                legsCount = maxLegs;
+                                legsCount = 6;
                                 betTypeDetail = `แทงเจ้ามือสู้ทุกขา (4 ขา) ขาละ ${price} บาท`;
                                 for (let c = 1; c <= 6; c++) {
                                     if (betTracker[c] && betTracker[c] === 'player') {
@@ -2732,32 +2692,27 @@ else if (promotions[userMsg.trim()]) {
                             }
 
                             if (!hasError) {
-    user.balance -= finalHoldCost; 
-    
-    // 1. ตรวจสอบว่ามี Array roundBets ของยูสเซอร์นี้หรือยัง ถ้ายังไม่มีให้สร้างใหม่
-    if (!roundBets[userId]) {
-        roundBets[userId] = [];
-    }
+                                user.balance -= finalHoldCost; 
+                                await saveDataToFirebase();
+                                
+                                if (!roundBets[userId]) {
+                                    roundBets[userId] = [];
+                                }
 
-    // 2. นำโพยจากไลน์ (processedBets) Push ต่อท้ายใน roundBets เดิม (เพื่อไม่ให้โพยหน้าเว็บหาย)
-    processedBets.forEach((bet) => {
-        roundBets[userId].push({
-            name: displayName,
-            memberNumber: user.memberNumber,
-            betType: bet.type,
-            detail: bet.detail,
-            pricePerLeg: bet.pricePerLeg,
-            actualBet: bet.actualBet,
-            holdCost: (bet.actualBet * maxHandMultiplier), 
-            maxMultiplier: maxHandMultiplier, 
-            time: new Date().toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok' }),
-            source: 'line' // ระบุว่ามาจากไลน์
-        });
-    });
-
-                                // 3. 🌟 บันทึกตัวแปร roundBets[userId] ลง Firebase Realtime Database ทันที
-    await db.ref(`system_data/roundBets/${userId}`).set(roundBets[userId]);
-    await saveDataToFirebase();
+                                let itemsFlexContents = [];
+                                
+                                processedBets.forEach((bet) => {
+                                    roundBets[userId].push({
+                                        name: displayName,
+                                        memberNumber: user.memberNumber,
+                                        betType: bet.type,
+                                        detail: bet.detail,
+                                        pricePerLeg: bet.pricePerLeg,
+                                        actualBet: bet.actualBet,
+                                        holdCost: (bet.actualBet * maxHandMultiplier), 
+                                        maxMultiplier: maxHandMultiplier, 
+                                        time: new Date().toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok' })
+                                    });
 
                                     itemsFlexContents.push({
                                         "type": "text",
@@ -2766,7 +2721,7 @@ else if (promotions[userMsg.trim()]) {
                                         "color": "#dddddd",
                                         "wrap": true
                                     });
-                
+                                });
                                 
                                 try {
                                     await axios.post('https://api.line.me/v2/bot/message/reply', {
@@ -5214,17 +5169,6 @@ if (userMsg === 'c') {
     }
     global.cCooldowns.set(userId, now);
 
-    // 🔄 1.1 ดึงข้อมูลล่าสุดจาก Firebase แบบตรงเป้า ก่อนประมวลผลการ์ด c (เพิ่มตรงนี้!)
-    try {
-        const freshRes = await axios.get(`${FIREBASE_URL}system_data/usersWallets/${userId}.json`);
-        if (freshRes.data) {
-            usersWallets[userId] = freshRes.data; // อัปเดต RAM หลัก
-            Object.assign(user, freshRes.data);   // ⚡ อัปเดตข้อมูลเข้าไปในตัวแปร user โดยไม่ต้อง Re-assign                  // อัปเดตตัวแปร user ของคำสั่ง c ทันที
-        }
-    } catch (e) {
-        console.error("❌ Sync error on c command:", e.message);
-    }
-
     replyText = null;
 
     // 📝 2. ดึงรายการโพยป๊อกเด้ง และ โพยไฮโล มาจัดแถว
@@ -6266,238 +6210,6 @@ if (event.source.type === 'user') {
 });
 
 app.get('/', (req, res) => { res.send('ระบบลงทะเบียนรันปกติ'); });
-app.use(express.static('public'));
-
-// 🔄 2. API ดึงข้อมูลสมาชิกไปแสดงบนเว็บ (ปรับปรุงใหม่)
-app.post('/api/place-bet', async (req, res) => {
-    try {
-        const { userId, amount, type } = req.body;
-
-        if (!userId || !amount || amount <= 0 || !type) {
-            return res.json({ success: false, message: 'ข้อมูลไม่ถูกต้อง' });
-        }
-
-        // 1. ดึงข้อมูลระบบ และข้อมูลผู้ใช้
-        const systemSnap = await db.ref('system_data').once('value');
-        const systemData = systemSnap.val() || {};
-
-        if (!systemData.isRoundOpen) {
-            return res.json({ success: false, message: '🚫 ขณะนี้ปิดรับโพยชั่วคราวครับ' });
-        }
-
-        const userWalletRef = db.ref(`system_data/usersWallets/${userId}`);
-        const userSnap = await userWalletRef.once('value');
-        const userData = userSnap.val();
-
-        if (!userData) {
-            return res.json({ success: false, message: '📢 ไม่พบข้อมูลสมาชิก กรุณาลงทะเบียนก่อนแทงครับ' });
-        }
-
-        // 2. ดักจับสถานะล็อกถอนเงิน
-        if (userData.isWithdrawLocked) {
-            return res.json({ 
-                success: false, 
-                message: `❌ บัญชีถูกล็อกชั่วคราว อยู่ระหว่างรออนุมัติยอดถอน (${userData.pendingWithdrawAmount || 0} บาท)` 
-            });
-        }
-        
-        // 3. กำหนดตัวแปร ยอดเงินคงเหลือ
-        const userBalance = Number(userData.balance || 0);
-        const betAmount = Number(amount);
-
-        // 4. จำแนกประเภทการแทง (ไฮโล vs ป๊อกเด้ง)
-        const isHilo = type.startsWith('z') || ['สูง', 'ต่ำ', '11ไฮโล', '123', '456', 'ตองรวม'].includes(type) || type.startsWith('ตอง');
-        const isDealerPok = type.startsWith('เจ้าสู้ขา');
-
-        // ==================== [ กรณีแทงไฮโล ] ====================
-        if (isHilo) {
-            const MIN_BET = 10;
-            const MAX_BET_MAP = {
-                "ส/ต": 5000,
-                "11": 1000,
-                "โต๊ด3": 2000,
-                "โต๊ด2": 2000,
-                "ตองรวม": 1000,
-                "ตองเจาะ": 500,
-                "เต็ง": 3000
-            };
-
-            if (betAmount < MIN_BET) {
-                return res.json({ success: false, message: `ไฮโลแทงขั้นต่ำ ${MIN_BET} บาท` });
-            }
-
-            let hiloCategory = "เต็ง";
-            if (type === 'สูง' || type === 'ต่ำ') hiloCategory = "ส/ต";
-            else if (type === '11ไฮโล' || type === '11') hiloCategory = "11";
-            else if (type === '123' || type === '456') hiloCategory = "โต๊ด3";
-            else if (type === 'ตองรวม' || type === 'ตอง') hiloCategory = "ตองรวม";
-            else if (type.startsWith('ตอง')) hiloCategory = "ตองเจาะ";
-            else if (type.length === 2 && !isNaN(type)) hiloCategory = "โต๊ด2";
-
-            const maxLimit = MAX_BET_MAP[hiloCategory] || 1000;
-            if (betAmount > maxLimit) {
-                return res.json({ success: false, message: `ไฮโลหมวด [${hiloCategory}] แทงได้สูงสุดไม่เกิน ${maxLimit} บาท` });
-            }
-
-            if (userBalance < betAmount) {
-                return res.json({ success: false, message: `❌ เครดิตไม่พอ (ต้องการ ${betAmount} ฿ / มี ${userBalance} ฿)` });
-            }
-
-            // --- ดึงข้อมูล hiloRoundBets เดิมจาก Firebase มาเป็น Array ---
-            const hiloSnap = await db.ref(`system_data/hiloRoundBets/${userId}`).once('value');
-            let currentHiloBets = hiloSnap.val() || [];
-            if (!Array.isArray(currentHiloBets)) {
-                currentHiloBets = Object.values(currentHiloBets);
-            }
-
-            const newHiloBet = {
-                category: type,
-                type: type,
-                actualBet: betAmount,
-                totalPrice: betAmount,
-                amount: betAmount,
-                timestamp: Date.now(),
-                via: 'LIFF_WEB'
-            };
-
-            currentHiloBets.push(newHiloBet);
-
-            // บันทึกกลับเป็น Array
-            await db.ref(`system_data/hiloRoundBets/${userId}`).set(currentHiloBets);
-
-            // หักเงินผู้ใช้ (อัปเดตใน Memory บอท LINE ด้วยถ้ามี)
-            const newBalance = userBalance - betAmount;
-            await userWalletRef.update({ balance: newBalance });
-            if (typeof usersWallets !== 'undefined' && usersWallets[userId]) {
-                usersWallets[userId].balance = newBalance;
-            }
-
-            return res.json({ success: true, message: 'บันทึกโพยไฮโลสำเร็จ' });
-        } 
-
-        // ==================== [ กรณีแทงป๊อกเด้ง (คำนวณค้ำประกันอัจฉริยะ) ] ====================
-        else {
-            const POK_MIN_BET = 10;
-            const POK_MAX_BET = 2500;
-
-            if (betAmount < POK_MIN_BET || betAmount > POK_MAX_BET) {
-                return res.json({ success: false, message: `❌ ยอดแทงต่อขาต้องอยู่ระหว่าง ${POK_MIN_BET} ถึง ${POK_MAX_BET} บาท` });
-            }
-
-            const doubleHoldCost = betAmount * 2;
-            const tripleHoldCost = betAmount * 3;
-
-            let finalHoldCost = 0;
-            let maxHandMultiplier = 3;
-
-            // ตรวจสอบเงื่อนไขค้ำประกัน
-            if (userBalance < doubleHoldCost) {
-                return res.json({ 
-                    success: false, 
-                    message: `❌ เครดิตไม่พอสำหรับค้ำประกันขั้นต่ำ (2 เด้ง)\n💸 ยอดแทง: ${betAmount} ฿\n🔒 ต้องใช้ค้ำขั้นต่ำ (x2): ${doubleHoldCost} ฿\n💰 เครดิตที่มี: ${userBalance} ฿` 
-                });
-            } else if (userBalance >= doubleHoldCost && userBalance < tripleHoldCost) {
-                maxHandMultiplier = 2;
-                finalHoldCost = doubleHoldCost;
-            } else {
-                maxHandMultiplier = 3;
-                finalHoldCost = tripleHoldCost;
-            }
-
-            // แปลงรูปแบบขาแทง
-            let formattedType = type;
-            if (isDealerPok) {
-                formattedType = `จ${type.replace('เจ้าสู้ขา', '').trim()}`;
-            } else {
-                formattedType = type.replace('ขาที่', '').trim();
-            }
-
-            const displayName = userData.nickname || userData.name || "ไม่ระบุชื่อ";
-
-            // --- 🌟 ดึงข้อมูล roundBets เดิมจาก Firebase มาเป็น Array ---
-            const pokSnap = await db.ref(`system_data/roundBets/${userId}`).once('value');
-            let currentPokBets = pokSnap.val() || [];
-            
-            // ป้องกันกรณีที่ Firebase เคยเก็บเป็น Object ให้แปลงกลับเป็น Array
-            if (!Array.isArray(currentPokBets)) {
-                currentPokBets = Object.values(currentPokBets);
-            }
-
-            const newPokBet = {
-                name: displayName,
-                memberNumber: userData.memberNumber || "-",
-                betType: formattedType,
-                type: formattedType,
-                detail: `${formattedType}-${betAmount}`,
-                pricePerLeg: betAmount,
-                actualBet: betAmount,
-                holdCost: finalHoldCost,
-                maxMultiplier: maxHandMultiplier,
-                time: new Date().toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok' }),
-                timestamp: Date.now(),
-                via: 'LIFF_WEB'
-            };
-
-            // ดันโพยใหม่เข้าไปใน Array
-            currentPokBets.push(newPokBet);
-
-            // 1. อัปเดตลง Firebase Realtime Database
-            await db.ref(`system_data/roundBets/${userId}`).set(currentPokBets);
-
-            // 2. 🌟 Sync เข้าตัวแปรแรม (RAM) ของ Node.js เพื่อให้ LINE Bot มองเห็นทันที
-            if (typeof roundBets !== 'undefined') {
-                roundBets[userId] = currentPokBets;
-            }
-
-            // 3. หักเงินผู้ใช้ (อัปเดตทั้ง Firebase และตัวแปร RAM)
-            const newBalance = userBalance - finalHoldCost;
-            await userWalletRef.update({ balance: newBalance });
-
-            if (typeof usersWallets !== 'undefined' && usersWallets[userId]) {
-                usersWallets[userId].balance = newBalance;
-            }
-
-            return res.json({ 
-                success: true, 
-                message: `บันทึกโพยสำเร็จ (หักค้ำประกัน x${maxHandMultiplier} = ${finalHoldCost} บาท)` 
-            });
-        }
-
-    } catch (error) {
-        console.error('Place Bet Error:', error);
-        return res.json({ success: false, message: `Server Error: ${error.message}` });
-    }
-});
-// 📥 3. API รับโพยแทงจากหน้าเว็บ LIFF (ปรับปรุงใหม่)
-app.post('/api/place-bet', async (req, res) => {
-    const { userId, amount, type } = req.body;
-    
-    // ดึงข้อมูลล่าสุด
-    let user = await getLatestWallet(userId);
-    if (!user && usersWallets[userId]) {
-        user = usersWallets[userId];
-    }
-
-    if (!user) {
-        return res.json({ success: false, message: `ไม่พบผู้ใช้งาน (ID: ${userId})` });
-    }
-
-    const currentBalance = user.balance || 0;
-    if (currentBalance < amount) {
-        return res.json({ success: false, message: 'ยอดเงินไม่พอ' });
-    }
-
-    // หักเงิน
-    user.balance = currentBalance - amount;
-    usersWallets[userId] = user; // อัปเดต RAM
-
-    // บันทึกลง Firebase
-    await updateSingleUserWallet(userId, user);
-
-    res.json({ success: true, newBalance: user.balance });
-});
-
-// ==================== [ จุดรัน Server ] ====================
 app.listen(process.env.PORT || 3000, () => { console.log('Server is running...'); });
 // เปิดทางให้เข้าถึงไฟล์รูปภาพสลิปที่เซฟไว้ในเครื่องได้ตรงๆ
 app.use(express.static(__dirname));

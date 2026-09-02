@@ -2605,7 +2605,7 @@ else if (promotions[userMsg.trim()]) {
                             if (targetStr === "รข") {
                                 legsCount = maxLegs;
                                 betTypeDetail = `เหมาขาผู้เล่นสู้เจ้ามือ (6 ขา) ขาละ ${price} บาท`;
-                                for (let c = 1; c <= maxLegs; c++) {
+                                for (let c = 1; c <= 6; c++) {
                                     if (betTracker[c] && betTracker[c] === 'dealer') {
                                         hasError = true;
                                         errorMsg = `❌ แทง รข ไม่ได้! ขา ${c} มีการแทงฝั่งเจ้ามือค้างไว้แล้วในรอบนี้`;
@@ -2613,12 +2613,12 @@ else if (promotions[userMsg.trim()]) {
                                     }
                                 }
                                 if (hasError) break; 
-                                for (let c = 1; c <= maxLegs; c++) { betTracker[c] = 'player'; }
+                                for (let c = 1; c <= 6; c++) { betTracker[c] = 'player'; }
                                 
                             } else if (targetStr === "รจ") {
                                 legsCount = maxLegs;
                                 betTypeDetail = `แทงเจ้ามือสู้ทุกขา (4 ขา) ขาละ ${price} บาท`;
-                                for (let c = 1; c <= maxLegs; c++) {
+                                for (let c = 1; c <= 6; c++) {
                                     if (betTracker[c] && betTracker[c] === 'player') {
                                         hasError = true;
                                         errorMsg = `❌ แทง รจ ไม่ได้! ขา ${c} มีการแทงฝั่งผู้เล่นค้างไว้แล้วในรอบนี้`;
@@ -2626,7 +2626,7 @@ else if (promotions[userMsg.trim()]) {
                                     }
                                 }
                                 if (hasError) break; 
-                                for (let c = 1; c <= maxLegs; c++) { betTracker[c] = 'dealer'; }
+                                for (let c = 1; c <= 6; c++) { betTracker[c] = 'dealer'; }
                             } else if (targetStr.startsWith('จ')) {
                                 const legs = targetStr.substring(1);
                                 if (legs === "") { 

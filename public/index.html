@@ -206,6 +206,8 @@
     let pokMode = 'player'; // 'player' หรือ 'dealer'
     let selectedChipValue = 10;
     let pendingBets = {}; 
+    let localPokBets = {};
+    let localHiloBets = {};
 
     // 2. เริ่มต้น LIFF
     async function initLIFF() {
@@ -252,67 +254,65 @@
    function listenToUserData() {
     if (!currentUserId) return;
 
-    // 1. ดึงและฟังยอดเงินคงเหลือ
-    db.ref(`system_data/usersWallets/${currentUserId}`).on('value', (snapshot) => {
-        const userData = snapshot.val();
-        if (userData) {
-            document.getElementById('user-name').innerText = userData.nickname || userData.name || "สมาชิก";
-            document.getElementById('user-id').innerText = `ID: ${userData.memberNumber || '-'}`;
-            document.getElementById('user-balance').innerText = `${(userData.balance || 0).toLocaleString()} ฿`;
+   // 3. ฟังข้อมูล Real-time และเก็บลงตัวแปร Local (Instant Sync)
+    function listenToUserData() {
+        if (!currentUserId) return;
+
+        // ดึงและฟังยอดเงิน/ชื่อผู้ใช้
+        db.ref(`system_data/usersWallets/${currentUserId}`).on('value', (snapshot) => {
+            const userData = snapshot.val();
+            if (userData) {
+                document.getElementById('user-name').innerText = userData.nickname || userData.name || "สมาชิก";
+                document.getElementById('user-id').innerText = `ID: ${userData.memberNumber || '-'}`;
+                document.getElementById('user-balance').innerText = `${(userData.balance || 0).toLocaleString()} ฿`;
+            }
+        });
+
+        // ดึงและฟังรายการโพยป๊อกเด้ง
+        db.ref(`system_data/roundBets/${currentUserId}`).on('value', (snapshot) => {
+            localPokBets = snapshot.val() || {};
+            renderAllBets();
+        });
+
+        // ดึงและฟังรายการโพยไฮโล
+        db.ref(`system_data/hiloRoundBets/${currentUserId}`).on('value', (snapshot) => {
+            localHiloBets = snapshot.val() || {};
+            renderAllBets();
+        });
+    }
+
+    // ฟังก์ชั่นวาดรายการโพยใหม่จากตัวแปร Local ทันที (แก้ปัญหาดีเลย์จากการ async)
+    function renderAllBets() {
+        let html = '';
+
+        // แปลงข้อมูล ป๊อกเด้ง (รองรับทั้ง Array และ Object)
+        if (localPokBets) {
+            const pokList = Array.isArray(localPokBets) ? localPokBets.filter(Boolean) : Object.values(localPokBets);
+            pokList.forEach(b => {
+                if (!b) return;
+                const price = b.actualBet || b.pricePerLeg || b.amount || 0;
+                const typeName = b.betType || b.type || 'ป๊อกเด้ง';
+                if (price > 0) {
+                    html += `<div class="flex justify-between bg-gray-700 p-2 rounded mb-1"><span>🎴 ป๊อกเด้ง: ${typeName}</span><span class="text-yellow-400 font-bold">${price.toLocaleString()} ฿</span></div>`;
+                }
+            });
         }
-    });
 
-    // 2. ฟังรายการโพยป๊อกเด้ง (ดึงตรงจาก Node ของ User)
-    db.ref(`system_data/roundBets/${currentUserId}`).on('value', (snapshot) => {
-        renderAllBets();
-    });
+        // แปลงข้อมูล ไฮโล (รองรับทั้ง Array และ Object)
+        if (localHiloBets) {
+            const hiloList = Array.isArray(localHiloBets) ? localHiloBets.filter(Boolean) : Object.values(localHiloBets);
+            hiloList.forEach(hb => {
+                if (!hb) return;
+                const price = hb.totalPrice || hb.actualBet || hb.amount || 0;
+                const typeName = hb.category || hb.type || 'ไฮโล';
+                if (price > 0) {
+                    html += `<div class="flex justify-between bg-gray-700 p-2 rounded mb-1"><span>🎲 ไฮโล: ${typeName}</span><span class="text-purple-400 font-bold">${price.toLocaleString()} ฿</span></div>`;
+                }
+            });
+        }
 
-    // 3. ฟังรายการโพยไฮโล (ดึงตรงจาก Node ของ User)
-    db.ref(`system_data/hiloRoundBets/${currentUserId}`).on('value', (snapshot) => {
-        renderAllBets();
-    });
-}
-
-// ฟังก์ชั่นช่วยวาดรายการโพยใหม่ทันทีที่ข้อมูลเปลี่ยน (แก้ปัญหาดีเลย์)
-async function renderAllBets() {
-    if (!currentUserId) return;
-
-    const pokSnap = await db.ref(`system_data/roundBets/${currentUserId}`).once('value');
-    const hiloSnap = await db.ref(`system_data/hiloRoundBets/${currentUserId}`).once('value');
-
-    const pokData = pokSnap.val();
-    const hiloData = hiloSnap.val();
-
-    let html = '';
-
-    // แปลงข้อมูล ป๊อกเด้ง (รองรับทั้ง Array และ Object จาก Line Bot)
-    if (pokData) {
-        const pokList = Array.isArray(pokData) ? pokData.filter(Boolean) : Object.values(pokData);
-        pokList.forEach(b => {
-            if (!b) return;
-            const price = b.actualBet || b.pricePerLeg || b.amount || 0;
-            const typeName = b.betType || b.type || 'ป๊อกเด้ง';
-            if (price > 0) {
-                html += `<div class="flex justify-between bg-gray-700 p-2 rounded mb-1"><span>🎴 ป๊อกเด้ง: ${typeName}</span><span class="text-yellow-400 font-bold">${price.toLocaleString()} ฿</span></div>`;
-            }
-        });
+        document.getElementById('my-bets-list').innerHTML = html || 'ยังไม่มีรายการแทงในรอบนี้';
     }
-
-    // แปลงข้อมูล ไฮโล (รองรับทั้ง Array และ Object จาก Line Bot)
-    if (hiloData) {
-        const hiloList = Array.isArray(hiloData) ? hiloData.filter(Boolean) : Object.values(hiloData);
-        hiloList.forEach(hb => {
-            if (!hb) return;
-            const price = hb.totalPrice || hb.actualBet || hb.amount || 0;
-            const typeName = hb.category || hb.type || 'ไฮโล';
-            if (price > 0) {
-                html += `<div class="flex justify-between bg-gray-700 p-2 rounded mb-1"><span>🎲 ไฮโล: ${typeName}</span><span class="text-purple-400 font-bold">${price.toLocaleString()} ฿</span></div>`;
-            }
-        });
-    }
-
-    document.getElementById('my-bets-list').innerHTML = html || 'ยังไม่มีรายการแทงในรอบนี้';
-}
 
     function selectChip(value) {
         selectedChipValue = value;

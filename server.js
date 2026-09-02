@@ -38,27 +38,23 @@ let pastRoundsData = {}; //  ถังเก็บประวัติโพย
 let withdrawQueue = []; // 📦 ถังสำหรับเก็บคิวสมาชิกที่แจ้งถอนเงิน
 let usersRoundCrossCheck = {}; // 🌟 เพิ่มบรรทัดนี้ไว้บนสุดของไฟล์
 
-// ==================== [ เชื่อมต่อ Firebase Real-time Client SDK ] ====================
-const firebase = require('firebase/app');
-require('firebase/database');
+// ==================== [ Firebase Real-time via EventSource ] ====================
+const EventSource = require('eventsource');
 
-// ตั้งค่าเชื่อมต่อโดยระบุแค่ databaseURL
-if (!firebase.apps.length) {
-    firebase.initializeApp({
-        databaseURL: FIREBASE_URL
-    });
-}
+// ดักฟังการเปลี่ยนแปลงของ usersWallets โดยตรงจาก Firebase REST API
+const walletStream = new EventSource(`${FIREBASE_URL}system_data/usersWallets.json`);
 
-const db = firebase.database();
-
-// ⚡ ให้บอทเกาะฟัง Real-time แบบไร้เตือน Error
-db.ref('system_data/usersWallets').on('value', (snapshot) => {
-    const data = snapshot.val();
-    if (data) {
-        usersWallets = data;
-        console.log("⚡ [Real-time Sync] กระเป๋าเงินในบอทซิงค์ตรงกับ Firebase เรียบร้อย!");
+walletStream.onmessage = (event) => {
+    try {
+        const parsed = JSON.parse(event.data);
+        if (parsed && parsed.data) {
+            usersWallets = parsed.data;
+            console.log("⚡ [Real-time Sync] กระเป๋าเงินอัปเดตตรงกับ Firebase แล้ว!");
+        }
+    } catch (e) {
+        console.error("❌ Sync Error:", e.message);
     }
-});
+};
 
 global.depositQueue = {}; // 👈 เพิ่มบรรทัดนี้เพื่อเตรียมถังคิวฝากเงินออโต้ไม่ให้เป็นค่าว่างครับน้า!
 if (!global.satangCounter) global.satangCounter = 0;

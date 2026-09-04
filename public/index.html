@@ -254,7 +254,7 @@
 function listenToUserData() {
     if (!currentUserId) return;
 
-    // ดึงและฟังยอดเงิน/ชื่อผู้ใช้
+    // 1. ฟังยอดเงิน/ชื่อผู้ใช้
     db.ref(`system_data/usersWallets/${currentUserId}`).on('value', (snapshot) => {
         const userData = snapshot.val();
         if (userData) {
@@ -264,65 +264,45 @@ function listenToUserData() {
         }
     });
 
-    // ดึงและฟังรายการโพยป๊อกเด้ง (แก้ไขให้รองรับการสั่งล้างคืนโพย)
-    db.ref(`system_data/roundBets/${currentUserId}`).on('value', (snapshot) => {
-        localPokBets = snapshot.val() || null; // กำหนดให้เป็น null เมื่อโดนสั่งล้าง
-        renderAllBets();
-    });
-
-    // ดึงและฟังรายการโพยไฮโล (แก้ไขให้รองรับการสั่งล้างคืนโพย)
-    db.ref(`system_data/hiloRoundBets/${currentUserId}`).on('value', (snapshot) => {
-        localHiloBets = snapshot.val() || null; // กำหนดให้เป็น null เมื่อโดนสั่งล้าง
-        renderAllBets();
+    // 2. เปลี่ยนมาฟังข้อมูลที่ usersRoundCrossCheck ที่เดียวกับ LINE
+    db.ref(`system_data/usersRoundCrossCheck/${currentUserId}`).on('value', (snapshot) => {
+        const crossCheckData = snapshot.val();
+        renderCrossCheckBets(crossCheckData);
     });
 }
 
-// ฟังก์ชั่นวาดรายการโพยใหม่จากตัวแปร Local ทันที (แก้ไขการล้าง UI กระดานและรายการ)
-function renderAllBets() {
+// ฟังก์ชัน Render แสดงผลรายการโพยจาก usersRoundCrossCheck
+function renderCrossCheckBets(data) {
     let html = '';
 
-    // 🌟 1. สั่งล้างชิปค้างบนกระดานโต๊ะแทงทั้งหมดก่อนทุกครั้ง
+    // ล้างชิปบนกระดานก่อนวาดใหม่
     document.querySelectorAll('[id^="pok-chip-"], [id^="hilo-chip-"]').forEach(el => {
         el.innerText = '0';
         el.classList.add('hidden');
     });
 
-    // 🌟 2. วาดและอัปเดตรายการ ป๊อกเด้ง
-    if (localPokBets) {
-        const pokList = Array.isArray(localPokBets) 
-            ? localPokBets.filter(Boolean) 
-            : Object.values(localPokBets).filter(Boolean);
+    if (data) {
+        // ดึงรายการทั้งหมดใน CrossCheck ออกมาลูปแสดงผล
+        const betList = Object.values(data);
 
-        pokList.forEach(b => {
+        betList.forEach(b => {
             if (!b) return;
-            const price = b.actualBet || b.pricePerLeg || b.amount || 0;
-            const typeName = b.betType || b.type || 'ป๊อกเด้ง';
+            const price = Number(b.amount || 0);
+            const typeName = b.type || '';
+
             if (price > 0) {
-                html += `<div class="flex justify-between bg-gray-700 p-2 rounded mb-1"><span>🎴 ป๊อกเด้ง: ${typeName}</span><span class="text-yellow-400 font-bold">${price.toLocaleString()} ฿</span></div>`;
+                html += `
+                    <div class="flex justify-between bg-gray-700 p-2 rounded mb-1">
+                        <span>📝 ${typeName}</span>
+                        <span class="text-yellow-400 font-bold">${price.toLocaleString()} ฿</span>
+                    </div>`;
             }
         });
     }
 
-    // 🌟 3. วาดและอัปเดตรายการ ไฮโล
-    if (localHiloBets) {
-        const hiloList = Array.isArray(localHiloBets) 
-            ? localHiloBets.filter(Boolean) 
-            : Object.values(localHiloBets).filter(Boolean);
-
-        hiloList.forEach(hb => {
-            if (!hb) return;
-            const price = hb.totalPrice || hb.actualBet || hb.amount || 0;
-            const typeName = hb.category || hb.type || 'ไฮโล';
-            if (price > 0) {
-                html += `<div class="flex justify-between bg-gray-700 p-2 rounded mb-1"><span>🎲 ไฮโล: ${typeName}</span><span class="text-purple-400 font-bold">${price.toLocaleString()} ฿</span></div>`;
-            }
-        });
-    }
-
-    // 🌟 4. อัปเดต HTML รายการโพยด้านล่าง
+    // อัปเดตรายการโพยด้านล่าง
     document.getElementById('my-bets-list').innerHTML = html || 'ยังไม่มีรายการแทงในรอบนี้';
 }
-
     function selectChip(value) {
         selectedChipValue = value;
         document.querySelectorAll('.chip').forEach(el => el.classList.remove('chip-active'));

@@ -344,11 +344,11 @@
         });
     }
 
-  // 3. ฟังข้อมูล Real-time และเก็บลงตัวแปร Local (Instant Sync)
+  // 🟢 แก้ไข listenToUserData คง Path เดิมของระบบ ป้องกันป๊อกเด้งและไฮโลพัง
 function listenToUserData() {
     if (!currentUserId) return;
 
-    // 1. ฟังยอดเงิน/ชื่อผู้ใช้
+    // 1. ดึงข้อมูลกระเป๋าเงิน (ใช้ Path เดิมของคุณ)
     db.ref(`system_data/usersWallets/${currentUserId}`).on('value', (snapshot) => {
         const userData = snapshot.val();
         if (userData) {
@@ -358,14 +358,25 @@ function listenToUserData() {
         }
     });
 
-    // 2. 🌟 ดึงข้อมูลโพยป๊อกเด้ง และ ไฮโล แบบ Real-time
+    // 2. ดึงโพยป๊อกเด้ง แบบ Instant Sync (ใช้ Path เดิม)
     db.ref(`system_data/roundBets/${currentUserId}`).on('value', (snapPok) => {
-        localPokBets = snapPok.val() || {};
+        const data = snapPok.val() || {};
+        // แปลงเป็น Array ทันทีเพื่อป้องกัน Object Key ชนกัน
+        localPokBets = Object.entries(data).map(([key, val]) => ({
+            ...val,
+            _firebaseKey: key
+        }));
         renderAllBetsUI();
     });
 
+    // 3. ดึงโพยไฮโล แบบ Instant Sync แก้ปัญหาดีเลย์ (ใช้ Path เดิม)
     db.ref(`system_data/hiloRoundBets/${currentUserId}`).on('value', (snapHilo) => {
-        localHiloBets = snapHilo.val() || {};
+        const data = snapHilo.val() || {};
+        // แปลงเป็น Array ทันทีเพื่อให้อัปเดต Realtime ทันทีไม่รอคำสั่งถัดไป
+        localHiloBets = Object.entries(data).map(([key, val]) => ({
+            ...val,
+            _firebaseKey: key
+        }));
         renderAllBetsUI();
     });
 }

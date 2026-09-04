@@ -6507,24 +6507,54 @@ app.get('/', (req, res) => { res.send('ระบบลงทะเบียน�
 app.use(express.static('public'));
 
 // Endpoint สำหรับรับโพยจากหน้าเว็บ LIFF
-app.post('/api/web-bet-trigger', async (req, res) => {
-    try {
-        const { userId, betText } = req.body;
+app.post('/api/web-cancel-bets', async (req, res) => {
+    const { userId } = req.body;
 
-        if (!userId || !betText) {
-            return res.json({ success: false, message: 'ข้อมูลที่ส่งมาไม่สมบูรณ์' });
+    if (!userId) {
+        return res.json({ success: false, message: 'ไม่พบ User ID' });
+    }
+
+    try {
+        // 1. อ่านสถานะรอบปัจจุบัน
+        const systemSnap = await db.ref('system_data').once('value');
+        const systemData = systemSnap.val() || {};
+
+        if (!systemData.isRoundOpen) {
+            return res.json({ success: false, message: 'ปิดรับแทงแล้ว ไม่สามารถยกเลิกโพยได้' });
         }
 
-        if (betText.includes('-')) {
-            const result = await processPokDengBet(userId, betText);
-            return res.json(result);
-        } 
+        // 2. ดึงข้อมูลโพยและ Wallet ของผู้ใช้
+        const betsSnap = await db.ref(`system_data/roundBets/${userId}`).once('value');
+        const betsData = betsSnap.val();
+
+        if (!betsData) {
+            return res.json({ success: false, message: 'ไม่พบรายการโพยที่ต้องการยกเลิก' });
+        }
+
+        const walletSnap = await db.ref(`system_data/usersWallets/${userId}`).once('value');
+        const userData = walletSnap.val() || {};
+
+        // 3. คำนวณคืนเงินค้ำประกัน (holdCost) ทั้งหมด
+        let refundAmount = 0;
+        const betsList = Array.isArray(betsData) ? betsData : Object.values(betsData);
         
-        return res.json({ success: false, message: 'รูปแบบการแทงไม่ถูกต้อง (ต้องมีเครื่องหมาย - เช่น 1-100)' });
+        betsList.forEach(bet => {
+            if (bet) refundAmount += (bet.holdCost || 0);
+        });
+
+        // 4. Batch Update: คืนเงิน + ลบโพย + ลบ CrossCheck ในครั้งเดียว
+        const updates = {};
+        updates[`system_data/usersWallets/${userId}/balance`] = (userData.balance || 0) + refundAmount;
+        updates[`system_data/roundBets/${userId}`] = null; // ลบโพยหลัก
+        updates[`system_data/usersRoundCrossCheck/${userId}`] = null; // ลบ CrossCheck (ถ้ามี)
+
+        await db.ref().update(updates);
+
+        return res.json({ success: true, message: 'ยกเลิกโพยสำเร็จ' });
 
     } catch (error) {
-        console.error("❌ Web Bet Trigger Error:", error);
-        return res.json({ success: false, message: 'เกิดข้อผิดพลาดที่เซิร์ฟเวอร์: ' + error.message });
+        console.error('❌ Cancel Bets Error:', error);
+        return res.json({ success: false, message: 'เกิดข้อผิดพลาดภายในระบบ' });
     }
 });
 // 📥 3. API รับโพยแทงจากหน้าเว็บ LIFF (ปรับปรุงใหม่)

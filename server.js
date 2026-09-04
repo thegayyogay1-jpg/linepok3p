@@ -40,6 +40,30 @@ let usersRoundCrossCheck = {}; // 🌟 เพิ่มบรรทัดนี�
 global.depositQueue = {}; // 👈 เพิ่มบรรทัดนี้เพื่อเตรียมถังคิวฝากเงินออโต้ไม่ให้เป็นค่าว่างครับน้า!
 if (!global.satangCounter) global.satangCounter = 0;
 
+// 🔄 ฟังก์ชันดึงยอดเงินล่าสุดจาก Firebase แบบตรงเป้า 100%
+async function getLatestWallet(userId) {
+    try {
+        const res = await axios.get(`${FIREBASE_URL}system_data/usersWallets/${userId}.json`);
+        if (res.data) {
+            usersWallets[userId] = res.data;
+            return res.data;
+        }
+    } catch (e) {
+        console.error("❌ Sync error:", e.message);
+    }
+    return usersWallets[userId];
+}
+// ⚡ ฟังก์ชันอัปเดตยอดเงินรายคนลง Firebase ทันที (วางไว้ตรงนี้ครับ)
+async function updateSingleUserWallet(userId, updatedData) {
+    usersWallets[userId] = updatedData; // อัปเดตใน RAM
+    try {
+        await axios.patch(`${FIREBASE_URL}system_data/usersWallets/${userId}.json`, updatedData);
+        console.log(`⚡ [Direct Sync] อัปเดตยอดเงินของ ${userId} เรียบร้อย!`);
+    } catch (e) {
+        console.error("❌ Update error:", e.message);
+    }
+}
+
 // 🔄 ฟังก์ชันอัตโนมัติ: ดึงข้อมูลจาก Firebase มาอัปเดตลงในบอททันทีที่เปิดเครื่อง (แก้ไขดึงครบทุกกล่องแล้ว)
 async function loadDataFromFirebase() {
     try {
@@ -5169,6 +5193,17 @@ if (userMsg === 'c') {
     }
     global.cCooldowns.set(userId, now);
 
+    // 🔄 1.1 ดึงข้อมูลล่าสุดจาก Firebase แบบตรงเป้า ก่อนประมวลผลการ์ด c (เพิ่มตรงนี้!)
+    try {
+        const freshRes = await axios.get(`${FIREBASE_URL}system_data/usersWallets/${userId}.json`);
+        if (freshRes.data) {
+            usersWallets[userId] = freshRes.data; // อัปเดต RAM หลัก
+            Object.assign(user, freshRes.data);   // ⚡ อัปเดตข้อมูลเข้าไปในตัวแปร user โดยไม่ต้อง Re-assign                  // อัปเดตตัวแปร user ของคำสั่ง c ทันที
+        }
+    } catch (e) {
+        console.error("❌ Sync error on c command:", e.message);
+    }
+
     replyText = null;
 
     // 📝 2. ดึงรายการโพยป๊อกเด้ง และ โพยไฮโล มาจัดแถว
@@ -6210,6 +6245,382 @@ if (event.source.type === 'user') {
 });
 
 app.get('/', (req, res) => { res.send('ระบบลงทะเบียนรันปกติ'); });
+
+// ==================== [ 🌐 1. Route เปิดหน้าเว็บแทง LIFF ] ====================
+app.get('/liff', (req, res) => {
+    res.send(`
+    <!DOCTYPE html>
+    <html lang="th">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+        <title>POKNAJA CASINO</title>
+        <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+        <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+        <style>
+            * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Kanit', sans-serif; user-select: none; }
+            body { background: #0b0c10; color: #fff; overflow-x: hidden; min-height: 100vh; padding-bottom: 140px; }
+            
+            .header { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #1f2833; border-bottom: 2px solid #c5a059; }
+            .logo { font-size: 16px; font-weight: bold; color: #c5a059; }
+            .user-box { display: flex; gap: 4px; font-size: 12px; }
+            .user-card { background: #0b0c10; border: 1px solid #c5a059; padding: 2px 8px; border-radius: 4px; font-weight: 600; }
+            .balance-card { background: #0b0c10; border: 1px solid #45a29e; color: #66fcf1; padding: 2px 8px; border-radius: 4px; font-weight: bold; }
+            .btn-slip { background: #45a29e; border: none; color: #0b0c10; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; }
+
+            .tabs { display: flex; background: #1f2833; border-bottom: 1px solid #45a29e; }
+            .tab-btn { flex: 1; text-align: center; padding: 10px; font-size: 14px; font-weight: bold; color: #c5c6c7; cursor: pointer; }
+            .tab-btn.active { color: #66fcf1; border-bottom: 3px solid #66fcf1; background: #0b0c10; }
+
+            .slider { display: flex; width: 200vw; transition: transform 0.3s ease; }
+            .page { width: 100vw; padding: 4px; box-sizing: border-box; }
+
+            .hilo-board { display: flex; flex-direction: column; background: #161920; border: 2px solid #c5a059; width: 100%; position: relative; }
+            .hilo-row { display: flex; width: 100%; position: relative; }
+            .cell { background: #1f2833; border: 1px solid #3a4756; text-align: center; cursor: pointer; position: relative; display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 11px; min-height: 38px; flex: 1; margin: -0.5px; }
+            .cell:active, .cell.active { background: #45a29e; color: #0b0c10; font-weight: bold; }
+            
+            /* แถบกั๊กสีฟ้า 9 จุด */
+            .guk-spot { position: absolute; background: #0088cc; border: 1px solid #fff; border-radius: 3px; z-index: 10; cursor: pointer; display: flex; justify-content: center; align-items: center; font-size: 8px; font-weight: bold; color: #fff; box-shadow: 0 0 4px rgba(0,0,0,0.5); }
+            .guk-spot.active { background: #f39c12; color: #000; box-shadow: 0 0 6px #f39c12; }
+            .guk-v { width: 16px; height: 26px; top: 50%; transform: translateY(-50%); }
+            .guk-h { width: 26px; height: 16px; left: 50%; transform: translateX(-50%); }
+
+            .chip-badge { position: absolute; top: 1px; right: 1px; background: #c5a059; color: #000; font-size: 9px; font-weight: bold; border-radius: 8px; padding: 0 3px; display: none; z-index: 12; }
+
+            .control-panel { position: fixed; bottom: 0; left: 0; right: 0; background: #1f2833; border-top: 2px solid #c5a059; padding: 8px; z-index: 100; }
+            .total-bar { text-align: center; font-size: 14px; font-weight: bold; color: #66fcf1; margin-bottom: 6px; background: #0b0c10; padding: 4px 0; border-radius: 4px; border: 1px solid #45a29e; }
+            .action-row { display: flex; justify-content: center; gap: 12px; margin-bottom: 6px; }
+            .btn-act { padding: 6px 24px; border-radius: 15px; font-weight: bold; font-size: 13px; border: none; cursor: pointer; }
+            .btn-confirm { background: #66fcf1; color: #0b0c10; }
+            .btn-cancel { background: #c5c6c7; color: #0b0c10; }
+
+            .chips-row { display: flex; justify-content: space-around; align-items: center; }
+            .chip { width: 36px; height: 36px; border-radius: 50%; border: 2px dashed #fff; display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 11px; cursor: pointer; }
+            .chip.active { border-style: solid; transform: scale(1.15); box-shadow: 0 0 8px #66fcf1; }
+            .c-1 { background: #8e44ad; } .c-5 { background: #2980b9; } .c-10 { background: #27ae60; }
+            .c-25 { background: #d35400; } .c-50 { background: #c0392b; } .c-100 { background: #f39c12; color: #000; } .c-500 { background: #16a085; }
+        </style>
+    </head>
+    <body>
+
+        <div class="header">
+            <button class="btn-slip" onclick="alert('แสดงรายการโพย')">โพยรอบนี้</button>
+            <div class="logo">POKNAJA</div>
+            <div class="user-box">
+                <div class="user-card" id="userName">กำลังโหลด...</div>
+                <div class="balance-card" id="userBalance">0 ฿</div>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <div class="tab-btn active" id="tab-pok" onclick="switchTab(0)">🎴 ป๊อกเด้ง</div>
+            <div class="tab-btn" id="tab-hilo" onclick="switchTab(1)">🎲 ไฮโล</div>
+        </div>
+
+        <div class="slider" id="mainSlider">
+            
+            <div class="page">
+                <!-- หน้าป๊อกเด้ง -->
+            </div>
+
+            <!-- หน้าไฮโล -->
+            <div class="page">
+                <div class="hilo-board">
+                    <div class="hilo-row">
+                        <div class="cell" onclick="handleBet('1-2-3', this)">1-2-3<span class="chip-badge">0</span></div>
+                        <div class="cell" style="color:#e74c3c; font-weight:bold;" onclick="handleBet('11ไฮโล', this)">11 ไฮโล<span class="chip-badge">0</span></div>
+                        <div class="cell" onclick="handleBet('4-5-6', this)">4-5-6<span class="chip-badge">0</span></div>
+                    </div>
+
+                    <div class="hilo-row">
+                        <div style="display:flex; flex-direction:column; width:45px;">
+                            <div class="cell" onclick="handleBet('ต่ำ2', this)">ต่ำ2<span class="chip-badge">0</span></div>
+                            <div class="cell" onclick="handleBet('ต่ำ4', this)">ต่ำ4<span class="chip-badge">0</span></div>
+                            <div class="cell" onclick="handleBet('ต่ำ5', this)">ต่ำ5<span class="chip-badge">0</span></div>
+                        </div>
+
+                        <div style="display:flex; flex-direction:column; width:40px;">
+                            <div class="cell" onclick="handleBet('13', this)">13<span class="chip-badge">0</span></div>
+                            <div class="cell" onclick="handleBet('14', this)">14<span class="chip-badge">0</span></div>
+                            <div class="cell" onclick="handleBet('15', this)">15<span class="chip-badge">0</span></div>
+                        </div>
+
+                        <!-- โซนกลาง: เต็ง 1-6 / ต่ำ-สูง พร้อมจุดฟ้ากั๊ก 9 จุด -->
+                        <div style="flex:1; display:flex; flex-direction:column; position:relative;">
+                            
+                            <!-- แถวบน: 1 | ต่ำ | สูง | 6 -->
+                            <div class="hilo-row">
+                                <div class="cell" onclick="handleBet('เต็ง1', this)">1<span class="chip-badge">0</span></div>
+                                <div class="cell" onclick="handleBet('ต่ำ', this)" style="font-size:14px; font-weight:bold; color:#2ecc71;">ต่ำ<span class="chip-badge">0</span></div>
+                                <div class="cell" onclick="handleBet('สูง', this)" style="font-size:14px; font-weight:bold; color:#e74c3c;">สูง<span class="chip-badge">0</span></div>
+                                <div class="cell" onclick="handleBet('เต็ง6', this)">6<span class="chip-badge">0</span></div>
+
+                                <!-- 🔵 1. ช่องฟ้า 1-ต่ำ -->
+                                <div class="guk-spot guk-v" style="left:25%; margin-left:-8px;" onclick="handleBet('กั๊ก_1_ต่ำ', this)"><span class="chip-badge">0</span></div>
+                                <!-- 🔵 2. ช่องฟ้า 6-สูง -->
+                                <div class="guk-spot guk-v" style="left:75%; margin-left:-8px;" onclick="handleBet('กั๊ก_6_สูง', this)"><span class="chip-badge">0</span></div>
+                            </div>
+
+                            <!-- แถวกลาง: 2 | 3 | 4 | 5 -->
+                            <div class="hilo-row">
+                                <div class="cell" onclick="handleBet('เต็ง2', this)">2<span class="chip-badge">0</span></div>
+                                <div class="cell" onclick="handleBet('เต็ง3', this)">3<span class="chip-badge">0</span></div>
+                                <div class="cell" onclick="handleBet('เต็ง4', this)">4<span class="chip-badge">0</span></div>
+                                <div class="cell" onclick="handleBet('เต็ง5', this)">5<span class="chip-badge">0</span></div>
+
+                                <!-- 🔵 3. ช่องฟ้า 1-2 (เส้นนอนระหว่างแถว 1 กับ 2) -->
+                                <div class="guk-spot guk-h" style="top:0%; left:12.5%;" onclick="handleBet('กั๊ก_1_2', this)"><span class="chip-badge">0</span></div>
+                                <!-- 🔵 4. ช่องฟ้า 2-3 -->
+                                <div class="guk-spot guk-v" style="left:50%; margin-left:-8px; top:50%;" onclick="handleBet('กั๊ก_2_3', this)"><span class="chip-badge">0</span></div>
+                                <!-- 🔵 5. ช่องฟ้า 3-ต่ำ (เส้นแนวนอนระหว่าง 3 กับ ต่ำ) -->
+                                <div class="guk-spot guk-h" style="top:0%; left:37.5%;" onclick="handleBet('กั๊ก_3_ต่ำ', this)"><span class="chip-badge">0</span></div>
+                                <!-- 🔵 6. ช่องฟ้า 4-สูง (เส้นแนวนอนระหว่าง 4 กับ สูง) -->
+                                <div class="guk-spot guk-h" style="top:0%; left:62.5%;" onclick="handleBet('กั๊ก_4_สูง', this)"><span class="chip-badge">0</span></div>
+                                <!-- 🔵 7. ช่องฟ้า 4-5 -->
+                                <div class="guk-spot guk-v" style="left:75%; margin-left:-8px; top:50%;" onclick="handleBet('กั๊ก_4_5', this)"><span class="chip-badge">0</span></div>
+                                <!-- 🔵 8. ช่องฟ้า 5-6 (เส้นนอนระหว่างแถว 5 กับ 6) -->
+                                <div class="guk-spot guk-h" style="top:0%; left:87.5%;" onclick="handleBet('กั๊ก_5_6', this)"><span class="chip-badge">0</span></div>
+                            </div>
+
+                            <!-- แถวล่างโต๊ด: 16 | 24 | 25 | 26 -->
+                            <div class="hilo-row">
+                                <div class="cell" onclick="handleBet('16', this)">16<span class="chip-badge">0</span></div>
+                                <div class="cell" onclick="handleBet('24', this)">24<span class="chip-badge">0</span></div>
+                                <div class="cell" onclick="handleBet('25', this)">25<span class="chip-badge">0</span></div>
+                                <div class="cell" onclick="handleBet('26', this)">26<span class="chip-badge">0</span></div>
+                                
+                                <!-- 🔵 9. ช่องฟ้า 3-4 (อยู่ระหว่างช่อง 3 และ 4) -->
+                                <div class="guk-spot guk-h" style="top:0%; left:50%;" onclick="handleBet('กั๊ก_3_4', this)"><span class="chip-badge">0</span></div>
+                            </div>
+                        </div>
+
+                        <div style="display:flex; flex-direction:column; width:40px;">
+                            <div class="cell" onclick="handleBet('46', this)">46<span class="chip-badge">0</span></div>
+                            <div class="cell" onclick="handleBet('36', this)">36<span class="chip-badge">0</span></div>
+                            <div class="cell" onclick="handleBet('35', this)">35<span class="chip-badge">0</span></div>
+                        </div>
+
+                        <div style="display:flex; flex-direction:column; width:45px;">
+                            <div class="cell" onclick="handleBet('สูง5', this)">สูง5<span class="chip-badge">0</span></div>
+                            <div class="cell" style="flex:1;" onclick="handleBet('สูง3', this)">สูง3<span class="chip-badge">0</span></div>
+                            <div class="cell" style="flex:1;" onclick="handleBet('สูง2', this)">สูง2<span class="chip-badge">0</span></div>
+                        </div>
+                    </div>
+
+                    <div class="hilo-row">
+                        <div class="cell" onclick="handleBet('ต่ำ6', this)">ต่ำ6<span class="chip-badge">0</span></div>
+                        <div class="cell" style="flex:3;" onclick="handleBet('2-3-4', this)">2-3-4<span class="chip-badge">0</span></div>
+                        <div class="cell" style="flex:3;" onclick="handleBet('3-4-5', this)">3-4-5<span class="chip-badge">0</span></div>
+                        <div class="cell" onclick="handleBet('สูง1', this)">สูง1<span class="chip-badge">0</span></div>
+                    </div>
+
+                    <!-- แถบตองใหญ่ด้านล่างสุด -->
+                    <div class="hilo-row" style="border-top:2px solid #c5a059;">
+                        <div class="cell" style="flex:1.2; min-height:48px; font-weight:bold; color:#f39c12; font-size:13px;" onclick="handleBet('ตองใดๆ', this)">
+                            ตองใดๆ<span class="chip-badge">0</span>
+                        </div>
+                        <div style="flex:2; display:flex; flex-direction:column;">
+                            <div style="text-align:center; font-size:10px; color:#c5a059; background:#0b0c10;">ตองระบุ</div>
+                            <div class="hilo-row">
+                                <div class="cell" style="min-height:32px; font-weight:bold;" onclick="handleBet('ตอง1', this)">1<span class="chip-badge">0</span></div>
+                                <div class="cell" style="min-height:32px; font-weight:bold;" onclick="handleBet('ตอง2', this)">2<span class="chip-badge">0</span></div>
+                                <div class="cell" style="min-height:32px; font-weight:bold;" onclick="handleBet('ตอง3', this)">3<span class="chip-badge">0</span></div>
+                                <div class="cell" style="min-height:32px; font-weight:bold;" onclick="handleBet('ตอง4', this)">4<span class="chip-badge">0</span></div>
+                                <div class="cell" style="min-height:32px; font-weight:bold;" onclick="handleBet('ตอง5', this)">5<span class="chip-badge">0</span></div>
+                                <div class="cell" style="min-height:32px; font-weight:bold;" onclick="handleBet('ตอง6', this)">6<span class="chip-badge">0</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+
+        <div class="control-panel">
+            <div class="total-bar" id="totalBetDisplay">รวมแทง: 0 ฿</div>
+            <div class="action-row">
+                <button class="btn-act btn-confirm" onclick="submitBet()">ยืนยัน</button>
+                <button class="btn-act btn-cancel" onclick="clearSelection()">ยกเลิก</button>
+            </div>
+            <div class="chips-row">
+                <div class="chip c-1 active" onclick="selectChip(1, this)">1</div>
+                <div class="chip c-5" onclick="selectChip(5, this)">5</div>
+                <div class="chip c-10" onclick="selectChip(10, this)">10</div>
+                <div class="chip c-25" onclick="selectChip(25, this)">25</div>
+                <div class="chip c-50" onclick="selectChip(50, this)">50</div>
+                <div class="chip c-100" onclick="selectChip(100, this)">100</div>
+                <div class="chip c-500" onclick="selectChip(500, this)">500</div>
+            </div>
+        </div>
+
+        <script>
+            let currentUserId = "";
+            let selectedChipValue = 1;
+            let currentBets = {}; 
+
+            async function main() {
+                try {
+                    await liff.init({ liffId: "2011386687-zkayS6js" });
+
+                    if (!liff.isLoggedIn()) {
+                        liff.login();
+                        return;
+                    }
+
+                    const profile = await liff.getProfile();
+                    currentUserId = profile.userId;
+                    document.getElementById('userName').innerText = profile.displayName || "User";
+
+                    loadUserData();
+                } catch (e) {
+                    console.error("LIFF Init Error:", e);
+                }
+            }
+
+            function switchTab(index) {
+                document.getElementById('mainSlider').style.transform = 'translateX(-' + (index * 100) + 'vw)';
+                document.getElementById('tab-pok').classList.toggle('active', index === 0);
+                document.getElementById('tab-hilo').classList.toggle('active', index === 1);
+            }
+
+            function selectChip(val, el) {
+                selectedChipValue = val;
+                document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+                el.classList.add('active');
+            }
+
+            function handleBet(optionName, el) {
+                if (!currentBets[optionName]) {
+                    currentBets[optionName] = selectedChipValue;
+                } else {
+                    currentBets[optionName] += selectedChipValue;
+                }
+                
+                el.classList.add('active');
+                const badge = el.querySelector('.chip-badge');
+                if (badge) {
+                    badge.innerText = currentBets[optionName];
+                    badge.style.display = 'block';
+                }
+
+                updateTotalDisplay();
+            }
+
+            function updateTotalDisplay() {
+                const total = Object.values(currentBets).reduce((a, b) => a + b, 0);
+                document.getElementById('totalBetDisplay').innerText = "รวมแทง: " + total.toLocaleString() + " ฿";
+            }
+
+            function clearSelection() {
+                currentBets = {};
+                document.querySelectorAll('.cell, .pok-cell, .guk-spot').forEach(el => {
+                    el.classList.remove('active');
+                    const badge = el.querySelector('.chip-badge');
+                    if (badge) badge.style.display = 'none';
+                });
+                updateTotalDisplay();
+            }
+
+            async function loadUserData() {
+                try {
+                    const res = await axios.get('/api/user/' + currentUserId);
+                    if (res.data && res.data.success) {
+                        document.getElementById('userBalance').innerText = res.data.balance.toLocaleString() + ' ฿';
+                    }
+                } catch (e) {
+                    console.error("Error loading balance:", e);
+                }
+            }
+
+            async function submitBet() {
+                const totalAmount = Object.values(currentBets).reduce((a, b) => a + b, 0);
+                if (totalAmount <= 0) {
+                    alert("กรุณาเลือกช่องแทงก่อนครับ");
+                    return;
+                }
+
+                try {
+                    const res = await axios.post('/api/place-bet', {
+                        userId: currentUserId,
+                        bets: currentBets,
+                        totalAmount: totalAmount
+                    });
+
+                    if (res.data.success) {
+                        alert("ยืนยันโพยสำเร็จ รวม: " + totalAmount.toLocaleString() + " ฿");
+                        clearSelection();
+                        loadUserData();
+                        liff.closeWindow();
+                    } else {
+                        alert("ไม่สามารถลงโพยได้: " + res.data.message);
+                    }
+                } catch (e) {
+                    alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+                }
+            }
+
+            main();
+        </script>
+    </body>
+    </html>
+    `);
+});
+
+// 🔄 2. API ดึงข้อมูลสมาชิกไปแสดงบนเว็บ (ปรับปรุงใหม่)
+app.get('/api/user/:userId', async (req, res) => {
+    const { userId } = req.params;
+    try {
+        let userData = await getLatestWallet(userId);
+        
+        // ถ้าค้นหาตรงๆ ไม่เจอ ให้ดึงจาก usersWallets ใน RAM
+        if (!userData && usersWallets[userId]) {
+            userData = usersWallets[userId];
+        }
+
+        if (userData) {
+            res.json({ success: true, balance: userData.balance || 0 });
+        } else {
+            // ถ้าไม่พบ user ให้ส่ง 0 กลับไปพร้อมตอบ success เพื่อไม่ให้หน้าเว็บค้าง
+            res.json({ success: true, balance: 0, message: 'ไม่พบ User ID ในระบบ' });
+        }
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
+});
+
+// 📥 3. API รับโพยแทงจากหน้าเว็บ LIFF (ปรับปรุงใหม่)
+app.post('/api/place-bet', async (req, res) => {
+    const { userId, amount, type } = req.body;
+    
+    // ดึงข้อมูลล่าสุด
+    let user = await getLatestWallet(userId);
+    if (!user && usersWallets[userId]) {
+        user = usersWallets[userId];
+    }
+
+    if (!user) {
+        return res.json({ success: false, message: `ไม่พบผู้ใช้งาน (ID: ${userId})` });
+    }
+
+    const currentBalance = user.balance || 0;
+    if (currentBalance < amount) {
+        return res.json({ success: false, message: 'ยอดเงินไม่พอ' });
+    }
+
+    // หักเงิน
+    user.balance = currentBalance - amount;
+    usersWallets[userId] = user; // อัปเดต RAM
+
+    // บันทึกลง Firebase
+    await updateSingleUserWallet(userId, user);
+
+    res.json({ success: true, newBalance: user.balance });
+});
+
+// ==================== [ จุดรัน Server ] ====================
 app.listen(process.env.PORT || 3000, () => { console.log('Server is running...'); });
 // เปิดทางให้เข้าถึงไฟล์รูปภาพสลิปที่เซฟไว้ในเครื่องได้ตรงๆ
 app.use(express.static(__dirname));

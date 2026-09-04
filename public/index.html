@@ -638,10 +638,17 @@ function updateChipSelectorUI() {
         updateBoardUI(targetElementId);
     }
     
-    // 🟢 ปรับ updateBoardUI ให้ส่ง boolean เด้งเฉพาะชิปช่องล่าสุด
+    // 🟢 ปรับ updateBoardUI ให้ซ่อนชิปทั้งหมดบนกระดานก่อนวนลูปแสดงผลใหม่
     function updateBoardUI(latestElementId = null) {
         let total = 0;
+
+        // 🌟 1. ล้างและซ่อนชิปทั้งหมดบนกระดานก่อนเสมอ
+        document.querySelectorAll('[id^="pok-chip-"], [id^="hilo-chip-"]').forEach(el => {
+            el.innerText = '0';
+            el.classList.add('hidden');
+        });
         
+        // 🌟 2. วนลูปแสดงผลเฉพาะชิปที่มีการวางเงิน
         for (const [key, amount] of Object.entries(pendingBets)) {
             total += amount;
             let elementId = '';
@@ -652,16 +659,16 @@ function updateChipSelectorUI() {
                 elementId = `hilo-chip-${key}`;
             }
 
-            // 🌟 จะให้เด้งเฉพาะ Element ที่ ID ตรงกับจุดที่เพิ่งกดล่าสุดเท่านั้น
             const isJustPressed = (elementId === latestElementId);
             renderChipOnTile(elementId, amount, isJustPressed);
         }
         
         document.getElementById('total-pending-amount').innerText = `${total.toLocaleString()} ฿`;
     }
+    // 🟢 ฟังก์ชันยกเลิก / ล้างชิปทั้งหมด
     function clearPendingBets() {
-        pendingBets = {};
-        updateBoardUI();
+        pendingBets = {}; // ล้างข้อมูลรายการแทง
+        updateBoardUI(); // สั่งอัปเดตกระดาน (ชิปทุกตัวจะถูกซ่อนทันที)
     }
     
   // ฟังก์ชันจัดกลุ่มคำสั่งสำหรับป๊อกเด้งและไฮโล

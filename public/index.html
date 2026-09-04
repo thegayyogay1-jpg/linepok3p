@@ -318,31 +318,37 @@ function listenToUserData() {
     
     // 4. ฟังก์ชันส่งคำขอคืนโพย (รองรับทั้ง "r" และ "rz")
     async function cancelMyBets(command, gameName) {
-        if (!isRoundOpen) return alert('⚠️ ขณะนี้ปิดรับแทงแล้ว ไม่สามารถยกเลิกโพยได้ครับ');
-        if (!confirm(`❓ คุณต้องการคืนโพย [${gameName}] ในรอบนี้ใช่หรือไม่?`)) return;
+    if (!isRoundOpen) return alert('⚠️ ขณะนี้ปิดรับแทงแล้ว ไม่สามารถยกเลิกโพยได้ครับ');
+    if (!confirm(`❓ คุณต้องการคืนโพย [${gameName}] ในรอบนี้ใช่หรือไม่?`)) return;
 
-        try {
-            const res = await fetch('/api/web-bet-trigger', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId: currentUserId,
-                    betText: command
-                })
-            });
+    // 🟢 แสดง Pop-up Loading
+    toggleLoading(true);
 
-            const result = await res.json();
+    try {
+        const res = await fetch('/api/web-bet-trigger', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userId: currentUserId,
+                betText: command
+            })
+        });
 
-            if (result.success) {
-                alert(`✅ คืนโพย${gameName}สำเร็จ!`);
-            } else {
-                alert(`⚠️ คืนโพยไม่สำเร็จ: ${result.message || 'เกิดข้อผิดพลาด'}`);
-            }
-        } catch (err) {
-            console.error(err);
-            alert('❌ เกิดข้อผิดพลาดในการส่งคำขอคืนโพย');
+        const result = await res.json();
+
+        if (result.success) {
+            alert(`✅ คืนโพย${gameName}สำเร็จ!`);
+        } else {
+            alert(`⚠️ คืนโพยไม่สำเร็จ: ${result.message || 'เกิดข้อผิดพลาด'}`);
         }
+    } catch (err) {
+        console.error(err);
+        alert('❌ เกิดข้อผิดพลาดในการส่งคำขอคืนโพย');
+    } finally {
+        // 🔴 ซ่อน Pop-up Loading
+        toggleLoading(false);
     }
+}
     function selectChip(value) {
         selectedChipValue = value;
         document.querySelectorAll('.chip').forEach(el => el.classList.remove('chip-active'));
@@ -423,26 +429,25 @@ async function submitBoardBets() {
     const entries = Object.entries(pendingBets);
     if (entries.length === 0) return alert('⚠️ กรุณาเลือกวางชิปบนกระดานก่อนครับ');
 
+    // 🟢 1. แสดง Pop-up Loading
+    toggleLoading(true);
+
     try {
         for (const [key, amount] of entries) {
             let betText = "";
 
-            // 1. แปลงรูปแบบการแทงป๊อกเด้งให้เป็นข้อความสไตล์ไลน์
             if (activeTab === 'pok') {
                 if (key.startsWith('เจ้าสู้ขา')) {
                     const legNum = key.replace('เจ้าสู้ขา', '').trim();
-                    betText = `จ${legNum}-${amount}`; // ได้เป็น "จ1-100"
+                    betText = `จ${legNum}-${amount}`;
                 } else {
                     const legNum = key.replace('ขาที่', '').trim();
-                    betText = `${legNum}-${amount}`;  // ได้เป็น "1-100"
+                    betText = `${legNum}-${amount}`;
                 }
-            } 
-            // 2. แปลงรูปแบบการแทงไฮโลให้เป็นข้อความสไตล์ไลน์
-            else if (activeTab === 'hilo') {
-                betText = `${key} ${amount}`;         // ได้เป็น "สูง 100", "11ไฮโล 100", "1 100"
+            } else if (activeTab === 'hilo') {
+                betText = `${key} ${amount}`;
             }
 
-            // 3. ยิงส่งข้อมูลไปหา Endpoint ใหม่ของบอทหลัก (Render)
             const res = await fetch('/api/web-bet-trigger', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -454,7 +459,6 @@ async function submitBoardBets() {
             
             const result = await res.json();
             
-            // หากบอทหลักตีกลับว่าแทงไม่ได้ (เช่น ไม่ถึงขั้นต่ำ/เกินสูงสุด/เครดิตไม่พอ)
             if (!result.success) {
                 alert(`⚠️ รายการ [${betText}] ไม่สำเร็จ: ${result.message}`);
                 return;
@@ -466,6 +470,18 @@ async function submitBoardBets() {
     } catch (err) {
         console.error(err);
         alert('⚠️ เกิดข้อผิดพลาดในการส่งข้อมูลไปยังบอทหลัก');
+    } finally {
+        // 🔴 2. ซ่อน Pop-up Loading ไม่ว่าจะสำเร็จหรือเกิด Error
+        toggleLoading(false);
+    }
+}
+    // ฟังก์ชัน เปิด/ปิด Pop-up Loading
+function toggleLoading(show) {
+    const modal = document.getElementById('loading-modal');
+    if (show) {
+        modal.classList.remove('hidden');
+    } else {
+        modal.classList.add('hidden');
     }
 }
     // สลับแท็บ ป๊อกเด้ง / ไฮโล
@@ -487,5 +503,17 @@ async function submitBoardBets() {
 
     window.onload = initLIFF;
 </script>
+    <!-- Pop-up Loading Modal -->
+<div id="loading-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex flex-col items-center justify-center transition-all duration-300">
+    <div class="bg-gray-800 border border-gray-700 p-6 rounded-2xl shadow-2xl flex flex-col items-center space-y-4 max-w-xs mx-auto text-center">
+        <!-- Spinner Icon -->
+        <div class="w-12 h-12 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"></div>
+        <!-- ข้อความแจ้งเตือน -->
+        <div>
+            <div class="text-base font-bold text-white">กำลังดำเนินการ...</div>
+            <div class="text-xs text-gray-400 mt-1">กรุณารอสักครู่ ห้ามปิดหน้านี้</div>
+        </div>
+    </div>
+</div>
 </body>
 </html>

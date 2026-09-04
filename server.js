@@ -6515,24 +6515,105 @@ app.post('/api/web-bet-trigger', async (req, res) => {
     try {
         const { userId, betText } = req.body;
 
+        // เช็กป้องกันกรณีไม่ได้ส่ง userId หรือ betText มา
         if (!userId || !betText) {
-            return res.json({ success: false, message: 'ข้อมูลที่ส่งมาไม่สมบูรณ์' });
+            return res.json({ success: false, message: "ข้อมูลที่ส่งมาไม่ครบถ้วน (ต้องการ userId และ betText)" });
         }
 
-        const cleanText = betText.trim().toLowerCase();
+        const userMsg = betText.trim().toLowerCase();
 
-        // 1. ดักจับคำสั่งคืนโพย (r = ป๊อกเด้ง, rz = ไฮโล)
-        if (cleanText === 'r' || cleanText === 'rz') {
-            const result = await processPokDengBet(userId, cleanText);
-            return res.json(result);
+        // =========================================================
+        // 🟢 1. ตรวจสอบคำสั่งระบบ/การคืนโพยก่อนเป็นอันดับแรก (Top Priority)
+        // =========================================================
+
+        // [ 1.1 ระบบคืนโพยป๊อกเด้ง (r) ]
+        if (userMsg === "r") {
+            if (!isRoundOpen) {
+                return res.json({ success: false, message: "🚫 ไม่สามารถคืนโพยได้ เนื่องจากปิดรอบแทงเรียบร้อยแล้ว" });
+            }
+            
+            const user = usersWallets[userId];
+            if (!user) {
+                return res.json({ success: false, message: "📢 คุณยังไม่ได้ลงทะเบียนสมาชิกในระบบครับ" });
+            }
+
+            const myBets = roundBets[userId];
+            if (!myBets || myBets.length === 0) {
+                return res.json({ success: false, message: `❌ คุณ ${user.name || "สมาชิก"} ไม่มีรายการโพยค้างในรอบนี้ให้ยกเลิกครับ` });
+            }
+
+            // คำนวณคืนเงิน
+            const totalRefund = myBets.reduce((sum, bet) => sum + (bet.holdCost || 0), 0);
+            user.balance += totalRefund;
+            usersRoundCrossCheck[userId] = {};
+            roundBets[userId] = [];
+
+            await saveDataToFirebase();
+
+            return res.json({ 
+                success: true, 
+                message: "🗑️ ยกเลิกโพยป๊อกเด้งสำเร็จเรียบร้อยแล้ว",
+                refundAmount: totalRefund,
+                newBalance: user.balance
+            });
         }
 
+        // [ 1.2 ระบบคืนโพยไฮโล (rz) ]
+        else if (userMsg === "rz") {
+            if (!isHiloRoundOpen) {
+                return res.json({ success: false, message: "🚫 ไม่สามารถคืนโพยไฮโลได้ เนื่องจากปิดรอบแทงเรียบร้อยแล้ว" });
+            }
+
+            const user = usersWallets[userId];
+            if (!user) {
+                return res.json({ success: false, message: "📢 คุณยังไม่ได้ลงทะเบียนสมาชิกในระบบครับ" });
+            }
+
+            const displayName = user.nickname || user.name || "สมาชิก";
+            const myHiloBets = hiloRoundBets[userId];
+
+            if (!myHiloBets || myHiloBets.length === 0) {
+                return res.json({ success: false, message: `❌ คุณ ${displayName} ไม่มีรายการโพยไฮโลค้างในรอบนี้ให้ยกเลิกครับ` });
+            }
+
+            const totalHiloRefund = myHiloBets.reduce((sum, bet) => sum + (bet.price || 0), 0);
+            user.balance += totalHiloRefund;
+
+            // กำหนดค่า Tracker ตามประเภทข้อมูลที่คุณใช้จริงในระบบ
+            hiloUserTrackers[userId] = { side: null, singles: new Set() };
+            hiloRoundBets[userId] = [];
+
+            await saveDataToFirebase();
+
+            return res.json({ 
+                success: true, 
+                message: "🎲 ยกเลิกโพยไฮโลสำเร็จเรียบร้อยแล้ว",
+                refundAmount: totalHiloRefund,
+                newBalance: user.balance
+            });
+        }
+
+        // =========================================================
+        // 🔴 2. ถ้าไม่ใช่คำสั่งระบบ ถึงส่งไปประมวลผลการรับแทง
+        // =========================================================
+        
+        // ตรวจสอบรูปแบบโพยป๊อกเด้ง (ต้องมีเครื่องหมาย -)
         if (betText.includes('-')) {
+            const isBetFormatValid = checkBetFormat(userMsg);
+            if (!isBetFormatValid) {
+                return res.json({ 
+                    success: false, 
+                    message: `รูปแบบโพยไม่ถูกต้อง: "${betText}" (ตัวอย่าง: 1-100)` 
+                });
+            }
+
             const result = await processPokDengBet(userId, betText);
             return res.json(result);
         } 
-        
-        return res.json({ success: false, message: 'รูปแบบการแทงไม่ตรงตามเงื่อนไข' });
+
+        // ตรวจสอบโพยเกมประเภทอื่นๆ เพิ่มเติมตรงนี้ (ถ้ามี)
+
+        return res.json({ success: false, message: 'รูปแบบการแทงไม่ตรงตามเงื่อนไขที่กำหนด' });
 
     } catch (error) {
         console.error("❌ Web Bet Trigger Error:", error);

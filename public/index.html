@@ -300,9 +300,42 @@ function listenToUserData() {
                 </div>
             `;
         }
+        // 🌟 เพิ่มปุ่มคืนโพยตรงนี้
+    html += `
+        <button onclick="cancelMyBets()" class="w-full mt-3 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-lg shadow border border-red-500 flex items-center justify-center gap-1">
+            🗑️ คืนโพยทั้งหมดในรอบนี้
+        </button>
+    `;
 
         betsContainer.innerHTML = html;
     });
+    // ฟังก์ชันกดคืนโพยจากหน้าเว็บ
+async function cancelMyBets() {
+    if (!isRoundOpen) return alert('⚠️ ขณะนี้ปิดรับแทงแล้ว ไม่สามารถยกเลิกโพยได้ครับ');
+    if (!confirm('❓ คุณต้องการคืนโพยทั้งหมดในรอบนี้ใช่หรือไม่?')) return;
+
+    try {
+        // ยิงคำสั่ง "r" เข้า Endpoint ตัวเดิมที่ใช้สั่งแทง
+        const res = await fetch('/api/web-bet-trigger', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userId: currentUserId,
+                betText: "r" // 👈 ส่งคำสั่ง r ไปให้บอทหลักประมวลผลคืนโพย
+            })
+        });
+
+        const result = await res.json();
+
+        if (result.success) {
+            alert('✅ คืนโพยสำเร็จ!');
+        } else {
+            alert(`⚠️ คืนโพยไม่สำเร็จ: ${result.message || 'เกิดข้อผิดพลาด'}`);
+        }
+    } catch (err) {
+        console.error(err);
+        alert('❌ เกิดข้อผิดพลาดในการส่งคำขอคืนโพย');
+    }
 }
     function selectChip(value) {
         selectedChipValue = value;
@@ -429,7 +462,6 @@ async function submitBoardBets() {
         alert('⚠️ เกิดข้อผิดพลาดในการส่งข้อมูลไปยังบอทหลัก');
     }
 }
-
     // สลับแท็บ ป๊อกเด้ง / ไฮโล
     function switchTab(tab) {
         activeTab = tab;

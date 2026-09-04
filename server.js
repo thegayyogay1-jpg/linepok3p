@@ -3415,10 +3415,12 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
                     lineTotalPrice = price * targetStr.length;
                 }
 
-                totalHiloBet += lineTotalPrice;
+               totalHiloBet += lineTotalPrice;
                 processedHiloBets.push({
                     target: targetStr,
                     category: categoryName,
+                    betType: betType,
+                    pricePerLeg: price,
                     price: lineTotalPrice
                 });
             }
@@ -3437,7 +3439,6 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
                     if (!hiloRoundBets[userId]) {
                         hiloRoundBets[userId] = [];
                     }
-
                     let itemsFlexContents = [];
                     processedHiloBets.forEach(hb => {
                         hiloRoundBets[userId].push({
@@ -3445,8 +3446,11 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
                             memberNumber: user.memberNumber,
                             target: hb.target,
                             category: hb.category,
+                            betType: hb.betType,
+                            pricePerLeg: hb.pricePerLeg,
                             price: hb.price,
-                            time: new Date().toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok' })
+                            time: new Date().toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok' }),
+                            source: 'line'
                         });
 
                         itemsFlexContents.push({

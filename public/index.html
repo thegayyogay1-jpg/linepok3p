@@ -376,8 +376,8 @@ function renderCrossCheckBets(data) {
         updateBoardUI();
     }
 
-    // ยืนยันการส่งโพย
-   async function submitBoardBets() {
+   // ยืนยันการส่งโพย (ปรับปรุงใหม่: ส่งข้อความรูปแบบไลน์ไปให้บอทหลักประมวลผล)
+async function submitBoardBets() {
     if (!isRoundOpen) return alert('⚠️ ขณะนี้ปิดรับแทงอยู่ครับ');
     
     const entries = Object.entries(pendingBets);
@@ -385,25 +385,38 @@ function renderCrossCheckBets(data) {
 
     try {
         for (const [key, amount] of entries) {
-            // แปลงชนิดการแทงให้ตรงกับประเภทเกม
-            let formattedType = key;
+            let betText = "";
+
+            // 1. แปลงรูปแบบการแทงป๊อกเด้งให้เป็นข้อความสไตล์ไลน์
             if (activeTab === 'pok') {
-                formattedType = key.includes('เจ้าสู้ขา') ? key : `ขาที่ ${key}`;
+                if (key.startsWith('เจ้าสู้ขา')) {
+                    const legNum = key.replace('เจ้าสู้ขา', '').trim();
+                    betText = `จ${legNum}-${amount}`; // ได้เป็น "จ1-100"
+                } else {
+                    const legNum = key.replace('ขาที่', '').trim();
+                    betText = `${legNum}-${amount}`;  // ได้เป็น "1-100"
+                }
+            } 
+            // 2. แปลงรูปแบบการแทงไฮโลให้เป็นข้อความสไตล์ไลน์
+            else if (activeTab === 'hilo') {
+                betText = `${key} ${amount}`;         // ได้เป็น "สูง 100", "11ไฮโล 100", "1 100"
             }
 
-            const res = await fetch('/api/place-bet', {
+            // 3. ยิงส่งข้อมูลไปหา Endpoint ใหม่ของบอทหลัก (Render)
+            const res = await fetch('/api/web-bet-trigger', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     userId: currentUserId,
-                    amount: amount,
-                    type: formattedType
+                    betText: betText
                 })
             });
             
             const result = await res.json();
+            
+            // หากบอทหลักตีกลับว่าแทงไม่ได้ (เช่น ไม่ถึงขั้นต่ำ/เกินสูงสุด/เครดิตไม่พอ)
             if (!result.success) {
-                alert(`⚠️ รายการ ${formattedType} ไม่สำเร็จ: ${result.message}`);
+                alert(`⚠️ รายการ [${betText}] ไม่สำเร็จ: ${result.message}`);
                 return;
             }
         }
@@ -412,7 +425,7 @@ function renderCrossCheckBets(data) {
         clearPendingBets();
     } catch (err) {
         console.error(err);
-        alert('⚠️ เกิดข้อผิดพลาดในการส่งข้อมูล');
+        alert('⚠️ เกิดข้อผิดพลาดในการส่งข้อมูลไปยังบอทหลัก');
     }
 }
 

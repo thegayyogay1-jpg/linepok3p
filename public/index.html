@@ -300,45 +300,49 @@ function listenToUserData() {
                 </div>
             `;
         }
-        // 🌟 เพิ่มปุ่มคืนโพยตรงนี้
-    html += `
-        <button onclick="cancelMyBets()" class="w-full mt-3 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-lg shadow border border-red-500 flex items-center justify-center gap-1">
-            🗑️ คืนโพยทั้งหมดในรอบนี้
-        </button>
-    `;
+        // 🌟 ปุ่มคืนโพยแยก 2 ปุ่ม (ป๊อกเด้งส่ง "r" / ไฮโลส่ง "rz")
+            html += `
+                <div class="grid grid-cols-2 gap-2 mt-3">
+                    <button onclick="cancelMyBets('r', 'ป๊อกเด้ง')" class="py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-lg shadow border border-red-500 flex items-center justify-center gap-1">
+                        🗑️ คืนโพยป๊อก (r)
+                    </button>
+                    <button onclick="cancelMyBets('rz', 'ไฮโล')" class="py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-lg shadow border border-purple-500 flex items-center justify-center gap-1">
+                        🗑️ คืนโพยไฮโล (rz)
+                    </button>
+                </div>
+            `;
 
-        betsContainer.innerHTML = html;
-    });
-}
-    
-    // ฟังก์ชันกดคืนโพยจากหน้าเว็บ
-async function cancelMyBets() {
-    if (!isRoundOpen) return alert('⚠️ ขณะนี้ปิดรับแทงแล้ว ไม่สามารถยกเลิกโพยได้ครับ');
-    if (!confirm('❓ คุณต้องการคืนโพยทั้งหมดในรอบนี้ใช่หรือไม่?')) return;
-
-    try {
-        // ยิงคำสั่ง "r" เข้า Endpoint ตัวเดิมที่ใช้สั่งแทง
-        const res = await fetch('/api/web-bet-trigger', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                userId: currentUserId,
-                betText: "r" // 👈 ส่งคำสั่ง r ไปให้บอทหลักประมวลผลคืนโพย
-            })
+            betsContainer.innerHTML = html;
         });
-
-        const result = await res.json();
-
-        if (result.success) {
-            alert('✅ คืนโพยสำเร็จ!');
-        } else {
-            alert(`⚠️ คืนโพยไม่สำเร็จ: ${result.message || 'เกิดข้อผิดพลาด'}`);
-        }
-    } catch (err) {
-        console.error(err);
-        alert('❌ เกิดข้อผิดพลาดในการส่งคำขอคืนโพย');
     }
-}
+    
+    // 4. ฟังก์ชันส่งคำขอคืนโพย (รองรับทั้ง "r" และ "rz")
+    async function cancelMyBets(command, gameName) {
+        if (!isRoundOpen) return alert('⚠️ ขณะนี้ปิดรับแทงแล้ว ไม่สามารถยกเลิกโพยได้ครับ');
+        if (!confirm(`❓ คุณต้องการคืนโพย [${gameName}] ในรอบนี้ใช่หรือไม่?`)) return;
+
+        try {
+            const res = await fetch('/api/web-bet-trigger', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: currentUserId,
+                    betText: command
+                })
+            });
+
+            const result = await res.json();
+
+            if (result.success) {
+                alert(`✅ คืนโพย${gameName}สำเร็จ!`);
+            } else {
+                alert(`⚠️ คืนโพยไม่สำเร็จ: ${result.message || 'เกิดข้อผิดพลาด'}`);
+            }
+        } catch (err) {
+            console.error(err);
+            alert('❌ เกิดข้อผิดพลาดในการส่งคำขอคืนโพย');
+        }
+    }
     function selectChip(value) {
         selectedChipValue = value;
         document.querySelectorAll('.chip').forEach(el => el.classList.remove('chip-active'));

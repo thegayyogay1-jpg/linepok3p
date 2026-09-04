@@ -58,7 +58,32 @@
             <button id="tab-pok" onclick="switchTab('pok')" class="flex-1 py-2 text-sm font-bold rounded-md bg-yellow-500 text-gray-900">🎴 ป๊อกเด้ง</button>
             <button id="tab-hilo" onclick="switchTab('hilo')" class="flex-1 py-2 text-sm font-bold rounded-md text-gray-400">🎲 ไฮโล</button>
         </div>
+        
+ <!-- Section: กระดานป๊อกเด้ง -->
+        <div id="section-pok" class="bg-gray-800 p-3 rounded-lg border border-gray-700 space-y-3">
+            <h3 class="font-bold text-yellow-400 border-b border-gray-700 pb-2 text-center">🎰 โต๊ะแทงป๊อกเด้ง</h3>
 
+            <!-- ปุ่มสลับโหมด แทงผู้เล่น / แทงเจ้ามือ -->
+            <div class="flex justify-center gap-2">
+                <button id="btn-pok-player" onclick="setPokMode('player')" class="px-4 py-2 text-sm font-bold rounded-lg border-2 border-cyan-400 bg-cyan-900 text-cyan-200 shadow-md">แทงผู้เล่น</button>
+                <button id="btn-pok-dealer" onclick="setPokMode('dealer')" class="px-4 py-2 text-sm font-bold rounded-md border border-gray-600 bg-gray-700 text-gray-400">แทงเจ้ามือ</button>
+            </div>
+
+            <!-- ช่องวางแทง ขา 1 - 6 -->
+            <div class="grid grid-cols-3 gap-2 pt-2">
+                <script>
+                    for(let i=1; i<=6; i++){
+                        document.write(`
+                            <div onclick="placeBet('pok', '${i}')" class="bet-zone bg-gray-700 hover:bg-gray-600 border-2 border-cyan-500/50 rounded-lg p-3 text-center flex flex-col items-center justify-between min-h-[90px] relative">
+                                <span id="pok-label-${i}" class="font-bold text-cyan-300 text-sm">ขาที่ ${i}</span>
+                                <span id="pok-chip-${i}" class="hidden mt-1 px-2 py-0.5 bg-yellow-500 text-gray-900 font-bold text-xs rounded-full shadow">0</span>
+                            </div>
+                        `);
+                    }
+                </script>
+            </div>
+        </div>
+        
        <!-- Section: โต๊ะแทงไฮโล -->
 <div id="section-hilo" class="bg-gray-900 p-3 rounded-xl border border-gray-700 space-y-2 hidden text-xs select-none">
     <h3 class="font-bold text-amber-400 text-center text-sm py-1 border-b border-gray-700">🎲 โต๊ะแทงไฮโล</h3>

@@ -370,12 +370,12 @@ function listenToUserData() {
     });
 }
 
-// 🟢 ฟังก์ชันวาด UI แสดงรายการโพยรวมทั้ง ป๊อกเด้ง และ ไฮโล (เวอร์ชันรวมยอดตัวซ้ำ)
-// 🟢 ฟังก์ชันวาด UI แสดงรายการโพยรวมทั้ง ป๊อกเด้ง และ ไฮโล (เวอร์ชันแก้ไขป้องกันหน้าเว็บค้าง)
+// 🟢 ฟังก์ชันวาด UI แสดงรายการโพยรวมทั้ง ป๊อกเด้ง และ ไฮโล (ปรับปรุงแก้ไขความผิดพลาด)
 function renderAllBetsUI() {
     const betsContainer = document.getElementById('myBetsContainer');
     if (!betsContainer) return;
 
+    // ตรวจสอบข้อมูล ป้องกัน Error กรณี localPokBets หรือ localHiloBets ไม่ใช่ Array/Object
     const pokList = Array.isArray(localPokBets) ? localPokBets : (localPokBets ? Object.values(localPokBets) : []);
     const hiloList = Array.isArray(localHiloBets) ? localHiloBets : (localHiloBets ? Object.values(localHiloBets) : []);
 
@@ -387,43 +387,36 @@ function renderAllBetsUI() {
     let html = '';
     let totalHold = 0;
 
-    //  helper function ช่วยสกัดข้อความให้ออกมาเป็น String ที่ถูกต้องเสมอ
-    const extractBetText = (bet, defaultText) => {
-        let text = bet.detail || bet.rawText || bet.category || (bet.target ? `แทง ${bet.target}` : defaultText);
-        if (typeof text === 'object') {
-            text = JSON.stringify(text);
-        }
-        return String(text || defaultText).trim();
-    };
+    // ฟังก์ชันช่วยดึงข้อความอย่างปลอดภัย ไม่ให้เกิด [object Object]
+    function getBetLabel(bet, fallback) {
+        if (!bet) return fallback;
+        const val = bet.detail || bet.rawText || bet.category || (bet.target ? `แทง ${bet.target}` : fallback);
+        return typeof val === 'string' ? val : String(val);
+    }
 
-    // -------------------------------------------------------------
-    // ♠️ 1. จัดกลุ่มและรวมยอดโพยป๊อกเด้ง (Group & Sum)
-    // -------------------------------------------------------------
+    // ♠️ 1. จัดกลุ่มโพยป๊อกเด้ง
     const groupedPok = {};
     pokList.forEach((bet) => {
         if (!bet) return;
         totalHold += Number(bet.holdCost || 0);
 
-        const text = extractBetText(bet, 'ป๊อกเด้ง');
+        const text = getBetLabel(bet, 'ป๊อกเด้ง');
         const price = Number(bet.actualBet || bet.price || bet.amount || 0);
 
         if (!groupedPok[text]) {
-            groupedPok[text] = {
-                totalPrice: 0,
-                pricesHistory: []
-            };
+            groupedPok[text] = { totalPrice: 0, pricesHistory: [] };
         }
         groupedPok[text].totalPrice += price;
         groupedPok[text].pricesHistory.push(price);
     });
 
     const groupedPokKeys = Object.keys(groupedPok);
+    const hasPok = groupedPokKeys.length > 0;
 
-    if (groupedPokKeys.length > 0) {
+    if (hasPok) {
         html += `<div class="font-bold text-xs text-cyan-400 mb-1 flex items-center gap-1">♠️ โพยป๊อกเด้ง (${groupedPokKeys.length} รายการ)</div>`;
         groupedPokKeys.forEach((text, index) => {
             const item = groupedPok[text];
-            
             const historyText = item.pricesHistory.length > 1 
                 ? `<span class="text-[10px] text-gray-400 font-normal mr-1">(${item.pricesHistory.join('+')})</span>` 
                 : '';
@@ -440,35 +433,30 @@ function renderAllBetsUI() {
         });
     }
 
-    // -------------------------------------------------------------
-    // 🎲 2. จัดกลุ่มและรวมยอดโพยไฮโล (Group & Sum)
-    // -------------------------------------------------------------
+    // 🎲 2. จัดกลุ่มโพยไฮโล
     const groupedHilo = {};
     hiloList.forEach((bet) => {
         if (!bet) return;
         totalHold += Number(bet.holdCost || 0);
 
-        const text = extractBetText(bet, 'ไฮโล');
+        const text = getBetLabel(bet, 'ไฮโล');
         const price = Number(bet.actualBet || bet.price || bet.amount || 0);
 
         if (!groupedHilo[text]) {
-            groupedHilo[text] = {
-                totalPrice: 0,
-                pricesHistory: []
-            };
+            groupedHilo[text] = { totalPrice: 0, pricesHistory: [] };
         }
         groupedHilo[text].totalPrice += price;
         groupedHilo[text].pricesHistory.push(price);
     });
 
     const groupedHiloKeys = Object.keys(groupedHilo);
+    const hasHilo = groupedHiloKeys.length > 0;
 
-    if (groupedHiloKeys.length > 0) {
-        const marginTop = groupedPokKeys.length > 0 ? 'mt-3' : '';
+    if (hasHilo) {
+        const marginTop = hasPok ? 'mt-3' : '';
         html += `<div class="font-bold text-xs text-purple-400 mb-1 ${marginTop} flex items-center gap-1">🎲 โพยไฮโล (${groupedHiloKeys.length} รายการ)</div>`;
         groupedHiloKeys.forEach((text, index) => {
             const item = groupedHilo[text];
-
             const historyText = item.pricesHistory.length > 1 
                 ? `<span class="text-[10px] text-gray-400 font-normal mr-1">(${item.pricesHistory.join('+')})</span>` 
                 : '';

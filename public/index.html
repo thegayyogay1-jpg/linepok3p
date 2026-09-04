@@ -180,12 +180,12 @@
         </div>
 
         <!-- รายการโพยที่บันทึกแล้ว -->
-        <div class="bg-gray-800 p-4 rounded-lg border border-gray-700 space-y-2">
-            <h4 class="font-bold text-sm text-gray-300 border-b border-gray-700 pb-1">📋 โพยของคุณในรอบนี้</h4>
-            <div id="my-bets-list" class="text-xs text-gray-400 space-y-1">
-                ยังไม่มีรายการแทง
-            </div>
-        </div>
+<div class="bg-gray-800 p-4 rounded-lg border border-gray-700 space-y-2">
+    <h4 class="font-bold text-sm text-gray-300 border-b border-gray-700 pb-1">📋 โพยของคุณในรอบนี้</h4>
+    <div id="myBetsContainer" class="text-xs text-gray-400 space-y-1">
+        ยังไม่มีรายการแทง
+    </div>
+</div>
 
     </main>
 
@@ -264,44 +264,45 @@ function listenToUserData() {
         }
     });
 
-    // 2. เปลี่ยนมาฟังข้อมูลที่ usersRoundCrossCheck ที่เดียวกับ LINE
-    db.ref(`system_data/usersRoundCrossCheck/${currentUserId}`).on('value', (snapshot) => {
-        const crossCheckData = snapshot.val();
-        renderCrossCheckBets(crossCheckData);
-    });
-}
+    // 2. 🌟 [วางโค้ดฟังโพย Real-time ตรงจุดนี้]
+    const dbRef = db.ref(`system_data/roundBets/${currentUserId}`);
 
-// ฟังก์ชัน Render แสดงผลรายการโพยจาก usersRoundCrossCheck
-function renderCrossCheckBets(data) {
-    let html = '';
+    dbRef.on('value', (snapshot) => {
+        const betsData = snapshot.val();
+        const betsContainer = document.getElementById('myBetsContainer'); // Element แสดงโพยหน้าเว็บ
+        
+        if (!betsData || Object.keys(betsData).length === 0) {
+            betsContainer.innerHTML = `<div class="text-gray-400 text-sm">ยังไม่มีรายการแทงในรอบนี้</div>`;
+            return;
+        }
 
-    // ล้างชิปบนกระดานก่อนวาดใหม่
-    document.querySelectorAll('[id^="pok-chip-"], [id^="hilo-chip-"]').forEach(el => {
-        el.innerText = '0';
-        el.classList.add('hidden');
-    });
+        let html = '';
+        let totalHold = 0;
 
-    if (data) {
-        // ดึงรายการทั้งหมดใน CrossCheck ออกมาลูปแสดงผล
-        const betList = Object.values(data);
+        // แปลงเป็น Array เพื่อรองรับข้อมูลทั้งแบบ Array และ Object
+        const betsList = Array.isArray(betsData) ? betsData : Object.values(betsData);
 
-        betList.forEach(b => {
-            if (!b) return;
-            const price = Number(b.amount || 0);
-            const typeName = b.type || '';
-
-            if (price > 0) {
-                html += `
-                    <div class="flex justify-between bg-gray-700 p-2 rounded mb-1">
-                        <span>📝 ${typeName}</span>
-                        <span class="text-yellow-400 font-bold">${price.toLocaleString()} ฿</span>
-                    </div>`;
-            }
+        betsList.forEach((bet, index) => {
+            if (!bet) return;
+            totalHold += (bet.holdCost || 0);
+            html += `
+                <div class="flex justify-between items-center py-1 border-b border-gray-800 text-xs text-gray-200">
+                    <span>${index + 1}. ♠️ ${bet.detail}</span>
+                    <span class="text-yellow-400 font-bold">${(bet.actualBet || 0).toLocaleString()} B</span>
+                </div>
+            `;
         });
-    }
 
-    // อัปเดตรายการโพยด้านล่าง
-    document.getElementById('my-bets-list').innerHTML = html || 'ยังไม่มีรายการแทงในรอบนี้';
+        if (totalHold > 0) {
+            html += `
+                <div class="mt-2 text-xs text-amber-500 font-bold">
+                    🔒 ล็อกค้ำประกันรวม: ${totalHold.toLocaleString()} บาท
+                </div>
+            `;
+        }
+
+        betsContainer.innerHTML = html;
+    });
 }
     function selectChip(value) {
         selectedChipValue = value;

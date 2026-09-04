@@ -245,6 +245,220 @@ async function saveDataToFirebase() {
         console.error("❌ บันทึกข้อมูลลง Firebase ล้มเหลว:", error.message);
     }
 }
+// =================================================================
+// 🃏 [แทรกตรงนี้] ฟังก์ชันกลางประมวลผลโพยป๊อกเด้ง (LINE Bot + LIFF Web)
+// =================================================================
+async function processPokDengBet(userId, betText) {
+    if (!isRoundOpen) {
+        return { success: false, message: "🚫 ตอนนี้ระบบปิดรับโพยชั่วคราวครับ" };
+    }
+
+    const user = usersWallets[userId];
+    if (!user) {
+        return { success: false, message: "📢 คุณยังไม่ได้ลงทะเบียนในระบบ" };
+    }
+
+    const displayName = user.nickname || user.name || "ไม่ระบุชื่อ";
+
+    if (user.isWithdrawLocked) {
+        return { 
+            success: false, 
+            message: `❌ คุณอยู่ในระหว่างรออนุมัติยอดถอน (${user.pendingWithdrawAmount} บาท) บัญชีถูกล็อกชั่วคราว` 
+        };
+    }
+
+    // ล้างความจำขยะรอบเก่าถ้ายังไม่มีโพย
+    if (!roundBets[userId] || roundBets[userId].length === 0) {
+        usersRoundCrossCheck[userId] = {};
+    }
+    if (!usersRoundCrossCheck[userId]) {
+        usersRoundCrossCheck[userId] = {};
+    }
+    let betTracker = usersRoundCrossCheck[userId];
+
+    const lines = betText.split(/\r?\n/);
+    let totalActualBet = 0;
+    let processedBets = [];
+    let hasError = false;
+    let errorMsg = "";
+
+    const allowedLegs = ['1', '2', '3', '4', '5', '6'];
+    const MIN_BET = 10;
+    const MAX_BET = 2500;
+
+    for (let line of lines) {
+        let cleanLine = line.trim().toLowerCase();
+        if (cleanLine === "") continue;
+
+        const parts = cleanLine.split('-');
+        if (parts.length !== 2) {
+            hasError = true;
+            errorMsg = `⚠️ รูปแบบโพยไม่ถูกต้อง: "${line}" (ตัวอย่าง: 1-100)`;
+            break;
+        }
+
+        const targetStr = parts[0].trim();
+        const price = parseFloat(parts[1].trim());
+
+        if (isNaN(price) || price <= 0) {
+            hasError = true;
+            errorMsg = `⚠️ จำนวนเงินไม่ถูกต้องในบรรทัด: "${line}"`;
+            break;
+        }
+
+        if (price < MIN_BET || price > MAX_BET) {
+            hasError = true;
+            errorMsg = `❌ ยอดแทงต่อขาต้องอยู่ระหว่าง ${MIN_BET} ถึง ${MAX_BET} บาท`;
+            break;
+        }
+
+        let legsCount = 0;
+        let betTypeDetail = "";
+
+        if (targetStr === "รข") {
+            legsCount = maxLegs;
+            betTypeDetail = `เหมาขาผู้เล่นสู้เจ้ามือ (${maxLegs} ขา) ขาละ ${price} บาท`;
+            for (let c = 1; c <= maxLegs; c++) {
+                if (betTracker[c] === 'dealer') {
+                    hasError = true;
+                    errorMsg = `❌ แทง รข ไม่ได้! ขา ${c} มีการแทงฝั่งเจ้ามือค้างไว้แล้ว`;
+                    break;
+                }
+            }
+            if (hasError) break;
+            for (let c = 1; c <= maxLegs; c++) { betTracker[c] = 'player'; }
+
+        } else if (targetStr === "รจ") {
+            legsCount = maxLegs;
+            betTypeDetail = `แทงเจ้ามือสู้ทุกขา (${maxLegs} ขา) ขาละ ${price} บาท`;
+            for (let c = 1; c <= maxLegs; c++) {
+                if (betTracker[c] === 'player') {
+                    hasError = true;
+                    errorMsg = `❌ แทง รจ ไม่ได้! ขา ${c} มีการแทงฝั่งผู้เล่นค้างไว้แล้ว`;
+                    break;
+                }
+            }
+            if (hasError) break;
+            for (let c = 1; c <= maxLegs; c++) { betTracker[c] = 'dealer'; }
+
+        } else if (targetStr.startsWith('จ')) {
+            const legs = targetStr.substring(1);
+            if (legs === "") {
+                hasError = true;
+                errorMsg = `⚠️ ไม่ระบุเลขขาเจ้ามือในบรรทัด: "${line}"`;
+                break;
+            }
+
+            let isLegsValid = legs.split('').every(char => allowedLegs.includes(char));
+            if (!isLegsValid) {
+                hasError = true;
+                errorMsg = `❌ บันทึกโพยล้มเหลว! ห้องนี้มีแค่ ขา 1 ถึง ขา 6 เท่านั้น`;
+                break;
+            }
+
+            legsCount = legs.length;
+            betTypeDetail = `เจ้ามือสู้ขา [${legs.split('').join(', ')}] ขาละ ${price} บาท`;
+            const targetLegs = legs.split('');
+            for (let c of targetLegs) {
+                if (betTracker[c] === 'player') {
+                    hasError = true;
+                    errorMsg = `❌ แทงสวนไม่ได้! ขา ${c} มีการแทงฝั่งผู้เล่นไปแล้ว`;
+                    break;
+                }
+            }
+            if (hasError) break;
+            for (let c of targetLegs) { betTracker[c] = 'dealer'; }
+
+        } else {
+            let isLegsValid = targetStr.split('').every(char => allowedLegs.includes(char));
+            if (!isLegsValid) {
+                hasError = true;
+                errorMsg = `❌ บันทึกโพยล้มเหลว! ห้องนี้มีแค่ ขา 1 ถึง ขา 6 เท่านั้น`;
+                break;
+            }
+            legsCount = targetStr.length;
+            betTypeDetail = `แทงขา [${targetStr.split('').join(', ')}] ขาละ ${price} บาท`;
+            const targetLegs = targetStr.split('');
+            for (let c of targetLegs) {
+                if (betTracker[c] === 'dealer') {
+                    hasError = true;
+                    errorMsg = `❌ แทงสวนไม่ได้! ขา ${c} มีการแทงฝั่งเจ้ามือไปแล้ว`;
+                    break;
+                }
+            }
+            if (hasError) break;
+            for (let c of targetLegs) { betTracker[c] = 'player'; }
+        }
+
+        let currentLineBet = price * legsCount;
+        totalActualBet += currentLineBet;
+
+        processedBets.push({
+            type: targetStr,
+            detail: betTypeDetail,
+            actualBet: currentLineBet,
+            pricePerLeg: price
+        });
+    }
+
+    if (hasError) {
+        return { success: false, message: errorMsg };
+    }
+
+    if (totalActualBet === 0) {
+        return { success: false, message: "⚠️ ไม่พบรายการแทงในข้อความของคุณ" };
+    }
+
+    // คำนวณยอดค้ำประกัน
+    let finalHoldCost = 0;
+    let maxHandMultiplier = 3;
+    const doubleHoldCost = totalActualBet * 2;
+    const tripleHoldCost = totalActualBet * 3;
+
+    if (user.balance < doubleHoldCost) {
+        return { 
+            success: false, 
+            message: `❌ เครดิตไม่พอค้ำประกันขั้นต่ำ (2 เด้ง)! ยอดแทงรวม ${totalActualBet} บ. ต้องใช้ค้ำประกัน ${doubleHoldCost} บ. (เครดิตมี ${user.balance} บ.)` 
+        };
+    } else if (user.balance >= doubleHoldCost && user.balance < tripleHoldCost) {
+        maxHandMultiplier = 2;
+        finalHoldCost = doubleHoldCost;
+    } else {
+        maxHandMultiplier = 3;
+        finalHoldCost = tripleHoldCost;
+    }
+
+    // หักเงินค้ำประกันและบันทึกโพย
+    user.balance -= finalHoldCost;
+
+    if (!roundBets[userId]) {
+        roundBets[userId] = [];
+    }
+
+    processedBets.forEach((bet) => {
+        roundBets[userId].push({
+            name: displayName,
+            memberNumber: user.memberNumber,
+            betType: bet.type,
+            detail: bet.detail,
+            pricePerLeg: bet.pricePerLeg,
+            actualBet: bet.actualBet,
+            holdCost: (bet.actualBet * maxHandMultiplier),
+            maxMultiplier: maxHandMultiplier,
+            time: new Date().toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok' }),
+            source: 'web'
+        });
+    });
+
+    // ซิงก์ลง Firebase
+    await db.ref(`system_data/roundBets/${userId}`).set(roundBets[userId]);
+    await saveDataToFirebase();
+
+    return { 
+        success: true, 
+        message: `บันทึกโพยสำเร็จ! หักค้ำประกัน (${maxHandMultiplier} เด้ง) เป็นเงิน ${finalHoldCost} บาท` 
+    };
+}
 app.post('/callback', async (req, res) => {
     const events = req.body.events;
     if (!events) return res.sendStatus(200);
@@ -6270,32 +6484,22 @@ app.use(express.static('public'));
 // Endpoint สำหรับรับโพยจากหน้าเว็บ LIFF
 app.post('/api/web-bet-trigger', async (req, res) => {
     try {
-        const { userId, betText } = req.body; 
-        // betText คือข้อความรูปแบบเดียวกับที่พิมพ์ในไลน์ เช่น "1-100", "จ1-100", "สูง 100"
+        const { userId, betText } = req.body;
 
         if (!userId || !betText) {
-            return res.json({ success: false, message: 'ข้อมูลไม่ครบถ้วน' });
+            return res.json({ success: false, message: 'ข้อมูลที่ส่งมาไม่สมบูรณ์' });
         }
 
-        // 🌟 เรียกใช้ฟังก์ชันประมวลผลข้อความแทงเดิมของบอทไลน์ได้เลย!
-        // (สมมติชื่อฟังก์ชันประมวลผลของคุณคือ processUserBetMessage)
-        const result = await processUserBetMessage(userId, betText, 'WEB_LIFF');
-
-        if (result.success) {
-            return res.json({ 
-                success: true, 
-                message: result.message || `บันทึกโพย [${betText}] สำเร็จ!` 
-            });
-        } else {
-            return res.json({ 
-                success: false, 
-                message: result.message || 'ไม่สามารถบันทึกโพยได้' 
-            });
-        }
+        if (betText.includes('-')) {
+            const result = await processPokDengBet(userId, betText);
+            return res.json(result);
+        } 
+        
+        return res.json({ success: false, message: 'รูปแบบการแทงไม่ถูกต้อง (ต้องมีเครื่องหมาย - เช่น 1-100)' });
 
     } catch (error) {
-        console.error("Web Bet Trigger Error:", error);
-        return res.json({ success: false, message: 'เกิดข้อผิดพลาดที่บอทหลัก: ' + error.message });
+        console.error("❌ Web Bet Trigger Error:", error);
+        return res.json({ success: false, message: 'เกิดข้อผิดพลาดที่เซิร์ฟเวอร์: ' + error.message });
     }
 });
 // 📥 3. API รับโพยแทงจากหน้าเว็บ LIFF (ปรับปรุงใหม่)

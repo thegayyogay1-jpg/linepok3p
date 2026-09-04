@@ -2973,6 +2973,10 @@ else if (promotions[userMsg.trim()]) {
     await db.ref(`system_data/roundBets/${userId}`).set(roundBets[userId]);
     await saveDataToFirebase();
 
+                                // 4. 🌟 [แก้ตรงนี้] ประกาศ Array สำหรับ Flex Message
+                                let itemsFlexContents = [];
+                                
+                                processedBets.forEach((bet) => {
                                     itemsFlexContents.push({
                                         "type": "text",
                                         "text": `• ${bet.detail}`,
@@ -2980,6 +2984,7 @@ else if (promotions[userMsg.trim()]) {
                                         "color": "#dddddd",
                                         "wrap": true
                                     });
+                                });
                                 
                                 try {
                                     await axios.post('https://api.line.me/v2/bot/message/reply', {

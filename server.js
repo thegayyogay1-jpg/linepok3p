@@ -6267,7 +6267,6 @@ if (event.source.type === 'user') {
 app.get('/', (req, res) => { res.send('ระบบลงทะเบียนรันปกติ'); });
 app.use(express.static('public'));
 
-// 🔄 2. API ดึงข้อมูลสมาชิกไปแสดงบนเว็บ (ปรับปรุงใหม่)
 app.post('/api/place-bet', async (req, res) => {
     try {
         const { userId, amount, type } = req.body;
@@ -6299,7 +6298,7 @@ app.post('/api/place-bet', async (req, res) => {
                 message: `❌ บัญชีถูกล็อกชั่วคราว อยู่ระหว่างรออนุมัติยอดถอน (${userData.pendingWithdrawAmount || 0} บาท)` 
             });
         }
-        
+
         // 3. กำหนดตัวแปร ยอดเงินคงเหลือ
         const userBalance = Number(userData.balance || 0);
         const betAmount = Number(amount);
@@ -6308,7 +6307,9 @@ app.post('/api/place-bet', async (req, res) => {
         const isHilo = type.startsWith('z') || ['สูง', 'ต่ำ', '11ไฮโล', '123', '456', 'ตองรวม'].includes(type) || type.startsWith('ตอง');
         const isDealerPok = type.startsWith('เจ้าสู้ขา');
 
-        // ==================== [ กรณีแทงไฮโล ] ====================
+        // ==========================================
+        // [ จุดแก้ไขหลักที่ 1: บันทึกไฮโลเข้า CrossCheck ]
+        // ==========================================
         if (isHilo) {
             const MIN_BET = 10;
             const MAX_BET_MAP = {
@@ -6342,29 +6343,21 @@ app.post('/api/place-bet', async (req, res) => {
                 return res.json({ success: false, message: `❌ เครดิตไม่พอ (ต้องการ ${betAmount} ฿ / มี ${userBalance} ฿)` });
             }
 
-            // --- ดึงข้อมูล hiloRoundBets เดิมจาก Firebase มาเป็น Array ---
-            const hiloSnap = await db.ref(`system_data/hiloRoundBets/${userId}`).once('value');
-            let currentHiloBets = hiloSnap.val() || [];
-            if (!Array.isArray(currentHiloBets)) {
-                currentHiloBets = Object.values(currentHiloBets);
-            }
-
+            // 🌟 บันทึกรายการลง usersRoundCrossCheck (แทนการลง hiloRoundBets โดยตรง)
             const newHiloBet = {
+                gameType: 'hilo',
                 category: type,
                 type: type,
-                actualBet: betAmount,
-                totalPrice: betAmount,
                 amount: betAmount,
                 timestamp: Date.now(),
+                source: 'web',
                 via: 'LIFF_WEB'
             };
 
-            currentHiloBets.push(newHiloBet);
+            // Push เข้า usersRoundCrossCheck ใน Firebase
+            await db.ref(`system_data/usersRoundCrossCheck/${userId}`).push(newHiloBet);
 
-            // บันทึกกลับเป็น Array
-            await db.ref(`system_data/hiloRoundBets/${userId}`).set(currentHiloBets);
-
-            // หักเงินผู้ใช้ (อัปเดตใน Memory บอท LINE ด้วยถ้ามี)
+            // หักเงินผู้ใช้
             const newBalance = userBalance - betAmount;
             await userWalletRef.update({ balance: newBalance });
             if (typeof usersWallets !== 'undefined' && usersWallets[userId]) {
@@ -6374,7 +6367,9 @@ app.post('/api/place-bet', async (req, res) => {
             return res.json({ success: true, message: 'บันทึกโพยไฮโลสำเร็จ' });
         } 
 
-       // ==================== [ กรณีแทงป๊อกเด้ง ] ====================
+        // ==========================================
+        // [ จุดแก้ไขหลักที่ 2: บันทึกป๊อกเด้งเข้า CrossCheck ]
+        // ==========================================
         else {
             const POK_MIN_BET = 10;
             const POK_MAX_BET = 2500;
@@ -6383,9 +6378,8 @@ app.post('/api/place-bet', async (req, res) => {
                 return res.json({ success: false, message: `❌ ยอดแทงต่อขาต้องอยู่ระหว่าง ${POK_MIN_BET} ถึง ${POK_MAX_BET} บาท` });
             }
 
-            // 1. แปลงรูปแบบขาให้เป๊ะตาม LINE (เช่น "ขาที่ 123" -> "123", "เจ้าสู้ขา 123" -> "จ123")
             let formattedType = type;
-            let side = 'player'; // 'player' หรือ 'dealer'
+            let side = 'player';
 
             if (isDealerPok) {
                 side = 'dealer';
@@ -6395,36 +6389,13 @@ app.post('/api/place-bet', async (req, res) => {
                 formattedType = type.replace('ขาที่', '').trim();
             }
 
-            // กรณีสั่งแทงเหมา (รข / รจ)
             if (formattedType === 'รข') { side = 'player'; }
             if (formattedType === 'รจ') { side = 'dealer'; }
 
-            // 2. ดักจับการแทงสวน (Cross Bet Check) ให้เหมือน LINE 100%
-            // หากเป็นการแทงครั้งแรกของรอบ ให้ล้าง Cross Check
-            if (typeof roundBets !== 'undefined' && (!roundBets[userId] || roundBets[userId].length === 0)) {
-                if (typeof usersRoundCrossCheck !== 'undefined') {
-                    usersRoundCrossCheck[userId] = {};
-                }
-            }
-
-            // ดึงเลขขาที่จะแทงออกมาตรวจ
             const targetLegs = formattedType.replace(/[จ|รข|รจ]/g, '').split('');
             const legsToTest = targetLegs.length > 0 && targetLegs[0] !== '' ? targetLegs : ['1', '2', '3', '4', '5', '6'];
 
-            if (typeof usersRoundCrossCheck !== 'undefined') {
-                if (!usersRoundCrossCheck[userId]) usersRoundCrossCheck[userId] = {};
-                
-                for (let leg of legsToTest) {
-                    if (usersRoundCrossCheck[userId][leg] && usersRoundCrossCheck[userId][leg] !== side) {
-                        return res.json({ 
-                            success: false, 
-                            message: `❌ แทงสวนไม่ได้! ขา ${leg} มีการแทงฝั่ง ${usersRoundCrossCheck[userId][leg] === 'player' ? 'ผู้เล่น' : 'เจ้ามือ'} ไว้แล้วในรอบนี้` 
-                        });
-                    }
-                }
-            }
-
-            // 3. คำนวณจำนวนขาจริงและยอดค้ำประกัน
+            // คำนวณจำนวนขาจริงและยอดค้ำประกัน
             let legsCount = legsToTest.length;
             const totalActualBet = betAmount * legsCount;
             const doubleHoldCost = totalActualBet * 2;
@@ -6448,50 +6419,29 @@ app.post('/api/place-bet', async (req, res) => {
 
             const displayName = userData.nickname || userData.name || "ไม่ระบุชื่อ";
 
-            // 4. ดึงโพยเดิมใน Firebase ออกมาจัดการ
-            const pokSnap = await db.ref(`system_data/roundBets/${userId}`).once('value');
-            let currentPokBets = pokSnap.val() || [];
-
-            if (!Array.isArray(currentPokBets)) {
-                currentPokBets = Object.values(currentPokBets);
-            }
-
-            // 5. สร้าง Object โพยชุดใหม่ (โครงสร้างฟิลด์เหมือนฝั่ง LINE 100%)
+            // 🌟 บันทึกรายการลง usersRoundCrossCheck (แทนการลง roundBets โดยตรง)
             const newPokBet = {
+                gameType: 'pok',
                 name: displayName,
                 memberNumber: userData.memberNumber || "-",
                 betType: formattedType,
                 type: formattedType,
-                detail: `${formattedType}-${betAmount}`,
                 pricePerLeg: betAmount,
                 actualBet: totalActualBet,
                 holdCost: finalHoldCost,
                 maxMultiplier: maxHandMultiplier,
                 legsCount: legsCount,
+                side: side,
                 time: new Date().toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok' }),
                 timestamp: Date.now(),
                 source: 'web',
                 via: 'LIFF_WEB'
             };
 
-            // บันทึกสถานะฝั่งที่แทงลง RAM เพื่อป้องกันแทงสวน
-            if (typeof usersRoundCrossCheck !== 'undefined') {
-                for (let leg of legsToTest) {
-                    usersRoundCrossCheck[userId][leg] = side;
-                }
-            }
+            // Push เข้า usersRoundCrossCheck ใน Firebase
+            await db.ref(`system_data/usersRoundCrossCheck/${userId}`).push(newPokBet);
 
-            // 6. Push และซิงค์ลง RAM บอท LINE + Firebase Realtime DB
-            currentPokBets.push(newPokBet);
-
-            if (typeof roundBets !== 'undefined') {
-                roundBets[userId] = currentPokBets;
-            }
-
-            // บันทึก Array กลับเข้า Firebase (ใช้ .set เพื่อให้คืนโพย r ล้างค่าได้สมบูรณ์)
-            await db.ref(`system_data/roundBets/${userId}`).set(currentPokBets);
-
-            // 7. หักเงินค้ำประกันผู้เล่น
+            // หักเงินค้ำประกันผู้เล่น
             const newBalance = userBalance - finalHoldCost;
             await userWalletRef.update({ balance: newBalance });
 

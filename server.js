@@ -3175,6 +3175,31 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
             let tempSide = tracker.side;
             let tempSingles = new Set(tracker.singles);
 
+            // 💡 [เพิ่มระบบคำนวณยอดแทงสะสมในรอบปัจจุบัน]
+            let existingCategoryTotals = {}; 
+            let existingSingleTotals = { '1': 0, '2': 0, '3': 0, '4': 0, '5': 0, '6': 0 };
+
+            if (hiloRoundBets[userId] && hiloRoundBets[userId].length > 0) {
+                hiloRoundBets[userId].forEach(prevBet => {
+                    const bType = prevBet.betType;
+                    const bPrice = prevBet.pricePerLeg || prevBet.price; // ราคาทุนต่อรายการ/ต่อหน้า
+                    
+                    if (bType === "เต็ง") {
+                        // สะสมยอดรายตัวเลขสำหรับเต็ง
+                        const digits = (prevBet.target || "").split('');
+                        digits.forEach(d => {
+                            if (existingSingleTotals[d] !== undefined) {
+                                existingSingleTotals[d] += bPrice;
+                            }
+                        });
+                    } else {
+                        // สะสมยอดสำหรับหมวดหมู่อื่นๆ โดยใช คีย์ = "betType_target"
+                        const key = `${bType}_${prevBet.target}`;
+                        existingCategoryTotals[key] = (existingCategoryTotals[key] || 0) + bPrice;
+                    }
+                });
+            }
+
             const lines = originalMsg.split(/\r?\n/);
             let totalHiloBet = 0;
             let processedHiloBets = [];
@@ -3352,6 +3377,38 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
                     break;
                 }
 
+                // 🔍 ตรวจเช็คยอดสะสมตามประเภท
+                if (betType === "เต็ง") {
+                    const digits = targetStr.split('');
+                    for (let d of digits) {
+                        const currentDigitTotal = (existingSingleTotals[d] || 0) + price;
+                        if (currentDigitTotal > maxAllowed) {
+                            hasError = true;
+                            const prevAmount = existingSingleTotals[d] || 0;
+                            errorMsg = `❌ แทงไม่สำเร็จ! เต็งหน้า ${d} มียอดแทงสะสมเกินลิมิตสูงสุด ${maxAllowed} บาทต่อหน้า\n(ยอดเดิม: ${prevAmount} บ. + ยอดใหม่: ${price} บ. = ${currentDigitTotal} บ.)`;
+                            break;
+                        }
+                    }
+                    if (hasError) break;
+
+                    // อัปเดตยอดสะสมชั่วคราว
+                    digits.forEach(d => {
+                        existingSingleTotals[d] = (existingSingleTotals[d] || 0) + price;
+                    });
+                } else {
+                    const key = `${betType}_${targetStr}`;
+                    const currentCategoryTotal = (existingCategoryTotals[key] || 0) + price;
+                    if (currentCategoryTotal > maxAllowed) {
+                        hasError = true;
+                        const prevAmount = existingCategoryTotals[key] || 0;
+                        errorMsg = `❌ แทงไม่สำเร็จ! รายการ [${categoryName}] มียอดแทงสะสมเกินลิมิตสูงสุด ${maxAllowed} บาท\n(ยอดเดิม: ${prevAmount} บ. + ยอดใหม่: ${price} บ. = ${currentCategoryTotal} บ.)`;
+                        break;
+                    }
+                    
+                    // อัปเดตยอดสะสมชั่วคราว
+                    existingCategoryTotals[key] = currentCategoryTotal;
+                }
+
                 // คำนวณราคารวมจริง (กรณีเต็งหลายหน้า)
                 let lineTotalPrice = price;
                 if (betType === "เต็ง" && targetStr.length > 1) {
@@ -3400,6 +3457,27 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
                             "wrap": true
                         });
                     });
+
+                    // 🌟 บันทึกข้อมูลลง Firebase แบบ Batch Update (ปลอดภัยและรวดเร็ว)
+                    try {
+                        const updates = {};
+                        updates[`system_data/hiloRoundBets/${userId}`] = hiloRoundBets[userId];
+                        updates[`system_data/usersWallets/${userId}/balance`] = user.balance;
+                        if (user.totalTurnover !== undefined) {
+                            updates[`system_data/usersWallets/${userId}/totalTurnover`] = (user.totalTurnover || 0) + totalHiloBet;
+                        }
+
+                        await db.ref().update(updates);
+                    } catch (dbErr) {
+                        console.error("❌ บันทึกข้อมูลไฮโลลง Firebase ล้มเหลว:", dbErr.message);
+                        user.balance += totalHiloBet; // คืนเงินหากบันทึกไม่สำเร็จ
+                        
+                        await axios.post('https://api.line.me/v2/bot/message/reply', {
+                            replyToken: replyToken,
+                            messages: [{ type: "text", text: "❌ เกิดข้อผิดพลาดในการบันทึกโพยไฮโล กรุณาลองส่งใหม่อีกครั้งครับ" }]
+                        }, { headers: { 'Authorization': `Bearer ${TOKEN}` } });
+                        return;
+                    }
 
                     // 🚀 ส่ง Flex Message ยืนยันโพยไฮโล
                     try {

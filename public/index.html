@@ -630,6 +630,10 @@ function renderAllBetsUI() {
         }
         document.getElementById('total-pending-amount').innerText = `${total.toLocaleString()} ฿`;
     }
+    function clearPendingBets() {
+        pendingBets = {};
+        updateBoardUI();
+    }
     
   // ฟังก์ชันจัดกลุ่มคำสั่งสำหรับป๊อกเด้งและไฮโล
 function buildGroupedBetCommandsFromPending(pendingBetsObj, currentTab) {

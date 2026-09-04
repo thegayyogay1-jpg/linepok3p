@@ -6593,27 +6593,16 @@ app.post('/api/web-bet-trigger', async (req, res) => {
             });
         }
 
+       // =========================================================
+        // 🔴 2. ประมวลผลการแทงโพยป๊อกเด้ง
         // =========================================================
-        // 🔴 2. ถ้าไม่ใช่คำสั่งระบบ ถึงส่งไปประมวลผลการรับแทง
-        // =========================================================
-        
-        // ตรวจสอบรูปแบบโพยป๊อกเด้ง (ต้องมีเครื่องหมาย -)
         if (betText.includes('-')) {
-            const isBetFormatValid = checkBetFormat(userMsg);
-            if (!isBetFormatValid) {
-                return res.json({ 
-                    success: false, 
-                    message: `รูปแบบโพยไม่ถูกต้อง: "${betText}" (ตัวอย่าง: 1-100)` 
-                });
-            }
-
+            // ส่งไปให้ฟังก์ชัน processPokDengBet จัดการตรวจสอบรูปแบบและบันทึกโพยโดยตรง
             const result = await processPokDengBet(userId, betText);
             return res.json(result);
-        } 
+        }
 
-        // ตรวจสอบโพยเกมประเภทอื่นๆ เพิ่มเติมตรงนี้ (ถ้ามี)
-
-        return res.json({ success: false, message: 'รูปแบบการแทงไม่ตรงตามเงื่อนไขที่กำหนด' });
+        return res.json({ success: false, message: 'รูปแบบการแทงไม่ถูกต้อง (ตัวอย่าง: 1-100)' });
 
     } catch (error) {
         console.error("❌ Web Bet Trigger Error:", error);

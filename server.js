@@ -2799,6 +2799,25 @@ else if (promotions[userMsg.trim()]) {
                         }
                         let betTracker = usersRoundCrossCheck[userId];
 
+                        // 💡 [เพิ่มระบบคำนวณยอดแทงสะสมรายขาในรอบปัจจุบัน]
+                        let existingLegBets = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+                        if (roundBets[userId] && roundBets[userId].length > 0) {
+                            roundBets[userId].forEach(prevBet => {
+                                const type = prevBet.betType;
+                                const p = prevBet.pricePerLeg;
+
+                                if (type === "รข" || type === "รจ") {
+                                    for (let i = 1; i <= 6; i++) existingLegBets[i] += p;
+                                } else if (type.startsWith("จ")) {
+                                    const legs = type.substring(1).split('');
+                                    legs.forEach(l => { if (existingLegBets[l] !== undefined) existingLegBets[l] += p; });
+                                } else {
+                                    const legs = type.split('');
+                                    legs.forEach(l => { if (existingLegBets[l] !== undefined) existingLegBets[l] += p; });
+                                }
+                            });
+                        }
+
                         const allowedLegs = ['1', '2', '3', '4', '5', '6'];
                         const MIN_BET = 10;
                         const MAX_BET = 2500;
@@ -2828,6 +2847,33 @@ else if (promotions[userMsg.trim()]) {
                                 errorMsg = `❌ แทงไม่สำเร็จ! ยอดแทงต่อขาต้องอยู่ระหว่าง ${MIN_BET} ถึง ${MAX_BET} บาทครับ\n(คุณพิมพ์มา ขาละ ${price} บาท ในบรรทัด: "${line}")`;
                                 break;
                             }
+
+                            // 🔍 ตรวจสอบรายการขาที่จะถูกแทงในบรรทัดนี้เพื่อเช็คยอดรวมสะสม
+                            let targetLegsArr = [];
+                            if (targetStr === "รข" || targetStr === "รจ") {
+                                targetLegsArr = ['1', '2', '3', '4', '5', '6'];
+                            } else if (targetStr.startsWith('จ')) {
+                                targetLegsArr = targetStr.substring(1).split('');
+                            } else {
+                                targetLegsArr = targetStr.split('');
+                            }
+
+                            // 🚫 ตรวจเช็คว่าเมื่อรวมโพยเก่า + โพยใหม่ ยอดแทงขานั้นเกิน MAX_BET หรือไม่
+                            for (let leg of targetLegsArr) {
+                                const currentLegTotal = (existingLegBets[leg] || 0) + price;
+                                if (currentLegTotal > MAX_BET) {
+                                    hasError = true;
+                                    const prevAmount = existingLegBets[leg] || 0;
+                                    errorMsg = `❌ แทงไม่สำเร็จ! ขา ${leg} มียอดแทงรวมสะสมเกินลิมิตสูงสุด ${MAX_BET} บาทต่อขา\n(ยอดเดิม: ${prevAmount} บ. + ยอดใหม่: ${price} บ. = ${currentLegTotal} บ.)`;
+                                    break;
+                                }
+                            }
+                            if (hasError) break;
+
+                            // 🔄 อัปเดตยอดสะสมชั่วคราวสำหรับรองรับกรณีแทงหลายบรรทัดในโพยเดียวกัน
+                            targetLegsArr.forEach(leg => {
+                                existingLegBets[leg] = (existingLegBets[leg] || 0) + price;
+                            });
 
                             let legsCount = 0;
                             let betTypeDetail = "";

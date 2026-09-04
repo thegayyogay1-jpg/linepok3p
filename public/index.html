@@ -376,17 +376,64 @@ function listenToUserData() {
         // แปลงเป็น Array เพื่อรองรับข้อมูลทั้งแบบ Array และ Object
         const betsList = Array.isArray(betsData) ? betsData : Object.values(betsData);
 
-        betsList.forEach((bet, index) => {
+        // 🟢 1. แยกรายการแทงออกเป็น 2 กลุ่ม (ป๊อกเด้ง / ไฮโล)
+        const pokBets = [];
+        const hiloBets = [];
+        let totalHold = 0;
+
+        betsList.forEach((bet) => {
             if (!bet) return;
             totalHold += (bet.holdCost || 0);
-            html += `
-                <div class="flex justify-between items-center py-1 border-b border-gray-800 text-xs text-gray-200">
-                    <span>${index + 1}. ♠️ ${bet.detail}</span>
-                    <span class="text-yellow-400 font-bold">${(bet.actualBet || 0).toLocaleString()} B</span>
-                </div>
-            `;
+
+            // เช็คประเภทเกมจากข้อมูลใน bet
+            const detailText = bet.detail || bet.rawText || bet.option || bet.betType || '';
+            const isHilo = bet.gameType === 'hilo' || 
+                           detailText.includes('z') || 
+                           detailText.includes('สูง') || 
+                           detailText.includes('ต่ำ') || 
+                           detailText.includes('11') ||
+                           /^[ตส]\d+/.test(detailText);
+
+            if (isHilo) {
+                hiloBets.push(bet);
+            } else {
+                pokBets.push(bet);
+            }
         });
 
+        // 🟢 2. สร้าง HTML สำหรับแสดงโพยป๊อกเด้ง
+        if (pokBets.length > 0) {
+            html += `<div class="font-bold text-xs text-cyan-400 mb-1 flex items-center gap-1">♠️ โพยป๊อกเด้ง (${pokBets.length} รายการ)</div>`;
+            pokBets.forEach((bet, index) => {
+                const text = bet.detail || bet.rawText || 'ป๊อกเด้ง';
+                const price = bet.actualBet || bet.price || bet.amount || 0;
+                html += `
+                    <div class="flex justify-between items-center py-1 border-b border-gray-800 text-xs text-gray-200 pl-2">
+                        <span>${index + 1}. ${text}</span>
+                        <span class="text-yellow-400 font-bold">${price.toLocaleString()} B</span>
+                    </div>
+                `;
+            });
+        }
+
+        // 🟢 3. สร้าง HTML สำหรับแสดงโพยไฮโล
+        if (hiloBets.length > 0) {
+            const marginTop = pokBets.length > 0 ? 'mt-3' : '';
+            html += `<div class="font-bold text-xs text-purple-400 mb-1 ${marginTop} flex items-center gap-1">🎲 โพยไฮโล (${hiloBets.length} รายการ)</div>`;
+            hiloBets.forEach((bet, index) => {
+                // ดึงข้อความไฮโล (รองรับทั้ง bet.detail, bet.rawText, bet.option ฯลฯ)
+                const text = bet.detail || bet.rawText || bet.option || bet.betType || 'ไฮโล';
+                const price = bet.actualBet || bet.price || bet.amount || 0;
+                html += `
+                    <div class="flex justify-between items-center py-1 border-b border-gray-800 text-xs text-gray-200 pl-2">
+                        <span>${index + 1}. ${text}</span>
+                        <span class="text-purple-300 font-bold">${price.toLocaleString()} B</span>
+                    </div>
+                `;
+            });
+        }
+
+        // แสดงยอดเงินล็อกค้ำประกัน (ถ้ามี)
         if (totalHold > 0) {
             html += `
                 <div class="mt-2 text-xs text-amber-500 font-bold">

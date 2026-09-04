@@ -606,8 +606,10 @@ function renderAllBetsUI() {
         updateBoardUI();
     }
     
+    // 🟢 ปรับปรุง updateBoardUI ให้เรียกใช้ renderChipOnTile เพื่อเปลี่ยนเป็นชิป 3D
     function updateBoardUI() {
         let total = 0;
+        // ล้างค่าชิปทั้งหมดบนกระดานก่อน
         document.querySelectorAll('[id^="pok-chip-"], [id^="hilo-chip-"]').forEach(el => {
             el.innerText = '0';
             el.classList.add('hidden');
@@ -622,17 +624,11 @@ function renderAllBetsUI() {
             } else {
                 elementId = `hilo-chip-${key}`;
             }
-            const chipEl = document.getElementById(elementId);
-            if (chipEl) {
-                chipEl.innerText = `${amount}฿`;
-                chipEl.classList.remove('hidden');
-            }
+
+            // 🌟 เรียกใช้ฟังก์ชันแสดงชิป 3D เรืองแสงและเด้งตามยอดเงิน
+            renderChipOnTile(elementId, amount);
         }
         document.getElementById('total-pending-amount').innerText = `${total.toLocaleString()} ฿`;
-    }
-    function clearPendingBets() {
-        pendingBets = {};
-        updateBoardUI();
     }
     
   // ฟังก์ชันจัดกลุ่มคำสั่งสำหรับป๊อกเด้งและไฮโล

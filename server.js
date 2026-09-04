@@ -3539,7 +3539,7 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
                 // ---------------- 2. แปลงคำและประเภทเดิมพัน ----------------
                 // 2.1 [กรณีพิเศษ] 11 ไฮโล
                 if (targetStr === "11") { 
-                    categoryName = "11 ไฮโล"; 
+                    categoryName = "11ไฮโล"; 
                     betType = "11"; 
                     isValidType = true; 
                 }
@@ -3560,7 +3560,7 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
                 }
 
                 // 2.4 คู่ สูง/ต่ำ + เลข (เช่น ต1, ส6)
-                else if ((targetStr.startsWith("ต") || targetStr.startsWith("ส")) && targetStr.length === 2) {
+                else if ((targetStr.startsWith("ต") || targetStr.startsWith("ส") || targetStr.startsWith("ต่ำ") || targetStr.startsWith("สูง")) && targetStr.length === 2) {
                     const side = targetStr.startsWith("ต") ? "ต่ำ" : "สูง";
                     const num = targetStr.substring(1);
                     if (['1','2','3','4','5','6'].includes(num)) {

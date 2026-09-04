@@ -6267,198 +6267,35 @@ if (event.source.type === 'user') {
 app.get('/', (req, res) => { res.send('ระบบลงทะเบียนรันปกติ'); });
 app.use(express.static('public'));
 
-app.post('/api/place-bet', async (req, res) => {
+// Endpoint สำหรับรับโพยจากหน้าเว็บ LIFF
+app.post('/api/web-bet-trigger', async (req, res) => {
     try {
-        const { userId, amount, type } = req.body;
+        const { userId, betText } = req.body; 
+        // betText คือข้อความรูปแบบเดียวกับที่พิมพ์ในไลน์ เช่น "1-100", "จ1-100", "สูง 100"
 
-        if (!userId || !amount || amount <= 0 || !type) {
-            return res.json({ success: false, message: 'ข้อมูลไม่ถูกต้อง' });
+        if (!userId || !betText) {
+            return res.json({ success: false, message: 'ข้อมูลไม่ครบถ้วน' });
         }
 
-        // 1. ดึงข้อมูลระบบ และข้อมูลผู้ใช้
-        const systemSnap = await db.ref('system_data').once('value');
-        const systemData = systemSnap.val() || {};
+        // 🌟 เรียกใช้ฟังก์ชันประมวลผลข้อความแทงเดิมของบอทไลน์ได้เลย!
+        // (สมมติชื่อฟังก์ชันประมวลผลของคุณคือ processUserBetMessage)
+        const result = await processUserBetMessage(userId, betText, 'WEB_LIFF');
 
-        if (!systemData.isRoundOpen) {
-            return res.json({ success: false, message: '🚫 ขณะนี้ปิดรับโพยชั่วคราวครับ' });
-        }
-
-        const userWalletRef = db.ref(`system_data/usersWallets/${userId}`);
-        const userSnap = await userWalletRef.once('value');
-        const userData = userSnap.val();
-
-        if (!userData) {
-            return res.json({ success: false, message: '📢 ไม่พบข้อมูลสมาชิก กรุณาลงทะเบียนก่อนแทงครับ' });
-        }
-
-        // 2. ดักจับสถานะล็อกถอนเงิน
-        if (userData.isWithdrawLocked) {
-            return res.json({ 
-                success: false, 
-                message: `❌ บัญชีถูกล็อกชั่วคราว อยู่ระหว่างรออนุมัติยอดถอน (${userData.pendingWithdrawAmount || 0} บาท)` 
-            });
-        }
-
-        // 3. กำหนดตัวแปร ยอดเงินคงเหลือ
-        const userBalance = Number(userData.balance || 0);
-        const betAmount = Number(amount);
-
-        // 4. จำแนกประเภทการแทง (ไฮโล vs ป๊อกเด้ง)
-        const isHilo = type.startsWith('z') || ['สูง', 'ต่ำ', '11ไฮโล', '123', '456', 'ตองรวม'].includes(type) || type.startsWith('ตอง');
-        const isDealerPok = type.startsWith('เจ้าสู้ขา');
-
-        // ==========================================
-        // [ จุดแก้ไขหลักที่ 1: บันทึกไฮโลเข้า CrossCheck ]
-        // ==========================================
-        if (isHilo) {
-            const MIN_BET = 10;
-            const MAX_BET_MAP = {
-                "ส/ต": 5000,
-                "11": 1000,
-                "โต๊ด3": 2000,
-                "โต๊ด2": 2000,
-                "ตองรวม": 1000,
-                "ตองเจาะ": 500,
-                "เต็ง": 3000
-            };
-
-            if (betAmount < MIN_BET) {
-                return res.json({ success: false, message: `ไฮโลแทงขั้นต่ำ ${MIN_BET} บาท` });
-            }
-
-            let hiloCategory = "เต็ง";
-            if (type === 'สูง' || type === 'ต่ำ') hiloCategory = "ส/ต";
-            else if (type === '11ไฮโล' || type === '11') hiloCategory = "11";
-            else if (type === '123' || type === '456') hiloCategory = "โต๊ด3";
-            else if (type === 'ตองรวม' || type === 'ตอง') hiloCategory = "ตองรวม";
-            else if (type.startsWith('ตอง')) hiloCategory = "ตองเจาะ";
-            else if (type.length === 2 && !isNaN(type)) hiloCategory = "โต๊ด2";
-
-            const maxLimit = MAX_BET_MAP[hiloCategory] || 1000;
-            if (betAmount > maxLimit) {
-                return res.json({ success: false, message: `ไฮโลหมวด [${hiloCategory}] แทงได้สูงสุดไม่เกิน ${maxLimit} บาท` });
-            }
-
-            if (userBalance < betAmount) {
-                return res.json({ success: false, message: `❌ เครดิตไม่พอ (ต้องการ ${betAmount} ฿ / มี ${userBalance} ฿)` });
-            }
-
-            // 🌟 บันทึกรายการลง usersRoundCrossCheck (แทนการลง hiloRoundBets โดยตรง)
-            const newHiloBet = {
-                gameType: 'hilo',
-                category: type,
-                type: type,
-                amount: betAmount,
-                timestamp: Date.now(),
-                source: 'web',
-                via: 'LIFF_WEB'
-            };
-
-            // Push เข้า usersRoundCrossCheck ใน Firebase
-            await db.ref(`system_data/usersRoundCrossCheck/${userId}`).push(newHiloBet);
-
-            // หักเงินผู้ใช้
-            const newBalance = userBalance - betAmount;
-            await userWalletRef.update({ balance: newBalance });
-            if (typeof usersWallets !== 'undefined' && usersWallets[userId]) {
-                usersWallets[userId].balance = newBalance;
-            }
-
-            return res.json({ success: true, message: 'บันทึกโพยไฮโลสำเร็จ' });
-        } 
-
-        // ==========================================
-        // [ จุดแก้ไขหลักที่ 2: บันทึกป๊อกเด้งเข้า CrossCheck ]
-        // ==========================================
-        else {
-            const POK_MIN_BET = 10;
-            const POK_MAX_BET = 2500;
-
-            if (betAmount < POK_MIN_BET || betAmount > POK_MAX_BET) {
-                return res.json({ success: false, message: `❌ ยอดแทงต่อขาต้องอยู่ระหว่าง ${POK_MIN_BET} ถึง ${POK_MAX_BET} บาท` });
-            }
-
-            let formattedType = type;
-            let side = 'player';
-
-            if (isDealerPok) {
-                side = 'dealer';
-                formattedType = `จ${type.replace('เจ้าสู้ขา', '').trim()}`;
-            } else {
-                side = 'player';
-                formattedType = type.replace('ขาที่', '').trim();
-            }
-
-            if (formattedType === 'รข') { side = 'player'; }
-            if (formattedType === 'รจ') { side = 'dealer'; }
-
-            const targetLegs = formattedType.replace(/[จ|รข|รจ]/g, '').split('');
-            const legsToTest = targetLegs.length > 0 && targetLegs[0] !== '' ? targetLegs : ['1', '2', '3', '4', '5', '6'];
-
-            // คำนวณจำนวนขาจริงและยอดค้ำประกัน
-            let legsCount = legsToTest.length;
-            const totalActualBet = betAmount * legsCount;
-            const doubleHoldCost = totalActualBet * 2;
-            const tripleHoldCost = totalActualBet * 3;
-
-            let finalHoldCost = 0;
-            let maxHandMultiplier = 3;
-
-            if (userBalance < doubleHoldCost) {
-                return res.json({ 
-                    success: false, 
-                    message: `❌ เครดิตไม่พอสำหรับค้ำประกันขั้นต่ำ (2 เด้ง)\n💸 ยอดแทงรวม: ${totalActualBet} ฿\n🔒 ค้ำประกันขั้นต่ำ (x2): ${doubleHoldCost} ฿\n💰 เครดิตที่มี: ${userBalance} ฿` 
-                });
-            } else if (userBalance >= doubleHoldCost && userBalance < tripleHoldCost) {
-                maxHandMultiplier = 2;
-                finalHoldCost = doubleHoldCost;
-            } else {
-                maxHandMultiplier = 3;
-                finalHoldCost = tripleHoldCost;
-            }
-
-            const displayName = userData.nickname || userData.name || "ไม่ระบุชื่อ";
-
-            // 🌟 บันทึกรายการลง usersRoundCrossCheck (แทนการลง roundBets โดยตรง)
-            const newPokBet = {
-                gameType: 'pok',
-                name: displayName,
-                memberNumber: userData.memberNumber || "-",
-                betType: formattedType,
-                type: formattedType,
-                pricePerLeg: betAmount,
-                actualBet: totalActualBet,
-                holdCost: finalHoldCost,
-                maxMultiplier: maxHandMultiplier,
-                legsCount: legsCount,
-                side: side,
-                time: new Date().toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok' }),
-                timestamp: Date.now(),
-                source: 'web',
-                via: 'LIFF_WEB'
-            };
-
-            // Push เข้า usersRoundCrossCheck ใน Firebase
-            await db.ref(`system_data/usersRoundCrossCheck/${userId}`).push(newPokBet);
-
-            // หักเงินค้ำประกันผู้เล่น
-            const newBalance = userBalance - finalHoldCost;
-            await userWalletRef.update({ balance: newBalance });
-
-            if (typeof usersWallets !== 'undefined' && usersWallets[userId]) {
-                usersWallets[userId].balance = newBalance;
-            }
-
+        if (result.success) {
             return res.json({ 
                 success: true, 
-                message: `บันทึกโพยสำเร็จ (หักค้ำประกัน x${maxHandMultiplier} = ${finalHoldCost} บาท)`,
-                newBalance: newBalance
+                message: result.message || `บันทึกโพย [${betText}] สำเร็จ!` 
+            });
+        } else {
+            return res.json({ 
+                success: false, 
+                message: result.message || 'ไม่สามารถบันทึกโพยได้' 
             });
         }
 
     } catch (error) {
-        console.error('Place Bet Error:', error);
-        return res.json({ success: false, message: `Server Error: ${error.message}` });
+        console.error("Web Bet Trigger Error:", error);
+        return res.json({ success: false, message: 'เกิดข้อผิดพลาดที่บอทหลัก: ' + error.message });
     }
 });
 // 📥 3. API รับโพยแทงจากหน้าเว็บ LIFF (ปรับปรุงใหม่)

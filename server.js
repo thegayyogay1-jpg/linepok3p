@@ -6519,6 +6519,16 @@ app.post('/api/web-bet-trigger', async (req, res) => {
             return res.json({ success: false, message: 'ข้อมูลที่ส่งมาไม่สมบูรณ์' });
         }
 
+        const cleanText = betText.trim().toLowerCase();
+
+        // 1. ดักจับคำสั่งคืนโพย (r = ป๊อกเด้ง, rz = ไฮโล)
+        if (cleanText === 'r' || cleanText === 'rz') {
+            // เรียกใช้ฟังก์ชันประมวลผลคำสั่งของบอทไลน์เดิมที่คุณมี
+            // (เปลี่ยนชื่อฟังก์ชัน processLineCommand เป็นฟังก์ชันที่บอทคุณใช้จัดการข้อความแชท)
+            const result = await processLineCommand(userId, cleanText); 
+            return res.json(result || { success: true, message: 'ทำรายการ คืนโพย เรียบร้อย' });
+        }
+
         if (betText.includes('-')) {
             const result = await processPokDengBet(userId, betText);
             return res.json(result);

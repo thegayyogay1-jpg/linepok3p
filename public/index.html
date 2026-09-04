@@ -545,7 +545,7 @@ function buildGroupedBetCommandsFromPending(pendingBetsObj, currentTab) {
     } else if (currentTab === 'hilo') {
         // ฝั่งไฮโล ยิงส่งตามปกติ
         for (const [key, amount] of Object.entries(pendingBetsObj)) {
-            commands.push(`${key} ${amount}`);
+            commands.push(`z${key}-${amount}`);
         }
     }
 

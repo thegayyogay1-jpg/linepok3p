@@ -358,103 +358,88 @@ function listenToUserData() {
         }
     });
 
-    // 2. 🌟 [วางโค้ดฟังโพย Real-time ตรงจุดนี้]
-    const dbRef = db.ref(`system_data/roundBets/${currentUserId}`);
+    // 2. 🌟 ดึงข้อมูลโพยป๊อกเด้ง และ ไฮโล แบบ Real-time
+    db.ref(`system_data/roundBets/${currentUserId}`).on('value', (snapPok) => {
+        localPokBets = snapPok.val() || {};
+        renderAllBetsUI();
+    });
 
-    dbRef.on('value', (snapshot) => {
-        const betsData = snapshot.val();
-        const betsContainer = document.getElementById('myBetsContainer'); // Element แสดงโพยหน้าเว็บ
-        
-        if (!betsData || Object.keys(betsData).length === 0) {
-            betsContainer.innerHTML = `<div class="text-gray-400 text-sm">ยังไม่มีรายการแทงในรอบนี้</div>`;
-            return;
-        }
+    db.ref(`system_data/hiloRoundBets/${currentUserId}`).on('value', (snapHilo) => {
+        localHiloBets = snapHilo.val() || {};
+        renderAllBetsUI();
+    });
+}
 
-        let html = '';
-        let totalHold = 0;
+// 🟢 ฟังก์ชันวาด UI แสดงรายการโพยรวมทั้ง ป๊อกเด้ง และ ไฮโล
+function renderAllBetsUI() {
+    const betsContainer = document.getElementById('myBetsContainer');
+    if (!betsContainer) return;
 
-        // แปลงเป็น Array เพื่อรองรับข้อมูลทั้งแบบ Array และ Object
-        const betsList = Array.isArray(betsData) ? betsData : Object.values(betsData);
+    const pokList = Array.isArray(localPokBets) ? localPokBets : Object.values(localPokBets);
+    const hiloList = Array.isArray(localHiloBets) ? localHiloBets : Object.values(localHiloBets);
 
-        // 🟢 1. แยกรายการแทงออกเป็น 2 กลุ่ม (ป๊อกเด้ง / ไฮโล)
-        const pokBets = [];
-        const hiloBets = [];
+    if (pokList.length === 0 && hiloList.length === 0) {
+        betsContainer.innerHTML = `<div class="text-gray-400 text-sm text-center py-2">ยังไม่มีรายการแทงในรอบนี้</div>`;
+        return;
+    }
 
-        betsList.forEach((bet) => {
+    let html = '';
+    let totalHold = 0;
+
+    // ♠️ 1. แสดงโพยป๊อกเด้ง
+    if (pokList.length > 0) {
+        html += `<div class="font-bold text-xs text-cyan-400 mb-1 flex items-center gap-1">♠️ โพยป๊อกเด้ง (${pokList.length} รายการ)</div>`;
+        pokList.forEach((bet, index) => {
             if (!bet) return;
             totalHold += (bet.holdCost || 0);
-
-            // เช็คประเภทเกมจากข้อมูลใน bet
-            const detailText = bet.detail || bet.rawText || bet.option || bet.betType || '';
-            const isHilo = bet.gameType === 'hilo' || 
-                           detailText.includes('z') || 
-                           detailText.includes('สูง') || 
-                           detailText.includes('ต่ำ') || 
-                           detailText.includes('11') ||
-                           /^[ตส]\d+/.test(detailText);
-
-            if (isHilo) {
-                hiloBets.push(bet);
-            } else {
-                pokBets.push(bet);
-            }
-        });
-
-        // 🟢 2. สร้าง HTML สำหรับแสดงโพยป๊อกเด้ง
-        if (pokBets.length > 0) {
-            html += `<div class="font-bold text-xs text-cyan-400 mb-1 flex items-center gap-1">♠️ โพยป๊อกเด้ง (${pokBets.length} รายการ)</div>`;
-            pokBets.forEach((bet, index) => {
-                const text = bet.detail || bet.rawText || 'ป๊อกเด้ง';
-                const price = bet.actualBet || bet.price || bet.amount || 0;
-                html += `
-                    <div class="flex justify-between items-center py-1 border-b border-gray-800 text-xs text-gray-200 pl-2">
-                        <span>${index + 1}. ${text}</span>
-                        <span class="text-yellow-400 font-bold">${price.toLocaleString()} B</span>
-                    </div>
-                `;
-            });
-        }
-
-        // 🟢 3. สร้าง HTML สำหรับแสดงโพยไฮโล
-        if (hiloBets.length > 0) {
-            const marginTop = pokBets.length > 0 ? 'mt-3' : '';
-            html += `<div class="font-bold text-xs text-purple-400 mb-1 ${marginTop} flex items-center gap-1">🎲 โพยไฮโล (${hiloBets.length} รายการ)</div>`;
-            hiloBets.forEach((bet, index) => {
-                // ดึงข้อความไฮโล (รองรับทั้ง bet.detail, bet.rawText, bet.option ฯลฯ)
-                const text = bet.detail || bet.rawText || bet.option || bet.betType || 'ไฮโล';
-                const price = bet.actualBet || bet.price || bet.amount || 0;
-                html += `
-                    <div class="flex justify-between items-center py-1 border-b border-gray-800 text-xs text-gray-200 pl-2">
-                        <span>${index + 1}. ${text}</span>
-                        <span class="text-purple-300 font-bold">${price.toLocaleString()} B</span>
-                    </div>
-                `;
-            });
-        }
-
-        // แสดงยอดเงินล็อกค้ำประกัน (ถ้ามี)
-        if (totalHold > 0) {
+            const text = bet.detail || bet.rawText || 'ป๊อกเด้ง';
+            const price = bet.actualBet || bet.price || bet.amount || 0;
             html += `
-                <div class="mt-2 text-xs text-amber-500 font-bold">
-                    🔒 ล็อกค้ำประกันรวม: ${totalHold.toLocaleString()} บาท
+                <div class="flex justify-between items-center py-1 border-b border-gray-800 text-xs text-gray-200 pl-2">
+                    <span>${index + 1}. ${text}</span>
+                    <span class="text-yellow-400 font-bold">${price.toLocaleString()} B</span>
                 </div>
             `;
-        }
-        // 🌟 ปุ่มคืนโพยแยก 2 ปุ่ม (ป๊อกเด้งส่ง "r" / ไฮโลส่ง "rz")
-            html += `
-                <div class="grid grid-cols-2 gap-2 mt-3">
-                    <button onclick="cancelMyBets('r', 'ป๊อกเด้ง')" class="py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-lg shadow border border-red-500 flex items-center justify-center gap-1">
-                        🗑️ คืนโพยป๊อก
-                    </button>
-                    <button onclick="cancelMyBets('rz', 'ไฮโล')" class="py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-lg shadow border border-purple-500 flex items-center justify-center gap-1">
-                        🗑️ คืนโพยไฮโล
-                    </button>
-                </div>
-            `;
-
-            betsContainer.innerHTML = html;
         });
     }
+
+    // 🎲 2. แสดงโพยไฮโล
+    if (hiloList.length > 0) {
+        const marginTop = pokList.length > 0 ? 'mt-3' : '';
+        html += `<div class="font-bold text-xs text-purple-400 mb-1 ${marginTop} flex items-center gap-1">🎲 โพยไฮโล (${hiloList.length} รายการ)</div>`;
+        hiloList.forEach((bet, index) => {
+            if (!bet) return;
+            totalHold += (bet.holdCost || 0);
+            const text = bet.detail || bet.rawText || bet.category || (bet.target ? `แทง ${bet.target}` : 'ไฮโล');
+            const price = bet.actualBet || bet.price || bet.amount || 0;
+            html += `
+                <div class="flex justify-between items-center py-1 border-b border-gray-800 text-xs text-gray-200 pl-2">
+                    <span>${index + 1}. ${text}</span>
+                    <span class="text-purple-300 font-bold">${price.toLocaleString()} B</span>
+                </div>
+            `;
+        });
+    }
+
+    // ยอดเงินล็อกค้ำประกันรวม
+    if (totalHold > 0) {
+        html += `<div class="mt-2 text-xs text-amber-500 font-bold">🔒 ล็อกค้ำประกันรวม: ${totalHold.toLocaleString()} บาท</div>`;
+    }
+
+    // ปุ่มกดคืนโพยแยกประเภท
+    html += `
+        <div class="grid grid-cols-2 gap-2 mt-3">
+            <button onclick="cancelMyBets('r', 'ป๊อกเด้ง')" class="py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-lg shadow border border-red-500 flex items-center justify-center gap-1">
+                🗑️ คืนโพยป๊อก
+            </button>
+            <button onclick="cancelMyBets('rz', 'ไฮโล')" class="py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-lg shadow border border-purple-500 flex items-center justify-center gap-1">
+                🗑️ คืนโพยไฮโล
+            </button>
+        </div>
+    `;
+
+    betsContainer.innerHTML = html;
+}
     
     // 4. ฟังก์ชันส่งคำขอคืนโพย (รองรับทั้ง "r" และ "rz")
     async function cancelMyBets(command, gameName) {
@@ -603,10 +588,10 @@ const MAX_POK_LIMIT = 2500; // ลิมิตต่อขา (เปลี่�
 
 // ==================== 2. ฟังก์ชันตรวจสอบยอดแทงสะสมป๊อกเด้ง ====================
 async function checkPokBetLimit(userId, pendingBetsObj) {
-    let existingTotals = {}; // เก็บยอดที่เคยแทงไปแล้วแยกตามขา เช่น { "1": 1000, "จ1": 500 }
+    let existingTotals = {};
 
-    // ดึงโพยเดิมที่เคยแทงสำเร็จในรอบนี้จาก Firebase
     try {
+        // ดึงเฉพาะโพยป๊อกเด้งมาเช็คอั้น
         const snapshot = await db.ref(`system_data/roundBets/${userId}`).once('value');
         const betsData = snapshot.val();
 
@@ -615,17 +600,12 @@ async function checkPokBetLimit(userId, pendingBetsObj) {
             betsList.forEach(bet => {
                 if (!bet || !bet.detail) return;
                 
-                // ตัวอย่าง detail: "ขา 1 (100)", "ขา 13 (200)", "เจ้าสู้ขา 2 (100)"
                 const detail = bet.detail;
                 const price = parseFloat(bet.actualBet || bet.holdCost || 0);
-
-                // ตรวจจับว่าเป็น "เจ้าสู้" หรือ "แทงผู้เล่น"
                 const isDealer = detail.includes("เจ้าสู้");
                 
-                // ดึงเฉพาะตัวเลขขา เช่น จาก "ขา 13" ดึงออกมาเป็น ["1", "3"]
                 const legMatches = detail.match(/\d+/g); 
                 if (legMatches && legMatches.length > 0) {
-                    // ตัวเลขแรกมักจะเป็นเลขขา (ตัวหลังจะเป็นราคาในวงเล็บ)
                     const legsStr = legMatches[0]; 
                     const legs = legsStr.split('');
 
@@ -637,12 +617,11 @@ async function checkPokBetLimit(userId, pendingBetsObj) {
             });
         }
     } catch (err) {
-        console.error("Error fetching existing bets:", err);
+        console.error("Error fetching existing pok bets:", err);
     }
 
-    // ตรวจสอบโพยใหม่ร่วมกับโพยเก่า
+    // ตรวจสอบกับลิมิต MAX_POK_LIMIT
     for (const [key, newAmount] of Object.entries(pendingBetsObj)) {
-        // key ใน pendingBets จะเป็น "1", "2" หรือ "เจ้าสู้ขา1", "เจ้าสู้ขา2"
         const isDealer = key.startsWith('เจ้าสู้ขา');
         const legNum = key.replace('เจ้าสู้ขา', '').replace('ขาที่', '').trim();
         const totalKey = isDealer ? `จ${legNum}` : `${legNum}`;
@@ -663,6 +642,21 @@ async function checkPokBetLimit(userId, pendingBetsObj) {
     }
 
     return { passed: true };
+}
+    async function confirmBets() {
+    if (Object.keys(pendingBets).length === 0) return alert('⚠️ กรุณาเลือกตัวเลือกที่ต้องการแทงก่อนครับ');
+
+    // ถ้าแทงป๊อกเด้ง ให้เช็คลิมิตอั้นป๊อกเด้งก่อน
+    if (activeTab === 'pok') {
+        const limitCheck = await checkPokBetLimit(currentUserId, pendingBets);
+        if (!limitCheck.passed) {
+            return alert(limitCheck.message);
+        }
+    }
+
+    const betCommands = buildGroupedBetCommandsFromPending(pendingBets, activeTab);
+    
+    // ส่งคำสั่งไปยัง Backend ต่อไป...
 }
 
 // ==================== 3. ฟังก์ชัน submitBoardBets ปรับปรุงใหม่ ====================

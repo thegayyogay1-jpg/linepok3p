@@ -624,17 +624,23 @@ function updateChipSelectorUI() {
         }
         const currentAmount = pendingBets[betKey] || 0;
         pendingBets[betKey] = currentAmount + selectedChipValue;
-        updateBoardUI();
+
+        // 🌟 ระบุ ID ช่องที่เพิ่งกดลงเงินล่าสุด
+        let targetElementId = '';
+        if (activeTab === 'pok') {
+            const rawKey = betKey.replace('เจ้าสู้ขา', '');
+            targetElementId = `pok-chip-${rawKey}`;
+        } else {
+            targetElementId = `hilo-chip-${betKey}`;
+        }
+
+        // ส่ง ID ล่าสุดไปให้ updateBoardUI
+        updateBoardUI(targetElementId);
     }
     
-    // 🟢 ปรับปรุง updateBoardUI ให้เรียกใช้ renderChipOnTile เพื่อเปลี่ยนเป็นชิป 3D
-    function updateBoardUI() {
+    // 🟢 ปรับ updateBoardUI ให้ส่ง boolean เด้งเฉพาะชิปช่องล่าสุด
+    function updateBoardUI(latestElementId = null) {
         let total = 0;
-        // ล้างค่าชิปทั้งหมดบนกระดานก่อน
-        document.querySelectorAll('[id^="pok-chip-"], [id^="hilo-chip-"]').forEach(el => {
-            el.innerText = '0';
-            el.classList.add('hidden');
-        });
         
         for (const [key, amount] of Object.entries(pendingBets)) {
             total += amount;
@@ -646,9 +652,11 @@ function updateChipSelectorUI() {
                 elementId = `hilo-chip-${key}`;
             }
 
-            // 🌟 เรียกใช้ฟังก์ชันแสดงชิป 3D เรืองแสงและเด้งตามยอดเงิน
-            renderChipOnTile(elementId, amount);
+            // 🌟 จะให้เด้งเฉพาะ Element ที่ ID ตรงกับจุดที่เพิ่งกดล่าสุดเท่านั้น
+            const isJustPressed = (elementId === latestElementId);
+            renderChipOnTile(elementId, amount, isJustPressed);
         }
+        
         document.getElementById('total-pending-amount').innerText = `${total.toLocaleString()} ฿`;
     }
     function clearPendingBets() {
@@ -715,8 +723,8 @@ function getChipStyleByAmount(amount) {
         return 'bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600 text-gray-950 border-yellow-100 shadow-amber-500/50';
     }
 }
-    // 🟢 อัปเดต renderChipOnTile ให้เล่น Animation เด้งใหม่ทุกครั้งที่กด
-function renderChipOnTile(elementId, amount) {
+    // 🟢 อัปเดต renderChipOnTile ให้รองรับการสั่งเด้งเฉพาะตัว
+function renderChipOnTile(elementId, amount, shouldAnimate = false) {
     const chipEl = document.getElementById(elementId);
     if (!chipEl) return;
 
@@ -726,11 +734,16 @@ function renderChipOnTile(elementId, amount) {
         let displayValue = amount;
         if (amount >= 1000) displayValue = (amount / 1000) + 'k';
 
-        // 🌟 รีเซ็ต Animation เพื่อให้เด้งซ้ำทุกครั้งที่วาง
-        chipEl.classList.remove('chip-3d');
-        void chipEl.offsetWidth; // Force Reflow ให้ browser รีเซ็ตการวาด
+        // 🌟 ถ้าสั่งให้เด้ง (เฉพาะจุดที่กด) ให้ลบแล้วใส่ class chip-3d ใหม่
+        if (shouldAnimate) {
+            chipEl.classList.remove('chip-3d');
+            void chipEl.offsetWidth; // Force Reflow
+            chipEl.className = `absolute -top-2 -right-2 w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black shadow-lg z-10 transition-all cursor-pointer chip-3d ${colorStyle}`;
+        } else {
+            // ชิปตัวอื่นให้อยู่นิ่งๆ ไม่ต้องเล่น Animation เด้งซ้ำ
+            chipEl.className = `absolute -top-2 -right-2 w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black shadow-lg z-10 transition-all cursor-pointer ${colorStyle}`;
+        }
 
-        chipEl.className = `absolute -top-2 -right-2 w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black shadow-lg z-10 transition-all cursor-pointer chip-3d ${colorStyle}`;
         chipEl.innerText = displayValue;
         chipEl.classList.remove('hidden');
     } else {

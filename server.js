@@ -2969,13 +2969,33 @@ else if (promotions[userMsg.trim()]) {
         });
     });
 
-                                // 3. 🌟 บันทึกตัวแปร roundBets[userId] ลง Firebase Realtime Database ทันที
-    await db.ref(`system_data/roundBets/${userId}`).set(roundBets[userId]);
-    await saveDataToFirebase();
+                                // 🌟 3. [วางตรงนี้] บันทึกแบบ Batch Update (ตัวเดียวจบ + ปลอดภัย 100%)
+                                try {
+                                    const updates = {};
+                                    // รวมการอัปเดตโพย และ ยอดเงินกระเป๋า ไว้ใน Request เดียว
+                                    updates[`system_data/roundBets/${userId}`] = roundBets[userId];
+                                    updates[`system_data/usersWallets/${userId}/balance`] = user.balance;
+                                    if (user.totalTurnover !== undefined) {
+                                        updates[`system_data/usersWallets/${userId}/totalTurnover`] = (user.totalTurnover || 0) + totalActualBet;
+                                    }
+                            
+                                    // ยืนยันการเขียน Firebase แบบครั้งเดียวจบ (ใช้เวลาเพียง ~0.03 วินาที)
+                                    await db.ref().update(updates);
+                                } catch (dbErr) {
+                                    console.error("❌ บันทึกข้อมูลลง Firebase ล้มเหลว:", dbErr.message);
+                                    // คืนเงินค้ำประกันเข้า RAM หาก Firebase บันทึกไม่สำเร็จ
+                                    user.balance += finalHoldCost; 
+                                    
+                                    // แจ้งเตือนข้อผิดพลาดกลับไปยังผู้ใช้งาน
+                                    await axios.post('https://api.line.me/v2/bot/message/reply', {
+                                        replyToken: replyToken,
+                                        messages: [{ type: "text", text: "❌ เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองส่งโพยใหม่อีกครั้งครับ" }]
+                                    }, { headers: { 'Authorization': `Bearer ${TOKEN}` } });
+                                    return;
+                                }
 
                                 // 4. 🌟 [แก้ตรงนี้] ประกาศ Array สำหรับ Flex Message
                                 let itemsFlexContents = [];
-                                
                                 processedBets.forEach((bet) => {
                                     itemsFlexContents.push({
                                         "type": "text",

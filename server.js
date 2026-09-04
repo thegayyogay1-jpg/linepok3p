@@ -6374,92 +6374,137 @@ app.post('/api/place-bet', async (req, res) => {
             return res.json({ success: true, message: 'บันทึกโพยไฮโลสำเร็จ' });
         } 
 
-        // ==================== [ กรณีแทงป๊อกเด้ง ] ====================
-else {
-    const POK_MIN_BET = 10;
-    const POK_MAX_BET = 2500;
+       // ==================== [ กรณีแทงป๊อกเด้ง ] ====================
+        else {
+            const POK_MIN_BET = 10;
+            const POK_MAX_BET = 2500;
 
-    if (betAmount < POK_MIN_BET || betAmount > POK_MAX_BET) {
-        return res.json({ success: false, message: `❌ ยอดแทงต่อขาต้องอยู่ระหว่าง ${POK_MIN_BET} ถึง ${POK_MAX_BET} บาท` });
-    }
+            if (betAmount < POK_MIN_BET || betAmount > POK_MAX_BET) {
+                return res.json({ success: false, message: `❌ ยอดแทงต่อขาต้องอยู่ระหว่าง ${POK_MIN_BET} ถึง ${POK_MAX_BET} บาท` });
+            }
 
-    const doubleHoldCost = betAmount * 2;
-    const tripleHoldCost = betAmount * 3;
+            // 1. แปลงรูปแบบขาให้เป๊ะตาม LINE (เช่น "ขาที่ 123" -> "123", "เจ้าสู้ขา 123" -> "จ123")
+            let formattedType = type;
+            let side = 'player'; // 'player' หรือ 'dealer'
 
-    let finalHoldCost = 0;
-    let maxHandMultiplier = 3;
+            if (isDealerPok) {
+                side = 'dealer';
+                formattedType = `จ${type.replace('เจ้าสู้ขา', '').trim()}`;
+            } else {
+                side = 'player';
+                formattedType = type.replace('ขาที่', '').trim();
+            }
 
-    if (userBalance < doubleHoldCost) {
-        return res.json({ 
-            success: false, 
-            message: `❌ เครดิตไม่พอสำหรับค้ำประกันขั้นต่ำ (2 เด้ง)\n💸 ยอดแทง: ${betAmount} ฿\n🔒 ต้องใช้ค้ำขั้นต่ำ (x2): ${doubleHoldCost} ฿\n💰 เครดิตที่มี: ${userBalance} ฿` 
-        });
-    } else if (userBalance >= doubleHoldCost && userBalance < tripleHoldCost) {
-        maxHandMultiplier = 2;
-        finalHoldCost = doubleHoldCost;
-    } else {
-        maxHandMultiplier = 3;
-        finalHoldCost = tripleHoldCost;
-    }
+            // กรณีสั่งแทงเหมา (รข / รจ)
+            if (formattedType === 'รข') { side = 'player'; }
+            if (formattedType === 'รจ') { side = 'dealer'; }
 
-    let formattedType = type;
-    if (isDealerPok) {
-        formattedType = `จ${type.replace('เจ้าสู้ขา', '').trim()}`;
-    } else {
-        formattedType = type.replace('ขาที่', '').trim();
-    }
+            // 2. ดักจับการแทงสวน (Cross Bet Check) ให้เหมือน LINE 100%
+            // หากเป็นการแทงครั้งแรกของรอบ ให้ล้าง Cross Check
+            if (typeof roundBets !== 'undefined' && (!roundBets[userId] || roundBets[userId].length === 0)) {
+                if (typeof usersRoundCrossCheck !== 'undefined') {
+                    usersRoundCrossCheck[userId] = {};
+                }
+            }
 
-    const displayName = userData.nickname || userData.name || "ไม่ระบุชื่อ";
+            // ดึงเลขขาที่จะแทงออกมาตรวจ
+            const targetLegs = formattedType.replace(/[จ|รข|รจ]/g, '').split('');
+            const legsToTest = targetLegs.length > 0 && targetLegs[0] !== '' ? targetLegs : ['1', '2', '3', '4', '5', '6'];
 
-    // 🌟 1. ดึงโพยที่มีอยู่เดิมใน Firebase ออกมาเป็น Array
-    const pokSnap = await db.ref(`system_data/roundBets/${userId}`).once('value');
-    let currentPokBets = pokSnap.val() || [];
+            if (typeof usersRoundCrossCheck !== 'undefined') {
+                if (!usersRoundCrossCheck[userId]) usersRoundCrossCheck[userId] = {};
+                
+                for (let leg of legsToTest) {
+                    if (usersRoundCrossCheck[userId][leg] && usersRoundCrossCheck[userId][leg] !== side) {
+                        return res.json({ 
+                            success: false, 
+                            message: `❌ แทงสวนไม่ได้! ขา ${leg} มีการแทงฝั่ง ${usersRoundCrossCheck[userId][leg] === 'player' ? 'ผู้เล่น' : 'เจ้ามือ'} ไว้แล้วในรอบนี้` 
+                        });
+                    }
+                }
+            }
 
-    // ป้องกันกรณีถ้าของเดิมหลุดไปเป็น Object ให้แปลงกลับมาเป็น Array
-    if (!Array.isArray(currentPokBets)) {
-        currentPokBets = Object.values(currentPokBets);
-    }
+            // 3. คำนวณจำนวนขาจริงและยอดค้ำประกัน
+            let legsCount = legsToTest.length;
+            const totalActualBet = betAmount * legsCount;
+            const doubleHoldCost = totalActualBet * 2;
+            const tripleHoldCost = totalActualBet * 3;
 
-    // 🌟 2. ปั้น Object รายการแทงให้ฟิลด์ข้อมูลเหมือนที่ไลน์เซฟ 100%
-    const newPokBet = {
-        name: displayName,
-        memberNumber: userData.memberNumber || "-",
-        betType: formattedType,
-        type: formattedType,
-        detail: `${formattedType}-${betAmount}`,
-        pricePerLeg: betAmount,
-        actualBet: betAmount,
-        holdCost: finalHoldCost,
-        maxMultiplier: maxHandMultiplier,
-        time: new Date().toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok' }),
-        timestamp: Date.now(),
-        via: 'LIFF_WEB'
-    };
+            let finalHoldCost = 0;
+            let maxHandMultiplier = 3;
 
-    // 🌟 3. นำข้อมูลใส่เข้าไปใน Array ของ RAM และ Firebase
-    currentPokBets.push(newPokBet);
+            if (userBalance < doubleHoldCost) {
+                return res.json({ 
+                    success: false, 
+                    message: `❌ เครดิตไม่พอสำหรับค้ำประกันขั้นต่ำ (2 เด้ง)\n💸 ยอดแทงรวม: ${totalActualBet} ฿\n🔒 ค้ำประกันขั้นต่ำ (x2): ${doubleHoldCost} ฿\n💰 เครดิตที่มี: ${userBalance} ฿` 
+                });
+            } else if (userBalance >= doubleHoldCost && userBalance < tripleHoldCost) {
+                maxHandMultiplier = 2;
+                finalHoldCost = doubleHoldCost;
+            } else {
+                maxHandMultiplier = 3;
+                finalHoldCost = tripleHoldCost;
+            }
 
-    // อัปเดตตัวแปรใน RAM ของ Node.js (เพื่อให้บอทไลน์มองเห็นทันที)
-    if (typeof roundBets !== 'undefined') {
-        roundBets[userId] = currentPokBets;
-    }
+            const displayName = userData.nickname || userData.name || "ไม่ระบุชื่อ";
 
-    // สั่ง .set() เพื่อรักษาโครงสร้างแบบ Array บน Firebase (ห้ามใช้ .push())
-    await db.ref(`system_data/roundBets/${userId}`).set(currentPokBets);
+            // 4. ดึงโพยเดิมใน Firebase ออกมาจัดการ
+            const pokSnap = await db.ref(`system_data/roundBets/${userId}`).once('value');
+            let currentPokBets = pokSnap.val() || [];
 
-    // หักเงินผู้ใช้
-    const newBalance = userBalance - finalHoldCost;
-    await userWalletRef.update({ balance: newBalance });
+            if (!Array.isArray(currentPokBets)) {
+                currentPokBets = Object.values(currentPokBets);
+            }
 
-    if (typeof usersWallets !== 'undefined' && usersWallets[userId]) {
-        usersWallets[userId].balance = newBalance;
-    }
+            // 5. สร้าง Object โพยชุดใหม่ (โครงสร้างฟิลด์เหมือนฝั่ง LINE 100%)
+            const newPokBet = {
+                name: displayName,
+                memberNumber: userData.memberNumber || "-",
+                betType: formattedType,
+                type: formattedType,
+                detail: `${formattedType}-${betAmount}`,
+                pricePerLeg: betAmount,
+                actualBet: totalActualBet,
+                holdCost: finalHoldCost,
+                maxMultiplier: maxHandMultiplier,
+                legsCount: legsCount,
+                time: new Date().toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok' }),
+                timestamp: Date.now(),
+                source: 'web',
+                via: 'LIFF_WEB'
+            };
 
-    return res.json({ 
-        success: true, 
-        message: `บันทึกโพยสำเร็จ (หักค้ำประกัน x${maxHandMultiplier} = ${finalHoldCost} บาท)` 
-    });
-}
+            // บันทึกสถานะฝั่งที่แทงลง RAM เพื่อป้องกันแทงสวน
+            if (typeof usersRoundCrossCheck !== 'undefined') {
+                for (let leg of legsToTest) {
+                    usersRoundCrossCheck[userId][leg] = side;
+                }
+            }
+
+            // 6. Push และซิงค์ลง RAM บอท LINE + Firebase Realtime DB
+            currentPokBets.push(newPokBet);
+
+            if (typeof roundBets !== 'undefined') {
+                roundBets[userId] = currentPokBets;
+            }
+
+            // บันทึก Array กลับเข้า Firebase (ใช้ .set เพื่อให้คืนโพย r ล้างค่าได้สมบูรณ์)
+            await db.ref(`system_data/roundBets/${userId}`).set(currentPokBets);
+
+            // 7. หักเงินค้ำประกันผู้เล่น
+            const newBalance = userBalance - finalHoldCost;
+            await userWalletRef.update({ balance: newBalance });
+
+            if (typeof usersWallets !== 'undefined' && usersWallets[userId]) {
+                usersWallets[userId].balance = newBalance;
+            }
+
+            return res.json({ 
+                success: true, 
+                message: `บันทึกโพยสำเร็จ (หักค้ำประกัน x${maxHandMultiplier} = ${finalHoldCost} บาท)`,
+                newBalance: newBalance
+            });
+        }
 
     } catch (error) {
         console.error('Place Bet Error:', error);

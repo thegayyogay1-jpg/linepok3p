@@ -6523,10 +6523,8 @@ app.post('/api/web-bet-trigger', async (req, res) => {
 
         // 1. ดักจับคำสั่งคืนโพย (r = ป๊อกเด้ง, rz = ไฮโล)
         if (cleanText === 'r' || cleanText === 'rz') {
-            // เรียกใช้ฟังก์ชันประมวลผลคำสั่งของบอทไลน์เดิมที่คุณมี
-            // (เปลี่ยนชื่อฟังก์ชัน processLineCommand เป็นฟังก์ชันที่บอทคุณใช้จัดการข้อความแชท)
-            const result = await processLineCommand(userId, cleanText); 
-            return res.json(result || { success: true, message: 'ทำรายการ คืนโพย เรียบร้อย' });
+            const result = await processPokDengBet(userId, cleanText);
+            return res.json(result);
         }
 
         if (betText.includes('-')) {

@@ -94,9 +94,9 @@
             <span class="font-bold text-white text-base">ต่ำ</span>
             <span id="hilo-chip-ต่ำ" class="hidden absolute top-1 right-1 px-1.5 bg-yellow-400 text-black font-bold text-[10px] rounded-full">0</span>
         </div>
-        <div onclick="placeBet('hilo', '11ไฮโล')" class="col-span-1 bg-gray-800 border border-gray-600 rounded-lg flex flex-col justify-center items-center cursor-pointer active:bg-gray-700 relative text-center">
+        <div onclick="placeBet('hilo', '11')" class="col-span-1 bg-gray-800 border border-gray-600 rounded-lg flex flex-col justify-center items-center cursor-pointer active:bg-gray-700 relative text-center">
             <span class="font-bold text-amber-300 text-xs leading-tight">11<br>ไฮโล</span>
-            <span id="hilo-chip-11ไฮโล" class="hidden absolute top-1 right-1 px-1 bg-yellow-400 text-black font-bold text-[9px] rounded-full">0</span>
+            <span id="hilo-chip-11" class="hidden absolute top-1 right-1 px-1 bg-yellow-400 text-black font-bold text-[9px] rounded-full">0</span>
         </div>
         <div onclick="placeBet('hilo', 'สูง')" class="col-span-3 bg-gray-800 border border-gray-600 rounded-lg flex flex-col justify-center items-center cursor-pointer active:bg-gray-700 relative">
             <span class="font-bold text-white text-base">สูง</span>
@@ -109,17 +109,17 @@
         <script>
             [1,2,3,4,5,6].forEach(i => {
                 document.write(`
-                    <div onclick="placeBet('hilo', 'ต่ำ${i}')" class="bg-gray-800 border border-gray-600 rounded py-2 text-center cursor-pointer active:bg-gray-700 relative">
+                    <div onclick="placeBet('hilo', 'ต${i}')" class="bg-gray-800 border border-gray-600 rounded py-2 text-center cursor-pointer active:bg-gray-700 relative">
                         <span class="font-bold text-white text-xs">ต่ำ${i}</span>
-                        <span id="hilo-chip-ต่ำ${i}" class="hidden absolute -top-1 -right-1 px-1 bg-yellow-400 text-black font-bold text-[9px] rounded-full">0</span>
+                        <span id="hilo-chip-ต${i}" class="hidden absolute -top-1 -right-1 px-1 bg-yellow-400 text-black font-bold text-[9px] rounded-full">0</span>
                     </div>
                 `);
             });
             [1,2,3,4,5,6].forEach(i => {
                 document.write(`
-                    <div onclick="placeBet('hilo', 'สูง${i}')" class="bg-gray-800 border border-gray-600 rounded py-2 text-center cursor-pointer active:bg-gray-700 relative">
+                    <div onclick="placeBet('hilo', 'ส${i}')" class="bg-gray-800 border border-gray-600 rounded py-2 text-center cursor-pointer active:bg-gray-700 relative">
                         <span class="font-bold text-white text-xs">สูง${i}</span>
-                        <span id="hilo-chip-สูง${i}" class="hidden absolute -top-1 -right-1 px-1 bg-yellow-400 text-black font-bold text-[9px] rounded-full">0</span>
+                        <span id="hilo-chip-ส${i}" class="hidden absolute -top-1 -right-1 px-1 bg-yellow-400 text-black font-bold text-[9px] rounded-full">0</span>
                     </div>
                 `);
             });

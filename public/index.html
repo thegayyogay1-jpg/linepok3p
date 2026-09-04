@@ -379,7 +379,6 @@ function listenToUserData() {
         // 🟢 1. แยกรายการแทงออกเป็น 2 กลุ่ม (ป๊อกเด้ง / ไฮโล)
         const pokBets = [];
         const hiloBets = [];
-        let totalHold = 0;
 
         betsList.forEach((bet) => {
             if (!bet) return;

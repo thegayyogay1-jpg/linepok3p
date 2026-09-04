@@ -84,72 +84,197 @@
             </div>
         </div>
 
-       <!-- Section: กระดานไฮโล -->
-<div id="section-hilo" class="bg-gray-800 p-3 rounded-lg border border-gray-700 space-y-2 hidden text-xs">
-    <h3 class="font-bold text-purple-400 border-b border-gray-700 pb-2 text-center text-sm">🎲 โต๊ะแทงไฮโล</h3>
+       <!-- Section: กระดานไฮโล (ตรงตามผังภาพจริง) -->
+<div id="section-hilo" class="bg-gray-900 p-2 rounded-xl border border-gray-700 space-y-1.5 hidden text-xs select-none">
+    <h3 class="font-bold text-white text-center text-sm py-1 border-b border-gray-700">โต๊ะแทงไฮโล</h3>
 
-    <!-- โซน 1: สูง / ต่ำ / 11 ไฮโล / โต๊ดตระกูล 123 - 456 -->
-    <div class="grid grid-cols-5 gap-1">
-        <div onclick="placeBet('hilo', 'ต่ำ')" class="bet-zone bg-gray-700 border border-purple-500/50 rounded p-2 text-center flex flex-col justify-between min-h-[60px]">
-            <span class="font-bold text-red-400 text-sm">ต่ำ</span>
-            <span class="text-[10px] text-gray-400">3-10</span>
-            <span id="hilo-chip-ต่ำ" class="hidden px-1.5 bg-yellow-500 text-black font-bold rounded-full">0</span>
+    <!-- แถวที่ 1: ต่ำ / 11ไฮโล / สูง -->
+    <div class="grid grid-cols-7 gap-1 h-16">
+        <div onclick="placeBet('hilo', 'ต่ำ')" class="col-span-3 bg-gray-800 border border-gray-600 rounded flex flex-col justify-center items-center cursor-pointer active:bg-gray-700 relative">
+            <span class="font-bold text-white text-base">ต่ำ</span>
+            <span id="hilo-chip-ต่ำ" class="hidden absolute top-1 right-1 px-1.5 bg-yellow-400 text-black font-bold text-[10px] rounded-full">0</span>
         </div>
-        <div onclick="placeBet('hilo', '123')" class="bet-zone bg-gray-700 border border-purple-500/50 rounded p-1 text-center flex flex-col justify-between">
-            <span class="font-bold text-amber-300">1-2-3</span>
-            <span id="hilo-chip-123" class="hidden px-1 bg-yellow-500 text-black rounded-full">0</span>
+        <div onclick="placeBet('hilo', '11ไฮโล')" class="col-span-1 bg-gray-800 border border-gray-600 rounded flex flex-col justify-center items-center cursor-pointer active:bg-gray-700 relative text-center">
+            <span class="font-bold text-white text-xs leading-tight">11<br>ไฮโล</span>
+            <span id="hilo-chip-11ไฮโล" class="hidden absolute top-1 right-1 px-1 bg-yellow-400 text-black font-bold text-[9px] rounded-full">0</span>
         </div>
-        <div onclick="placeBet('hilo', '11ไฮโล')" class="bet-zone bg-gray-700 border border-yellow-500/80 bg-yellow-950/30 rounded p-1 text-center flex flex-col justify-between">
-            <span class="font-bold text-yellow-300 text-sm">11 ไฮโล</span>
-            <span id="hilo-chip-11ไฮโล" class="hidden px-1 bg-yellow-500 text-black rounded-full">0</span>
-        </div>
-        <div onclick="placeBet('hilo', '456')" class="bet-zone bg-gray-700 border border-purple-500/50 rounded p-1 text-center flex flex-col justify-between">
-            <span class="font-bold text-amber-300">4-5-6</span>
-            <span id="hilo-chip-456" class="hidden px-1 bg-yellow-500 text-black rounded-full">0</span>
-        </div>
-        <div onclick="placeBet('hilo', 'สูง')" class="bet-zone bg-gray-700 border border-purple-500/50 rounded p-2 text-center flex flex-col justify-between min-h-[60px]">
-            <span class="font-bold text-green-400 text-sm">สูง</span>
-            <span class="text-[10px] text-gray-400">12-18</span>
-            <span id="hilo-chip-สูง" class="hidden px-1.5 bg-yellow-500 text-black font-bold rounded-full">0</span>
+        <div onclick="placeBet('hilo', 'สูง')" class="col-span-3 bg-gray-800 border border-gray-600 rounded flex flex-col justify-center items-center cursor-pointer active:bg-gray-700 relative">
+            <span class="font-bold text-white text-base">สูง</span>
+            <span id="hilo-chip-สูง" class="hidden absolute top-1 right-1 px-1.5 bg-yellow-400 text-black font-bold text-[10px] rounded-full">0</span>
         </div>
     </div>
 
-    <!-- โซน 2: เลขเต็ง 1 ถึง 6 -->
-    <div class="grid grid-cols-6 gap-1 py-1">
-        <script>
-            for(let i = 1; i <= 6; i++) {
-                document.write(`
-                    <div onclick="placeBet('hilo', '${i}')" class="bet-zone bg-gray-700 hover:bg-gray-600 border border-purple-500/50 rounded p-2 text-center flex flex-col justify-between min-h-[50px] relative">
-                        <span class="font-bold text-purple-300 text-sm">${i}</span>
-                        <span id="hilo-chip-${i}" class="hidden px-1 bg-yellow-500 text-black text-[10px] font-bold rounded-full">0</span>
-                    </div>
-                `);
-            }
-        </script>
-    </div>
-
-    <!-- โซน 3: ตองรวม / ตองระบุ -->
-    <div class="flex gap-1 pt-1 border-t border-gray-700">
-        <div onclick="placeBet('hilo', 'ตองรวม')" class="bet-zone w-1/3 bg-gray-700 border border-purple-500/50 rounded p-2 text-center flex flex-col justify-between relative">
-            <span class="font-bold text-purple-200">ตองรวม</span>
-            <span class="text-[9px] text-gray-400">(ออกตองใดๆ)</span>
-            <span id="hilo-chip-ตองรวม" class="hidden px-1.5 py-0.5 bg-yellow-500 text-gray-900 font-bold text-[10px] rounded-full">0</span>
+    <!-- แถวที่ 2: ต่ำ1-6 / ตองระบุ 1-6 / สูง1-6 -->
+    <div class="grid grid-cols-7 gap-1">
+        <!-- ฝั่งต่ำ 1-6 -->
+        <div class="col-span-3 grid grid-cols-3 gap-1">
+            <script>
+                [1,2,3,4,5,6].forEach(i => {
+                    document.write(`
+                        <div onclick="placeBet('hilo', 'ต่ำ${i}')" class="bg-gray-800 border border-gray-600 rounded py-2 text-center cursor-pointer active:bg-gray-700 relative">
+                            <span class="font-bold text-white text-xs">ต่ำ${i}</span>
+                            <span id="hilo-chip-ต่ำ${i}" class="hidden absolute -top-1 -right-1 px-1 bg-yellow-400 text-black font-bold text-[9px] rounded-full">0</span>
+                        </div>
+                    `);
+                });
+            </script>
         </div>
-        <div class="w-2/3 bg-gray-700 border border-purple-500/50 rounded p-1 text-center">
-            <div class="text-[10px] text-purple-300 mb-1">ตองระบุเลข</div>
-            <div class="grid grid-cols-6 gap-1">
+
+        <!-- ฝั่งตองระบุ (ตรงกลาง) -->
+        <div class="col-span-1 bg-gray-800 border border-gray-600 rounded p-0.5 flex flex-col justify-between text-center">
+            <span class="text-[9px] text-gray-300 font-bold leading-none py-0.5">ตองระบุ</span>
+            <div class="grid grid-cols-3 gap-0.5">
                 <script>
-                    for(let i = 1; i <= 6; i++) {
+                    [1,2,3,4,5,6].forEach(i => {
                         document.write(`
-                            <button onclick="placeBet('hilo', 'ตอง${i}')" class="bg-gray-800 hover:bg-purple-900 p-1 rounded font-bold text-white relative border border-gray-600">
-                                ${i}${i}${i}
-                                <span id="hilo-chip-ตอง${i}" class="hidden absolute -top-1 -right-1 px-1 bg-yellow-500 text-black text-[9px] font-bold rounded-full">0</span>
+                            <button onclick="placeBet('hilo', 'ตอง${i}')" class="bg-gray-700 border border-gray-500 rounded text-[10px] font-bold text-white py-0.5 relative">
+                                ${i}
+                                <span id="hilo-chip-ตอง${i}" class="hidden absolute -top-1 -right-1 px-0.5 bg-yellow-400 text-black text-[8px] font-bold rounded-full">0</span>
                             </button>
                         `);
-                    }
+                    });
+                </script>
+            </div>
+            <button onclick="placeBet('hilo', 'ตองใดๆ')" class="bg-gray-700 border border-gray-500 rounded text-[9px] text-white py-0.5 font-bold relative mt-0.5">
+                ตองใดๆ
+                <span id="hilo-chip-ตองใดๆ" class="hidden absolute -top-1 -right-1 px-1 bg-yellow-400 text-black text-[8px] font-bold rounded-full">0</span>
+            </button>
+        </div>
+
+        <!-- ฝั่งสูง 1-6 -->
+        <div class="col-span-3 grid grid-cols-3 gap-1">
+            <script>
+                [1,2,3,4,5,6].forEach(i => {
+                    document.write(`
+                        <div onclick="placeBet('hilo', 'สูง${i}')" class="bg-gray-800 border border-gray-600 rounded py-2 text-center cursor-pointer active:bg-gray-700 relative">
+                            <span class="font-bold text-white text-xs">สูง${i}</span>
+                            <span id="hilo-chip-สูง${i}" class="hidden absolute -top-1 -right-1 px-1 bg-yellow-400 text-black font-bold text-[9px] rounded-full">0</span>
+                        </div>
+                    `);
+                });
+            </script>
+        </div>
+    </div>
+
+    <!-- แถวที่ 3: หน้าลูกเต๋า (1-6) -->
+    <div class="grid grid-cols-3 gap-1 py-0.5">
+        <div onclick="placeBet('hilo', '1')" class="bg-gray-800 border border-gray-600 rounded py-2 flex justify-center items-center cursor-pointer relative">
+            <span class="w-3 h-3 bg-red-600 rounded-full inline-block"></span>
+            <span id="hilo-chip-1" class="hidden absolute top-0.5 right-0.5 px-1 bg-yellow-400 text-black font-bold text-[9px] rounded-full">0</span>
+        </div>
+        <div onclick="placeBet('hilo', '2')" class="bg-gray-800 border border-gray-600 rounded py-2 flex justify-center items-center gap-1 cursor-pointer relative">
+            <span class="w-2.5 h-2.5 bg-white rounded-full inline-block"></span>
+            <span class="w-2.5 h-2.5 bg-white rounded-full inline-block"></span>
+            <span id="hilo-chip-2" class="hidden absolute top-0.5 right-0.5 px-1 bg-yellow-400 text-black font-bold text-[9px] rounded-full">0</span>
+        </div>
+        <div onclick="placeBet('hilo', '3')" class="bg-gray-800 border border-gray-600 rounded py-2 flex justify-center items-center gap-1 cursor-pointer relative">
+            <span class="w-2.5 h-2.5 bg-white rounded-full inline-block"></span>
+            <span class="w-2.5 h-2.5 bg-white rounded-full inline-block"></span>
+            <span class="w-2.5 h-2.5 bg-white rounded-full inline-block"></span>
+            <span id="hilo-chip-3" class="hidden absolute top-0.5 right-0.5 px-1 bg-yellow-400 text-black font-bold text-[9px] rounded-full">0</span>
+        </div>
+        <div onclick="placeBet('hilo', '4')" class="bg-gray-800 border border-gray-600 rounded py-2 flex justify-center items-center gap-1 cursor-pointer relative">
+            <span class="w-2.5 h-2.5 bg-red-600 rounded-full inline-block"></span>
+            <span class="w-2.5 h-2.5 bg-red-600 rounded-full inline-block"></span>
+            <span id="hilo-chip-4" class="hidden absolute top-0.5 right-0.5 px-1 bg-yellow-400 text-black font-bold text-[9px] rounded-full">0</span>
+        </div>
+        <div onclick="placeBet('hilo', '5')" class="bg-gray-800 border border-gray-600 rounded py-2 flex justify-center items-center gap-1 cursor-pointer relative">
+            <span class="w-2.5 h-2.5 bg-white rounded-full inline-block"></span>
+            <span class="w-2.5 h-2.5 bg-white rounded-full inline-block"></span>
+            <span class="w-2.5 h-2.5 bg-white rounded-full inline-block"></span>
+            <span id="hilo-chip-5" class="hidden absolute top-0.5 right-0.5 px-1 bg-yellow-400 text-black font-bold text-[9px] rounded-full">0</span>
+        </div>
+        <div onclick="placeBet('hilo', '6')" class="bg-gray-800 border border-gray-600 rounded py-2 flex justify-center items-center gap-1 cursor-pointer relative">
+            <span class="w-2.5 h-2.5 bg-white rounded-full inline-block"></span>
+            <span class="w-2.5 h-2.5 bg-white rounded-full inline-block"></span>
+            <span class="w-2.5 h-2.5 bg-white rounded-full inline-block"></span>
+            <span id="hilo-chip-6" class="hidden absolute top-0.5 right-0.5 px-1 bg-yellow-400 text-black font-bold text-[9px] rounded-full">0</span>
+        </div>
+    </div>
+
+    <!-- แถวที่ 4 & 5: โต๊ด 2 ตัว (12, 13, 14, 15, 16, 23, 24, 25, 26, 34, 35, 36, 45, 46, 56) -->
+    <div class="space-y-1">
+        <div class="grid grid-cols-7 gap-1">
+            <script>
+                const row1 = ['12', '13', '14'];
+                row1.forEach(k => {
+                    document.write(`
+                        <div onclick="placeBet('hilo', '${k}')" class="col-span-1 bg-gray-800 border border-gray-600 rounded py-1.5 text-center font-bold text-white text-xs cursor-pointer relative">
+                            ${k}
+                            <span id="hilo-chip-${k}" class="hidden absolute -top-1 -right-1 px-1 bg-yellow-400 text-black text-[8px] font-bold rounded-full">0</span>
+                        </div>
+                    `);
+                });
+            </script>
+            <div class="col-span-1 bg-gray-700/50 border border-gray-600 rounded flex items-center justify-center text-[10px] font-bold text-gray-300">โต๊ด2ตัว</div>
+            <script>
+                const row1_right = ['15', '16', '23'];
+                row1_right.forEach(k => {
+                    document.write(`
+                        <div onclick="placeBet('hilo', '${k}')" class="col-span-1 bg-gray-800 border border-gray-600 rounded py-1.5 text-center font-bold text-white text-xs cursor-pointer relative">
+                            ${k}
+                            <span id="hilo-chip-${k}" class="hidden absolute -top-1 -right-1 px-1 bg-yellow-400 text-black text-[8px] font-bold rounded-full">0</span>
+                        </div>
+                    `);
+                });
+            </script>
+        </div>
+
+        <div class="grid grid-cols-7 gap-1">
+            <script>
+                const row2 = ['24', '25', '26', '34', '35', '36', '45'];
+                row2.forEach(k => {
+                    document.write(`
+                        <div onclick="placeBet('hilo', '${k}')" class="col-span-1 bg-gray-800 border border-gray-600 rounded py-1.5 text-center font-bold text-white text-xs cursor-pointer relative">
+                            ${k}
+                            <span id="hilo-chip-${k}" class="hidden absolute -top-1 -right-1 px-1 bg-yellow-400 text-black text-[8px] font-bold rounded-full">0</span>
+                        </div>
+                    `);
+                });
+            </script>
+        </div>
+
+        <div class="grid grid-cols-7 gap-1">
+            <div class="col-span-5 grid grid-cols-5 gap-1">
+                <script>
+                    ['46', '56'].forEach(k => {
+                        document.write(`
+                            <div onclick="placeBet('hilo', '${k}')" class="bg-gray-800 border border-gray-600 rounded py-1.5 text-center font-bold text-white text-xs cursor-pointer relative">
+                                ${k}
+                                <span id="hilo-chip-${k}" class="hidden absolute -top-1 -right-1 px-1 bg-yellow-400 text-black text-[8px] font-bold rounded-full">0</span>
+                            </div>
+                        `);
+                    });
                 </script>
             </div>
         </div>
+    </div>
+
+    <!-- แถวที่ 6: โต๊ด 3 ตัว (123, 234, 345, 456, 561, 612) -->
+    <div class="grid grid-cols-7 gap-1 pt-1 border-t border-gray-700">
+        <script>
+            const row3_left = ['123', '234', '345'];
+            row3_left.forEach(k => {
+                document.write(`
+                    <div onclick="placeBet('hilo', '${k}')" class="col-span-1 bg-gray-800 border border-gray-600 rounded py-1.5 text-center font-bold text-white text-xs cursor-pointer relative">
+                        ${k}
+                        <span id="hilo-chip-${k}" class="hidden absolute -top-1 -right-1 px-1 bg-yellow-400 text-black text-[8px] font-bold rounded-full">0</span>
+                    </div>
+                `);
+            });
+        </script>
+        <div class="col-span-1 bg-gray-700/50 border border-gray-600 rounded flex items-center justify-center text-[9px] font-bold text-gray-300 text-center leading-tight">โต๊ด 3 ตัว</div>
+        <script>
+            const row3_right = ['456', '561', '612'];
+            row3_right.forEach(k => {
+                document.write(`
+                    <div onclick="placeBet('hilo', '${k}')" class="col-span-1 bg-gray-800 border border-gray-600 rounded py-1.5 text-center font-bold text-white text-xs cursor-pointer relative">
+                        ${k}
+                        <span id="hilo-chip-${k}" class="hidden absolute -top-1 -right-1 px-1 bg-yellow-400 text-black text-[8px] font-bold rounded-full">0</span>
+                    </div>
+                `);
+            });
+        </script>
     </div>
 </div>
 

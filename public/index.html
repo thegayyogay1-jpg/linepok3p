@@ -542,11 +542,32 @@ function renderAllBetsUI() {
     }
 }
 
-    function selectChip(value) {
-        selectedChipValue = value;
-        document.querySelectorAll('.chip').forEach(el => el.classList.remove('chip-active'));
-        document.getElementById(`chip-btn-${value}`).classList.add('chip-active');
-    }
+    // 🟢 เลือกชิป + ขยายใหญ่ + ใส่สีสันให้แถบชิปด้านล่าง
+function selectChip(value) {
+    selectedChipValue = value;
+    updateChipSelectorUI();
+}
+
+// 🟢 อัปเดตสีสันและสถานะการเลือกของแถบชิปด้านล่าง
+function updateChipSelectorUI() {
+    const chipValues = [1, 5, 10, 25, 50, 100, 500]; // ยอดชิปที่มีในแถบด้านล่าง
+    
+    chipValues.forEach(val => {
+        const btn = document.getElementById(`chip-btn-${val}`);
+        if (!btn) return;
+
+        const colorStyle = getChipStyleByAmount(val);
+        const isSelected = (val === selectedChipValue);
+
+        // ถ้าเลือกอยู่ -> ขยายใหญ่ (scale-125), ลอยขึ้น (-translate-y-2), แสงเรืองจัด
+        // ถ้าไม่ได้เลือก -> ขนาดปกติ, มีเงาเบาๆ
+        if (isSelected) {
+            btn.className = `w-11 h-11 rounded-full flex items-center justify-center text-xs font-black shadow-2xl transition-all duration-200 transform scale-125 -translate-y-2 border-2 ring-4 ring-yellow-300/50 z-20 chip-3d ${colorStyle}`;
+        } else {
+            btn.className = `w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold shadow-md transition-all duration-200 transform hover:scale-110 border opacity-80 hover:opacity-100 ${colorStyle}`;
+        }
+    });
+}
     
     function setPokMode(mode) {
         pokMode = mode;
@@ -694,7 +715,7 @@ function getChipStyleByAmount(amount) {
         return 'bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600 text-gray-950 border-yellow-100 shadow-amber-500/50';
     }
 }
-    // 🟢 ตัวอย่างการสั่งอัปเดต Element ชิปบนช่องแทง
+    // 🟢 อัปเดต renderChipOnTile ให้เล่น Animation เด้งใหม่ทุกครั้งที่กด
 function renderChipOnTile(elementId, amount) {
     const chipEl = document.getElementById(elementId);
     if (!chipEl) return;
@@ -702,11 +723,13 @@ function renderChipOnTile(elementId, amount) {
     if (amount > 0) {
         const colorStyle = getChipStyleByAmount(amount);
         
-        // กำหนดข้อความการแสดงผล (เช่น 1K, 500, 10)
         let displayValue = amount;
         if (amount >= 1000) displayValue = (amount / 1000) + 'k';
 
-        // ปรับแต่ง Class ให้เป็นเหรียญชิปกลม นูน มีมิติ และขยับได้
+        // 🌟 รีเซ็ต Animation เพื่อให้เด้งซ้ำทุกครั้งที่วาง
+        chipEl.classList.remove('chip-3d');
+        void chipEl.offsetWidth; // Force Reflow ให้ browser รีเซ็ตการวาด
+
         chipEl.className = `absolute -top-2 -right-2 w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black shadow-lg z-10 transition-all cursor-pointer chip-3d ${colorStyle}`;
         chipEl.innerText = displayValue;
         chipEl.classList.remove('hidden');
@@ -870,6 +893,7 @@ function toggleLoading(show) {
     }
 
     window.onload = initLIFF;
+    selectChip(50);
 </script>
     <!-- 📊 Pop-up อัตราจ่ายไฮโล -->
 <div id="hiloPayoutModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 transition-opacity duration-300">

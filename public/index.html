@@ -422,56 +422,82 @@ function listenToUserData() {
         updateBoardUI();
     }
 
-   // ยืนยันการส่งโพย (ปรับปรุงใหม่: ส่งข้อความรูปแบบไลน์ไปให้บอทหลักประมวลผล)
+  // ฟังก์ชันจัดกลุ่มคำสั่งสำหรับป๊อกเด้งและไฮโล
+function buildGroupedBetCommandsFromPending(pendingBetsObj, currentTab) {
+    const commands = [];
+
+    if (currentTab === 'pok') {
+        // แยกกลุ่มตาม [ประเภทฝั่ง (ผู้เล่น หรือ เจ้าสู้) + จำนวนเงิน]
+        // โครงสร้าง priceGroups: { "player_100": ["1", "3"], "dealer_100": ["2"] }
+        const priceGroups = {};
+
+        for (const [key, amount] of Object.entries(pendingBetsObj)) {
+            const isDealer = key.startsWith('เจ้าสู้ขา');
+            const legNum = key.replace('เจ้าสู้ขา', '').replace('ขาที่', '').trim();
+            const typeKey = isDealer ? `dealer_${amount}` : `player_${amount}`;
+
+            if (!priceGroups[typeKey]) {
+                priceGroups[typeKey] = { isDealer: isDealer, amount: amount, legs: [] };
+            }
+            priceGroups[typeKey].legs.push(legNum);
+        }
+
+        // แปลงออกมาเป็นคำสั่งข้อความแบบไลน์
+        for (const group of Object.values(priceGroups)) {
+            const combinedLegs = group.legs.join(''); // เช่น ["1", "3"] -> "13"
+            const prefix = group.isDealer ? 'จ' : '';   // ถ้าเป็นเจ้าสู้ใส่ "จ"
+            commands.push(`${prefix}${combinedLegs}-${group.amount}`); // ได้ "13-100" หรือ "จ2-100"
+        }
+    } else if (currentTab === 'hilo') {
+        // ฝั่งไฮโล ยิงส่งตามปกติ
+        for (const [key, amount] of Object.entries(pendingBetsObj)) {
+            commands.push(`${key} ${amount}`);
+        }
+    }
+
+    return commands;
+}
+
+// ยืนยันการส่งโพย (จัดกลุ่มส่งชุดเดียว รวดเร็ว 100%)
 async function submitBoardBets() {
     if (!isRoundOpen) return alert('⚠️ ขณะนี้ปิดรับแทงอยู่ครับ');
     
     const entries = Object.entries(pendingBets);
     if (entries.length === 0) return alert('⚠️ กรุณาเลือกวางชิปบนกระดานก่อนครับ');
 
-    // 🟢 1. แสดง Pop-up Loading
+    // 🟢 1. จัดกลุ่มรายการแทงที่มีราคาเดียวกัน
+    const betCommands = buildGroupedBetCommandsFromPending(pendingBets, activeTab);
+
+    // 🟢 2. แสดง Pop-up Loading
     toggleLoading(true);
 
     try {
-        for (const [key, amount] of entries) {
-            let betText = "";
-
-            if (activeTab === 'pok') {
-                if (key.startsWith('เจ้าสู้ขา')) {
-                    const legNum = key.replace('เจ้าสู้ขา', '').trim();
-                    betText = `จ${legNum}-${amount}`;
-                } else {
-                    const legNum = key.replace('ขาที่', '').trim();
-                    betText = `${legNum}-${amount}`;
-                }
-            } else if (activeTab === 'hilo') {
-                betText = `${key} ${amount}`;
-            }
-
+        // วนลูปส่งเฉพาะชุดคำสั่งที่ถูกยุบรวมแล้ว (เช่น ส่ง "13-100" ใน API Call เดียว)
+        for (const cmd of betCommands) {
             const res = await fetch('/api/web-bet-trigger', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     userId: currentUserId,
-                    betText: betText
+                    betText: cmd
                 })
             });
             
             const result = await res.json();
             
             if (!result.success) {
-                alert(`⚠️ รายการ [${betText}] ไม่สำเร็จ: ${result.message}`);
-                return;
+                alert(`⚠️ รายการ [${cmd}] ไม่สำเร็จ: ${result.message}`);
+                return; // หยุดทำงานทันทีถ้ามี error
             }
         }
 
-        alert('✅ ส่งโพยสำเร็จ!');
+        alert('✅ ส่งโพยสำเร็จเรียบร้อยครับ!');
         clearPendingBets();
     } catch (err) {
         console.error(err);
         alert('⚠️ เกิดข้อผิดพลาดในการส่งข้อมูลไปยังบอทหลัก');
     } finally {
-        // 🔴 2. ซ่อน Pop-up Loading ไม่ว่าจะสำเร็จหรือเกิด Error
+        // 🔴 3. ซ่อน Pop-up Loading
         toggleLoading(false);
     }
 }

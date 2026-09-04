@@ -371,12 +371,13 @@ function listenToUserData() {
 }
 
 // 🟢 ฟังก์ชันวาด UI แสดงรายการโพยรวมทั้ง ป๊อกเด้ง และ ไฮโล (เวอร์ชันรวมยอดตัวซ้ำ)
+// 🟢 ฟังก์ชันวาด UI แสดงรายการโพยรวมทั้ง ป๊อกเด้ง และ ไฮโล (เวอร์ชันแก้ไขป้องกันหน้าเว็บค้าง)
 function renderAllBetsUI() {
     const betsContainer = document.getElementById('myBetsContainer');
     if (!betsContainer) return;
 
-    const pokList = Array.isArray(localPokBets) ? localPokBets : Object.values(localPokBets);
-    const hiloList = Array.isArray(localHiloBets) ? localHiloBets : Object.values(localHiloBets);
+    const pokList = Array.isArray(localPokBets) ? localPokBets : (localPokBets ? Object.values(localPokBets) : []);
+    const hiloList = Array.isArray(localHiloBets) ? localHiloBets : (localHiloBets ? Object.values(localHiloBets) : []);
 
     if (pokList.length === 0 && hiloList.length === 0) {
         betsContainer.innerHTML = `<div class="text-gray-400 text-sm text-center py-2">ยังไม่มีรายการแทงในรอบนี้</div>`;
@@ -386,15 +387,24 @@ function renderAllBetsUI() {
     let html = '';
     let totalHold = 0;
 
+    //  helper function ช่วยสกัดข้อความให้ออกมาเป็น String ที่ถูกต้องเสมอ
+    const extractBetText = (bet, defaultText) => {
+        let text = bet.detail || bet.rawText || bet.category || (bet.target ? `แทง ${bet.target}` : defaultText);
+        if (typeof text === 'object') {
+            text = JSON.stringify(text);
+        }
+        return String(text || defaultText).trim();
+    };
+
     // -------------------------------------------------------------
     // ♠️ 1. จัดกลุ่มและรวมยอดโพยป๊อกเด้ง (Group & Sum)
     // -------------------------------------------------------------
     const groupedPok = {};
     pokList.forEach((bet) => {
         if (!bet) return;
-        totalHold += (bet.holdCost || 0);
+        totalHold += Number(bet.holdCost || 0);
 
-        const text = bet.detail || bet.rawText || 'ป๊อกเด้ง';
+        const text = extractBetText(bet, 'ป๊อกเด้ง');
         const price = Number(bet.actualBet || bet.price || bet.amount || 0);
 
         if (!groupedPok[text]) {
@@ -414,7 +424,6 @@ function renderAllBetsUI() {
         groupedPokKeys.forEach((text, index) => {
             const item = groupedPok[text];
             
-            // ถ้ามีการแทงซ้ำมากกว่า 1 ครั้ง ให้แสดงประวัติการบวก เช่น (100+50)
             const historyText = item.pricesHistory.length > 1 
                 ? `<span class="text-[10px] text-gray-400 font-normal mr-1">(${item.pricesHistory.join('+')})</span>` 
                 : '';
@@ -437,9 +446,9 @@ function renderAllBetsUI() {
     const groupedHilo = {};
     hiloList.forEach((bet) => {
         if (!bet) return;
-        totalHold += (bet.holdCost || 0);
+        totalHold += Number(bet.holdCost || 0);
 
-        const text = bet.detail || bet.rawText || bet.category || (bet.target ? `แทง ${bet.target}` : 'ไฮโล');
+        const text = extractBetText(bet, 'ไฮโล');
         const price = Number(bet.actualBet || bet.price || bet.amount || 0);
 
         if (!groupedHilo[text]) {
@@ -460,7 +469,6 @@ function renderAllBetsUI() {
         groupedHiloKeys.forEach((text, index) => {
             const item = groupedHilo[text];
 
-            // ถ้ามีการแทงซ้ำมากกว่า 1 ครั้ง ให้แสดงประวัติการบวก เช่น (100+50)
             const historyText = item.pricesHistory.length > 1 
                 ? `<span class="text-[10px] text-gray-400 font-normal mr-1">(${item.pricesHistory.join('+')})</span>` 
                 : '';
@@ -496,7 +504,6 @@ function renderAllBetsUI() {
 
     betsContainer.innerHTML = html;
 }
-
 // ==================== 1. กำหนดตารางอั้นสูงสุดของป๊อกเด้ง ====================
 const MAX_POK_LIMIT = 2500; // ลิมิตต่อขา (เปลี่ยนตามต้องการ เช่น 1000 หรือ 2500)
 

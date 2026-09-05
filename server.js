@@ -6231,6 +6231,27 @@ if (userMsg === 'c') {
                 }
             ]
         },
+        // 🌐 ปุ่มกดเข้าหน้าเว็บ (เพิ่มตรงนี้)
+                {
+                    type: "box",
+                    layout: "vertical",
+                    backgroundColor: "#007aff",
+                    cornerRadius: "100px",
+                    width: "35px",
+                    height: "35px",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    action: {
+                        type: "uri",
+                        label: "เว็บ",
+                        uri: "https://liff.line.me/2011387264-7B981j5N" // ⚠️ เปลี่ยนเป็นลิงก์เว็บของคุณที่นี่
+                    },
+                    contents: [
+                        { type: "text", text: "🌐", size: "xs", align: "center" }
+                    ]
+                }
+            ]
+        },
         // 4.2 กล่องคู่ 2 คอลัมน์ (ยอดเงินคงเหลือ + สถานะเทิร์น)
         {
             type: "box",

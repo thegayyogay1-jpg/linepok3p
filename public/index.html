@@ -743,14 +743,18 @@ function buildIndividualBetCommands(pendingBetsObj, activeTab) {
         if (!amount || amount <= 0) continue;
 
         if (activeTab === 'pok') {
-            // สำหรับป๊อกเด้ง: รูปแบบคือ "ขา1 100" หรือ "เจ้าสู้ขา1 100"
+            // ป๊อกเด้ง: แปลงให้ได้รูปแบบ "1-10" หรือ "เจ้าสู้ขา1-10"
             const isDealer = key.startsWith('เจ้าสู้');
             const legNum = key.replace('เจ้าสู้ขา', '').replace('ขาที่', '').trim();
-            const prefix = isDealer ? `เจ้าสู้ขา ${legNum}` : `ขา ${legNum}`;
-            commands.push(`${prefix} ${amount}`);
+            const prefix = isDealer ? `เจ้าสู้ขา${legNum}` : `${legNum}`;
+            
+            commands.push(`${prefix}-${amount}`);
         } else {
-            // สำหรับไฮโล: รูปแบบคือ "สูง-100" หรือ "zสูง-100" (หากใส่ z)
-            commands.push(`${key}-${amount}`);
+            // ไฮโล: เติม z นำหน้าเสมอ เช่น "z1-10" หรือ "zต-10"
+            // ลบ z ซ้ำซ้อน (ถ้ามี) แล้วใส่ z นำหน้าให้ถูกต้อง
+            const cleanKey = key.replace(/^z/i, '').trim();
+            
+            commands.push(`z${cleanKey}-${amount}`);
         }
     }
     

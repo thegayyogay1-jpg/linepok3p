@@ -6238,7 +6238,7 @@ if (userMsg === 'c') {
             margin: "md",
             backgroundColor: "#ffd54f", // สีพื้นหลังปุ่ม (เหลืองทอง)
             cornerRadius: "md", // ปรับความโค้งของมนปุ่ม
-            paddingVertical: "xs",   // 👈 ปรับระยะขอบบน-ล่าง (ใช้ "none", "xs", หรือ "sm") เพื่อกำหนดความสูงปุ่ม
+            paddingVertical: "none",   // 👈 ปรับระยะขอบบน-ล่าง (ใช้ "none", "xs", หรือ "sm") เพื่อกำหนดความสูงปุ่ม
             paddingHorizontal: "sm", // 👈 ปรับระยะขอบซ้าย-ขวา
             action: {
                 type: "uri",
@@ -6252,7 +6252,7 @@ if (userMsg === 'c') {
                     color: "#000000", // สีข้อความ (สีดำ)
                     weight: "bold",
                     align: "center",
-                    size: "sm"
+                    size: "xs"
                 }
             ]
         },

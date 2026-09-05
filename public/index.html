@@ -488,69 +488,86 @@ function listenToUserData() {
     });
 }
 
-// 🟢 ฟังก์ชันวาด UI แสดงรายการโพยรวม (แก้ไขจัดกลุ่มตามขา/ตัวเลือกจริง และแสดงไฮโลครบถ้วน)
+// 🟢 ฟังก์ชันวาด UI แสดงรายการโพยรวม (แก้ไขรวมยอดรายการที่ซ้ำกัน)
 function renderAllBetsUI() {
     const betsContainer = document.getElementById('myBetsContainer');
     if (!betsContainer) return;
 
-    const pokList = Array.isArray(localPokBets) ? localPokBets : (localPokBets ? Object.values(localPokBets) : []);
-    const hiloList = Array.isArray(localHiloBets) ? localHiloBets : (localHiloBets ? Object.values(localHiloBets) : []);
+    const pokListRaw = Array.isArray(localPokBets) ? localPokBets : (localPokBets ? Object.values(localPokBets) : []);
+    const hiloListRaw = Array.isArray(localHiloBets) ? localHiloBets : (localHiloBets ? Object.values(localHiloBets) : []);
 
-    if (pokList.length === 0 && hiloList.length === 0) {
+    if (pokListRaw.length === 0 && hiloListRaw.length === 0) {
         betsContainer.innerHTML = `<div class="text-gray-400 text-sm text-center py-2">ยังไม่มีรายการแทงในรอบนี้</div>`;
         return;
     }
 
-    let html = '';
+    // 1. รวมยอดเงินของป๊อกเด้ง (Group by ตัวเลือก)
+    const pokMap = {};
     let totalHold = 0;
 
-    // 🟢 แสดงรายการ ป๊อกเด้ง แบบแยกทุกใบ ไม่รวมยอด
-    if (pokList.length > 0) {
-        html += `<div class="font-bold text-xs text-cyan-400 mb-1 flex items-center gap-1">♠️ โพยป๊อกเด้ง (${pokList.length} รายการ)</div>`;
+    pokListRaw.forEach(bet => {
+        if (!bet) return;
+        totalHold += Number(bet.holdCost || 0);
+
+        const rawText = String(bet.detail || bet.rawText || bet.target || 'ป๊อกเด้ง');
+        const price = Number(bet.actualBet || bet.price || bet.amount || 0);
+
+        // หา key สำหรับจัดกลุ่ม เช่น "ขาที่ 1" หรือ "เจ้าสู้ขา 1"
+        const isDealer = rawText.includes("เจ้าสู้");
+        const matchLeg = rawText.match(/\d+/);
+        let keyName = rawText;
+        if (matchLeg) {
+            keyName = isDealer ? `เจ้าสู้ขา ${matchLeg[0]}` : `ขาที่ ${matchLeg[0]}`;
+        }
+
+        pokMap[keyName] = (pokMap[keyName] || 0) + price;
+    });
+
+    // 2. รวมยอดเงินของไฮโล (Group by ตัวเลือก)
+    const hiloMap = {};
+
+    hiloListRaw.forEach(bet => {
+        if (!bet) return;
+        totalHold += Number(bet.holdCost || 0);
+
+        let targetName = bet.target || bet.detail || bet.rawText || bet.option || bet.category || 'ไฮโล';
+        if (typeof targetName === 'object') targetName = JSON.stringify(targetName);
         
-        pokList.forEach((bet, index) => {
-            if (!bet) return;
-            totalHold += Number(bet.holdCost || 0);
+        // ตัด z ออกและตัดยอดเงินข้างหลังออกเพื่อให้เหลือแค่ชื่อตัวเลือก
+        targetName = String(targetName).replace(/^z/i, '').split('-')[0].trim();
 
-            const rawText = String(bet.detail || bet.rawText || bet.target || 'ป๊อกเด้ง');
-            const price = Number(bet.actualBet || bet.price || bet.amount || 0);
+        const price = Number(bet.actualBet || bet.price || bet.amount || 0);
+        hiloMap[targetName] = (hiloMap[targetName] || 0) + price;
+    });
 
-            // ปรับชื่อการแสดงผลให้สวยงาม
-            let displayName = rawText;
-            const isDealer = rawText.includes("เจ้าสู้");
-            const matchLeg = rawText.match(/\d+/);
-            if (matchLeg) {
-                displayName = isDealer ? `เจ้าสู้ขา ${matchLeg[0]}` : `ขาที่ ${matchLeg[0]}`;
-            }
+    let html = '';
 
+    // 3. แสดงผลรายการ ป๊อกเด้ง ที่รวมยอดแล้ว
+    const pokEntries = Object.entries(pokMap);
+    if (pokEntries.length > 0) {
+        html += `<div class="font-bold text-xs text-cyan-400 mb-1 flex items-center gap-1">♠️ โพยป๊อกเด้ง (${pokEntries.length} รายการ)</div>`;
+        
+        pokEntries.forEach(([displayName, amount], index) => {
             html += `
                 <div class="flex justify-between items-center py-1.5 border-b border-gray-800 text-xs text-gray-200 pl-2">
                     <span class="font-semibold">${index + 1}. ${displayName}</span>
-                    <span class="text-yellow-400 font-bold bg-gray-900/60 px-2 py-0.5 rounded border border-yellow-500/20">${price.toLocaleString()} B</span>
+                    <span class="text-yellow-400 font-bold bg-gray-900/60 px-2 py-0.5 rounded border border-yellow-500/20">${amount.toLocaleString()} B</span>
                 </div>
             `;
         });
     }
 
-    // 🟢 แสดงรายการ ไฮโล แบบแยกทุกใบ
-    if (hiloList.length > 0) {
-        const marginTop = pokList.length > 0 ? 'mt-3' : '';
-        html += `<div class="font-bold text-xs text-purple-400 mb-1 ${marginTop} flex items-center gap-1">🎲 โพยไฮโล (${hiloList.length} รายการ)</div>`;
+    // 4. แสดงผลรายการ ไฮโล ที่รวมยอดแล้ว
+    const hiloEntries = Object.entries(hiloMap);
+    if (hiloEntries.length > 0) {
+        const marginTop = pokEntries.length > 0 ? 'mt-3' : '';
+        html += `<div class="font-bold text-xs text-purple-400 mb-1 ${marginTop} flex items-center gap-1">🎲 โพยไฮโล (${hiloEntries.length} รายการ)</div>`;
         
-        hiloList.forEach((bet, index) => {
-            if (!bet) return;
-            totalHold += Number(bet.holdCost || 0);
-
-            let targetName = bet.target || bet.detail || bet.rawText || bet.option || bet.category || 'ไฮโล';
-            if (typeof targetName === 'object') targetName = JSON.stringify(targetName);
-            targetName = String(targetName).replace(/^z/i, '').trim();
-
-            const price = Number(bet.actualBet || bet.price || bet.amount || 0);
-
+        hiloEntries.forEach(([targetName, amount], index) => {
             html += `
                 <div class="flex justify-between items-center py-1.5 border-b border-gray-800 text-xs text-gray-200 pl-2">
                     <span class="font-semibold">${index + 1}. แทง ${targetName}</span>
-                    <span class="text-purple-300 font-bold bg-gray-900/60 px-2 py-0.5 rounded border border-purple-500/20">${price.toLocaleString()} B</span>
+                    <span class="text-purple-300 font-bold bg-gray-900/60 px-2 py-0.5 rounded border border-purple-500/20">${amount.toLocaleString()} B</span>
                 </div>
             `;
         });
@@ -1040,7 +1057,6 @@ async function submitBoardBets() {
                 status: 'pending'
             };
         });
-         alert("ค่าที่เตรียมส่ง: " + JSON.stringify(betCommands));
         // บันทึกลง Firebase
         await db.ref().update(firebaseUpdates);
 

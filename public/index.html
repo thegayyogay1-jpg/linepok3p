@@ -341,12 +341,52 @@
 
     </main>
 
-    <!-- 🟢 Loading Modal ปรับปรุงใหม่ (เปลี่ยนข้อความได้) -->
-<div id="loading-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center">
-    <div class="bg-gray-800 p-6 rounded-2xl border border-gray-700 flex flex-col items-center gap-3 max-w-xs text-center shadow-2xl">
-        <div class="w-12 h-12 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin"></div>
-        <div id="loading-text" class="text-sm font-bold text-yellow-400">กำลังประมวลผล กรุณารอสักครู่...</div>
-        <div class="text-xs text-gray-400">ห้ามปิดหน้าต่างหรือรีเฟรชขณะทำรายการ</div>
+    <!-- 🌟 Professional Interactive Result Modal -->
+<div id="loading-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 hidden flex items-center justify-center p-4 transition-all duration-300">
+    <div class="bg-gray-800/90 border border-gray-700/80 p-6 rounded-3xl flex flex-col items-center gap-4 max-w-xs w-full text-center shadow-2xl relative overflow-hidden transform transition-all duration-300 scale-95 opacity-0" id="modal-card">
+        
+        <!-- เอฟเฟกต์แสงฉากหลัง (Backlight Glow) -->
+        <div id="modal-glow" class="absolute -top-10 -left-10 w-40 h-40 bg-yellow-500/20 rounded-full blur-3xl pointer-events-none"></div>
+
+        <!-- 1. โซนไอคอนแสดงสถานะ (3D Dynamic Icon) -->
+        <div id="modal-icon-container" class="relative w-20 h-20 flex items-center justify-center">
+            
+            <!-- ไอคอนขณะโหลด (Spinner) -->
+            <div id="status-spinner" class="w-16 h-16 border-4 border-yellow-500/30 border-t-yellow-400 rounded-full animate-spin"></div>
+
+            <!-- ไอคอนส่งโพยสำเร็จ (3D Success Checkmark) -->
+            <div id="status-success" class="hidden text-5xl transform animate-bounce">
+                <span class="inline-block filter drop-shadow-[0_0_15px_rgba(34,197,94,0.8)]">🎉</span>
+            </div>
+
+            <!-- ไอคอนคืนโพยสำเร็จ (3D Refund Icon) -->
+            <div id="status-refund" class="hidden text-5xl transform animate-pulse">
+                <span class="inline-block filter drop-shadow-[0_0_15px_rgba(168,85,247,0.8)]">🗑️</span>
+            </div>
+
+            <!-- ไอคอนเกิดข้อผิดพลาด (3D Error Icon) -->
+            <div id="status-error" class="hidden text-5xl">
+                <span class="inline-block filter drop-shadow-[0_0_15px_rgba(239,68,68,0.8)]">❌</span>
+            </div>
+        </div>
+
+        <!-- 2. ข้อความส่วนหัว และ รายละเอียด -->
+        <div class="space-y-1 z-10">
+            <div id="modal-title" class="text-base font-bold text-yellow-400">กำลังประมวลผล...</div>
+            <div id="modal-subtext" class="text-xs text-gray-400">กรุณารอสักครู่ ห้ามปิดหน้าจอ</div>
+        </div>
+
+        <!-- 3. ข้อความอวยพร 3D Glow (แสดงเมื่อสำเร็จ) -->
+        <div id="modal-banner" class="hidden z-10 my-1">
+            <span class="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-amber-400 to-yellow-500 drop-shadow-[0_2px_8px_rgba(234,179,8,0.5)] tracking-wider uppercase">
+                ✨ GOOD LUCK ✨
+            </span>
+        </div>
+
+        <!-- 4. ปุ่มตกลง (แสดงเมื่อทำรายการเสร็จ) -->
+        <button id="modal-close-btn" onclick="closeResultModal()" class="hidden w-full py-2.5 bg-gradient-to-r from-yellow-500 to-amber-600 text-gray-950 font-black text-sm rounded-xl shadow-lg hover:brightness-110 active:scale-95 transition-all z-10">
+            ตกลง
+        </button>
     </div>
 </div>
 
@@ -572,13 +612,13 @@ function renderAllBetsUI() {
     betsContainer.innerHTML = html;
 }
     
-    // 🟢 อัปเดต ฟังก์ชันคืนโพย (cancelMyBets) ให้มี ป๊อปอัพ ขึ้นโชว์
+   // 🟢 อัปเดต ฟังก์ชันคืนโพย (cancelMyBets)
 async function cancelMyBets(command, gameName) {
     if (!isRoundOpen) return alert('⚠️ ขณะนี้ปิดรับแทงแล้ว ไม่สามารถยกเลิกโพยได้ครับ');
     if (!confirm(`❓ คุณต้องการคืนโพย [${gameName}] ในรอบนี้ใช่หรือไม่?`)) return;
 
-    // แสดงป๊อปอัพป้องกันกดซ้ำ
-    toggleLoading(true, `🔄 กำลังส่งคำขอคืนโพย ${gameName} กรุณารอสักครู่...`);
+    // 1. เปิดหน้าโหลดหมุน
+    showModalState('loading', 'กำลังคืนโพย...', 'กรุณารอสักครู่ ระบบกำลังดึงเครดิตคืน');
 
     try {
         const res = await fetch('/api/web-bet-trigger', {
@@ -591,19 +631,16 @@ async function cancelMyBets(command, gameName) {
         });
 
         const result = await res.json();
-        
-        // ซ่อนป๊อปอัพหลังจากทำงานเสร็จ
-        toggleLoading(false);
 
         if (result.success) {
-            alert(`✅ คืนโพย${gameName}สำเร็จ!`);
+            // 2. เปลี่ยนเป็นหน้า "คืนโพยสำเร็จ"
+            showModalState('refund', `คืนโพย${gameName}สำเร็จ!`, 'ระบบได้ทำการคืนเครดิตเรียบร้อยแล้ว');
         } else {
-            alert(`⚠️ คืนโพยไม่สำเร็จ: ${result.message || 'เกิดข้อผิดพลาด'}`);
+            showModalState('error', 'คืนโพยไม่สำเร็จ', result.message || 'เกิดข้อผิดพลาด');
         }
     } catch (err) {
         console.error(err);
-        toggleLoading(false);
-        alert('❌ เกิดข้อผิดพลาดในการส่งคำขอคืนโพย');
+        showModalState('error', 'เกิดข้อผิดพลาด', 'ไม่สามารถส่งคำขอคืนโพยได้');
     }
 }
 
@@ -895,24 +932,92 @@ async function checkPokBetLimit(userId, pendingBetsObj) {
 
     const betCommands = buildGroupedBetCommandsFromPending(pendingBets, activeTab);
     
-    // ส่งคำสั่งไปยัง Backend ต่อไป...
 }
 
-// 🟢 อัปเดต ฟังก์ชันยืนยันส่งโพย (submitBoardBets) ให้มี ป๊อปอัพ ขึ้นโชว์
+// ฟังก์ชันจัดการ Modal อัจฉริยะ (เปลี่ยนสถานะ 3D ไร้รอยต่อ)
+function showModalState(type, title, subtext) {
+    const modal = document.getElementById('loading-modal');
+    const card = document.getElementById('modal-card');
+    const glow = document.getElementById('modal-glow');
+    
+    const spinner = document.getElementById('status-spinner');
+    const success = document.getElementById('status-success');
+    const refund = document.getElementById('status-refund');
+    const error = document.getElementById('status-error');
+    
+    const titleEl = document.getElementById('modal-title');
+    const subtextEl = document.getElementById('modal-subtext');
+    const banner = document.getElementById('modal-banner');
+    const closeBtn = document.getElementById('modal-close-btn');
+
+    // เปิด Modal พร้อมอนิเมชัน Fade-in
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+        card.classList.remove('scale-95', 'opacity-0');
+        card.classList.add('scale-100', 'opacity-100');
+    }, 10);
+
+    // ซ่อนไอคอนทั้งหมดก่อน
+    [spinner, success, refund, error, banner, closeBtn].forEach(el => el.classList.add('hidden'));
+
+    // อัปเดตข้อความ
+    titleEl.innerText = title;
+    subtextEl.innerText = subtext;
+
+    // เปลี่ยนตามสถานะ
+    if (type === 'loading') {
+        spinner.classList.remove('hidden');
+        titleEl.className = "text-base font-bold text-yellow-400";
+        glow.className = "absolute -top-10 -left-10 w-40 h-40 bg-yellow-500/20 rounded-full blur-3xl pointer-events-none";
+    } 
+    else if (type === 'success') {
+        success.classList.remove('hidden');
+        banner.classList.remove('hidden');
+        closeBtn.classList.remove('hidden');
+        titleEl.className = "text-lg font-black text-green-400";
+        glow.className = "absolute -top-10 -left-10 w-40 h-40 bg-green-500/30 rounded-full blur-3xl pointer-events-none";
+    } 
+    else if (type === 'refund') {
+        refund.classList.remove('hidden');
+        closeBtn.classList.remove('hidden');
+        titleEl.className = "text-lg font-black text-purple-400";
+        glow.className = "absolute -top-10 -left-10 w-40 h-40 bg-purple-500/30 rounded-full blur-3xl pointer-events-none";
+    } 
+    else if (type === 'error') {
+        error.classList.remove('hidden');
+        closeBtn.classList.remove('hidden');
+        titleEl.className = "text-lg font-black text-red-400";
+        glow.className = "absolute -top-10 -left-10 w-40 h-40 bg-red-500/30 rounded-full blur-3xl pointer-events-none";
+    }
+}
+
+function closeResultModal() {
+    const modal = document.getElementById('loading-modal');
+    const card = document.getElementById('modal-card');
+    
+    card.classList.remove('scale-100', 'opacity-100');
+    card.classList.add('scale-95', 'opacity-0');
+    
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 200);
+}
+
+// 🟢 อัปเดต ฟังก์ชันยืนยันส่งโพย (submitBoardBets)
 async function submitBoardBets() {
     if (!isRoundOpen) return alert('⚠️ ขณะนี้ปิดรับแทงอยู่ครับ');
     
     const entries = Object.entries(pendingBets);
     if (entries.length === 0) return alert('⚠️ กรุณาเลือกวางชิปบนกระดานก่อนครับ');
 
-    // แสดงป๊อปอัพ ล็อคหน้าจอเพื่อป้องกันการกดซ้ำ
-    toggleLoading(true, "⏳ กำลังบันทึกและส่งข้อมูลโพย กรุณารอสักครู่...");
+    // 1. เปิดหน้าโหลดหมุน
+    showModalState('loading', 'กำลังส่งโพย...', 'กรุณารอสักครู่ ห้ามปิดหน้าจอ');
 
     if (activeTab === 'pok') {
         const limitCheck = await checkPokBetLimit(currentUserId, pendingBets);
         if (!limitCheck.passed) {
-            toggleLoading(false); // ปิดป๊อปอัพถ้าเช็กแล้วไม่ผ่าน
-            return alert(limitCheck.message);
+            showModalState('error', 'ส่งโพยไม่สำเร็จ', limitCheck.message);
+            return;
         }
     }
 
@@ -940,10 +1045,10 @@ async function submitBoardBets() {
             };
         });
 
-        // 1. บันทึกลง Firebase
+        // บันทึกลง Firebase
         await db.ref().update(firebaseUpdates);
 
-        // 2. ส่งคำสั่งไปยัง Backend API
+        // ส่งข้อมูลเข้า Backend API
         for (const cmd of betCommands) {
             try {
                 const res = await fetch('/api/web-bet-trigger', {
@@ -959,8 +1064,7 @@ async function submitBoardBets() {
                 if (res.ok) {
                     const result = await res.json();
                     if (result && !result.success) {
-                        toggleLoading(false);
-                        alert(`⚠️ รายการ [${cmd}] ไม่สำเร็จ: ${result.message}`);
+                        showModalState('error', 'ส่งโพยไม่สำเร็จ', result.message || 'เกิดข้อผิดพลาด');
                         return;
                     }
                 }
@@ -969,16 +1073,13 @@ async function submitBoardBets() {
             }
         }
 
-        // ซ่อนป๊อปอัพ เมื่อกระบวนการส่งทุกอย่างเสร็จสิ้น
-        toggleLoading(false);
-
-        alert('✅ ส่งโพยสำเร็จเรียบร้อยครับ!');
+        // 2. เปลี่ยนเป็นหน้า "ส่งโพยสำเร็จ" พร้อมปุ่ม Good Luck ทันที!
+        showModalState('success', 'ส่งโพยสำเร็จเรียบร้อย!', 'ระบบบันทึกรายการแทงของคุณแล้ว');
         clearPendingBets();
 
     } catch (err) {
         console.error("Submit Bet Error:", err);
-        toggleLoading(false);
-        alert('⚠️ เกิดข้อผิดพลาดในการส่งข้อมูลโพย');
+        showModalState('error', 'เกิดข้อผิดพลาด', 'ไม่สามารถเชื่อมต่อระบบได้ กรุณาลองใหม่');
     }
 }
 

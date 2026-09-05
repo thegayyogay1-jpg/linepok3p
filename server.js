@@ -6233,7 +6233,7 @@ if (userMsg === 'c') {
                 {
                     type: "box",
                     layout: "vertical",
-                    backgroundColor: "#007aff",
+                    backgroundColor: "#ede7f6",
                     cornerRadius: "100px",
                     width: "35px",
                     height: "35px",
@@ -6245,7 +6245,7 @@ if (userMsg === 'c') {
                         uri: "https://liff.line.me/2011387264-7B981j5N" // ⚠️ เปลี่ยนเป็นลิงก์เว็บของคุณที่นี่
                     },
                     contents: [
-                        { type: "text", text: "🌐", size: "xs", align: "center" }
+                        { type: "text", text: "แทง", size: "xs", align: "center" }
                     ]
                 }
             ]

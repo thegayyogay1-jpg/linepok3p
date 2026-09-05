@@ -5936,7 +5936,7 @@ if (userMsg === 'c') {
                 : `${data.totalAmount.toLocaleString()} บาท`;
 
             const label = isNaN(parseInt(legKey)) ? legKey : `ขา ${legKey}`;
-            let betText = `${itemNo++}. ♠️ แทง${label} : ${historyText}`;
+            let betText = `${itemNo++}. ♠️${label} : ${historyText}`;
 
             if (data.drawStatus) {
                 betText += ` 🃏 (จั่ว)`;
@@ -5991,7 +5991,7 @@ if (userMsg === 'c') {
 
             betContents.push({
                 type: "text",
-                text: `${itemNo++}. 🎲 [ไฮโล] แทง ${targetName} : ${historyText}`,
+                text: `${itemNo++}. 🎲 แทง ${targetName} : ${historyText}`,
                 color: "#00e5ff",
                 size: "xs",
                 wrap: true,

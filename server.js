@@ -6236,17 +6236,23 @@ if (userMsg === 'c') {
             type: "box",
             layout: "vertical",
             margin: "md",
+            backgroundColor: "#ffd54f", // สีพื้นหลังปุ่ม (เหลืองทอง)
+            cornerRadius: "md", // ปรับความโค้งของมนปุ่ม
+            paddingVertical: "xs",   // 👈 ปรับระยะขอบบน-ล่าง (ใช้ "none", "xs", หรือ "sm") เพื่อกำหนดความสูงปุ่ม
+            paddingHorizontal: "sm", // 👈 ปรับระยะขอบซ้าย-ขวา
+            action: {
+                type: "uri",
+                label: "🌐 กดเพื่อเข้าเล่นหน้าเว็บ",
+                uri: "https://liff.line.me/2011387264-7B981j5N"
+            },
             contents: [
                 {
-                    type: "button",
-                    action: {
-                        type: "uri",
-                        label: "🌐 กดเพื่อเข้าเล่นหน้าเว็บ",
-                        uri: "https://liff.line.me/2011387264-7B981j5N" // ⚠️ เปลี่ยนเป็นลิงก์เว็บของคุณที่นี่
-                    },
-                    style: "primary",
-                    color: "#ffd54f",
-                    height: "sm"
+                    type: "text",
+                    text: "🌐 กดเพื่อเข้าเล่นหน้าเว็บ",
+                    color: "#000000", // สีข้อความ (สีดำ)
+                    weight: "bold",
+                    align: "center",
+                    size: "sm"
                 }
             ]
         },

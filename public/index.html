@@ -1031,7 +1031,7 @@ async function submitBoardBets() {
                 status: 'pending'
             };
         });
-
+         alert("ค่าที่เตรียมส่ง: " + JSON.stringify(betCommands));
         // บันทึกลง Firebase
         await db.ref().update(firebaseUpdates);
 

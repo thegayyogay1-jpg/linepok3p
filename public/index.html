@@ -548,6 +548,11 @@ function renderAllBetsUI() {
         html += `<div class="font-bold text-xs text-cyan-400 mb-1 flex items-center gap-1">♠️ โพยป๊อกเด้ง (${pokEntries.length} รายการ)</div>`;
         
         pokEntries.forEach(([displayName, amount], index) => {
+            // สร้างข้อความประวัติการแทง เช่น "10+20" หรือแสดงค่าเดียว "10" ถ้าแทงครั้งเดียว
+            const historyText = data.items.length > 1 
+                ? `<span class="text-[10px] text-gray-400 mr-1.5">(${data.items.join('+')})</span>` 
+                : '';
+            
             html += `
                 <div class="flex justify-between items-center py-1.5 border-b border-gray-800 text-xs text-gray-200 pl-2">
                     <span class="font-semibold">${index + 1}. ${displayName}</span>
@@ -564,6 +569,10 @@ function renderAllBetsUI() {
         html += `<div class="font-bold text-xs text-purple-400 mb-1 ${marginTop} flex items-center gap-1">🎲 โพยไฮโล (${hiloEntries.length} รายการ)</div>`;
         
         hiloEntries.forEach(([targetName, amount], index) => {
+            const historyText = data.items.length > 1 
+                ? `<span class="text-[10px] text-gray-400 mr-1.5">(${data.items.join('+')})</span>` 
+                : '';
+            
             html += `
                 <div class="flex justify-between items-center py-1.5 border-b border-gray-800 text-xs text-gray-200 pl-2">
                     <span class="font-semibold">${index + 1}. แทง ${targetName}</span>

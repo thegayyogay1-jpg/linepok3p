@@ -735,34 +735,23 @@ function updateChipSelectorUI() {
         updateBoardUI(); // สั่งอัปเดตกระดาน (ชิปทุกตัวจะถูกซ่อนทันที)
     }
     
-  // ฟังก์ชันจัดกลุ่มคำสั่งสำหรับป๊อกเด้งและไฮโล
-function buildGroupedBetCommandsFromPending(pendingBetsObj, currentTab) {
+  // ปรับฟังก์ชันดึงคำสั่งแทงให้แตกออกเป็นรายการเดี่ยวๆ (ไม่รวมยอด)
+function buildIndividualBetCommands(pendingBets, gameType) {
     const commands = [];
-    if (currentTab === 'pok') {
-        // แยกกลุ่มตาม [ประเภทฝั่ง (ผู้เล่น หรือ เจ้าสู้) + จำนวนเงิน]
-        // โครงสร้าง priceGroups: { "player_100": ["1", "3"], "dealer_100": ["2"] }
-        const priceGroups = {};
-        for (const [key, amount] of Object.entries(pendingBetsObj)) {
-            const isDealer = key.startsWith('เจ้าสู้ขา');
-            const legNum = key.replace('เจ้าสู้ขา', '').replace('ขาที่', '').trim();
-            const typeKey = isDealer ? `dealer_${amount}` : `player_${amount}`;
-            if (!priceGroups[typeKey]) {
-                priceGroups[typeKey] = { isDealer: isDealer, amount: amount, legs: [] };
+    
+    // วนลูปอ่านทุกรายการที่กดวางชิป
+    Object.entries(pendingBets).forEach(([targetKey, amount]) => {
+        if (amount > 0) {
+            if (gameType === 'pok') {
+                // ตัวอย่าง format: "ขา1 100"
+                commands.push(`${targetKey} ${amount}`);
+            } else {
+                // ไฮโล หรือเกมอื่นๆ
+                commands.push(`${targetKey} ${amount}`);
             }
-            priceGroups[typeKey].legs.push(legNum);
         }
-        // แปลงออกมาเป็นคำสั่งข้อความแบบไลน์
-        for (const group of Object.values(priceGroups)) {
-            const combinedLegs = group.legs.join(''); // เช่น ["1", "3"] -> "13"
-            const prefix = group.isDealer ? 'จ' : '';   // ถ้าเป็นเจ้าสู้ใส่ "จ"
-            commands.push(`${prefix}${combinedLegs}-${group.amount}`); // ได้ "13-100" หรือ "จ2-100"
-        }
-    } else if (currentTab === 'hilo') {
-        // ฝั่งไฮโล ยิงส่งตามปกติ
-        for (const [key, amount] of Object.entries(pendingBetsObj)) {
-            commands.push(`z${key}-${amount}`);
-        }
-    }
+    });
+
     return commands;
 }
     // 🟢 ฟังก์ชันคืนค่า Class สีชิปตามยอดเงินที่วาง
@@ -895,6 +884,45 @@ async function checkPokBetLimit(userId, pendingBetsObj) {
     const betCommands = buildGroupedBetCommandsFromPending(pendingBets, activeTab);
     
 }
+    
+    // ฟังก์ชัน render รายการโพยของป๊อกเด้ง แบบแยกรายการอิสระ
+function renderPokBetsList(betsData) {
+    const container = document.getElementById('myBetsContainer');
+    if (!container) return;
+
+    if (!betsData || Object.keys(betsData).length === 0) {
+        container.innerHTML = `<div class="text-xs text-gray-500 text-center py-2">ยังไม่มีรายการแทงในรอบนี้</div>`;
+        return;
+    }
+
+    let html = '';
+
+    // วนลูปแสดงผลทุกรายการที่ส่งเข้ามา โดยไม่รวมยอด
+    Object.entries(betsData).forEach(([key, bet]) => {
+        // ดึงรายละเอียด เช่น "ขา1 100", "ป๊อกขา 2 200"
+        const detailText = bet.detail || bet.rawText || 'รายการแทง';
+        const amount = bet.actualBet || 0;
+
+        html += `
+            <div class="flex items-center justify-between bg-gray-700/50 p-2 rounded-lg border border-gray-600/50 mb-1.5 shadow-sm">
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-yellow-400"></span>
+                    <span class="text-xs font-semibold text-gray-200">${detailText}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-bold text-yellow-400">+${amount.toLocaleString()}</span>
+                    <!-- ปุ่มคืนโพยเฉพาะรายการนี้ -->
+                    <button onclick="cancelMyBets('${detailText}', 'ป๊อกเด้ง')" 
+                            class="text-[10px] bg-red-500/20 hover:bg-red-500/40 text-red-300 px-2 py-0.5 rounded border border-red-500/30 transition-all">
+                        คืนโพย
+                    </button>
+                </div>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+}
 
 // ฟังก์ชันจัดการ Modal อัจฉริยะ (เปลี่ยนสถานะ 3D ไร้รอยต่อ)
 function showModalState(type, title, subtext) {
@@ -984,7 +1012,7 @@ async function submitBoardBets() {
     }
 
     try {
-        const betCommands = buildGroupedBetCommandsFromPending(pendingBets, activeTab);
+        const betCommands = const betCommands = buildIndividualBetCommands(pendingBets, activeTab);
         const timestamp = Date.now();
         const firebaseUpdates = {};
 

@@ -6146,11 +6146,20 @@ if (userMsg === 'c') {
     }
 
   // 🌟 4. เตรียมข้อมูลองค์ประกอบการ์ด (bodyElements)
-    const profileImg = user.pictureUrl || "https://your-domain.com/path-to-your-default-avatar.png";
+    const profileImg = user.pictureUrl || "https://cdn-icons-png.flaticon.com/512/847/847969.png";
     const displayName = user.nickname || user.name || "สมาชิก";
 
+    // 🖼️ กำหนด URL รูปกรอบวงกลมวิบวับแยกตาม VIP (นำลิงก์รูป/APNG ของคุณมาใส่ตรงนี้)
+    const vipFrames = {
+        0: "https://i.imgur.com/TkCbPxo.png", // ถ้า VIP 0 ไม่อยากให้มีกรอบ ให้ปล่อยใส่ "" ได้ครับ
+        1: "https://i.imgur.com/TkCbPxo.png",
+        2: "https://i.imgur.com/TkCbPxo.png",
+        3: "https://i.imgur.com/TkCbPxo.png"
+    };
+    const currentFrameUrl = vipFrames[currentVip] || vipFrames[0];
+
     const bodyElements = [
-        // 4.1 แถบโปรไฟล์ (รูปวงกลมขนาดพอดี + ชื่อ + ID + VIP)
+        // 4.1 แถบโปรไฟล์ (รูปวงกลม + ซ้อนกรอบวิบวับ + ชื่อ + ID + VIP)
         {
             type: "box",
             layout: "horizontal",
@@ -6160,17 +6169,43 @@ if (userMsg === 'c') {
                 {
                     type: "box",
                     layout: "vertical",
-                    cornerRadius: "100px",
-                    width: "40px",
-                    height: "40px",
+                    width: "55px",  // ขยายขนาดกล่องเล็กน้อยเพื่อให้เห็นขอบกรอบชัดขึ้น
+                    height: "55px",
+                    position: "relative",
                     contents: [
+                        // ชั้นล่าง (Layer 1): รูปโปรไฟล์ผู้ใช้ (ตัดขอบวงกลม)
                         {
+                            type: "box",
+                            layout: "vertical",
+                            width: "45px",
+                            height: "45px",
+                            cornerRadius: "100px",
+                            position: "absolute",
+                            offsetTop: "5px",
+                            offsetStart: "5px",
+                            contents: [
+                                {
+                                    type: "image",
+                                    url: profileImg,
+                                    size: "full",
+                                    aspectRatio: "1:1",
+                                    aspectMode: "cover"
+                                }
+                            ]
+                        },
+                        // ชั้นบน (Layer 2): กรอบเอฟเฟกต์วงกลม (วางซ้อนทับด้านบน)
+                        ...(currentFrameUrl ? [{
                             type: "image",
-                            url: profileImg,
+                            url: currentFrameUrl,
                             size: "full",
+                            aspectMode: "cover",
                             aspectRatio: "1:1",
-                            aspectMode: "cover"
-                        }
+                            position: "absolute",
+                            offsetTop: "0px",
+                            offsetBottom: "0px",
+                            offsetStart: "0px",
+                            offsetEnd: "0px"
+                        }] : [])
                     ]
                 },
                 {
@@ -6312,7 +6347,7 @@ if (userMsg === 'c') {
                 contents: [
                     {
                         type: "image",
-                        url: "https://i.imgur.com/TkCbPxo.png",
+                        url: "https://img.freepik.com/free-vector/black-luxury-background-with-golden-elements_52683-10068.jpg",
                         size: "full",
                         aspectRatio: "20:4",
                         aspectMode: "cover"

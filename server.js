@@ -6146,7 +6146,7 @@ if (userMsg === 'c') {
     }
 
   // 🌟 4. เตรียมข้อมูลองค์ประกอบการ์ด (bodyElements)
-    const profileImg = user.pictureUrl || "https://cdn-icons-png.flaticon.com/512/847/847969.png";
+    const profileImg = user.pictureUrl || "https://your-domain.com/path-to-your-default-avatar.png";
     const displayName = user.nickname || user.name || "สมาชิก";
 
     const bodyElements = [
@@ -6312,7 +6312,7 @@ if (userMsg === 'c') {
                 contents: [
                     {
                         type: "image",
-                        url: "https://img.freepik.com/free-vector/black-luxury-background-with-golden-elements_52683-10068.jpg",
+                        url: "https://i.imgur.com/TkCbPxo.png",
                         size: "full",
                         aspectRatio: "20:4",
                         aspectMode: "cover"

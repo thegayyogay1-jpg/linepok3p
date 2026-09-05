@@ -5863,7 +5863,7 @@ if (userMsg === 'c') {
 
     replyText = null;
 
-    // 📝 2. ดึงรายการโพยป๊อกเด้ง และ โพยไฮโล มาจัดแถว
+   // 📝 2. ดึงรายการโพยป๊อกเด้ง และ โพยไฮโล มาจัดแถว (เวอร์ชันรวมยอด)
     let betContents = [];
     const myPokdengBets = roundBets[userId] || [];
     const myHiloBets = (typeof activeHiloBets !== 'undefined' && activeHiloBets[userId]) || 
@@ -5871,19 +5871,51 @@ if (userMsg === 'c') {
 
     let itemNo = 1;
 
-    // ♠️ 2.1 ดึงโพยป๊อกเด้ง
+    // ♠️ 2.1 ดึงโพยป๊อกเด้ง (จัดกลุ่ม + รวมยอด)
     if (myPokdengBets && myPokdengBets.length > 0) {
+        // ใช้ Object เพื่อ Group ตามชื่อขา/รายละเอียดการแทง
+        const groupedPokdeng = {};
+
         myPokdengBets.forEach((bet) => {
-            let betText = `${itemNo++}. ♠️ [ป๊อกเด้ง] ${bet.detail}`;
+            const key = bet.detail || bet.betType || "ป๊อกเด้ง";
+            if (!groupedPokdeng[key]) {
+                groupedPokdeng[key] = {
+                    amounts: [],
+                    drawLegs: new Set(),
+                    totalAmount: 0
+                };
+            }
+
+            // เก็บประวัติยอดแทง + ยอดรวม
+            const betAmt = Number(bet.actualBet || bet.amount || 0);
+            groupedPokdeng[key].amounts.push(betAmt);
+            groupedPokdeng[key].totalAmount += betAmt;
+
+            // รวบรวมข้อมูลการจั่ว (ถ้ามี)
             if (bet.drawStatus) {
-                let drawLegs = [];
                 for (let leg in bet.drawStatus) {
-                    if (bet.drawStatus[leg] === "จั่ว") drawLegs.push(leg);
-                }
-                if (drawLegs.length > 0) {
-                    betText += ` 🃏 (จั่ว: ${drawLegs.sort().join(', ')})`;
+                    if (bet.drawStatus[leg] === "จั่ว") {
+                        groupedPokdeng[key].drawLegs.add(leg);
+                    }
                 }
             }
+        });
+
+        // นำข้อมูลที่ Group แล้วมาสร้าง Flex Text
+        Object.entries(groupedPokdeng).forEach(([detail, data]) => {
+            // สร้างรูปแบบ เช่น (100+20) = 120 บาท หรือ 100 บาท (กรณีแทงรอบเดียว)
+            const historyText = data.amounts.length > 1 
+                ? `(${data.amounts.join('+')}) = ${data.totalAmount.toLocaleString()} บาท` 
+                : `${data.totalAmount.toLocaleString()} บาท`;
+
+            let betText = `${itemNo++}. ♠️ ${detail} : ${historyText}`;
+
+            // ใส่สถานะจั่ว
+            if (data.drawLegs.size > 0) {
+                const drawList = Array.from(data.drawLegs).sort().join(', ');
+                betText += ` 🃏 (จั่ว: ${drawList})`;
+            }
+
             betContents.push({
                 type: "text",
                 text: betText,
@@ -5905,18 +5937,35 @@ if (userMsg === 'c') {
         });
     }
 
-    // 🎲 2.2 ดึงโพยไฮโล
+    // 🎲 2.2 ดึงโพยไฮโล (จัดกลุ่ม + รวมยอด)
     if (myHiloBets && myHiloBets.length > 0) {
+        const groupedHilo = {};
         let totalHiloBet = 0;
+
         myHiloBets.forEach((hBet) => {
             if (!hBet) return;
             const targetName = hBet.target || hBet.category || "ไฮโล";
             const amount = Number(hBet.price || hBet.amount || 0);
             totalHiloBet += amount;
 
+            if (!groupedHilo[targetName]) {
+                groupedHilo[targetName] = {
+                    amounts: [],
+                    totalAmount: 0
+                };
+            }
+            groupedHilo[targetName].amounts.push(amount);
+            groupedHilo[targetName].totalAmount += amount;
+        });
+
+        Object.entries(groupedHilo).forEach(([targetName, data]) => {
+            const historyText = data.amounts.length > 1 
+                ? `(${data.amounts.join('+')}) = ${data.totalAmount.toLocaleString()} บาท` 
+                : `${data.totalAmount.toLocaleString()} บาท`;
+
             betContents.push({
                 type: "text",
-                text: `${itemNo++}. 🎲 [ไฮโล] แทง ${targetName} : ${amount.toLocaleString()} บาท`,
+                text: `${itemNo++}. 🎲 แทง ${targetName} : ${historyText}`,
                 color: "#00e5ff",
                 size: "xs",
                 wrap: true,

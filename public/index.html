@@ -520,7 +520,11 @@ function renderAllBetsUI() {
             keyName = isDealer ? `เจ้าสู้ขา ${matchLeg[0]}` : `ขาที่ ${matchLeg[0]}`;
         }
 
-        pokMap[keyName] = (pokMap[keyName] || 0) + price;
+        if (!pokMap[keyName]) {
+            pokMap[keyName] = { total: 0, items: [] };
+        }
+        pokMap[keyName].total += price;
+        pokMap[keyName].items.push(price);
     });
 
     // 2. รวมยอดเงินของไฮโล (Group by ตัวเลือก)
@@ -537,7 +541,11 @@ function renderAllBetsUI() {
         targetName = String(targetName).replace(/^z/i, '').split('-')[0].trim();
 
         const price = Number(bet.actualBet || bet.price || bet.amount || 0);
-        hiloMap[targetName] = (hiloMap[targetName] || 0) + price;
+        if (!hiloMap[targetName]) {
+            hiloMap[targetName] = { total: 0, items: [] };
+        }
+        hiloMap[targetName].total += price;
+        hiloMap[targetName].items.push(price);
     });
 
     let html = '';

@@ -5863,7 +5863,7 @@ if (userMsg === 'c') {
 
     replyText = null;
 
-   // 📝 2. ดึงรายการโพยป๊อกเด้ง และ โพยไฮโล มาจัดแถว (เวอร์ชันรวมยอด)
+   // 📝 2. ดึงรายการโพยป๊อกเด้ง และ โพยไฮโล มาจัดแถว (เวอร์ชันแยกคิดรายขาแล้วนำมารวมยอด)
     let betContents = [];
     const myPokdengBets = roundBets[userId] || [];
     const myHiloBets = (typeof activeHiloBets !== 'undefined' && activeHiloBets[userId]) || 
@@ -5871,49 +5871,75 @@ if (userMsg === 'c') {
 
     let itemNo = 1;
 
-    // ♠️ 2.1 ดึงโพยป๊อกเด้ง (จัดกลุ่ม + รวมยอด)
+    // ♠️ 2.1 ดึงโพยป๊อกเด้ง (แตกโพยเป็นรายขา -> รวมยอดตามเลขขา)
     if (myPokdengBets && myPokdengBets.length > 0) {
-        // ใช้ Object เพื่อ Group ตามชื่อขา/รายละเอียดการแทง
-        const groupedPokdeng = {};
+        // ใช้ Object เก็บข้อมูลแยกตามเลขขา เช่น legMap["1"], legMap["2"]
+        const legMap = {};
 
         myPokdengBets.forEach((bet) => {
-            const key = bet.detail || bet.betType || "ป๊อกเด้ง";
-            if (!groupedPokdeng[key]) {
-                groupedPokdeng[key] = {
-                    amounts: [],
-                    drawLegs: new Set(),
-                    totalAmount: 0
-                };
-            }
-
-            // เก็บประวัติยอดแทง + ยอดรวม
-            const betAmt = Number(bet.actualBet || bet.amount || 0);
-            groupedPokdeng[key].amounts.push(betAmt);
-            groupedPokdeng[key].totalAmount += betAmt;
-
-            // รวบรวมข้อมูลการจั่ว (ถ้ามี)
-            if (bet.drawStatus) {
-                for (let leg in bet.drawStatus) {
-                    if (bet.drawStatus[leg] === "จั่ว") {
-                        groupedPokdeng[key].drawLegs.add(leg);
-                    }
+            // ดึงรายการขาจากการแทงรอบนี้ (รองรับทั้ง Array และ Number/String)
+            let legs = [];
+            if (Array.isArray(bet.legs)) {
+                legs = bet.legs;
+            } else if (bet.leg !== undefined) {
+                legs = [bet.leg];
+            } else if (typeof bet.detail === 'string') {
+                // ดึงตัวเลขจากข้อความ เช่น "แทงขา [1, 2, 3]"
+                const match = bet.detail.match(/\[(.*?)\]/);
+                if (match && match[1]) {
+                    legs = match[1].split(',').map(s => s.trim());
                 }
             }
+
+            // คำนวณยอดเงินต่อขา
+            const totalBetAmt = Number(bet.actualBet || bet.amount || 0);
+            const betPerLeg = legs.length > 0 ? (totalBetAmt / legs.length) : totalBetAmt;
+
+            // ถ้าหาขาไม่พบ ให้จัดเข้ากลุ่มทั่วไป
+            if (legs.length === 0) {
+                legs = ["ทั่วไป"];
+            }
+
+            legs.forEach((legKey) => {
+                const keyStr = String(legKey);
+                if (!legMap[keyStr]) {
+                    legMap[keyStr] = {
+                        amounts: [],
+                        totalAmount: 0,
+                        drawStatus: false
+                    };
+                }
+
+                legMap[keyStr].amounts.push(betPerLeg);
+                legMap[keyStr].totalAmount += betPerLeg;
+
+                // เช็กสถานะการจั่วของขานี้
+                if (bet.drawStatus && (bet.drawStatus[keyStr] === "จั่ว" || bet.drawStatus[keyStr] === true)) {
+                    legMap[keyStr].drawStatus = true;
+                }
+            });
         });
 
-        // นำข้อมูลที่ Group แล้วมาสร้าง Flex Text
-        Object.entries(groupedPokdeng).forEach(([detail, data]) => {
-            // สร้างรูปแบบ เช่น (100+20) = 120 บาท หรือ 100 บาท (กรณีแทงรอบเดียว)
+        // เรียงลำดับขา (1, 2, 3...) แล้วนำมาสร้าง Flex Text
+        const sortedLegs = Object.keys(legMap).sort((a, b) => {
+            const numA = parseInt(a), numB = parseInt(b);
+            if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+            return a.localeCompare(b);
+        });
+
+        sortedLegs.forEach((legKey) => {
+            const data = legMap[legKey];
+            
+            // สร้างข้อความแสดงประวัติ เช่น (100+50+10) = 160 บาท
             const historyText = data.amounts.length > 1 
                 ? `(${data.amounts.join('+')}) = ${data.totalAmount.toLocaleString()} บาท` 
                 : `${data.totalAmount.toLocaleString()} บาท`;
 
-            let betText = `${itemNo++}. ♠️ ${detail} : ${historyText}`;
+            const label = isNaN(parseInt(legKey)) ? legKey : `ขา ${legKey}`;
+            let betText = `${itemNo++}. ♠️ แทง${label} : ${historyText}`;
 
-            // ใส่สถานะจั่ว
-            if (data.drawLegs.size > 0) {
-                const drawList = Array.from(data.drawLegs).sort().join(', ');
-                betText += ` 🃏 (จั่ว: ${drawList})`;
+            if (data.drawStatus) {
+                betText += ` 🃏 (จั่ว)`;
             }
 
             betContents.push({
@@ -5937,7 +5963,7 @@ if (userMsg === 'c') {
         });
     }
 
-    // 🎲 2.2 ดึงโพยไฮโล (จัดกลุ่ม + รวมยอด)
+    // 🎲 2.2 ดึงโพยไฮโล (จัดกลุ่ม + รวมยอดตามตัวเลือก)
     if (myHiloBets && myHiloBets.length > 0) {
         const groupedHilo = {};
         let totalHiloBet = 0;
@@ -5965,7 +5991,7 @@ if (userMsg === 'c') {
 
             betContents.push({
                 type: "text",
-                text: `${itemNo++}. 🎲 แทง ${targetName} : ${historyText}`,
+                text: `${itemNo++}. 🎲 [ไฮโล] แทง ${targetName} : ${historyText}`,
                 color: "#00e5ff",
                 size: "xs",
                 wrap: true,

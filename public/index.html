@@ -299,16 +299,16 @@
 </div>
 
         <!-- ยอดรวมเตรียมส่งโพย + ปุ่ม ยืนยัน / ยกเลิก -->
-        <div class="bg-gray-800 p-3 rounded-lg border border-gray-700 space-y-3">
+        <div class="bg-gray-800 p-3 rounded-lg border border-gray-700 space-y-3 relative z-50">
             <div class="flex justify-between items-center text-sm px-2">
                 <span class="text-gray-400">ยอดเงินลงโพยรอบนี้:</span>
                 <span id="total-pending-amount" class="text-xl font-bold text-yellow-400">0 ฿</span>
             </div>
             <div class="flex gap-2">
-                <button onclick="clearPendingBets()" class="flex-1 py-2.5 bg-gray-600 hover:bg-gray-500 text-white font-bold rounded-lg shadow">
+                <button onclick="clearPendingBets()" class="flex-1 py-2.5 bg-gray-600 hover:bg-gray-500 text-white font-bold rounded-lg shadow active:scale-95 transition-all cursor-pointer">
                     ❌ ยกเลิก
                 </button>
-                <button onclick="submitBoardBets()" class="flex-2 w-2/3 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-gray-900 font-bold rounded-lg shadow hover:brightness-110">
+                <button onclick="submitBoardBets()" class="flex-2 w-2/3 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-gray-900 font-bold rounded-lg shadow hover:brightness-110 active:scale-95 transition-all cursor-pointer">
                     ✅ ยืนยันส่งโพย
                 </button>
             </div>
@@ -377,6 +377,8 @@
         }
         listenToUserData();
         listenToSystemState();
+        // 🌟 เพิ่มบรรทัดนี้: ตั้งค่าสีชิปด้านล่างและขยายใหญ่ตัวที่เลือกตั้งแต่เปิดหน้า
+        selectChip(selectedChipValue || 10);
     }
 
     // ฟังสถานะรอบเปิด/ปิด Real-time

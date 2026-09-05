@@ -562,13 +562,15 @@ function renderAllBetsUI() {
 
     betsContainer.innerHTML = html;
 }
-    // 4. ฟังก์ชันส่งคำขอคืนโพย (รองรับทั้ง "r" และ "rz")
-    async function cancelMyBets(command, gameName) {
+    
+    // 🟢 อัปเดต ฟังก์ชันคืนโพย (cancelMyBets) ให้มี ป๊อปอัพ ขึ้นโชว์
+async function cancelMyBets(command, gameName) {
     if (!isRoundOpen) return alert('⚠️ ขณะนี้ปิดรับแทงแล้ว ไม่สามารถยกเลิกโพยได้ครับ');
     if (!confirm(`❓ คุณต้องการคืนโพย [${gameName}] ในรอบนี้ใช่หรือไม่?`)) return;
 
-    // 🟢 แสดง Pop-up Loading
-    toggleLoading(true);
+    // แสดงป๊อปอัพป้องกันกดซ้ำ
+    toggleLoading(true, `🔄 กำลังส่งคำขอคืนโพย ${gameName} กรุณารอสักครู่...`);
+
     try {
         const res = await fetch('/api/web-bet-trigger', {
             method: 'POST',
@@ -580,6 +582,10 @@ function renderAllBetsUI() {
         });
 
         const result = await res.json();
+        
+        // ซ่อนป๊อปอัพหลังจากทำงานเสร็จ
+        toggleLoading(false);
+
         if (result.success) {
             alert(`✅ คืนโพย${gameName}สำเร็จ!`);
         } else {
@@ -587,10 +593,8 @@ function renderAllBetsUI() {
         }
     } catch (err) {
         console.error(err);
-        alert('❌ เกิดข้อผิดพลาดในการส่งคำขอคืนโพย');
-    } finally {
-        // 🔴 ซ่อน Pop-up Loading
         toggleLoading(false);
+        alert('❌ เกิดข้อผิดพลาดในการส่งคำขอคืนโพย');
     }
 }
 
@@ -885,87 +889,89 @@ async function checkPokBetLimit(userId, pendingBetsObj) {
     // ส่งคำสั่งไปยัง Backend ต่อไป...
 }
 
-// ==================== 3. ฟังก์ชัน submitBoardBets ปรับปรุงใหม่ ====================
+// 🟢 อัปเดต ฟังก์ชันยืนยันส่งโพย (submitBoardBets) ให้มี ป๊อปอัพ ขึ้นโชว์
 async function submitBoardBets() {
     if (!isRoundOpen) return alert('⚠️ ขณะนี้ปิดรับแทงอยู่ครับ');
     
     const entries = Object.entries(pendingBets);
     if (entries.length === 0) return alert('⚠️ กรุณาเลือกวางชิปบนกระดานก่อนครับ');
 
-    // 🟢 เช็คลิมิตอั้นสะสมเฉพาะเมื่ออยู่ในแท็บป๊อกเด้ง
+    // แสดงป๊อปอัพ ล็อคหน้าจอเพื่อป้องกันการกดซ้ำ
+    toggleLoading(true, "⏳ กำลังบันทึกและส่งข้อมูลโพย กรุณารอสักครู่...");
+
     if (activeTab === 'pok') {
-        toggleLoading(true);
         const limitCheck = await checkPokBetLimit(currentUserId, pendingBets);
         if (!limitCheck.passed) {
-            toggleLoading(false);
+            toggleLoading(false); // ปิดป๊อปอัพถ้าเช็กแล้วไม่ผ่าน
             return alert(limitCheck.message);
         }
-    }else {
-            toggleLoading(true);
-        }
-
-        try {
-            const betCommands = buildGroupedBetCommandsFromPending(pendingBets, activeTab);
-            const timestamp = Date.now();
-            const firebaseUpdates = {};
-
-            const basePath = activeTab === 'pok' 
-                ? `system_data/roundBets/${currentUserId}` 
-                : `system_data/hiloRoundBets/${currentUserId}`;
-
-            betCommands.forEach(cmd => {
-                const newKey = db.ref(basePath).push().key;
-                const amt = getAmountFromCommand(cmd);
-                
-                firebaseUpdates[`${basePath}/${newKey}`] = {
-                    detail: cmd,
-                    rawText: cmd,
-                    actualBet: amt,
-                    holdCost: amt,
-                    timestamp: timestamp,
-                    gameType: activeTab,
-                    status: 'pending'
-                };
-            });
-
-            // 1. บันทึกลง Firebase
-            await db.ref().update(firebaseUpdates);
-
-            // 2. ส่งคำสั่งไปยัง บอทหลัก / Backend API
-            for (const cmd of betCommands) {
-                try {
-                    const res = await fetch('/api/web-bet-trigger', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            userId: currentUserId,
-                            betText: cmd,
-                            gameType: activeTab
-                        })
-                    });
-
-                    if (res.ok) {
-                        const result = await res.json();
-                        if (result && !result.success) {
-                            alert(`⚠️ รายการ [${cmd}] ไม่สำเร็จ: ${result.message}`);
-                            return;
-                        }
-                    }
-                } catch (apiErr) {
-                    console.warn('API Trigger Notice:', apiErr);
-                }
-            }
-
-            alert('✅ ส่งโพยสำเร็จเรียบร้อยครับ!');
-            clearPendingBets();
-
-        } catch (err) {
-            console.error("Submit Bet Error:", err);
-            alert('⚠️ เกิดข้อผิดพลาดในการส่งข้อมูลโพย');
-        } finally {
-            toggleLoading(false);
-        }
     }
+
+    try {
+        const betCommands = buildGroupedBetCommandsFromPending(pendingBets, activeTab);
+        const timestamp = Date.now();
+        const firebaseUpdates = {};
+
+        const basePath = activeTab === 'pok' 
+            ? `system_data/roundBets/${currentUserId}` 
+            : `system_data/hiloRoundBets/${currentUserId}`;
+
+        betCommands.forEach(cmd => {
+            const newKey = db.ref(basePath).push().key;
+            const amt = getAmountFromCommand(cmd);
+            
+            firebaseUpdates[`${basePath}/${newKey}`] = {
+                detail: cmd,
+                rawText: cmd,
+                actualBet: amt,
+                holdCost: amt,
+                timestamp: timestamp,
+                gameType: activeTab,
+                status: 'pending'
+            };
+        });
+
+        // 1. บันทึกลง Firebase
+        await db.ref().update(firebaseUpdates);
+
+        // 2. ส่งคำสั่งไปยัง Backend API
+        for (const cmd of betCommands) {
+            try {
+                const res = await fetch('/api/web-bet-trigger', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: currentUserId,
+                        betText: cmd,
+                        gameType: activeTab
+                    })
+                });
+
+                if (res.ok) {
+                    const result = await res.json();
+                    if (result && !result.success) {
+                        toggleLoading(false);
+                        alert(`⚠️ รายการ [${cmd}] ไม่สำเร็จ: ${result.message}`);
+                        return;
+                    }
+                }
+            } catch (apiErr) {
+                console.warn('API Trigger Notice:', apiErr);
+            }
+        }
+
+        // ซ่อนป๊อปอัพ เมื่อกระบวนการส่งทุกอย่างเสร็จสิ้น
+        toggleLoading(false);
+
+        alert('✅ ส่งโพยสำเร็จเรียบร้อยครับ!');
+        clearPendingBets();
+
+    } catch (err) {
+        console.error("Submit Bet Error:", err);
+        toggleLoading(false);
+        alert('⚠️ เกิดข้อผิดพลาดในการส่งข้อมูลโพย');
+    }
+}
 
     function getAmountFromCommand(cmd) {
         if (!cmd) return 0;
@@ -976,15 +982,19 @@ async function submitBoardBets() {
         return 0;
     }
 
-    function toggleLoading(show) {
-        const modal = document.getElementById('loading-modal');
-        if (!modal) return;
-        if (show) {
-            modal.classList.remove('hidden');
-        } else {
-            modal.classList.add('hidden');
-        }
+    // ฟังก์ชันเปิด/ปิด Loading พร้อมเปลี่ยนข้อความ
+function toggleLoading(show, message = "กำลังประมวลผล กรุณารอสักครู่...") {
+    const modal = document.getElementById('loading-modal');
+    const textEl = document.getElementById('loading-text');
+    if (!modal) return;
+    
+    if (show) {
+        if (textEl) textEl.innerText = message;
+        modal.classList.remove('hidden');
+    } else {
+        modal.classList.add('hidden');
     }
+}
 
     function switchTab(tab) {
         activeTab = tab;

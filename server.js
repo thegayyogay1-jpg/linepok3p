@@ -6228,9 +6228,7 @@ if (userMsg === 'c') {
                     contents: [
                         { type: "text", text: `🔥 VIP ${currentVip}`, color: "#ffd700", size: "xs", weight: "bold" }
                     ]
-                }
-            ]
-        },
+                },
         // 🌐 ปุ่มกดเข้าหน้าเว็บ (เพิ่มตรงนี้)
                 {
                     type: "box",

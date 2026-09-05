@@ -735,21 +735,26 @@ function updateChipSelectorUI() {
         updateBoardUI(); // สั่งอัปเดตกระดาน (ชิปทุกตัวจะถูกซ่อนทันที)
     }
     
-// ✅ ตัวอย่างการแปลงรายการแทงให้เป็น String ตามรูปแบบที่ถูกต้อง
-function buildIndividualBetCommands(pendingBets, activeTab) {
-    return pendingBets.map(bet => {
-        // ดึงตัวเลือกการแทงและจำนวนเงิน
-        const target = bet.target || bet.option; // เช่น '1', 'สูง', 'ต่ำ'
-        const amount = bet.amount;              // เช่น 100
+// ✅ แก้ไขฟังก์ชัน buildIndividualBetCommands ให้ถูกต้อง
+function buildIndividualBetCommands(pendingBetsObj, activeTab) {
+    const commands = [];
+    
+    for (const [key, amount] of Object.entries(pendingBetsObj)) {
+        if (!amount || amount <= 0) continue;
 
-        // ตรวจสอบว่าเป็นแทงประเภทพิเศษ (เช่น มี z นำหน้า) หรือไม่
-        if (activeTab === 'special' || bet.isSpecial) {
-            return `z${target}-${amount}`; // ได้ผลลัพธ์เป็น "zสูง-100"
+        if (activeTab === 'pok') {
+            // สำหรับป๊อกเด้ง: รูปแบบคือ "ขา1 100" หรือ "เจ้าสู้ขา1 100"
+            const isDealer = key.startsWith('เจ้าสู้');
+            const legNum = key.replace('เจ้าสู้ขา', '').replace('ขาที่', '').trim();
+            const prefix = isDealer ? `เจ้าสู้ขา ${legNum}` : `ขา ${legNum}`;
+            commands.push(`${prefix} ${amount}`);
+        } else {
+            // สำหรับไฮโล: รูปแบบคือ "สูง-100" หรือ "zสูง-100" (หากใส่ z)
+            commands.push(`${key}-${amount}`);
         }
-
-        // กรณีแทงปกติ
-        return `${target}-${amount}`;       // ได้ผลลัพธ์เป็น "1-100"
-    });
+    }
+    
+    return commands;
 }
     // 🟢 ฟังก์ชันคืนค่า Class สีชิปตามยอดเงินที่วาง
 function getChipStyleByAmount(amount) {

@@ -6242,10 +6242,10 @@ if (userMsg === 'c') {
                     action: {
                         type: "uri",
                         label: "🌐 กดเพื่อเข้าเล่นหน้าเว็บ",
-                        uri: "https://your-website.com" // ⚠️ เปลี่ยนเป็นลิงก์เว็บของคุณที่นี่
+                        uri: "https://liff.line.me/2011387264-7B981j5N" // ⚠️ เปลี่ยนเป็นลิงก์เว็บของคุณที่นี่
                     },
                     style: "primary",
-                    color: "#1d72f3",
+                    color: "#ffd54f",
                     height: "sm"
                 }
             ]

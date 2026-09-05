@@ -299,16 +299,16 @@
 </div>
 
         <!-- ยอดรวมเตรียมส่งโพย + ปุ่ม ยืนยัน / ยกเลิก -->
-        <div class="bg-gray-800 p-3 rounded-lg border border-gray-700 space-y-3 relative z-50">
+        <div class="bg-gray-800 p-3 rounded-lg border border-gray-700 space-y-3">
             <div class="flex justify-between items-center text-sm px-2">
                 <span class="text-gray-400">ยอดเงินลงโพยรอบนี้:</span>
                 <span id="total-pending-amount" class="text-xl font-bold text-yellow-400">0 ฿</span>
             </div>
             <div class="flex gap-2">
-                <button onclick="clearPendingBets()" class="flex-1 py-2.5 bg-gray-600 hover:bg-gray-500 text-white font-bold rounded-lg shadow active:scale-95 transition-all cursor-pointer">
+                <button onclick="clearPendingBets()" class="flex-1 py-2.5 bg-gray-600 hover:bg-gray-500 text-white font-bold rounded-lg shadow">
                     ❌ ยกเลิก
                 </button>
-                <button onclick="submitBoardBets()" class="flex-2 w-2/3 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-gray-900 font-bold rounded-lg shadow hover:brightness-110 active:scale-95 transition-all cursor-pointer">
+                <button onclick="submitBoardBets()" class="flex-2 w-2/3 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-gray-900 font-bold rounded-lg shadow hover:brightness-110">
                     ✅ ยืนยันส่งโพย
                 </button>
             </div>
@@ -377,8 +377,6 @@
         }
         listenToUserData();
         listenToSystemState();
-        // 🌟 เพิ่มบรรทัดนี้: ตั้งค่าสีชิปด้านล่างและขยายใหญ่ตัวที่เลือกตั้งแต่เปิดหน้า
-        selectChip(selectedChipValue || 10);
     }
 
     // ฟังสถานะรอบเปิด/ปิด Real-time
@@ -902,99 +900,92 @@ async function submitBoardBets() {
             toggleLoading(false);
             return alert(limitCheck.message);
         }
-    } else {
-        toggleLoading(true);
-    }
-
-    try {
-        // 2. แปลงรายการชิปบนกระดานเป็นชุดคำสั่งไลน์ (เช่น "13-100" หรือ "z65-100")
-        const betCommands = buildGroupedBetCommandsFromPending(pendingBets, activeTab);
-        
-        // 3. เตรียมวัตถุสำหรับบันทึกลง Firebase Realtime Database
-        const timestamp = Date.now();
-        const firebaseUpdates = {};
-
-        // เลือก Path ให้ตรงกับที่ฟังค่าไว้ใน listenToUserData
-        const basePath = activeTab === 'pok' 
-            ? `system_data/roundBets/${currentUserId}` 
-            : `system_data/hiloRoundBets/${currentUserId}`;
-
-        betCommands.forEach(cmd => {
-            const newKey = db.ref(basePath).push().key;
-            
-            // ถ่ายโอนข้อมูลลง Object เพื่อรอ Update พร้อมกัน
-            firebaseUpdates[`${basePath}/${newKey}`] = {
-                detail: cmd,
-                rawText: cmd,
-                actualBet: getAmountFromCommand(cmd),
-                holdCost: getAmountFromCommand(cmd),
-                timestamp: timestamp,
-                gameType: activeTab,
-                status: 'pending'
-            };
-        });
-
-        // 4. บันทึกลง Firebase (จะเห็นโพยขึ้นในช่องทันที)
-        await db.ref().update(firebaseUpdates);
-
-        // 5. ส่งคำสั่งไปยัง บอทหลัก / Backend API
-        for (const cmd of betCommands) {
-            try {
-                const res = await fetch('/api/web-bet-trigger', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        userId: currentUserId,
-                        betText: cmd,
-                        gameType: activeTab
-                    })
-                });
-
-                // ตรวจสอบ Response กรณีต้องการแจ้งเตือนข้อผิดพลาดจากฝั่ง Server
-                if (res.ok) {
-                    const result = await res.json();
-                    if (result && !result.success) {
-                        alert(`⚠️ รายการ [${cmd}] ไม่สำเร็จ: ${result.message}`);
-                        return;
-                    }
-                }
-            } catch (apiErr) {
-                console.warn('API Trigger Notice:', apiErr);
-            }
+    }else {
+            toggleLoading(true);
         }
 
-        alert('✅ ส่งโพยสำเร็จเรียบร้อยครับ!');
-        clearPendingBets(); // ล้างชิปบนกระดานหลังส่งเสร็จ
+        try {
+            const betCommands = buildGroupedBetCommandsFromPending(pendingBets, activeTab);
+            const timestamp = Date.now();
+            const firebaseUpdates = {};
 
-    } catch (err) {
-        console.error("Submit Bet Error:", err);
-        alert('⚠️ เกิดข้อผิดพลาดในการส่งข้อมูลโพย');
-    } finally {
-        toggleLoading(false);
-    }
-}
+            const basePath = activeTab === 'pok' 
+                ? `system_data/roundBets/${currentUserId}` 
+                : `system_data/hiloRoundBets/${currentUserId}`;
 
-// 🟢 ฟังก์ชันช่วยแกะยอดเงินจากข้อความคำสั่งส่งโพย
-function getAmountFromCommand(cmd) {
-    if (!cmd) return 0;
-    const parts = cmd.split('-');
-    if (parts.length > 1) {
-        return parseFloat(parts[parts.length - 1]) || 0;
-    }
-    return 0;
-}
+            betCommands.forEach(cmd => {
+                const newKey = db.ref(basePath).push().key;
+                const amt = getAmountFromCommand(cmd);
+                
+                firebaseUpdates[`${basePath}/${newKey}`] = {
+                    detail: cmd,
+                    rawText: cmd,
+                    actualBet: amt,
+                    holdCost: amt,
+                    timestamp: timestamp,
+                    gameType: activeTab,
+                    status: 'pending'
+                };
+            });
 
-// 🟢 ฟังก์ชัน เปิด/ปิด Pop-up Loading
-function toggleLoading(show) {
-    const modal = document.getElementById('loading-modal');
-    if (!modal) return;
-    if (show) {
-        modal.classList.remove('hidden');
-    } else {
-        modal.classList.add('hidden');
+            // 1. บันทึกลง Firebase
+            await db.ref().update(firebaseUpdates);
+
+            // 2. ส่งคำสั่งไปยัง บอทหลัก / Backend API
+            for (const cmd of betCommands) {
+                try {
+                    const res = await fetch('/api/web-bet-trigger', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            userId: currentUserId,
+                            betText: cmd,
+                            gameType: activeTab
+                        })
+                    });
+
+                    if (res.ok) {
+                        const result = await res.json();
+                        if (result && !result.success) {
+                            alert(`⚠️ รายการ [${cmd}] ไม่สำเร็จ: ${result.message}`);
+                            return;
+                        }
+                    }
+                } catch (apiErr) {
+                    console.warn('API Trigger Notice:', apiErr);
+                }
+            }
+
+            alert('✅ ส่งโพยสำเร็จเรียบร้อยครับ!');
+            clearPendingBets();
+
+        } catch (err) {
+            console.error("Submit Bet Error:", err);
+            alert('⚠️ เกิดข้อผิดพลาดในการส่งข้อมูลโพย');
+        } finally {
+            toggleLoading(false);
+        }
     }
-}
-    // สลับแท็บ ป๊อกเด้ง / ไฮโล
+
+    function getAmountFromCommand(cmd) {
+        if (!cmd) return 0;
+        const parts = cmd.split('-');
+        if (parts.length > 1) {
+            return parseFloat(parts[parts.length - 1]) || 0;
+        }
+        return 0;
+    }
+
+    function toggleLoading(show) {
+        const modal = document.getElementById('loading-modal');
+        if (!modal) return;
+        if (show) {
+            modal.classList.remove('hidden');
+        } else {
+            modal.classList.add('hidden');
+        }
+    }
+
     function switchTab(tab) {
         activeTab = tab;
         clearPendingBets();
@@ -1007,7 +998,7 @@ function toggleLoading(show) {
             document.getElementById('section-hilo').classList.remove('hidden');
             document.getElementById('section-pok').classList.add('hidden');
             document.getElementById('tab-hilo').className = 'flex-1 py-2 text-sm font-bold rounded-md bg-purple-600 text-white';
-            document.getElementById('tab-pok').className = 'flex-1 py-2 text-sm font-bold rounded-md text-gray-400'; // แก้ไข id ตรงนี้ให้ถูกต้อง
+            document.getElementById('tab-pok').className = 'flex-1 py-2 text-sm font-bold rounded-md text-gray-400';
         }
     }
 

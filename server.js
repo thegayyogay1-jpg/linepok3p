@@ -6231,22 +6231,20 @@ if (userMsg === 'c') {
                 },
         // 🌐 ปุ่มกดเข้าหน้าเว็บ (เพิ่มตรงนี้)
                 {
-                    type: "box",
-                    layout: "vertical",
-                    backgroundColor: "#ede7f6",
-                    cornerRadius: "100px",
-                    width: "35px",
-                    height: "35px",
-                    alignItems: "center",
-                    justifyContent: "center",
+            type: "box",
+            layout: "vertical",
+            margin: "md",
+            contents: [
+                {
+                    type: "button",
                     action: {
                         type: "uri",
-                        label: "เว็บ",
-                        uri: "https://liff.line.me/2011387264-7B981j5N" // ⚠️ เปลี่ยนเป็นลิงก์เว็บของคุณที่นี่
+                        label: "🌐 กดเพื่อเข้าเล่นหน้าเว็บ",
+                        uri: "https://your-website.com" // ⚠️ เปลี่ยนเป็นลิงก์เว็บของคุณที่นี่
                     },
-                    contents: [
-                        { type: "text", text: "แทง", size: "xs", align: "center" }
-                    ]
+                    style: "primary",
+                    color: "#1d72f3",
+                    height: "sm"
                 }
             ]
         },

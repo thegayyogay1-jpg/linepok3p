@@ -6237,9 +6237,11 @@ if (userMsg === 'c') {
             layout: "vertical",
             margin: "md",
             backgroundColor: "#ffd54f", // สีพื้นหลังปุ่ม (เหลืองทอง)
-            cornerRadius: "md", // ปรับความโค้งของมนปุ่ม
-            paddingVertical: "none",   // 👈 ปรับระยะขอบบน-ล่าง (ใช้ "none", "xs", หรือ "sm") เพื่อกำหนดความสูงปุ่ม
-            paddingHorizontal: "sm", // 👈 ปรับระยะขอบซ้าย-ขวา
+            cornerRadius: "md", // ความโค้งของมนปุ่ม
+            paddingTop: "xs",    // 👈 ความสูงขอบบน (ปรับเป็น "none", "xs", "sm" เพื่อลด/เพิ่มความสูง)
+            paddingBottom: "xs", // 👈 ความสูงขอบล่าง
+            paddingStart: "sm",  // 👈 ระยะขอบซ้าย
+            paddingEnd: "sm",    // 👈 ระยะขอบขวา
             action: {
                 type: "uri",
                 label: "🌐 กดเพื่อเข้าเล่นหน้าเว็บ",

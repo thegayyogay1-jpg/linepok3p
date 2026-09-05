@@ -735,24 +735,21 @@ function updateChipSelectorUI() {
         updateBoardUI(); // สั่งอัปเดตกระดาน (ชิปทุกตัวจะถูกซ่อนทันที)
     }
     
-  // ปรับฟังก์ชันดึงคำสั่งแทงให้แตกออกเป็นรายการเดี่ยวๆ (ไม่รวมยอด)
-function buildIndividualBetCommands(pendingBets, gameType) {
-    const commands = [];
-    
-    // วนลูปอ่านทุกรายการที่กดวางชิป
-    Object.entries(pendingBets).forEach(([targetKey, amount]) => {
-        if (amount > 0) {
-            if (gameType === 'pok') {
-                // ตัวอย่าง format: "ขา1 100"
-                commands.push(`${targetKey} ${amount}`);
-            } else {
-                // ไฮโล หรือเกมอื่นๆ
-                commands.push(`${targetKey} ${amount}`);
-            }
-        }
-    });
+// ✅ ตัวอย่างการแปลงรายการแทงให้เป็น String ตามรูปแบบที่ถูกต้อง
+function buildIndividualBetCommands(pendingBets, activeTab) {
+    return pendingBets.map(bet => {
+        // ดึงตัวเลือกการแทงและจำนวนเงิน
+        const target = bet.target || bet.option; // เช่น '1', 'สูง', 'ต่ำ'
+        const amount = bet.amount;              // เช่น 100
 
-    return commands;
+        // ตรวจสอบว่าเป็นแทงประเภทพิเศษ (เช่น มี z นำหน้า) หรือไม่
+        if (activeTab === 'special' || bet.isSpecial) {
+            return `z${target}-${amount}`; // ได้ผลลัพธ์เป็น "zสูง-100"
+        }
+
+        // กรณีแทงปกติ
+        return `${target}-${amount}`;       // ได้ผลลัพธ์เป็น "1-100"
+    });
 }
     // 🟢 ฟังก์ชันคืนค่า Class สีชิปตามยอดเงินที่วาง
 function getChipStyleByAmount(amount) {

@@ -902,47 +902,92 @@ async function submitBoardBets() {
             toggleLoading(false);
             return alert(limitCheck.message);
         }
+    } else {
+        toggleLoading(true);
     }
 
-    // 🟢 1. จัดกลุ่มรายการแทงที่มีราคาเดียวกัน
-    const betCommands = buildGroupedBetCommandsFromPending(pendingBets, activeTab);
-
-    // 🟢 2. แสดง Pop-up Loading (ถ้ายังไม่ได้เปิด)
-    toggleLoading(true);
-
     try {
-        // วนลูปส่งเฉพาะชุดคำสั่งที่ถูกยุบรวมแล้ว (เช่น ส่ง "13-100" ใน API Call เดียว)
+        // 2. แปลงรายการชิปบนกระดานเป็นชุดคำสั่งไลน์ (เช่น "13-100" หรือ "z65-100")
+        const betCommands = buildGroupedBetCommandsFromPending(pendingBets, activeTab);
+        
+        // 3. เตรียมวัตถุสำหรับบันทึกลง Firebase Realtime Database
+        const timestamp = Date.now();
+        const firebaseUpdates = {};
+
+        // เลือก Path ให้ตรงกับที่ฟังค่าไว้ใน listenToUserData
+        const basePath = activeTab === 'pok' 
+            ? `system_data/roundBets/${currentUserId}` 
+            : `system_data/hiloRoundBets/${currentUserId}`;
+
+        betCommands.forEach(cmd => {
+            const newKey = db.ref(basePath).push().key;
+            
+            // ถ่ายโอนข้อมูลลง Object เพื่อรอ Update พร้อมกัน
+            firebaseUpdates[`${basePath}/${newKey}`] = {
+                detail: cmd,
+                rawText: cmd,
+                actualBet: getAmountFromCommand(cmd),
+                holdCost: getAmountFromCommand(cmd),
+                timestamp: timestamp,
+                gameType: activeTab,
+                status: 'pending'
+            };
+        });
+
+        // 4. บันทึกลง Firebase (จะเห็นโพยขึ้นในช่องทันที)
+        await db.ref().update(firebaseUpdates);
+
+        // 5. ส่งคำสั่งไปยัง บอทหลัก / Backend API
         for (const cmd of betCommands) {
-            const res = await fetch('/api/web-bet-trigger', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId: currentUserId,
-                    betText: cmd
-                })
-            });
-            
-            const result = await res.json();
-            
-            if (!result.success) {
-                alert(`⚠️ รายการ [${cmd}] ไม่สำเร็จ: ${result.message}`);
-                return; // หยุดทำงานทันทีถ้ามี error
+            try {
+                const res = await fetch('/api/web-bet-trigger', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: currentUserId,
+                        betText: cmd,
+                        gameType: activeTab
+                    })
+                });
+
+                // ตรวจสอบ Response กรณีต้องการแจ้งเตือนข้อผิดพลาดจากฝั่ง Server
+                if (res.ok) {
+                    const result = await res.json();
+                    if (result && !result.success) {
+                        alert(`⚠️ รายการ [${cmd}] ไม่สำเร็จ: ${result.message}`);
+                        return;
+                    }
+                }
+            } catch (apiErr) {
+                console.warn('API Trigger Notice:', apiErr);
             }
         }
 
         alert('✅ ส่งโพยสำเร็จเรียบร้อยครับ!');
-        clearPendingBets();
+        clearPendingBets(); // ล้างชิปบนกระดานหลังส่งเสร็จ
+
     } catch (err) {
-        console.error(err);
-        alert('⚠️ เกิดข้อผิดพลาดในการส่งข้อมูลไปยังบอทหลัก');
+        console.error("Submit Bet Error:", err);
+        alert('⚠️ เกิดข้อผิดพลาดในการส่งข้อมูลโพย');
     } finally {
-        // 🔴 3. ซ่อน Pop-up Loading
         toggleLoading(false);
     }
 }
-    // ฟังก์ชัน เปิด/ปิด Pop-up Loading
+
+// 🟢 ฟังก์ชันช่วยแกะยอดเงินจากข้อความคำสั่งส่งโพย
+function getAmountFromCommand(cmd) {
+    if (!cmd) return 0;
+    const parts = cmd.split('-');
+    if (parts.length > 1) {
+        return parseFloat(parts[parts.length - 1]) || 0;
+    }
+    return 0;
+}
+
+// 🟢 ฟังก์ชัน เปิด/ปิด Pop-up Loading
 function toggleLoading(show) {
     const modal = document.getElementById('loading-modal');
+    if (!modal) return;
     if (show) {
         modal.classList.remove('hidden');
     } else {

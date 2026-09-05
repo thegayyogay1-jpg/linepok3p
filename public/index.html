@@ -341,6 +341,15 @@
 
     </main>
 
+    <!-- 🟢 Loading Modal ปรับปรุงใหม่ (เปลี่ยนข้อความได้) -->
+<div id="loading-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center">
+    <div class="bg-gray-800 p-6 rounded-2xl border border-gray-700 flex flex-col items-center gap-3 max-w-xs text-center shadow-2xl">
+        <div class="w-12 h-12 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin"></div>
+        <div id="loading-text" class="text-sm font-bold text-yellow-400">กำลังประมวลผล กรุณารอสักครู่...</div>
+        <div class="text-xs text-gray-400">ห้ามปิดหน้าต่างหรือรีเฟรชขณะทำรายการ</div>
+    </div>
+</div>
+
 <script>
     // 1. Firebase Config
     const firebaseConfig = {

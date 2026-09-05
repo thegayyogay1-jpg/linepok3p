@@ -6238,8 +6238,8 @@ if (userMsg === 'c') {
             margin: "md",
             backgroundColor: "#ffd54f", // สีพื้นหลังปุ่ม (เหลืองทอง)
             cornerRadius: "md", // ความโค้งของมนปุ่ม
-            paddingTop: "xs",    // 👈 ความสูงขอบบน (ปรับเป็น "none", "xs", "sm" เพื่อลด/เพิ่มความสูง)
-            paddingBottom: "xs", // 👈 ความสูงขอบล่าง
+            paddingTop: "sm",    // 👈 ความสูงขอบบน (ปรับเป็น "none", "xs", "sm" เพื่อลด/เพิ่มความสูง)
+            paddingBottom: "sm", // 👈 ความสูงขอบล่าง
             paddingStart: "sm",  // 👈 ระยะขอบซ้าย
             paddingEnd: "sm",    // 👈 ระยะขอบขวา
             action: {

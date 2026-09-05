@@ -493,7 +493,6 @@ function renderAllBetsUI() {
     const betsContainer = document.getElementById('myBetsContainer');
     if (!betsContainer) return;
 
-    // ดึงข้อมูลและแปลงเป็น Array อย่างปลอดภัย
     const pokList = Array.isArray(localPokBets) ? localPokBets : (localPokBets ? Object.values(localPokBets) : []);
     const hiloList = Array.isArray(localHiloBets) ? localHiloBets : (localHiloBets ? Object.values(localHiloBets) : []);
 
@@ -505,99 +504,62 @@ function renderAllBetsUI() {
     let html = '';
     let totalHold = 0;
 
-    // ♠️ 1. จัดกลุ่มโพยป๊อกเด้ง (รวมยอดเข้าขาเดิมเสมอ ไม่ว่าจะแทงกี่ครั้ง/กี่ราคา)
-    const groupedPok = {};
-    pokList.forEach((bet) => {
-        if (!bet) return;
-        totalHold += Number(bet.holdCost || 0);
+    // 🟢 แสดงรายการ ป๊อกเด้ง แบบแยกทุกใบ ไม่รวมยอด
+    if (pokList.length > 0) {
+        html += `<div class="font-bold text-xs text-cyan-400 mb-1 flex items-center gap-1">♠️ โพยป๊อกเด้ง (${pokList.length} รายการ)</div>`;
+        
+        pokList.forEach((bet, index) => {
+            if (!bet) return;
+            totalHold += Number(bet.holdCost || 0);
 
-        const rawText = String(bet.detail || bet.rawText || bet.target || 'ป๊อกเด้ง');
-        const price = Number(bet.actualBet || bet.price || bet.amount || 0);
+            const rawText = String(bet.detail || bet.rawText || bet.target || 'ป๊อกเด้ง');
+            const price = Number(bet.actualBet || bet.price || bet.amount || 0);
 
-        // ดึงเฉพาะชื่อขา เช่น "ขาที่ 1" หรือ "เจ้าสู้ขา 2" เพื่อใช้เป็นคีย์หลัก
-        let groupKey = rawText;
-        const isDealer = rawText.includes("เจ้าสู้");
-        const matchLeg = rawText.match(/\d+/);
-        if (matchLeg) {
-            groupKey = isDealer ? `เจ้าสู้ขา ${matchLeg[0]}` : `ขาที่ ${matchLeg[0]}`;
-        }
-
-        if (!groupedPok[groupKey]) {
-            groupedPok[groupKey] = { totalPrice: 0, pricesHistory: [] };
-        }
-        groupedPok[groupKey].totalPrice += price;
-        groupedPok[groupKey].pricesHistory.push(price);
-    });
-
-    const groupedPokKeys = Object.keys(groupedPok);
-    if (groupedPokKeys.length > 0) {
-        html += `<div class="font-bold text-xs text-cyan-400 mb-1 flex items-center gap-1">♠️ โพยป๊อกเด้ง (${groupedPokKeys.length} รายการ)</div>`;
-        groupedPokKeys.forEach((keyName, index) => {
-            const item = groupedPok[keyName];
-            const historyText = item.pricesHistory.length > 1 
-                ? `<span class="text-[10px] text-gray-400 font-normal mr-1">(${item.pricesHistory.join('+')})</span>` 
-                : '';
+            // ปรับชื่อการแสดงผลให้สวยงาม
+            let displayName = rawText;
+            const isDealer = rawText.includes("เจ้าสู้");
+            const matchLeg = rawText.match(/\d+/);
+            if (matchLeg) {
+                displayName = isDealer ? `เจ้าสู้ขา ${matchLeg[0]}` : `ขาที่ ${matchLeg[0]}`;
+            }
 
             html += `
-                <div class="flex justify-between items-center py-1 border-b border-gray-800 text-xs text-gray-200 pl-2">
-                    <span>${index + 1}. ${keyName}</span>
-                    <div class="flex items-center">
-                        ${historyText}
-                        <span class="text-yellow-400 font-bold">${item.totalPrice.toLocaleString()} B</span>
-                    </div>
+                <div class="flex justify-between items-center py-1.5 border-b border-gray-800 text-xs text-gray-200 pl-2">
+                    <span class="font-semibold">${index + 1}. ${displayName}</span>
+                    <span class="text-yellow-400 font-bold bg-gray-900/60 px-2 py-0.5 rounded border border-yellow-500/20">${price.toLocaleString()} B</span>
                 </div>
             `;
         });
     }
 
-    // 🎲 2. จัดกลุ่มโพยไฮโล (ดึงข้อมูลทุกรูปแบบ ป้องกันโพยหาย และรวมยอดเข้าหน้าเดิม)
-    const groupedHilo = {};
-    hiloList.forEach((bet) => {
-        if (!bet) return;
-        totalHold += Number(bet.holdCost || 0);
+    // 🟢 แสดงรายการ ไฮโล แบบแยกทุกใบ
+    if (hiloList.length > 0) {
+        const marginTop = pokList.length > 0 ? 'mt-3' : '';
+        html += `<div class="font-bold text-xs text-purple-400 mb-1 ${marginTop} flex items-center gap-1">🎲 โพยไฮโล (${hiloList.length} รายการ)</div>`;
+        
+        hiloList.forEach((bet, index) => {
+            if (!bet) return;
+            totalHold += Number(bet.holdCost || 0);
 
-        // รองรับฟิลด์ข้อมูลทุกแบบของไฮโล
-        let targetName = bet.target || bet.detail || bet.rawText || bet.option || bet.category || 'ไฮโล';
-        if (typeof targetName === 'object') targetName = JSON.stringify(targetName);
-        targetName = String(targetName).replace(/^z/i, '').trim(); // ลบพรีฟิกซ์ z ออกถ้ามี
+            let targetName = bet.target || bet.detail || bet.rawText || bet.option || bet.category || 'ไฮโล';
+            if (typeof targetName === 'object') targetName = JSON.stringify(targetName);
+            targetName = String(targetName).replace(/^z/i, '').trim();
 
-        const price = Number(bet.actualBet || bet.price || bet.amount || 0);
-
-        if (!groupedHilo[targetName]) {
-            groupedHilo[targetName] = { totalPrice: 0, pricesHistory: [] };
-        }
-        groupedHilo[targetName].totalPrice += price;
-        groupedHilo[targetName].pricesHistory.push(price);
-    });
-
-    const groupedHiloKeys = Object.keys(groupedHilo);
-    if (groupedHiloKeys.length > 0) {
-        const marginTop = groupedPokKeys.length > 0 ? 'mt-3' : '';
-        html += `<div class="font-bold text-xs text-purple-400 mb-1 ${marginTop} flex items-center gap-1">🎲 โพยไฮโล (${groupedHiloKeys.length} รายการ)</div>`;
-        groupedHiloKeys.forEach((keyName, index) => {
-            const item = groupedHilo[keyName];
-            const historyText = item.pricesHistory.length > 1 
-                ? `<span class="text-[10px] text-gray-400 font-normal mr-1">(${item.pricesHistory.join('+')})</span>` 
-                : '';
+            const price = Number(bet.actualBet || bet.price || bet.amount || 0);
 
             html += `
-                <div class="flex justify-between items-center py-1 border-b border-gray-800 text-xs text-gray-200 pl-2">
-                    <span>${index + 1}. แทง ${keyName}</span>
-                    <div class="flex items-center">
-                        ${historyText}
-                        <span class="text-purple-300 font-bold">${item.totalPrice.toLocaleString()} B</span>
-                    </div>
+                <div class="flex justify-between items-center py-1.5 border-b border-gray-800 text-xs text-gray-200 pl-2">
+                    <span class="font-semibold">${index + 1}. แทง ${targetName}</span>
+                    <span class="text-purple-300 font-bold bg-gray-900/60 px-2 py-0.5 rounded border border-purple-500/20">${price.toLocaleString()} B</span>
                 </div>
             `;
         });
     }
 
-    // ยอดเงินล็อกค้ำประกันรวม
     if (totalHold > 0) {
-        html += `<div class="mt-2 text-xs text-amber-500 font-bold">🔒 ล็อกค้ำประกันรวม: ${totalHold.toLocaleString()} บาท</div>`;
+        html += `<div class="mt-2 text-xs text-amber-500 font-bold text-right">🔒 ล็อกค้ำประกันรวม: ${totalHold.toLocaleString()} บาท</div>`;
     }
 
-    // ปุ่มกดคืนโพยแยกประเภท
     html += `
         <div class="grid grid-cols-2 gap-2 mt-3">
             <button onclick="cancelMyBets('r', 'ป๊อกเด้ง')" class="py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-lg shadow border border-red-500 flex items-center justify-center gap-1">

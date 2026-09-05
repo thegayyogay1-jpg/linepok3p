@@ -6229,8 +6229,10 @@ if (userMsg === 'c') {
                         { type: "text", text: `🔥 VIP ${currentVip}`, color: "#ffd700", size: "xs", weight: "bold" }
                     ]
                 },
-        // 🌐 ปุ่มกดเข้าหน้าเว็บ (เพิ่มตรงนี้)
-                {
+            ]
+        },
+        // 🌐 ปุ่มแทงหน้าเว็บ
+        {
             type: "box",
             layout: "vertical",
             margin: "md",
@@ -6247,7 +6249,6 @@ if (userMsg === 'c') {
                     height: "sm"
                 }
             ]
-                }
         },
         // 4.2 กล่องคู่ 2 คอลัมน์ (ยอดเงินคงเหลือ + สถานะเทิร์น)
         {

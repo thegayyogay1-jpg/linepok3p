@@ -7229,7 +7229,7 @@ app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
         formData.append('files', slipFile.buffer, slipFile.originalname); 
 
         const slipResponse = await axios.post(
-            'https://api.slip2go.com/api/verify-slip/image/info', // 👈 เปลี่ยนเป็น api.slip2go.com
+            'https://connect.slip2go.com/api/verify-slip/qr-image/info', // 👈 เปลี่ยนเป็น api.slip2go.com
             formData,
             {
                 headers: {

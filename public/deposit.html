@@ -3,135 +3,124 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>แจ้งฝากเงินออโต้</title>
+    <title>ระบบฝากเงินออโต้</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f6f9;
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-        }
-        .container {
-            background: #ffffff;
-            padding: 25px;
-            border-radius: 12px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-            width: 100%;
-            max-width: 400px;
-        }
-        h2 {
-            text-align: center;
-            color: #333;
-            margin-bottom: 20px;
-        }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-            color: #555;
-        }
-        input[type="number"], input[type="file"] {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            box-sizing: border-box;
-        }
-        button {
-            width: 100%;
-            padding: 12px;
-            background-color: #28a745;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-        button:hover {
-            background-color: #218838;
-        }
-        #statusMessage {
-            margin-top: 15px;
-            text-align: center;
-            font-weight: bold;
-        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .card { background: #ffffff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
+        h2 { text-align: center; color: #1a73e8; margin-top: 0; }
+        .step { display: none; }
+        .step.active { display: block; }
+        .bank-info { background: #e8f0fe; border-left: 4px solid #1a73e8; padding: 15px; border-radius: 6px; margin: 15px 0; }
+        .bank-info p { margin: 5px 0; font-weight: bold; color: #333; }
+        .warning-text { color: #d93025; font-size: 13px; margin-bottom: 15px; }
+        input[type="number"], input[type="file"] { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background-color: #1a73e8; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; }
+        button:hover { background-color: #1557b0; }
+        .btn-copy { background-color: #34a853; margin-top: 5px; }
+        .btn-copy:hover { background-color: #2d8e47; }
+        #statusMessage { margin-top: 15px; text-align: center; font-weight: bold; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2>🏦 แจ้งฝากเงินออโต้</h2>
-    <form id="depositForm">
-        <div class="form-group">
-            <label for="amount">จำนวนเงินที่โอน (บาท):</label>
-            <input type="number" id="amount" placeholder="ระบุยอดเงิน เช่น 100" required>
-        </div>
+<div class="card">
+    <h2>🏦 ฝากเงินระบบออโต้</h2>
 
-        <div class="form-group">
-            <label for="slip">แนบรูปภาพสลิปโอนเงิน:</label>
-            <input type="file" id="slip" accept="image/*" required>
-        </div>
+    <!-- Step 1: ระบุยอดเงิน -->
+    <div id="step1" class="step active">
+        <label for="depositAmount"><b>ระบุจำนวนเงินที่ต้องการฝาก (บาท):</b></label>
+        <input type="number" id="depositAmount" placeholder="เช่น 100" min="1" required>
+        <p class="warning-text">⚠️ **คำเตือน:** กรุณาใช้บัญชีธนาคารที่คุณลงทะเบียนไว้กับระบบในการโอนเงินเท่านั้น</p>
+        <button type="button" onclick="goToStep2()">ถัดไป (รับเลขบัญชี)</button>
+    </div>
 
-        <button type="submit" id="submitBtn">ยืนยันการฝากเงิน</button>
-    </form>
+    <!-- Step 2: โอนเงิน & แนบสลิป -->
+    <div id="step2" class="step">
+        <div class="bank-info">
+            <p>🏦 ธนาคาร: กสิกรไทย (K-Bank)</p>
+            <p>🔢 เลขบัญชี: <span id="accNum">123-4-56789-0</span></p>
+            <p>👤 ชื่อบัญชี: บริษัท ของคุณ จำกัด</p>
+            <p>💰 ยอดที่ต้องโอน: <span id="displayAmount" style="color:#d93025; font-size: 18px;">0</span> บาท</p>
+        </div>
+        <button type="button" class="btn-copy" onclick="copyAccount()">📋 คัดลอกเลขบัญชี</button>
+
+        <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
+
+        <form id="slipForm">
+            <label for="slipImage"><b>แนบรูปภาพสลิปการโอนเงิน:</b></label>
+            <input type="file" id="slipImage" accept="image/*" required>
+            <button type="submit" id="submitBtn">ยืนยันการแจ้งโอน</button>
+        </form>
+        <button type="button" onclick="goToStep1()" style="background-color: #6c757d; margin-top: 10px;">ย้อนกลับ</button>
+    </div>
 
     <div id="statusMessage"></div>
 </div>
 
-<!-- ดึง SDK ของ LINE LIFF -->
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script>
     let userId = "";
+    let amountToDeposit = 0;
 
-    const form = document.getElementById('depositForm');
-    const statusMsg = document.getElementById('statusMessage');
-    const submitBtn = document.getElementById('submitBtn');
-
-    // 1. เริ่มการทำงานของ LINE LIFF เพื่อดึง userId
-    async function main() {
+    // เริ่มการทำงาน LINE LIFF
+    async function initLiff() {
         try {
-            // ⚠️ เปลี่ยน YOUR_LIFF_ID เป็น LIFF ID ที่ได้จาก LINE Developers (เช่น 200xxxxxxx-xxxxxxx)
-            await liff.init({ liffId: "2011466617-EdngTg1w" }); 
-
+            // ⚠️ เปลี่ยน YOUR_LIFF_ID เป็น LIFF ID ของคุณ
+            await liff.init({ liffId: "2011466617-EdngTg1w" });
             if (liff.isLoggedIn()) {
                 const profile = await liff.getProfile();
                 userId = profile.userId;
             } else {
-                liff.login(); // ถ้ายังไม่ได้ล็อกอิน ให้เด้งหน้าล็อกอิน LINE
+                liff.login();
             }
         } catch (err) {
-            console.error("LIFF Initialization failed", err);
-            // กรณีเปิดทดสอบผ่าน Browser ปกติ ให้ลองดึงจาก URL Parameter แทน
+            console.error("LIFF Init Error:", err);
             const urlParams = new URLSearchParams(window.location.search);
             userId = urlParams.get('userId');
         }
     }
-    main();
+    initLiff();
 
-    // 2. ประมวลผลเมื่อกดส่งฟอร์มฝากเงิน
-    form.addEventListener('submit', async (e) => {
+    function goToStep2() {
+        const amtInput = document.getElementById('depositAmount').value;
+        if (!amtInput || amtInput <= 0) {
+            alert('กรุณากรอกจำนวนเงินให้ถูกต้อง');
+            return;
+        }
+        amountToDeposit = amtInput;
+        document.getElementById('displayAmount').innerText = amountToDeposit;
+        document.getElementById('step1').classList.remove('active');
+        document.getElementById('step2').classList.add('active');
+    }
+
+    function goToStep1() {
+        document.getElementById('step2').classList.remove('active');
+        document.getElementById('step1').classList.add('active');
+    }
+
+    function copyAccount() {
+        const acc = document.getElementById('accNum').innerText.replace(/-/g, '');
+        navigator.clipboard.writeText(acc);
+        alert('คัดลอกเลขบัญชีเรียบร้อยแล้ว: ' + acc);
+    }
+
+    // ส่งไฟล์สลิปไป Backend
+    document.getElementById('slipForm').addEventListener('submit', async (e) => {
         e.preventDefault();
 
         if (!userId) {
-            statusMsg.style.color = 'red';
-            statusMsg.innerText = '❌ ไม่พบข้อมูลผู้ใช้งาน LINE กรุณาลองเปิดใหม่อีกครั้ง';
+            alert('ไม่พบข้อมูลสมาชิก LINE กรุณาเปิดผ่าน LINE อีกครั้ง');
             return;
         }
 
-        const amount = document.getElementById('amount').value;
-        const slipFile = document.getElementById('slip').files[0];
-
+        const slipFile = document.getElementById('slipImage').files[0];
         const formData = new FormData();
         formData.append('userId', userId);
-        formData.append('amount', amount);
+        formData.append('amount', amountToDeposit);
         formData.append('slipImage', slipFile);
+
+        const submitBtn = document.getElementById('submitBtn');
+        const statusMsg = document.getElementById('statusMessage');
 
         submitBtn.disabled = true;
         submitBtn.innerText = 'กำลังตรวจสอบสลิป...';
@@ -148,18 +137,17 @@
             if (result.success) {
                 statusMsg.style.color = 'green';
                 statusMsg.innerText = `✅ ${result.message}\nเครดิตใหม่: ${result.newBalance} บาท`;
-                form.reset();
-                setTimeout(() => { liff.closeWindow(); }, 2500); // เติมสำเร็จให้ปิดหน้า LIFF ออโต้ใน 2.5 วินาที
+                setTimeout(() => { if (typeof liff !== 'undefined') liff.closeWindow(); }, 2500);
             } else {
                 statusMsg.style.color = 'red';
                 statusMsg.innerText = `❌ ${result.message}`;
             }
-        } catch (error) {
+        } catch (err) {
             statusMsg.style.color = 'red';
-            statusMsg.innerText = '❌ เกิดข้อผิดพลาดในการส่งข้อมูล กรุณาลองใหม่อีกครั้ง';
+            statusMsg.innerText = '❌ เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์';
         } finally {
             submitBtn.disabled = false;
-            submitBtn.innerText = 'ยืนยันการฝากเงิน';
+            submitBtn.innerText = 'ยืนยันการแจ้งโอน';
         }
     });
 </script>

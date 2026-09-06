@@ -7208,6 +7208,61 @@ app.post('/api/place-bet', async (req, res) => {
 const multer = require('multer');
 const upload = multer({ storage: multer.memoryStorage() }); // ตั้งค่าพักรูปไว้ใน Memory
 
+// 📌 API สำหรับรับคำขอฝากเงิน / เช็กรายการค้าง
+app.post('/api/deposit/create', async (req, res) => {
+    try {
+        const { userId, amount } = req.body;
+
+        if (!userId || !amount) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'ข้อมูลไม่ถูกต้อง' 
+            });
+        }
+
+        const now = Date.now();
+        const EXPIRE_TIME = 5 * 60 * 1000; // 5 นาที
+
+        // 1. ตรวจสอบรายการค้าง
+        if (pendingDeposits[userId]) {
+            const pending = pendingDeposits[userId];
+            const elapsedTime = now - pending.createdAt;
+
+            if (elapsedTime < EXPIRE_TIME) {
+                const remainingSeconds = Math.ceil((EXPIRE_TIME - elapsedTime) / 1000);
+                return res.json({
+                    success: false,
+                    isPendingExists: true,
+                    pendingAmount: pending.amount,
+                    remainingSeconds: remainingSeconds,
+                    message: 'คุณมีรายการฝากเงินค้างอยู่ กรุณาทำรายการเดิมให้เสร็จสิ้น'
+                });
+            } else {
+                delete pendingDeposits[userId];
+            }
+        }
+
+        // 2. บันทึกรายการฝากใหม่
+        pendingDeposits[userId] = {
+            amount: Number(amount),
+            createdAt: now
+        };
+
+        return res.json({
+            success: true,
+            amount: Number(amount),
+            remainingSeconds: 300
+        });
+
+    } catch (error) {
+        console.error('❌ Error in /api/deposit/create:', error);
+        return res.status(500).json({ 
+            success: false, 
+            message: 'เกิดข้อผิดพลาดในเซิร์ฟเวอร์' 
+        });
+    }
+});
+
 // 📌 API รับรูปสลิปจากหน้าเว็บ
 app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
     try {

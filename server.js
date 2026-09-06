@@ -7334,41 +7334,45 @@ app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
                 }
             }
 
-           // -------------------------------------------------------------
-            // ⛔ [เช็กที่ 4] ตรวจสอบ "เลขบัญชีผู้โอน" ตรงกับ Firebase
-            // -------------------------------------------------------------
-            // ดึงข้อมูลบัญชีผู้โอนจากทุกโครงสร้างที่เป็นไปได้ของสลิป
-            const rawSender = data.sender || {};
-            const senderAcc = rawSender.account?.number || rawSender.account?.bank || rawSender.account || rawSender.accountNo || '';
-            
-            // ปริ้นท์ดูค่าจริงใน Terminal ของ Render เพื่อใช้ตรวจสอบ
-            console.log('🔍 Sender Account Raw Data:', JSON.stringify(rawSender));
-            
-            const registeredAcc = user.bankAccount || user.accountNumber;
-            
-            if (registeredAcc) {
-                // ลบทุกอย่างที่ไม่ใช่ตัวเลขออกทั้งหมด
-                const cleanUserAcc = String(registeredAcc).replace(/\D/g, '');
-                const cleanSenderAcc = String(senderAcc).replace(/\D/g, '');
-            
-                const userAccLast4 = cleanUserAcc.slice(-4);
-                const userAccLast3 = cleanUserAcc.slice(-3);
-            
-                // ตรวจจับกรณีสลิปซ่อนเลข เช่น xxx0184 หรือ 0184
-                const isAccountMatch = 
-                    cleanSenderAcc.includes(userAccLast4) ||
-                    cleanSenderAcc.includes(userAccLast3) ||
-                    (cleanSenderAcc.length > 0 && cleanUserAcc.endsWith(cleanSenderAcc)) ||
-                    (cleanSenderAcc.length > 0 && cleanSenderAcc.endsWith(userAccLast4));
-            
-                if (!isAccountMatch) {
-                    console.log(`❌ Account Mismatch | Registered: ${cleanUserAcc} | From Slip: ${cleanSenderAcc}`);
-                    return res.status(400).json({ 
-                        success: false, 
-                        message: `เลขบัญชีผู้โอนไม่ตรงกับที่ลงทะเบียนไว้ (ในระบบ: ...${userAccLast4})` 
-                    });
-                }
-            }
+          // -------------------------------------------------------------
+// ⛔ [เช็กที่ 4] ตรวจสอบ "เลขบัญชีผู้โอน" ตรงกับ Firebase
+// -------------------------------------------------------------
+const rawSender = data.sender || {};
+
+// 📌 ดึงเลขบัญชีรองรับทุกโครงสร้าง JSON (รวมถึง SCB: sender.account.bank.account)
+const senderAcc = 
+    rawSender.account?.bank?.account || 
+    rawSender.account?.number || 
+    rawSender.account?.bank || 
+    rawSender.account || 
+    rawSender.accountNo || 
+    '';
+
+const registeredAcc = user.bankAccount || user.accountNumber;
+
+if (registeredAcc) {
+    // ลบตัวอักษรและขีดออกทั้งหมด ให้เหลือเฉพาะตัวเลข (เช่น "xxxx-xx018-4" -> "0184")
+    const cleanUserAcc = String(registeredAcc).replace(/\D/g, '');
+    const cleanSenderAcc = String(senderAcc).replace(/\D/g, '');
+
+    const userAccLast4 = cleanUserAcc.slice(-4);
+    const userAccLast3 = cleanUserAcc.slice(-3);
+
+    // ตรวจสอบว่าเลขท้ายตรงกันหรือไม่
+    const isAccountMatch = 
+        cleanSenderAcc.includes(userAccLast4) ||
+        cleanSenderAcc.includes(userAccLast3) ||
+        (cleanSenderAcc.length > 0 && cleanUserAcc.endsWith(cleanSenderAcc)) ||
+        (cleanSenderAcc.length > 0 && cleanSenderAcc.endsWith(userAccLast4));
+
+    if (!isAccountMatch) {
+        console.log(`❌ Account Mismatch | Registered: ${cleanUserAcc} | From Slip: ${cleanSenderAcc}`);
+        return res.status(400).json({ 
+            success: false, 
+            message: `เลขบัญชีผู้โอนไม่ตรงกับที่ลงทะเบียนไว้ (ในระบบ: ...${userAccLast4})` 
+        });
+    }
+}
 
             // ⛔ [เช็กที่ 5] สลิปซ้ำ
             const isDuplicate = Object.values(slipTransactions).some(tx => tx.transRef === transRef && tx.status === 'APPROVED');

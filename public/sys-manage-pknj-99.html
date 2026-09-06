@@ -410,43 +410,42 @@ function rejectWithdrawQueue(index, memberNumber) {
         alert('ยกเลิกรายการถอนและปลดล็อกบัญชีเรียบร้อยแล้ว');
     }
 }
-       // ==========================================
-    // 📌 ดึงรายการฝากเงินรอตรวจสอบจาก Firebase (pendingDeposits)
-    // ==========================================
-    db.ref('pendingDeposits').on('value', (snapshot) => {
-        const listContainer = document.getElementById('pendingDepositList');
-        if (!listContainer) return;
-        listContainer.innerHTML = '';
+       // ดึงข้อมูลและนำไปใส่ในตารางเดิม
+db.ref('pendingDeposits').on('value', (snapshot) => {
+    // หา tbody ของตารางรายการฝาก (ปรับ Selector ให้ตรงกับ id หรือ class จริงในหน้าเว็บ)
+    const tableBody = document.querySelector('#depositTable tbody') || document.querySelector('.card:first-child table tbody');
+    if (!tableBody) return;
 
-        const data = snapshot.val();
-        if (!data) {
-            listContainer.innerHTML = '<p style="color: #888;">ไม่มีรายการค้างตรวจสอบ</p>';
-            return;
+    tableBody.innerHTML = '';
+    const data = snapshot.val();
+
+    if (!data) {
+        tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#888;">ไม่มีรายการฝากค้างตรวจสอบ</td></tr>';
+        return;
+    }
+
+    Object.values(data).forEach(item => {
+        if (item.status === 'PENDING') {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>
+                    <div>${item.created_at || '-'}</div>
+                    <small style="color:#888;">ID: ${item.id || '-'}</small>
+                </td>
+                <td style="color:#00bfff; font-weight:bold;">${Number(item.amount || 0).toLocaleString()} บาท</td>
+                <td>
+                    <img src="${item.slipImage}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="window.open('${item.slipImage}')">
+                </td>
+                <td style="color:#ff3b47;">${item.reason || '-'}</td>
+                <td>
+                    <button onclick="approveDeposit('${item.id}', '${item.memberNumber}', ${item.amount})" style="background:#00aa5b; color:#fff; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;">อนุมัติ</button>
+                    <button onclick="rejectDeposit('${item.id}')" style="background:#ff3b47; color:#fff; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;">ปฏิเสธ</button>
+                </td>
+            `;
+            tableBody.appendChild(tr);
         }
-
-        Object.values(data).forEach(item => {
-            if (item.status === 'PENDING') {
-                const card = document.createElement('div');
-                card.style.cssText = 'background: #2a2a30; border-radius: 8px; padding: 15px; border: 1px solid #3a3a42;';
-                card.innerHTML = `
-                    <div style="text-align: center; margin-bottom: 10px;">
-                        <img src="${item.slipImage}" style="max-width: 100%; max-height: 250px; border-radius: 6px; cursor: pointer;" onclick="window.open('${item.slipImage}')" title="คลิกเพื่อดูรูปใหญ่">
-                    </div>
-                    <p><b>🆔 สมาชิก:</b> ลำดับที่ ${item.memberNumber}</p>
-                    <p><b>👤 ชื่อ:</b> คุณ ${item.userName}</p>
-                    <p><b>💰 ยอดแจ้งฝาก:</b> <span style="color: #00bfff; font-size: 18px; font-weight: bold;">${Number(item.amount || 0).toLocaleString()} บาท</span></p>
-                    <p style="color: #ff3b47; font-size: 12px;"><b>⚠️ เหตุผล:</b> ${item.reason}</p>
-                    <p style="color: #8e8e93; font-size: 11px;">⏰ ${item.created_at}</p>
-                    
-                    <div style="display: flex; gap: 10px; margin-top: 10px;">
-                        <button onclick="approveDeposit('${item.id}', '${item.memberNumber}', ${item.amount})" style="flex: 1; background: #00aa5b; color: #fff; border: none; padding: 8px; border-radius: 4px; cursor: pointer;">✅ อนุมัติ</button>
-                        <button onclick="rejectDeposit('${item.id}')" style="flex: 1; background: #ff3b47; color: #fff; border: none; padding: 8px; border-radius: 4px; cursor: pointer;">❌ ปฏิเสธ</button>
-                    </div>
-                `;
-                listContainer.appendChild(card);
-            }
-        });
     });
+});
 
     // ฟังก์ชันกดปุ่มอนุมัติฝากเงิน
     async function approveDeposit(depositId, memberNumber, amount) {

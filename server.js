@@ -7403,6 +7403,18 @@ app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
         return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาด: ' + (error.message || 'ระบบตรวจสลิปมีปัญหา') });
     }
 });
+// API สำหรับดึงข้อมูลโปรไฟล์ผู้ใช้ไปแสดงในหน้า LIFF
+app.get('/api/user-profile', (req, res) => {
+    const { userId } = req.query;
+    const user = usersWallets[userId];
+    if (user) {
+        return res.json({
+            success: true,
+            bankAccount: user.bankAccount || user.accountNumber || 'ไม่พบข้อมูล'
+        });
+    }
+    return res.status(404).json({ success: false, message: 'ไม่พบผู้ใช้' });
+});
 app.use(express.static(__dirname));
 // ==================== [ จุดรัน Server ] ====================
 app.listen(process.env.PORT || 3000, () => { console.log('Server is running...'); });

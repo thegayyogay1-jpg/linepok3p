@@ -7273,69 +7273,7 @@ app.post('/api/deposit/create', async (req, res) => {
     }
 });
 
-// ==========================================
-// API: รับสลิปการโอนเงิน (รองรับ Auto + ส่งแอดมินตรวจสอบ)
-// ==========================================
-app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
-    try {
-        const { userId, amount } = req.body;
-        const depositAmount = parseFloat(amount);
-
-        if (!userId || !req.file) {
-            return res.status(400).json({ success: false, message: 'ข้อมูลไม่ครบถ้วน กรุณาแนบรูปภาพสลิป' });
-        }
-
-        // 1. ดึงข้อมูลสมาชิก
-        let user = usersWallets[userId];
-        if (!user && typeof getLatestWallet === 'function') {
-            user = await getLatestWallet(userId);
-        }
-
-        if (!user) {
-            return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลสมาชิกในระบบ' });
-        }
-
-        // 2. ส่งสลิปไปตรวจสอบผ่าน SlipOK / OCR (ตามระบบที่คุณใช้อยู่)
-        let checkResult = { success: false, reason: 'เกิดข้อผิดพลาดในการอ่านสลิป' };
-        if (typeof verifySlipImage === 'function') {
-            checkResult = await verifySlipImage(req.file.buffer, depositAmount, user);
-        }
-
-        // ---------------------------------------------------------
-        // 🟢 กรณีที่ 1: ตรวจสอบผ่านระบบ Auto สำเร็จ
-        // ---------------------------------------------------------
-        if (checkResult.success) {
-            const currentBal = Number(user.balance || 0);
-            const newBal = currentBal + depositAmount;
-            user.balance = newBal;
-
-            // บันทึกประวัติสลิปลง slipTransactions (กันสแกนซ้ำ)
-            const txId = `TX_${Date.now()}`;
-            if (typeof db !== 'undefined' && checkResult.transRef) {
-                await db.ref(`slipTransactions/${txId}`).set({
-                    transRef: checkResult.transRef,
-                    userId: userId,
-                    memberNumber: user.memberNumber,
-                    amount: depositAmount,
-                    senderName: checkResult.senderName || user.name || '',
-                    status: 'APPROVED',
-                    created_at: new Date().toLocaleString('th-TH')
-                });
-            }
-
-            // เซฟข้อมูลลง Firebase
-            if (typeof saveDataToFirebase === 'function') {
-                await saveDataToFirebase();
-            }
-
-            return res.json({
-                success: true,
-                message: 'เติมเงินสำเร็จเรียบร้อยแล้ว',
-                newBalance: newBal.toLocaleString()
-            });
-        }
-
-        // 📌 API รับรูปสลิปจากหน้าเว็บ (ทำงานร่วมกับระบบ Auto + ส่งแอดมินกรณีไม่ผ่าน)
+// 📌 API รับรูปสลิปจากหน้าเว็บ (ทำงานร่วมกับระบบ Auto + ส่งแอดมินกรณีไม่ผ่าน)
 app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
     try {
         const { userId, amount } = req.body;

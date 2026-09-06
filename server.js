@@ -112,6 +112,16 @@ async function loadDataFromFirebase() {
 }
 loadDataFromFirebase(); // สั่งให้ทำงานทันทีที่บอทรัน
 
+// 🔄 คอยซิงก์ withdrawQueue ใน RAM ของบอท ให้ตรงกับ Firebase ตลอดเวลา Realtime
+db.ref('system_data/withdrawQueue').on('value', (snapshot) => {
+    const data = snapshot.val();
+    if (data) {
+        withdrawQueue = Array.isArray(data) ? data : Object.values(data);
+    } else {
+        withdrawQueue = [];
+    }
+});
+
 // ==========================================
 // 🎲 ฟังก์ชันจัดกลุ่มและจัดฟอร์แมตการแสดงผลไฮโล
 // ==========================================

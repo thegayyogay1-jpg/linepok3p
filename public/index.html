@@ -103,37 +103,46 @@
     </div>
 </header>
     
-<!-- 📺 โซนหน้าต่างถ่ายทอดสด (ระบบกัน Pause แบบ Double Tap Unmute) -->
+<!-- 📺 โซนหน้าต่างถ่ายทอดสด (มีปุ่มเปิดเสียง + ปุ่มดึงสัญญาณสดแก้ดีเลย์) -->
 <div id="live-container" class="max-w-xl mx-auto my-3 px-2 hidden">
     <div class="bg-gray-800 rounded-2xl overflow-hidden border border-amber-500/40 shadow-2xl">
-        <!-- แถบสถานะการถ่ายทอดสด -->
+        <!-- แถบสถานะและการควบคุม -->
         <div class="bg-gray-900/90 px-3 py-1.5 flex justify-between items-center border-b border-gray-700">
             <span class="text-xs font-bold text-amber-400 flex items-center gap-1.5">
                 <span class="relative flex h-2.5 w-2.5">
                   <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                   <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
                 </span>
-                ถ่ายทอดสดสดจากโต๊ะ (LIVE)
+                LIVE
             </span>
-            <button onclick="toggleLivePlayer()" class="text-[10px] bg-gray-700 hover:bg-gray-600 px-2 py-0.5 rounded text-gray-300">
-                ซ่อน/แสดง
-            </button>
+
+            <!-- แถบปุ่มควบคุม -->
+            <div class="flex items-center gap-1.5">
+                <!-- ปุ่มเปิด/ปิดเสียง -->
+                <button id="btn-live-sound" onclick="toggleLiveSound()" class="text-[10px] bg-amber-500 hover:bg-amber-400 text-black font-bold px-2 py-0.5 rounded shadow flex items-center gap-1">
+                    🔊 เปิดเสียง
+                </button>
+                
+                <!-- ปุ่มรีวิดีโอ/ดึงภาพสด -->
+                <button onclick="refreshLiveStream()" class="text-[10px] bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-2 py-0.5 rounded shadow flex items-center gap-1">
+                    🔄 ดึงภาพสด
+                </button>
+
+                <button onclick="toggleLivePlayer()" class="text-[10px] bg-gray-700 hover:bg-gray-600 px-2 py-0.5 rounded text-gray-300">
+                    ซ่อน/แสดง
+                </button>
+            </div>
         </div>
 
         <!-- หน้าจอ Embed วิดีโอ -->
         <div id="live-player-box" class="relative w-full h-[600px] bg-black overflow-hidden flex items-center justify-center">
             
-            <!-- 🛑 แผ่นใสอัจฉริยะ (ดักจับการแตะครั้งแรก เพื่อเปิดทางให้กดเปิดเสียงได้โดยวิดีโอไม่หยุด) -->
-            <div id="touch-guard" onclick="handleFirstTouch()" class="absolute inset-0 z-10 bg-transparent cursor-pointer">
-                <!-- คำแนะนำสั้นๆ ลอยเตือน (จะหายไปเมื่อเริ่มแตะ) -->
-                <div id="guard-hint" class="absolute top-2 left-1/2 -translate-x-1/2 bg-black/70 text-amber-400 text-[11px] px-3 py-1 rounded-full pointer-events-none transition-opacity">
-                    👆 แตะ 1 ครั้งเพื่อเปิดเมนูเสียง
-                </div>
-            </div>
+            <!-- 🛑 แผ่นใสบล็อกการกดสัมผัสบนวิดีโอ 100% (กันกด Pause ได้สมบูรณ์แบบ) -->
+            <div class="absolute inset-0 z-10 bg-transparent"></div>
 
             <!-- iframe ถ่ายทอดสด -->
             <iframe id="user-live-iframe" 
-                class="w-full h-full border-0 transform scale-90 origin-center pointer-events-auto" 
+                class="w-full h-full border-0 transform scale-90 origin-center pointer-events-none" 
                 allowfullscreen="true" 
                 allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share">
             </iframe>
@@ -1362,51 +1371,67 @@ function toggleLoading(show, message = "กำลังประมวลผล 
 </div>
     <!-- 📍 วางสคริปต์ถ่ายทอดสดตรงนี้ (ก่อนปิด </body>) -->
 <script>
-   let unlockTimer = null;
+   let currentLiveUrl = '';
+let isLiveMuted = true; // เริ่มต้นปิดเสียงไว้เพื่อให้เบราว์เซอร์ยอมรับ Autoplay
 
 // ดึงลิงก์ไลฟ์สดจาก Firebase
 db.ref('settings/live_url').on('value', (snapshot) => {
-    const rawUrl = snapshot.val();
+    currentLiveUrl = snapshot.val() || '';
+    renderLiveIframe();
+});
+
+// ฟังก์ชันสร้าง URL และแสดงผลวิดีโอ
+function renderLiveIframe() {
     const liveContainer = document.getElementById('live-container');
     const iframe = document.getElementById('user-live-iframe');
 
-    if (rawUrl && rawUrl.trim() !== '') {
+    if (currentLiveUrl && currentLiveUrl.trim() !== '') {
         let embedUrl = '';
-        if (rawUrl.includes('facebook.com')) {
-            embedUrl = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(rawUrl)}&show_text=false&autoplay=true`;
-        } else if (rawUrl.includes('youtube.com') || rawUrl.includes('youtu.be')) {
-            const videoId = rawUrl.split('v=')[1] || rawUrl.split('/').pop();
-            embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+        if (currentLiveUrl.includes('facebook.com')) {
+            embedUrl = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(currentLiveUrl)}&show_text=false&autoplay=true&mute=${isLiveMuted ? '1' : '0'}`;
+        } else if (currentLiveUrl.includes('youtube.com') || currentLiveUrl.includes('youtu.be')) {
+            const videoId = currentLiveUrl.split('v=')[1] || currentLiveUrl.split('/').pop();
+            embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=${isLiveMuted ? '1' : '0'}`;
         } else {
-            embedUrl = rawUrl;
+            embedUrl = currentLiveUrl;
         }
+        
         if (iframe) iframe.src = embedUrl;
         if (liveContainer) liveContainer.classList.remove('hidden');
     } else {
         if (liveContainer) liveContainer.classList.add('hidden');
         if (iframe) iframe.src = '';
     }
-});
+}
 
-// ฟังก์ชันการจัดการเมื่อสมาชิกแตะหน้าจอครั้งแรก
-function handleFirstTouch() {
-    const guard = document.getElementById('touch-guard');
-    const hint = document.getElementById('guard-hint');
+// ฟังก์ชันปุ่ม "เปิด/ปิดเสียง"
+function toggleLiveSound() {
+    isLiveMuted = !isLiveMuted;
+    const soundBtn = document.getElementById('btn-live-sound');
     
-    if (!guard) return;
+    if (isLiveMuted) {
+        soundBtn.innerHTML = '🔊 เปิดเสียง';
+        soundBtn.className = 'text-[10px] bg-amber-500 hover:bg-amber-400 text-black font-bold px-2 py-0.5 rounded shadow flex items-center gap-1';
+    } else {
+        soundBtn.innerHTML = '🔇 ปิดเสียง';
+        soundBtn.className = 'text-[10px] bg-gray-600 hover:bg-gray-500 text-white font-bold px-2 py-0.5 rounded shadow flex items-center gap-1';
+    }
+    
+    // โหลด iframe ใหม่พร้อมปรับสถานะเสียง
+    renderLiveIframe();
+}
 
-    // 1. ปิดการทำงานของแผ่นใสชั่วคราว (pointer-events = none) เพื่อให้การแตะครั้งต่อไปทะลุไปถึง Facebook
-    guard.style.pointerEvents = 'none';
-    if (hint) hint.style.opacity = '0';
-
-    // 2. ล้างเวลาเดิม (ถ้ามี)
-    if (unlockTimer) clearTimeout(unlockTimer);
-
-    // 3. ปล่อยให้สมาชิกกดเปิดเสียงได้เป็นเวลา 4 วินาที หลังจากนั้นจะดึงแผ่นใสกลับมาล็อกกันกด Pause เหมือนเดิม
-    unlockTimer = setTimeout(() => {
-        guard.style.pointerEvents = 'auto';
-        if (hint) hint.style.opacity = '1';
-    }, 4000);
+// ฟังก์ชันปุ่ม "ดึงภาพสด" (รีเฟรชวิดีโอเพื่อแก้ดีเลย์)
+function refreshLiveStream() {
+    const iframe = document.getElementById('user-live-iframe');
+    if (iframe && iframe.src) {
+        // ทำการ reload src เพื่อดึงสัญญาณสดล่าสุด ณ วินาทีนั้น
+        const currentSrc = iframe.src;
+        iframe.src = '';
+        setTimeout(() => {
+            iframe.src = currentSrc;
+        }, 100);
+    }
 }
 
 function toggleLivePlayer() {

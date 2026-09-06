@@ -338,20 +338,31 @@
     initLiff();
 
     async function getUserData(uid) {
-        try {
-            const res = await fetch(`/api/user-profile?userId=${uid}`);
-            const data = await res.json();
-            if (data.success) {
-                currentBalance = data.balance || 0;
-                document.getElementById('userBalance').innerText = currentBalance.toLocaleString('th-TH', {minimumFractionDigits: 2});
-                document.getElementById('userBank').innerText = data.bankName || 'ไม่ระบุ';
-                document.getElementById('userAcc').innerText = data.bankAccount || 'ไม่ระบุ';
-                document.getElementById('userName').innerText = data.name || 'ไม่ระบุ';
-            }
-        } catch (e) {
-            console.error('Fetch user data failed', e);
+    try {
+        const res = await fetch(`/api/user-profile?userId=${uid}`);
+        const data = await res.json();
+        
+        if (data.success || data.balance !== undefined) {
+            // ดึงยอดเงิน
+            currentBalance = data.balance || data.credit || 0;
+            document.getElementById('userBalance').innerText = currentBalance.toLocaleString('th-TH', {
+                minimumFractionDigits: 2, 
+                maximumFractionDigits: 2
+            });
+
+            // ดึงชื่อธนาคาร (รองรับ bank, bankName, bank_name)
+            document.getElementById('userBank').innerText = data.bankName || data.bank || data.bank_name || 'ไม่ระบุ';
+
+            // ดึงเลขบัญชี (รองรับ bankAccount, accountNo, accNo)
+            document.getElementById('userAcc').innerText = data.bankAccount || data.accountNo || data.accNo || data.account_number || 'ไม่ระบุ';
+
+            // ดึงชื่อบัญชี (รองรับ name, accountName, fullname)
+            document.getElementById('userName').innerText = data.name || data.accountName || data.fullname || 'ไม่ระบุ';
         }
+    } catch (e) {
+        console.error('Fetch user data failed', e);
     }
+}
 
     document.getElementById('withdrawForm').addEventListener('submit', async (e) => {
         e.preventDefault();

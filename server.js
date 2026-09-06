@@ -7226,7 +7226,7 @@ app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
         // 2. เตรียมส่งรูปสลิปไปตรวจสอบกับ Slip2go API
         const FormData = require('form-data');
         const formData = new FormData();
-        formData.append('files', slipFile.buffer, slipFile.originalname); 
+        formData.append('file', slipFile.buffer, slipFile.originalname); 
 
         const slipResponse = await axios.post(
             'https://connect.slip2go.com/api/verify-slip/qr-image/info', // 👈 เปลี่ยนเป็น api.slip2go.com

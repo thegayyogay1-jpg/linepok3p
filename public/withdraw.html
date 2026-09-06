@@ -32,9 +32,34 @@
             position: relative;
         }
 
+        /* ปุ่มย้อนกลับมุมบนซ้าย */
+        .btn-back-top {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: #f1f5f9;
+            color: #475569;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+        .btn-back-top:hover {
+            background: #e2e8f0;
+            color: #0f172a;
+        }
+
         .header-title {
             text-align: center;
-            margin-top: 0;
+            margin-top: 10px;
             margin-bottom: 20px;
             font-size: 22px;
             font-weight: 600;
@@ -151,7 +176,7 @@
             box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
         }
 
-        /* ปุ่มกดดีไซน์ใหม่ */
+        /* ปุ่มกดดีไซน์ */
         .btn-submit {
             width: 100%;
             padding: 15px;
@@ -247,6 +272,11 @@
 <body>
 
 <div class="card">
+    <!-- 1. ปุ่มกดกลับหน้าหลัก/หน้าแทง -->
+    <a href="javascript:history.back()" class="btn-back-top">
+        <span>⬅️</span> กลับ
+    </a>
+
     <div class="header-title">
         <span>💎</span> ระบบถอนเงินออโต้
     </div>
@@ -283,7 +313,7 @@
         <div class="form-group">
             <label for="withdrawAmount" class="form-label">ระบุจำนวนเงินที่ต้องการถอน</label>
             <div class="input-wrapper">
-                <input type="number" id="withdrawAmount" class="input-amount" placeholder="ขั้นต่ำ 1 บาท" min="1" required>
+                <input type="number" id="withdrawAmount" class="input-amount" placeholder="ขั้นต่ำ 100 บาท" min="100" required>
             </div>
         </div>
         
@@ -309,14 +339,17 @@
         <div style="font-size: 54px; color: #22c55e; margin-bottom: 8px;">✅</div>
         <h3 style="margin: 0 0 8px 0; color: #0f172a;">ส่งคำขอถอนเงินสำเร็จ!</h3>
         <p id="modalMessage" style="color: #64748b; margin: 0 0 20px 0; font-size: 14px; line-height: 1.5;"></p>
-        <button onclick="window.location.reload()" class="btn-submit" style="background: #0f172a; padding: 12px;">ตกลง</button>
+        
+        <!-- 2. ปุ่มตกลงที่จะเด้งกลับไปยังหน้าเล่น/แทง -->
+        <button onclick="goToGamePage()" class="btn-submit" style="background: #0f172a; padding: 12px;">ตกลง (กลับหน้าเล่น)</button>
     </div>
 </div>
 
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script>
     let userId = "";
-    let currentBalance = 0; // ตัวแปร Global
+    let currentBalance = 0;
+    let balanceInterval = null;
 
     async function initLiff() {
         try {
@@ -324,7 +357,12 @@
             if (liff.isLoggedIn()) {
                 const profile = await liff.getProfile();
                 userId = profile.userId;
-                getUserData(userId);
+                
+                // ดึงข้อมูลครั้งแรก
+                await getUserData(userId);
+                
+                // 3. ตั้งเวลาอัปเดตยอดเงินแบบเรียลไทม์ทุกๆ 5 วินาที
+                startRealtimeBalance();
             } else {
                 liff.login();
             }
@@ -332,40 +370,62 @@
             console.error("LIFF Error:", err);
             const urlParams = new URLSearchParams(window.location.search);
             userId = urlParams.get('userId');
-            if (userId) getUserData(userId);
+            if (userId) {
+                await getUserData(userId);
+                startRealtimeBalance();
+            }
         }
     }
     initLiff();
 
+    // ฟังก์ชันดึงข้อมูลผู้ใช้และยอดเงิน
     async function getUserData(uid) {
         try {
             const res = await fetch(`/api/user-profile?userId=${uid}`);
             const data = await res.json();
             
             if (data.success) {
-                // ✅ แก้ไขจุดนี้: แปลงค่าเป็น Number และอัปเดตลงตัวแปร currentBalance ตรงๆ
+                // อัปเดตตัวแปรยอดเงิน
                 currentBalance = Number(data.balance) || 0;
 
-                // แสดงผลบนหน้าจอ
+                // อัปเดตการแสดงผลบนหน้าจอ
                 document.getElementById('userBalance').innerText = currentBalance.toLocaleString('th-TH', {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2
                 });
 
-                // ธนาคาร เลขบัญชี และชื่อ
                 document.getElementById('userBank').innerText = data.bankName || 'ไม่ระบุ';
                 document.getElementById('userAcc').innerText = data.bankAccount || 'ไม่ระบุ';
                 if (document.getElementById('userName')) {
                     document.getElementById('userName').innerText = data.name || 'ไม่ระบุ';
                 }
-            } else {
-                console.warn('ไม่พบข้อมูลผู้ใช้:', data.message);
             }
         } catch (e) {
-            console.error('Fetch user data failed:', e);
+            console.error('Realtime update failed:', e);
         }
     }
 
+    // เริ่มระบบ Auto Refresh ยอดเงิน
+    function startRealtimeBalance() {
+        if (balanceInterval) clearInterval(balanceInterval);
+        balanceInterval = setInterval(() => {
+            if (userId) {
+                getUserData(userId);
+            }
+        }, 5000); // ทำงานทุกๆ 5000ms (5 วินาที)
+    }
+
+    // ฟังก์ชันย้อนกลับไปยังหน้าแทง/หน้าเล่น
+    function goToGamePage() {
+        // หากต้องการให้กลับไป URL หน้าแทงโดยเฉพาะ สามารถเปลี่ยนเป็น window.location.href = '/game.html'; ได้ครับ
+        if (window.history.length > 1) {
+            window.history.back();
+        } else {
+            window.location.href = '/'; // ถ้านะถอยไม่ได้ให้ไปหน้าแรก
+        }
+    }
+
+    // จัดการส่งฟอร์มถอนเงิน
     document.getElementById('withdrawForm').addEventListener('submit', async (e) => {
         e.preventDefault();
 
@@ -376,7 +436,6 @@
 
         const amount = parseFloat(document.getElementById('withdrawAmount').value);
 
-        // ตอนนี้ currentBalance มีค่าเท่ากับยอดจริง (เช่น 22450) แล้ว เงื่อนไขนี้จะผ่านปกติครับ
         if (amount > currentBalance) {
             alert('❌ ยอดเงินของคุณไม่พอสำหรับการถอน');
             return;

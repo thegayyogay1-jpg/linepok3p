@@ -103,7 +103,7 @@
     </div>
 </header>
     
-<!-- 📺 โซนหน้าต่างถ่ายทอดสด (มีปุ่มเปิดเสียง + ล็อก Pause) -->
+<!-- 📺 โซนหน้าต่างถ่ายทอดสด (ซูมออกเห็นครบทุกขา + เว้นช่องเปิดเสียง) -->
 <div id="live-container" class="max-w-xl mx-auto my-3 px-2 hidden">
     <div class="bg-gray-800 rounded-2xl overflow-hidden border border-amber-500/40 shadow-2xl">
         <!-- แถบสถานะการถ่ายทอดสด -->
@@ -115,26 +115,20 @@
                 </span>
                 ถ่ายทอดสดสดจากโต๊ะ (LIVE)
             </span>
-            
-            <div class="flex items-center gap-2">
-                <!-- 🔊 ปุ่มเปิด/ปิดเสียง -->
-                <button id="btn-toggle-sound" onclick="toggleLiveSound()" class="text-[10px] bg-amber-500 hover:bg-amber-400 text-black font-bold px-2 py-0.5 rounded flex items-center gap-1 shadow">
-                    🔊 เปิดเสียง
-                </button>
-                <button onclick="toggleLivePlayer()" class="text-[10px] bg-gray-700 hover:bg-gray-600 px-2 py-0.5 rounded text-gray-300">
-                    ซ่อน/แสดง
-                </button>
-            </div>
+            <button onclick="toggleLivePlayer()" class="text-[10px] bg-gray-700 hover:bg-gray-600 px-2 py-0.5 rounded text-gray-300">
+                ซ่อน/แสดง
+            </button>
         </div>
 
         <!-- หน้าจอ Embed วิดีโอ -->
-        <div id="live-player-box" class="relative w-full h-[480px] bg-black overflow-hidden flex items-center justify-center">
+        <div id="live-player-box" class="relative w-full h-[520px] bg-black overflow-hidden flex items-center justify-center">
             
-            <!-- 🛑 แผ่นใสบล็อกการกดสัมผัส (กันกด Pause) -->
-            <div class="absolute inset-0 z-10 bg-transparent"></div>
+            <!-- 🛑 แผ่นใสกันกด Pause (เว้นพื้นที่มุมขวาบน 60px x 60px ไว้ให้กดปุ่มลำโพง Facebook) -->
+            <div class="absolute inset-0 z-10 bg-transparent pointer-events-auto [clip-path:polygon(0_0,_calc(100%-60px)_0,_calc(100%-60px)_60px,_100%_60px,_100%_100%,_0_100%)]"></div>
 
+            <!-- iframe ปรับซูมออก (Scale 90%) เพื่อให้เห็นมุมกล้องกว้างขึ้น เก็บครบทุกขา -->
             <iframe id="user-live-iframe" 
-                class="absolute w-[130%] h-[130%] top-[-15%] left-[-15%] border-0 object-cover pointer-events-none" 
+                class="absolute w-[110%] h-[110%] top-[-5%] left-[-5%] border-0 object-contain" 
                 allowfullscreen="true" 
                 allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share">
             </iframe>
@@ -1363,29 +1357,21 @@ function toggleLoading(show, message = "กำลังประมวลผล 
 </div>
     <!-- 📍 วางสคริปต์ถ่ายทอดสดตรงนี้ (ก่อนปิด </body>) -->
 <script>
-    let currentLiveUrl = '';
-let isMuted = true;
-
-// ดึงลิงก์ไลฟ์สดจาก Firebase
+    // ดึงลิงก์ไลฟ์สดจาก Firebase
 db.ref('settings/live_url').on('value', (snapshot) => {
-    currentLiveUrl = snapshot.val() || '';
-    updateLiveIframe();
-});
-
-function updateLiveIframe() {
+    const rawUrl = snapshot.val();
     const liveContainer = document.getElementById('live-container');
     const iframe = document.getElementById('user-live-iframe');
 
-    if (currentLiveUrl && currentLiveUrl.trim() !== '') {
+    if (rawUrl && rawUrl.trim() !== '') {
         let embedUrl = '';
-        if (currentLiveUrl.includes('facebook.com')) {
-            // ควบคุมการปิด/เปิดเสียงผ่านพารามิเตอร์ mute
-            embedUrl = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(currentLiveUrl)}&show_text=false&autoplay=true&mute=${isMuted ? '1' : '0'}`;
-        } else if (currentLiveUrl.includes('youtube.com') || currentLiveUrl.includes('youtu.be')) {
-            const videoId = currentLiveUrl.split('v=')[1] || currentLiveUrl.split('/').pop();
-            embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=${isMuted ? '1' : '0'}`;
+        if (rawUrl.includes('facebook.com')) {
+            embedUrl = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(rawUrl)}&show_text=false&autoplay=true`;
+        } else if (rawUrl.includes('youtube.com') || rawUrl.includes('youtu.be')) {
+            const videoId = rawUrl.split('v=')[1] || rawUrl.split('/').pop();
+            embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
         } else {
-            embedUrl = currentLiveUrl;
+            embedUrl = rawUrl;
         }
         if (iframe) iframe.src = embedUrl;
         if (liveContainer) liveContainer.classList.remove('hidden');
@@ -1393,23 +1379,7 @@ function updateLiveIframe() {
         if (liveContainer) liveContainer.classList.add('hidden');
         if (iframe) iframe.src = '';
     }
-}
-
-// สลับสถานะเปิด/ปิดเสียง
-function toggleLiveSound() {
-    isMuted = !isMuted;
-    const soundBtn = document.getElementById('btn-toggle-sound');
-    
-    if (isMuted) {
-        soundBtn.innerHTML = '🔊 เปิดเสียง';
-        soundBtn.className = 'text-[10px] bg-amber-500 hover:bg-amber-400 text-black font-bold px-2 py-0.5 rounded flex items-center gap-1 shadow';
-    } else {
-        soundBtn.innerHTML = '🔇 ปิดเสียง';
-        soundBtn.className = 'text-[10px] bg-gray-600 hover:bg-gray-500 text-white font-bold px-2 py-0.5 rounded flex items-center gap-1 shadow';
-    }
-    
-    updateLiveIframe();
-}
+});
 
 function toggleLivePlayer() {
     const box = document.getElementById('live-player-box');

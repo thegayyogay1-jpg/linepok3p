@@ -7517,7 +7517,8 @@ app.post('/api/withdraw/create', async (req, res) => {
             });
         }
 
-        // 5. อัปเดตสถานะล็อกบัญชีและตั้งค่ายอดรอถอน
+        // 5. ⚡ [จุดที่แก้ไขสำคัญ] หักยอดเงินทันที + ล็อกการถอนซ้ำ
+        user.balance = currentBalance - withdrawAmount; // หักเงินจริงทันที
         user.isWithdrawLocked = true;
         user.pendingWithdrawAmount = withdrawAmount;
 
@@ -7597,8 +7598,8 @@ app.post('/api/withdraw/create', async (req, res) => {
                             "type": "box",
                             "layout": "horizontal",
                             "contents": [
-                                { "type": "text", "text": "💰 เงินรวมในระบบ:", "size": "sm", "color": "#ffaa00", "weight": "bold" },
-                                { "type": "text", "text": `${currentBalance.toLocaleString()} บาท`, "size": "sm", "color": "#ffaa00", "weight": "bold", "align": "end" }
+                                { "type": "text", "text": "💰 เครดิตคงเหลือ:", "size": "sm", "color": "#ffaa00", "weight": "bold" },
+                                { "type": "text", "text": `${user.balance.toLocaleString()} บาท`, "size": "sm", "color": "#ffaa00", "weight": "bold", "align": "end" }
                             ]
                         },
                         {

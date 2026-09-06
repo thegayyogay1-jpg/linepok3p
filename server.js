@@ -7244,38 +7244,67 @@ app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
 
         const slipData = slipResponse.data;
 
-// 3. ตรวจสอบผลการเช็กสลิปจาก Slip2Go (เช็กจาก code === "200000" หรือ code === 200000)
+// 3. ตรวจสอบผลการเช็กสลิปจาก Slip2Go
 if ((slipData.code === "200000" || slipData.code === 200000) && slipData.data) {
     const data = slipData.data;
     const transRef = data.transRef;          // รหัสสลิป
     const slipAmount = Number(data.amount);  // ยอดเงินในสลิป
 
-    // 🔍 ดึงชื่อผู้โอน (ดักโครงสร้าง object จาก Slip2Go ให้ครอบคลุม)
-    const senderName = data.sender?.name || 
-                       data.sender?.account?.name || 
-                       data.sender?.displayName || 
-                       'ไม่ระบุ';
+    // -------------------------------------------------------------
+    // ⛔ [เช็กที่ 1] ตรวจสอบว่า "เงินโอนเข้าบัญชีร้านเรา" หรือไม่
+    // -------------------------------------------------------------
+    const MY_ACCOUNT_NUMBER = "0371556125"; // เลขบัญชีรับเงินของร้านน้า (ตัวเลขเท่านั้น)
+    const MY_ACCOUNT_NAME = "ภาณุวัฒก์";      // ชื่อบัญชีรับเงินของร้านน้า
 
-    // 🔍 3.1 เช็กสลิปซ้ำ
-    const isDuplicate = Object.values(slipTransactions).some(tx => tx.transRef === transRef && tx.status === 'APPROVED');
-    if (isDuplicate) {
-        return res.status(400).json({ success: false, message: 'สลิปนี้เคยถูกใช้งานไปแล้ว' });
+    const receiverAcc = data.receiver?.account?.number || data.receiver?.account?.bank || data.receiver?.account || '';
+    const receiverName = data.receiver?.name || data.receiver?.account?.name || '';
+
+    const cleanedReceiverAcc = String(receiverAcc).replace(/[^0-9]/g, '');
+    const isRightReceiver = cleanedReceiverAcc.includes(MY_ACCOUNT_NUMBER) || receiverName.includes(MY_ACCOUNT_NAME);
+
+    if (!isRightReceiver) {
+        return res.status(400).json({ 
+            success: false, 
+            message: 'สลิปนี้ไม่ได้โอนเข้าบัญชีของทางร้าน' 
+        });
     }
 
-    // 🔍 3.2 เช็กยอดเงินว่าตรงกับที่แจ้งฝากไหม
-    const expectedAmount = Number(amount);
-    if (slipAmount < expectedAmount) {
-        return res.status(400).json({ success: false, message: `ยอดเงินในสลิป (${slipAmount} ฿) น้อยกว่ายอดที่แจ้ง (${expectedAmount} ฿)` });
+    // -------------------------------------------------------------
+    // ⛔ [เช็กที่ 2] ตรวจสอบ "เลขบัญชีผู้โอน" ตรงกับที่ลงทะเบียนไว้หรือไม่
+    // -------------------------------------------------------------
+    // ดึงเลขบัญชีผู้โอนจากสลิป
+    const senderAcc = data.sender?.account?.number || data.sender?.account?.bank || data.sender?.account || '';
+    const senderName = data.sender?.name || data.sender?.account?.name || data.sender?.displayName || 'ไม่ระบุ';
+
+    if (user.accountNumber) {
+        // ทำการลบขีด (-) หรืออักขระพิเศษออกจากทั้งสองฝั่งให้เหลือเฉพาะตัวเลข
+        const cleanUserAcc = String(user.accountNumber).replace(/[^0-9]/g, '');
+        const cleanSenderAcc = String(senderAcc).replace(/[^0-9]/g, '');
+
+        // ดึง 4 ตัวท้ายมาช่วยเช็ก (กรณี Slip2Go Mask เลขบัญชีบางตัวไว้)
+        const userAccLast4 = cleanUserAcc.slice(-4);
+        
+        // เช็กว่าเลขบัญชีผู้โอนตรงกัน หรือมีเลข 4 ตัวท้ายตรงกันหรือไม่
+        const isAccountMatch = cleanSenderAcc.includes(cleanUserAcc) || cleanSenderAcc.endsWith(userAccLast4);
+
+        if (!isAccountMatch) {
+            return res.status(400).json({ 
+                success: false, 
+                message: `เลขบัญชีผู้โอนไม่ตรงกับที่ลงทะเบียนไว้ (ลงทะเบียน: ${user.accountNumber})` 
+            });
+        }
     }
 
-    // 🔍 3.3 ตรวจสอบชื่อผู้โอนกับชื่อบัญชีสมาชิกที่ลงทะเบียนไว้
+    // -------------------------------------------------------------
+    // 🔍 [เช็กที่ 3] ตรวจสอบชื่อผู้โอน (สำรองกรณีต้องการเช็กชื่อเพิ่มเติม)
+    // -------------------------------------------------------------
     if (user.accountName) {
         const nameParts = user.accountName.trim().split(/\s+/);
         const validParts = nameParts.filter(part => part.length > 2);
         
-        const isMatched = validParts.some(part => senderName.includes(part));
+        const isNameMatched = validParts.some(part => senderName.includes(part));
         
-        if (!isMatched) {
+        if (!isNameMatched) {
             return res.status(400).json({ 
                 success: false, 
                 message: `ชื่อบัญชีผู้โอน (${senderName}) ไม่ตรงกับชื่อที่ลงทะเบียนไว้` 
@@ -7283,7 +7312,25 @@ if ((slipData.code === "200000" || slipData.code === 200000) && slipData.data) {
         }
     }
 
-    // ✅ 4. หากผ่านทุกเงื่อนไข -> ทำการปรับยอดเงินให้ออโต้
+    // -------------------------------------------------------------
+    // 🔍 [เช็กที่ 4] เช็กสลิปซ้ำ
+    // -------------------------------------------------------------
+    const isDuplicate = Object.values(slipTransactions).some(tx => tx.transRef === transRef && tx.status === 'APPROVED');
+    if (isDuplicate) {
+        return res.status(400).json({ success: false, message: 'สลิปนี้เคยถูกใช้งานไปแล้ว' });
+    }
+
+    // -------------------------------------------------------------
+    // 🔍 [เช็กที่ 5] เช็กยอดเงินว่าตรงกับที่แจ้งฝากไหม
+    // -------------------------------------------------------------
+    const expectedAmount = Number(amount);
+    if (slipAmount < expectedAmount) {
+        return res.status(400).json({ success: false, message: `ยอดเงินในสลิป (${slipAmount} ฿) น้อยกว่ายอดที่แจ้ง (${expectedAmount} ฿)` });
+    }
+
+    // -------------------------------------------------------------
+    // ✅ ผ่านทุกเงื่อนไข -> ทำการปรับยอดเงินให้ออโต้
+    // -------------------------------------------------------------
     const memberNum = user.memberNumber;
     const creditResult = await creditUserByMemberNumber(memberNum, slipAmount);
 
@@ -7295,6 +7342,7 @@ if ((slipData.code === "200000" || slipData.code === 200000) && slipData.data) {
         amount: slipAmount,
         transRef: transRef,
         senderName: senderName,
+        senderAccount: senderAcc,
         status: 'APPROVED',
         created_at: new Date().toLocaleString('th-TH')
     };
@@ -7311,7 +7359,6 @@ if ((slipData.code === "200000" || slipData.code === 200000) && slipData.data) {
     });
 
 } else {
-    // ถ้า Slip2Go ส่งข้อความตอบกลับมา ให้ใช้ message จาก API หรือใช้ข้อความตั้งต้น
     const failMessage = slipData.message || 'ไม่สามารถอ่านข้อมูลสลิปได้ หรือสลิปไม่ถูกต้อง';
     return res.status(400).json({ success: false, message: failMessage });
 }

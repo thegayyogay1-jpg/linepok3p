@@ -55,6 +55,7 @@ let withdrawQueue = []; // 📦 ถังสำหรับเก็บคิว
 let usersRoundCrossCheck = {}; // 🌟 เพิ่มบรรทัดนี้ไว้บนสุดของไฟล์
 global.depositQueue = {}; // 👈 เพิ่มบรรทัดนี้เพื่อเตรียมถังคิวฝากเงินออโต้ไม่ให้เป็นค่าว่างครับน้า!
 if (!global.satangCounter) global.satangCounter = 0;
+let slipTransactions = {};
 
 // 🔄 ฟังก์ชันดึงยอดเงินล่าสุดจาก Firebase แบบตรงเป้า 100%
 async function getLatestWallet(userId) {
@@ -86,6 +87,7 @@ async function loadDataFromFirebase() {
         const response = await axios.get(`${FIREBASE_URL}system_data.json`);
         if (response.data) {
             usersWallets = response.data.usersWallets || {};
+            slipTransactions = response.data.slipTransactions || {};
             nextMemberId = response.data.nextMemberId || 1;
             maxLegs = response.data.maxLegs || 6;
             cardMode = response.data.cardMode || 3;
@@ -225,6 +227,7 @@ async function saveDataToFirebase() {
     try {
         await axios.put(`${FIREBASE_URL}system_data.json`, {
             usersWallets: usersWallets,
+            slipTransactions: slipTransactions, // 👈 📌 เพิ่มบรรทัดนี้เข้าไปครับ
             nextMemberId: nextMemberId,
             maxLegs: maxLegs,
             cardMode: cardMode,

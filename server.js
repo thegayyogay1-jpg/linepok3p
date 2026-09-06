@@ -731,6 +731,31 @@ async function processHiloBetSubmission(userId, rawMessage, source = 'web') {
         processedBets: processedHiloBets 
     };
 }
+// ==========================================
+// 2. ฟังก์ชันช่วยเติมเงินออโต้ (วางไว้ตรงนี้)
+// ==========================================
+async function creditUserByMemberNumber(memberNumber, amount) {
+    // ค้นหา user จาก memberNumber ใน usersWallets
+    const targetUserId = Object.keys(usersWallets).find(uid => {
+        return String(usersWallets[uid].memberNumber) === String(memberNumber);
+    });
+
+    if (!targetUserId) {
+        throw new Error(`ไม่พบสมาชิกหมายเลข ${memberNumber} ในระบบ`);
+    }
+
+    const user = usersWallets[targetUserId];
+    user.balance = (user.balance || 0) + Number(amount);
+
+    // บันทึกข้อมูลกลับลง Database / Firebase
+    if (typeof updateSingleUserWallet === 'function') {
+        await updateSingleUserWallet(targetUserId, user);
+    } else if (typeof saveDataToFirebase === 'function') {
+        await saveDataToFirebase();
+    }
+
+    return { targetUserId, user, newBalance: user.balance };
+}
 
 app.post('/callback', async (req, res) => {
     const events = req.body.events;
@@ -7201,11 +7226,10 @@ app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
         // 2. เตรียมส่งรูปสลิปไปตรวจสอบกับ Slip2go API
         const FormData = require('form-data');
         const formData = new FormData();
-        // Slip2go ใช้ key ชื่อ 'files' หรือ 'image' (ดูตามหน้าเอกสาร REST API ของ Slip2go)
         formData.append('files', slipFile.buffer, slipFile.originalname); 
 
         const slipResponse = await axios.post(
-            'https://connect.slip2go.com/api/verify-slip/image/info', // 👈 ใส่ URL Endpoint จากหน้า Slip2go
+            'https://connect.slip2go.com/api/verify-slip/image/info',
             formData,
             {
                 headers: {
@@ -7222,28 +7246,48 @@ app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
             const data = slipData.data;
             const transRef = data.transRef;         // รหัสสลิป
             const slipAmount = Number(data.amount); // ยอดเงินในสลิป
-            const senderName = data.sender?.displayName || 'ไม่ระบุ';
+            const senderName = data.sender?.displayName || data.sender?.account?.name || 'ไม่ระบุ';
 
-            // 🔍 เช็กสลิปซ้ำ
+            // 🔍 3.1 เช็กสลิปซ้ำ
             const isDuplicate = Object.values(slipTransactions).some(tx => tx.transRef === transRef && tx.status === 'APPROVED');
             if (isDuplicate) {
                 return res.status(400).json({ success: false, message: 'สลิปนี้เคยถูกใช้งานไปแล้ว' });
             }
 
-            // 🔍 เช็กยอดเงินว่าตรงกับที่แจ้งฝากไหม
+            // 🔍 3.2 เช็กยอดเงินว่าตรงกับที่แจ้งฝากไหม
             const expectedAmount = Number(amount);
             if (slipAmount < expectedAmount) {
-                return res.status(400).json({ success: false, message: `ยอดเงินในสลิป (${slipAmount} ฿) ไม่ตรงกับยอดที่แจ้ง (${expectedAmount} ฿)` });
+                return res.status(400).json({ success: false, message: `ยอดเงินในสลิป (${slipAmount} ฿) น้อยกว่ายอดที่แจ้ง (${expectedAmount} ฿)` });
             }
 
-            // ✅ หากผ่านทุกเงื่อนไข -> ทำการปรับยอดเงินให้ออโต้
-            const txId = `TX_${Date.now()}`;
-            user.balance = (user.balance || 0) + slipAmount; // เติมเงินเข้ากระเป๋าเดิม
+            // 🔍 3.3 ตรวจสอบชื่อผู้โอนกับชื่อบัญชีสมาชิกที่ลงทะเบียนไว้ (แบบเช็กแยกคำ)
+            if (user.accountName) {
+                // แยกคำจากชื่อในระบบ เช่น "นาย สมชาย เข็มกลัด" -> ["นาย", "สมชาย", "เข็มกลัด"]
+                const nameParts = user.accountName.trim().split(/\s+/);
+                
+                // กรองเอาเฉพาะคำที่มีมากกว่า 2 ตัวอักษร (ตัดพวก นาย, ด.ช., Mr. หรือตัวย่อสั้นๆ ออก)
+                const validParts = nameParts.filter(part => part.length > 2);
+            
+                // เช็กว่ามีคำไหนในชื่อระบบ ตรงกับข้อความในสลิปบ้างไหม
+                const isMatched = validParts.some(part => senderName.includes(part));
+            
+                if (!isMatched) {
+                    return res.status(400).json({ 
+                        success: false, 
+                        message: `ชื่อบัญชีผู้โอน (${senderName}) ไม่ตรงกับชื่อที่ลงทะเบียนไว้` 
+                    });
+                }
+            }
+
+            // ✅ 4. หากผ่านทุกเงื่อนไข -> ทำการปรับยอดเงินให้ออโต้ผ่านฟังก์ชัน creditUserByMemberNumber
+            const memberNum = user.memberNumber;
+            const creditResult = await creditUserByMemberNumber(memberNum, slipAmount);
 
             // บันทึกประวัติลง slipTransactions
+            const txId = `TX_${Date.now()}`;
             slipTransactions[txId] = {
                 userId: userId,
-                memberNumber: user.memberNumber || '---',
+                memberNumber: memberNum || '---',
                 amount: slipAmount,
                 transRef: transRef,
                 senderName: senderName,
@@ -7254,21 +7298,21 @@ app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
             // เซฟข้อมูลลง Firebase
             await saveDataToFirebase();
 
-            console.log(`✅ [ฝากสลิปออโต้สำเร็จ] ยูสเซอร์ [${user.memberNumber || '-'}] | ยอด ${slipAmount} ฿ | เครดิตใหม่: ${user.balance} ฿`);
+            console.log(`🤖 [บอทเติมเงินออโต้] สำเร็จ! เติมให้เลขสมาชิก @${memberNum} จำนวน ${slipAmount} บาท (เครดิตใหม่: ${creditResult.newBalance} ฿)`);
 
             return res.json({
                 success: true,
-                message: 'เติมเงินสำเร็จเรียบร้อยแล้ว!',
-                newBalance: user.balance
+                message: `เติมเงินสำเร็จเรียบร้อย! (@${memberNum} +${slipAmount} บาท)`,
+                newBalance: creditResult.newBalance
             });
 
         } else {
-            return res.status(400).json({ success: false, message: 'ไม่สามารถอ่านข้อมูลจากสลิปได้ กรุณาตรวจสอบรูปถ่าย' });
+            return res.status(400).json({ success: false, message: 'ไม่สามารถอ่านข้อมูลสลิปได้ หรือสลิปไม่ถูกต้อง' });
         }
 
     } catch (error) {
         console.error('❌ เกิดข้อผิดพลาดในการตรวจสลิป:', error.response?.data || error.message);
-        return res.status(500).json({ success: false, message: 'ระบบตรวจสลิปมีปัญหา กรุณาลองใหม่อีกครั้ง' });
+        return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาด: ' + (error.message || 'ระบบตรวจสลิปมีปัญหา') });
     }
 });
 app.use(express.static(__dirname));

@@ -7403,17 +7403,28 @@ app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
         return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาด: ' + (error.message || 'ระบบตรวจสลิปมีปัญหา') });
     }
 });
-// API สำหรับดึงข้อมูลโปรไฟล์ผู้ใช้ไปแสดงในหน้า LIFF
-app.get('/api/user-profile', (req, res) => {
-    const { userId } = req.query;
-    const user = usersWallets[userId];
-    if (user) {
-        return res.json({
-            success: true,
-            bankAccount: user.bankAccount || user.accountNumber || 'ไม่พบข้อมูล'
-        });
+// 📌 API สำหรับดึงข้อมูลโปรไฟล์ผู้ใช้ไปแสดงในหน้า LIFF (ปรับปรุงให้ดึงราบรื่นไม่ crash)
+app.get('/api/user-profile', async (req, res) => {
+    try {
+        const { userId } = req.query;
+        if (!userId) return res.status(400).json({ success: false, message: 'ไม่พบ userId' });
+
+        // ถ้าใน RAM ยังไม่มี ให้ลองดึงสดจาก Firebase
+        let user = usersWallets[userId];
+        if (!user && typeof getLatestWallet === 'function') {
+            user = await getLatestWallet(userId);
+        }
+
+        if (user) {
+            return res.json({
+                success: true,
+                bankAccount: user.bankAccount || user.accountNumber || 'ไม่พบข้อมูล'
+            });
+        }
+        return res.status(404).json({ success: false, message: 'ไม่พบผู้ใช้' });
+    } catch (e) {
+        return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการดึงข้อมูล' });
     }
-    return res.status(404).json({ success: false, message: 'ไม่พบผู้ใช้' });
 });
 app.use(express.static(__dirname));
 // ==================== [ จุดรัน Server ] ====================

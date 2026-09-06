@@ -7244,74 +7244,77 @@ app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
 
         const slipData = slipResponse.data;
 
-        // 3. ตรวจสอบผลการเช็กสลิปจาก API
-        if (slipData.success && slipData.data) {
-            const data = slipData.data;
-            const transRef = data.transRef;         // รหัสสลิป
-            const slipAmount = Number(data.amount); // ยอดเงินในสลิป
-            const senderName = data.sender?.displayName || data.sender?.account?.name || 'ไม่ระบุ';
+// 3. ตรวจสอบผลการเช็กสลิปจาก Slip2Go (เช็กจาก code === "200000" หรือ code === 200000)
+if ((slipData.code === "200000" || slipData.code === 200000) && slipData.data) {
+    const data = slipData.data;
+    const transRef = data.transRef;          // รหัสสลิป
+    const slipAmount = Number(data.amount);  // ยอดเงินในสลิป
 
-            // 🔍 3.1 เช็กสลิปซ้ำ
-            const isDuplicate = Object.values(slipTransactions).some(tx => tx.transRef === transRef && tx.status === 'APPROVED');
-            if (isDuplicate) {
-                return res.status(400).json({ success: false, message: 'สลิปนี้เคยถูกใช้งานไปแล้ว' });
-            }
+    // 🔍 ดึงชื่อผู้โอน (ดักโครงสร้าง object จาก Slip2Go ให้ครอบคลุม)
+    const senderName = data.sender?.name || 
+                       data.sender?.account?.name || 
+                       data.sender?.displayName || 
+                       'ไม่ระบุ';
 
-            // 🔍 3.2 เช็กยอดเงินว่าตรงกับที่แจ้งฝากไหม
-            const expectedAmount = Number(amount);
-            if (slipAmount < expectedAmount) {
-                return res.status(400).json({ success: false, message: `ยอดเงินในสลิป (${slipAmount} ฿) น้อยกว่ายอดที่แจ้ง (${expectedAmount} ฿)` });
-            }
+    // 🔍 3.1 เช็กสลิปซ้ำ
+    const isDuplicate = Object.values(slipTransactions).some(tx => tx.transRef === transRef && tx.status === 'APPROVED');
+    if (isDuplicate) {
+        return res.status(400).json({ success: false, message: 'สลิปนี้เคยถูกใช้งานไปแล้ว' });
+    }
 
-            // 🔍 3.3 ตรวจสอบชื่อผู้โอนกับชื่อบัญชีสมาชิกที่ลงทะเบียนไว้ (แบบเช็กแยกคำ)
-            if (user.accountName) {
-                // แยกคำจากชื่อในระบบ เช่น "นาย สมชาย เข็มกลัด" -> ["นาย", "สมชาย", "เข็มกลัด"]
-                const nameParts = user.accountName.trim().split(/\s+/);
-                
-                // กรองเอาเฉพาะคำที่มีมากกว่า 2 ตัวอักษร (ตัดพวก นาย, ด.ช., Mr. หรือตัวย่อสั้นๆ ออก)
-                const validParts = nameParts.filter(part => part.length > 2);
-            
-                // เช็กว่ามีคำไหนในชื่อระบบ ตรงกับข้อความในสลิปบ้างไหม
-                const isMatched = validParts.some(part => senderName.includes(part));
-            
-                if (!isMatched) {
-                    return res.status(400).json({ 
-                        success: false, 
-                        message: `ชื่อบัญชีผู้โอน (${senderName}) ไม่ตรงกับชื่อที่ลงทะเบียนไว้` 
-                    });
-                }
-            }
+    // 🔍 3.2 เช็กยอดเงินว่าตรงกับที่แจ้งฝากไหม
+    const expectedAmount = Number(amount);
+    if (slipAmount < expectedAmount) {
+        return res.status(400).json({ success: false, message: `ยอดเงินในสลิป (${slipAmount} ฿) น้อยกว่ายอดที่แจ้ง (${expectedAmount} ฿)` });
+    }
 
-            // ✅ 4. หากผ่านทุกเงื่อนไข -> ทำการปรับยอดเงินให้ออโต้ผ่านฟังก์ชัน creditUserByMemberNumber
-            const memberNum = user.memberNumber;
-            const creditResult = await creditUserByMemberNumber(memberNum, slipAmount);
-
-            // บันทึกประวัติลง slipTransactions
-            const txId = `TX_${Date.now()}`;
-            slipTransactions[txId] = {
-                userId: userId,
-                memberNumber: memberNum || '---',
-                amount: slipAmount,
-                transRef: transRef,
-                senderName: senderName,
-                status: 'APPROVED',
-                created_at: new Date().toLocaleString('th-TH')
-            };
-
-            // เซฟข้อมูลลง Firebase
-            await saveDataToFirebase();
-
-            console.log(`🤖 [บอทเติมเงินออโต้] สำเร็จ! เติมให้เลขสมาชิก @${memberNum} จำนวน ${slipAmount} บาท (เครดิตใหม่: ${creditResult.newBalance} ฿)`);
-
-            return res.json({
-                success: true,
-                message: `เติมเงินสำเร็จเรียบร้อย! (@${memberNum} +${slipAmount} บาท)`,
-                newBalance: creditResult.newBalance
+    // 🔍 3.3 ตรวจสอบชื่อผู้โอนกับชื่อบัญชีสมาชิกที่ลงทะเบียนไว้
+    if (user.accountName) {
+        const nameParts = user.accountName.trim().split(/\s+/);
+        const validParts = nameParts.filter(part => part.length > 2);
+        
+        const isMatched = validParts.some(part => senderName.includes(part));
+        
+        if (!isMatched) {
+            return res.status(400).json({ 
+                success: false, 
+                message: `ชื่อบัญชีผู้โอน (${senderName}) ไม่ตรงกับชื่อที่ลงทะเบียนไว้` 
             });
-
-        } else {
-            return res.status(400).json({ success: false, message: 'ไม่สามารถอ่านข้อมูลสลิปได้ หรือสลิปไม่ถูกต้อง' });
         }
+    }
+
+    // ✅ 4. หากผ่านทุกเงื่อนไข -> ทำการปรับยอดเงินให้ออโต้
+    const memberNum = user.memberNumber;
+    const creditResult = await creditUserByMemberNumber(memberNum, slipAmount);
+
+    // บันทึกประวัติลง slipTransactions
+    const txId = `TX_${Date.now()}`;
+    slipTransactions[txId] = {
+        userId: userId,
+        memberNumber: memberNum || '---',
+        amount: slipAmount,
+        transRef: transRef,
+        senderName: senderName,
+        status: 'APPROVED',
+        created_at: new Date().toLocaleString('th-TH')
+    };
+
+    // เซฟข้อมูลลง Firebase
+    await saveDataToFirebase();
+
+    console.log(`🤖 [บอทเติมเงินออโต้] สำเร็จ! เติมให้เลขสมาชิก @${memberNum} จำนวน ${slipAmount} บาท (เครดิตใหม่: ${creditResult.newBalance} ฿)`);
+
+    return res.json({
+        success: true,
+        message: `เติมเงินสำเร็จเรียบร้อย! (@${memberNum} +${slipAmount} บาท)`,
+        newBalance: creditResult.newBalance
+    });
+
+} else {
+    // ถ้า Slip2Go ส่งข้อความตอบกลับมา ให้ใช้ message จาก API หรือใช้ข้อความตั้งต้น
+    const failMessage = slipData.message || 'ไม่สามารถอ่านข้อมูลสลิปได้ หรือสลิปไม่ถูกต้อง';
+    return res.status(400).json({ success: false, message: failMessage });
+}
 
     } catch (error) {
         console.error('❌ เกิดข้อผิดพลาดในการตรวจสลิป:', error.response?.data || error.message);

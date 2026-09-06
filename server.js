@@ -7487,12 +7487,18 @@ app.post('/api/withdraw/create', async (req, res) => {
             return res.status(404).json({ success: false, message: '⚠️ คุณยังไม่ได้ลงทะเบียนสมาชิกในระบบครับ' });
         }
 
-        // 2. เช็กสถานะการล็อกถอนค้าง
+        // 2. เช็กสถานะการล็อกถอนค้าง (พร้อมระบบ Auto-Fix หากติดล็อกค้าง)
         if (user.isWithdrawLocked) {
-            return res.status(400).json({ 
-                success: false, 
-                message: `❌ ไม่สามารถทำรายการซ้ำได้ครับ!\nคุณ ${user.name} มีรายการแจ้งถอนค้างอยู่จำนวน ${user.pendingWithdrawAmount} บาท อยู่ในระหว่างรอแอดมินอนุมัติครับ` 
-            });
+            // 💡 หากติดล็อกแต่ยอดรอถอนเป็น 0 หรือไม่มี ให้ปลดล็อกทันทีอัตโนมัติ
+            if (!user.pendingWithdrawAmount || user.pendingWithdrawAmount <= 0) {
+                user.isWithdrawLocked = false;
+                user.pendingWithdrawAmount = 0;
+            } else {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: `❌ ไม่สามารถทำรายการซ้ำได้ครับ!\nคุณ ${user.name} มีรายการแจ้งถอนค้างอยู่จำนวน ${user.pendingWithdrawAmount} บาท อยู่ในระหว่างรอแอดมินอนุมัติครับ` 
+                });
+            }
         }
 
         // 3. เช็กยอดเทิร์นโอเวอร์คงค้าง

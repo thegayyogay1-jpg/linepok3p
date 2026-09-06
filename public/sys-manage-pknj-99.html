@@ -69,7 +69,7 @@
                             </tr>
                         </thead>
                         <tbody id="deposit-pending-list" class="divide-y divide-gray-800">
-                            <tr><td colspan="5" class="text-center py-6 text-gray-500">ไม่มีรายการฝากค้างตรวจสอบ</td></tr>
+                            <tr><td colspan="5" class="text-center py-6 text-gray-500">กำลังโหลดข้อมูล...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -133,14 +133,6 @@
                 </table>
             </div>
         </section>
-        
-        <!-- ตารางแสดงรายการฝากเงินรอตรวจสอบ (โค้ดใหม่ที่นำมาต่อ) -->
-<div class="card" style="margin-top: 20px; background: #1e1e22; padding: 20px; border-radius: 12px; color: #fff;">
-    <h3>⏳ รายการฝากเงินรอตรวจสอบ (หน้าเว็บแอดมิน)</h3>
-    <div id="pendingDepositList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; margin-top: 15px;">
-        <!-- รายการจะถูกโหลดมาใส่ที่นี่ -->
-    </div>
-</div>
 
     </main>
 
@@ -165,8 +157,8 @@
         }
         const db = firebase.database();
 
-        // 2. ดึงข้อมูลรายการฝากเงินที่สแกนไม่ผ่าน (deposit_pending_reviews)
-        db.ref('deposit_pending_reviews').on('value', (snapshot) => {
+        // 2. ดึงข้อมูลรายการฝากเงินที่สแกนไม่ผ่านจาก pendingDeposits
+        db.ref('pendingDeposits').on('value', (snapshot) => {
             const list = document.getElementById('deposit-pending-list');
             const data = snapshot.val();
             list.innerHTML = '';
@@ -177,61 +169,76 @@
                 return;
             }
 
-            let count = 0;
+            let pendingCount = 0;
             Object.keys(data).forEach(key => {
                 const item = data[key];
-                count++;
-                list.innerHTML += `
-                    <tr class="hover:bg-gray-800/40 transition">
-                        <td class="p-2.5">
-                            <div class="font-bold text-white">${item.userId || item.username || '-'}</div>
-                            <div class="text-[10px] text-gray-500">${item.time || item.timestamp || ''}</div>
-                        </td>
-                        <td class="p-2.5 font-bold text-emerald-400">${item.amount} ฿</td>
-                        <td class="p-2.5 text-center">
-                            <button onclick="showImage('${item.slipUrl}')" class="bg-gray-800 hover:bg-gray-700 text-amber-400 text-[10px] px-2 py-1 rounded-lg border border-gray-700">
-                                🖼️ ดูสลิป
-                            </button>
-                        </td>
-                        <td class="p-2.5 text-red-400 font-medium text-[11px]">
-                            ${item.failReason || 'สแกนสลิปไม่ผ่าน'}
-                        </td>
-                        <td class="p-2.5 text-center">
-                            <div class="flex justify-center gap-1">
-                                <button onclick="approveDeposit('${key}', '${item.userId}', ${item.amount})" class="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] px-2 py-1 rounded font-bold">
-                                    อนุมัติ
-                                </button>
-                                <button onclick="rejectDeposit('${key}')" class="bg-rose-600 hover:bg-rose-500 text-white text-[10px] px-2 py-1 rounded font-bold">
-                                    ปฏิเสธ
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                `;
+                
+                // กรองเฉพาะสถานะ PENDING
+                if (item && item.status && item.status.toUpperCase() === 'PENDING') {
+                    pendingCount++;
+                    const slipImg = item.slipImage || item.slipUrl || '';
+                    
+                    list.innerHTML += `
+                        <tr class="hover:bg-gray-800/40 transition">
+                            <td class="p-2.5">
+                                <div class="font-bold text-white">${item.userName || item.userId || 'สมาชิกลำดับที่ ' + (item.memberNumber || '-')}</div>
+                                <div class="text-[10px] text-gray-500">${item.created_at || item.time || ''}</div>
+                                <div class="text-[9px] text-gray-600">ID: ${item.id || key}</div>
+                            </td>
+                            <td class="p-2.5 font-bold text-emerald-400">${Number(item.amount || 0).toLocaleString()} ฿</td>
+                            <td class="p-2.5 text-center">
+                                ${slipImg ? `
+                                    <button onclick="showImage('${slipImg}')" class="bg-gray-800 hover:bg-gray-700 text-amber-400 text-[10px] px-2 py-1 rounded-lg border border-gray-700">
+                                        🖼️ ดูสลิป
+                                    </button>
+                                ` : '<span class="text-gray-600 text-[10px]">ไม่มีสลิป</span>'}
+                            </td>
+                            <td class="p-2.5 text-red-400 font-medium text-[11px]">
+                                ${item.reason || item.failReason || 'สแกนสลิปไม่ผ่าน'}
+                            </td>
+                            <td class="p-2.5 text-center">
+                                <div class="flex justify-center gap-1">
+                                    <button onclick="approveDeposit('${key}', '${item.memberNumber || item.userId}', ${item.amount})" class="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] px-2 py-1 rounded font-bold">
+                                        อนุมัติ
+                                    </button>
+                                    <button onclick="rejectDeposit('${key}')" class="bg-rose-600 hover:bg-rose-500 text-white text-[10px] px-2 py-1 rounded font-bold">
+                                        ปฏิเสธ
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }
             });
-            document.getElementById('deposit-count').innerText = count;
+
+            document.getElementById('deposit-count').innerText = pendingCount;
+            if (pendingCount === 0) {
+                list.innerHTML = '<tr><td colspan="5" class="text-center py-6 text-gray-500">ไม่มีรายการฝากค้างตรวจสอบ</td></tr>';
+            }
         });
 
-        // 3. ฟังก์ชันการอนุมัติฝากเงิน (เพิ่มเครดิตเข้า usersWallets อัตโนมัติ + ลบเคสค้าง)
-        function approveDeposit(key, userId, amount) {
-            if (confirm(`ยืนยันการอนุมัติฝากเงิน ฿${amount} ให้ ID: ${userId}?`)) {
-                // เพิ่มเครดิตให้สมาชิก
-                db.ref(`usersWallets/${userId}/balance`).transaction((current) => (current || 0) + Number(amount), (error, committed) => {
-                    if (committed) {
-                        // ลบออกจากรายการค้างตรวจสอบเมื่อปรับเงินสำเร็จ
-                        db.ref(`deposit_pending_reviews/${key}`).remove();
-                        alert('ปรับเพิ่มเครดิตเรียบร้อยแล้ว!');
-                    } else if (error) {
-                        alert('เกิดข้อผิดพลาดในการปรับเครดิต: ' + error);
-                    }
-                });
+        // 3. ฟังก์ชันการอนุมัติฝากเงิน
+        async function approveDeposit(depositId, memberNumber, amount) {
+            if (!confirm(`ยืนยันเติมเงิน ${amount} บาท ให้สมาชิกลำดับที่/ID: ${memberNumber} ?`)) return;
+
+            try {
+                // อัปเดตสถานะใน pendingDeposits เป็น APPROVED
+                await db.ref(`pendingDeposits/${depositId}`).update({ status: 'APPROVED' });
+                alert('✅ อนุมัติรายการเรียบร้อยแล้ว');
+            } catch (err) {
+                alert('❌ เกิดข้อผิดพลาด: ' + err.message);
             }
         }
 
-        // ปฏิเสธรายการฝาก
-        function rejectDeposit(key) {
-            if (confirm('ปฏิเสธรายการฝากนี้หรือไม่?')) {
-                db.ref(`deposit_pending_reviews/${key}`).remove();
+        // ฟังก์ชันปฏิเสธรายการฝาก
+        async function rejectDeposit(depositId) {
+            if (!confirm('ยืนยันปฏิเสธรายการนี้ ?')) return;
+
+            try {
+                await db.ref(`pendingDeposits/${depositId}`).update({ status: 'REJECTED' });
+                alert('❌ ปฏิเสธรายการเรียบร้อยแล้ว');
+            } catch (err) {
+                alert('เกิดข้อผิดพลาดในการยกเลิก');
             }
         }
 
@@ -296,189 +303,103 @@
             document.getElementById('image-modal').classList.add('hidden');
         }
 
-        // ==========================================
-// 🛠️ ดึงรายการถอนเงินจาก system_data/withdrawQueue มาแสดงผล
-// ==========================================
-db.ref('system_data/withdrawQueue').on('value', (snapshot) => {
-    const list = document.getElementById('withdraw-pending-list');
-    const data = snapshot.val();
-    list.innerHTML = '';
-    
-    // เช็กว่ามีข้อมูลในคิวถอนหรือไม่
-    if (!data || (Array.isArray(data) && data.length === 0)) {
-        list.innerHTML = '<tr><td colspan="3" class="text-center py-6 text-gray-500">ไม่มีรายการถอนค้าง</td></tr>';
-        document.getElementById('withdraw-count').innerText = '0';
-        return;
-    }
-
-    let count = 0;
-
-    // แปลงข้อมูลให้อยู่ในรูปแบบ Array
-    const queueList = Array.isArray(data) ? data : Object.values(data);
-
-    queueList.forEach((item, index) => {
-        if (item) {
-            count++;
-            list.innerHTML += `
-                <tr class="hover:bg-gray-800/40 transition">
-                    <td class="p-2.5">
-                        <div class="font-bold text-white">คุณ ${item.name || 'ไม่ระบุชื่อ'} (ID: ${item.memberNumber || '-'})</div>
-                        <div class="text-[10px] text-gray-400">⏰ เวลาแจ้งถอน: ${item.time || '-'}</div>
-                    </td>
-                    <td class="p-2.5 font-bold text-rose-400 text-sm">${Number(item.amount || 0).toLocaleString()} ฿</td>
-                    <td class="p-2.5 text-center">
-                        <div class="flex justify-center gap-1">
-                            <button onclick="approveWithdrawQueue(${index}, '${item.memberNumber}')" class="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] px-2.5 py-1.5 rounded font-bold transition">
-                                ✅ โอนแล้ว
-                            </button>
-                            <button onclick="rejectWithdrawQueue(${index}, '${item.memberNumber}')" class="bg-rose-600 hover:bg-rose-500 text-white text-[10px] px-2.5 py-1.5 rounded font-bold transition">
-                                ❌ ยกเลิก
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-            `;
-        }
-    });
-
-    document.getElementById('withdraw-count').innerText = count;
-});
-
-// 🟢 ฟังก์ชันเมื่อแอดมินกด "โอนแล้ว" บนหน้าเว็บ
-function approveWithdrawQueue(index, memberNumber) {
-    if (confirm(`ยืนยันโอนเงินเรียบร้อยแล้วใช่หรือไม่?`)) {
-        
-        // 1. ดึงคิวทั้งหมดลงมาแล้วกรองรายการคนนี้ออก
-        db.ref('system_data/withdrawQueue').once('value', (snap) => {
-            const queue = snap.val() || [];
-            const queueList = Array.isArray(queue) ? queue : Object.values(queue);
+        // 7. ดึงรายการถอนเงินจาก system_data/withdrawQueue
+        db.ref('system_data/withdrawQueue').on('value', (snapshot) => {
+            const list = document.getElementById('withdraw-pending-list');
+            const data = snapshot.val();
+            list.innerHTML = '';
             
-            // กรองรายการที่ไม่ใช่สมาชิกคนนี้ออก
-            const updatedQueue = queueList.filter(item => item && String(item.memberNumber) !== String(memberNumber));
-            
-            // บันทึกคิวใหม่กลับขึ้น Firebase
-            db.ref('system_data/withdrawQueue').set(updatedQueue);
-        });
-
-        // 2. หักเงินและปลดล็อกบัญชีสมาชิกใน usersWallets
-        db.ref('system_data/usersWallets').once('value', (snap) => {
-            const users = snap.val() || {};
-            const targetKey = Object.keys(users).find(k => String(users[k].memberNumber) === String(memberNumber));
-            
-            if (targetKey) {
-                const user = users[targetKey];
-                const amt = user.pendingWithdrawAmount || 0;
-                db.ref(`system_data/usersWallets/${targetKey}`).update({
-                    balance: Math.max(0, (user.balance || 0) - amt),
-                    isWithdrawLocked: false,
-                    pendingWithdrawAmount: 0
-                });
+            if (!data || (Array.isArray(data) && data.length === 0)) {
+                list.innerHTML = '<tr><td colspan="3" class="text-center py-6 text-gray-500">ไม่มีรายการถอนค้าง</td></tr>';
+                document.getElementById('withdraw-count').innerText = '0';
+                return;
             }
-        });
 
-        alert('✅ ดำเนินการอนุมัติรายการถอนเรียบร้อยแล้ว');
-    }
-}
+            let count = 0;
+            const queueList = Array.isArray(data) ? data : Object.values(data);
 
-// 🔴 ฟังก์ชันเมื่อแอดมินกด "ยกเลิก" บนหน้าเว็บ
-function rejectWithdrawQueue(index, memberNumber) {
-    if (confirm('ต้องการยกเลิกรายการถอนนี้ใช่หรือไม่?')) {
-        
-        // 1. ดึงคิวทั้งหมดลงมาแล้วกรองรายการคนนี้ออก
-        db.ref('system_data/withdrawQueue').once('value', (snap) => {
-            const queue = snap.val() || [];
-            const queueList = Array.isArray(queue) ? queue : Object.values(queue);
-            
-            const updatedQueue = queueList.filter(item => item && String(item.memberNumber) !== String(memberNumber));
-            
-            db.ref('system_data/withdrawQueue').set(updatedQueue);
-        });
-
-        // 2. ปลดล็อกบัญชีสมาชิกใน usersWallets
-        db.ref('system_data/usersWallets').once('value', (snap) => {
-            const users = snap.val() || {};
-            const targetKey = Object.keys(users).find(k => String(users[k].memberNumber) === String(memberNumber));
-            
-            if (targetKey) {
-                db.ref(`system_data/usersWallets/${targetKey}`).update({
-                    isWithdrawLocked: false,
-                    pendingWithdrawAmount: 0
-                });
-            }
-        });
-
-        alert('ยกเลิกรายการถอนและปลดล็อกบัญชีเรียบร้อยแล้ว');
-    }
-}
-       // ดึงข้อมูลและนำไปใส่ในตารางเดิม
-db.ref('pendingDeposits').on('value', (snapshot) => {
-    // หา tbody ของตารางรายการฝาก (ปรับ Selector ให้ตรงกับ id หรือ class จริงในหน้าเว็บ)
-    const tableBody = document.querySelector('#depositTable tbody') || document.querySelector('.card:first-child table tbody');
-    if (!tableBody) return;
-
-    tableBody.innerHTML = '';
-    const data = snapshot.val();
-
-    if (!data) {
-        tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#888;">ไม่มีรายการฝากค้างตรวจสอบ</td></tr>';
-        return;
-    }
-
-    Object.values(data).forEach(item => {
-        if (item.status === 'PENDING') {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>
-                    <div>${item.created_at || '-'}</div>
-                    <small style="color:#888;">ID: ${item.id || '-'}</small>
-                </td>
-                <td style="color:#00bfff; font-weight:bold;">${Number(item.amount || 0).toLocaleString()} บาท</td>
-                <td>
-                    <img src="${item.slipImage}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="window.open('${item.slipImage}')">
-                </td>
-                <td style="color:#ff3b47;">${item.reason || '-'}</td>
-                <td>
-                    <button onclick="approveDeposit('${item.id}', '${item.memberNumber}', ${item.amount})" style="background:#00aa5b; color:#fff; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;">อนุมัติ</button>
-                    <button onclick="rejectDeposit('${item.id}')" style="background:#ff3b47; color:#fff; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;">ปฏิเสธ</button>
-                </td>
-            `;
-            tableBody.appendChild(tr);
-        }
-    });
-});
-
-    // ฟังก์ชันกดปุ่มอนุมัติฝากเงิน
-    async function approveDeposit(depositId, memberNumber, amount) {
-        if (!confirm(`ยืนยันเติมเงิน ${amount} บาท ให้สมาชิกลำดับที่ ${memberNumber} ?`)) return;
-
-        try {
-            const response = await fetch('/api/admin/approve-deposit', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ depositId, memberNumber, amount })
+            queueList.forEach((item, index) => {
+                if (item) {
+                    count++;
+                    list.innerHTML += `
+                        <tr class="hover:bg-gray-800/40 transition">
+                            <td class="p-2.5">
+                                <div class="font-bold text-white">คุณ ${item.name || 'ไม่ระบุชื่อ'} (ID: ${item.memberNumber || '-'})</div>
+                                <div class="text-[10px] text-gray-400">⏰ เวลาแจ้งถอน: ${item.time || '-'}</div>
+                            </td>
+                            <td class="p-2.5 font-bold text-rose-400 text-sm">${Number(item.amount || 0).toLocaleString()} ฿</td>
+                            <td class="p-2.5 text-center">
+                                <div class="flex justify-center gap-1">
+                                    <button onclick="approveWithdrawQueue(${index}, '${item.memberNumber}')" class="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] px-2.5 py-1.5 rounded font-bold transition">
+                                        ✅ โอนแล้ว
+                                    </button>
+                                    <button onclick="rejectWithdrawQueue(${index}, '${item.memberNumber}')" class="bg-rose-600 hover:bg-rose-500 text-white text-[10px] px-2.5 py-1.5 rounded font-bold transition">
+                                        ❌ ยกเลิก
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }
             });
-            const resData = await response.json();
-            if (resData.success) {
-                alert('✅ อนุมัติและเติมเงินเรียบร้อยแล้ว');
-            } else {
-                alert('❌ เกิดข้อผิดพลาด: ' + resData.message);
+
+            document.getElementById('withdraw-count').innerText = count;
+        });
+
+        // ฟังก์ชันเมื่อแอดมินกด "โอนแล้ว" บนหน้าเว็บ
+        function approveWithdrawQueue(index, memberNumber) {
+            if (confirm(`ยืนยันโอนเงินเรียบร้อยแล้วใช่หรือไม่?`)) {
+                db.ref('system_data/withdrawQueue').once('value', (snap) => {
+                    const queue = snap.val() || [];
+                    const queueList = Array.isArray(queue) ? queue : Object.values(queue);
+                    const updatedQueue = queueList.filter(item => item && String(item.memberNumber) !== String(memberNumber));
+                    db.ref('system_data/withdrawQueue').set(updatedQueue);
+                });
+
+                db.ref('system_data/usersWallets').once('value', (snap) => {
+                    const users = snap.val() || {};
+                    const targetKey = Object.keys(users).find(k => String(users[k].memberNumber) === String(memberNumber));
+                    
+                    if (targetKey) {
+                        const user = users[targetKey];
+                        const amt = user.pendingWithdrawAmount || 0;
+                        db.ref(`system_data/usersWallets/${targetKey}`).update({
+                            balance: Math.max(0, (user.balance || 0) - amt),
+                            isWithdrawLocked: false,
+                            pendingWithdrawAmount: 0
+                        });
+                    }
+                });
+
+                alert('✅ ดำเนินการอนุมัติรายการถอนเรียบร้อยแล้ว');
             }
-        } catch (err) {
-            alert('❌ ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
         }
-    }
 
-    // ฟังก์ชันกดปุ่มปฏิเสธ
-    async function rejectDeposit(depositId) {
-        if (!confirm('ยืนยันปฏิเสธรายการนี้ ?')) return;
+        // ฟังก์ชันเมื่อแอดมินกด "ยกเลิก" บนหน้าเว็บ
+        function rejectWithdrawQueue(index, memberNumber) {
+            if (confirm('ต้องการยกเลิกรายการถอนนี้ใช่หรือไม่?')) {
+                db.ref('system_data/withdrawQueue').once('value', (snap) => {
+                    const queue = snap.val() || [];
+                    const queueList = Array.isArray(queue) ? queue : Object.values(queue);
+                    const updatedQueue = queueList.filter(item => item && String(item.memberNumber) !== String(memberNumber));
+                    db.ref('system_data/withdrawQueue').set(updatedQueue);
+                });
 
-        try {
-            await db.ref(`pendingDeposits/${depositId}`).update({ status: 'REJECTED' });
-            alert('❌ ปฏิเสธรายการเรียบร้อยแล้ว');
-        } catch (err) {
-            alert('เกิดข้อผิดพลาดในการยกเลิก');
+                db.ref('system_data/usersWallets').once('value', (snap) => {
+                    const users = snap.val() || {};
+                    const targetKey = Object.keys(users).find(k => String(users[k].memberNumber) === String(memberNumber));
+                    
+                    if (targetKey) {
+                        db.ref(`system_data/usersWallets/${targetKey}`).update({
+                            isWithdrawLocked: false,
+                            pendingWithdrawAmount: 0
+                        });
+                    }
+                });
+
+                alert('ยกเลิกรายการถอนและปลดล็อกบัญชีเรียบร้อยแล้ว');
+            }
         }
-    }
-</script>
+    </script>
 </body>
 </html>

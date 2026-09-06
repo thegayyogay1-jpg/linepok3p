@@ -213,6 +213,17 @@
     </div>
 </div>
 
+    <!-- ⚠️ Pop-up แจ้งเตือนส่งเรื่องให้แอดมินตรวจสอบ -->
+<div id="pendingModal" class="modal">
+    <div class="modal-content">
+        <div style="font-size: 50px;">⏳</div>
+        <h3 style="margin: 10px 0; color: #e65100;">กรุณารอแอดมินตรวจสอบ</h3>
+        <p id="pendingModalMessage" style="color: #666; font-size: 14px; margin: 10px 0;"></p>
+        <a href="https://lin.ee/QwOZ9Cf" target="_blank" class="btn-admin" style="margin-top: 15px;">💬 ติดต่อแอดมิน</a>
+        <button type="button" onclick="closePendingModal()" style="background-color: #6c757d; margin-top: 10px;">ปิดหน้าต่าง</button>
+    </div>
+</div>
+
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script>
     let userId = "";
@@ -364,6 +375,11 @@ function goToGamePage() {
         alert('คัดลอกเลขบัญชีเรียบร้อยแล้ว: ' + acc);
     }
 
+    function closePendingModal() {
+        document.getElementById('pendingModal').style.display = 'none';
+        goToStep1();
+    }
+
     // ส่งไฟล์สลิปไป Backend
     document.getElementById('slipForm').addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -394,16 +410,22 @@ function goToGamePage() {
             });
 
             const result = await response.json();
-
             loadingModal.style.display = 'none';
 
             if (result.success) {
+                // Case 1: ตรวจสอบผ่านระบบ Auto ➔ โชว์ Pop-up สำเร็จ
                 clearInterval(timerInterval);
-                
                 document.getElementById('modalMessage').innerText = `เติมเงินสำเร็จ: +${amountToDeposit} บาท\nยอดเงินคงเหลือใหม่: ${result.newBalance} บาท`;
                 document.getElementById('successModal').style.display = 'flex';
 
+            } else if (result.isPending) {
+                // Case 2: ไม่ผ่านระบบ Auto ➔ โชว์ Pop-up รอแอดมินอนุมัติ
+                clearInterval(timerInterval);
+                document.getElementById('pendingModalMessage').innerText = result.message || 'ระบบได้ส่งสลิปให้แอดมินเรียบร้อยแล้ว กรุณารอแอดมินตรวจสอบสักครู่ครับ';
+                document.getElementById('pendingModal').style.display = 'flex';
+
             } else {
+                // Case 3: ข้อผิดพลาดอื่นๆ (เช่น รูปไม่ถูกต้อง)
                 statusMsg.style.color = 'red';
                 statusMsg.innerText = `❌ ${result.message}`;
             }

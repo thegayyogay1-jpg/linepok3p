@@ -7465,7 +7465,7 @@ app.get('/api/user-profile', async (req, res) => {
     }
 });
 // ==========================================
-// API: แจ้งถอนเงินผ่านหน้าเว็บ (เชื่อมต่อกับระบบหลัก)
+// API: แจ้งถอนเงินผ่านหน้าเว็บ (ปรับไม่ให้หักเงินก่อน รอแอดมินอนุมัติ)
 // ==========================================
 app.post('/api/withdraw/create', async (req, res) => {
     try {
@@ -7476,7 +7476,7 @@ app.post('/api/withdraw/create', async (req, res) => {
             return res.status(400).json({ success: false, message: 'รูปแบบการถอนไม่ถูกต้อง กรุณาระบุจำนวนเงิน' });
         }
 
-        // 1. ดึงข้อมูลสมาชิกจาก usersWallets (แหล่งเดียวกับระบบหลัก)
+        // 1. ดึงข้อมูลสมาชิกจาก usersWallets
         let user = usersWallets[userId];
 
         if (!user && typeof getLatestWallet === 'function') {
@@ -7487,9 +7487,8 @@ app.post('/api/withdraw/create', async (req, res) => {
             return res.status(404).json({ success: false, message: '⚠️ คุณยังไม่ได้ลงทะเบียนสมาชิกในระบบครับ' });
         }
 
-        // 2. เช็กสถานะการล็อกถอนค้าง (พร้อมระบบ Auto-Fix หากติดล็อกค้าง)
+        // 2. เช็กสถานะการล็อกถอนค้าง (พร้อมระบบ Auto-Fix)
         if (user.isWithdrawLocked) {
-            // 💡 หากติดล็อกแต่ยอดรอถอนเป็น 0 หรือไม่มี ให้ปลดล็อกทันทีอัตโนมัติ
             if (!user.pendingWithdrawAmount || user.pendingWithdrawAmount <= 0) {
                 user.isWithdrawLocked = false;
                 user.pendingWithdrawAmount = 0;
@@ -7509,7 +7508,7 @@ app.post('/api/withdraw/create', async (req, res) => {
             });
         }
 
-        // 4. เช็กยอดเงินคงเหลือ (ใช้ user.balance ตามระบบหลัก)
+        // 4. เช็กยอดเงินคงเหลือ
         const currentBalance = Number(user.balance || 0);
         if (currentBalance < withdrawAmount) {
             return res.status(400).json({ 
@@ -7518,8 +7517,7 @@ app.post('/api/withdraw/create', async (req, res) => {
             });
         }
 
-        // 5. ⚡ [จุดที่แก้ไขสำคัญ] หักยอดเงินทันที + ล็อกการถอนซ้ำ
-        user.balance = currentBalance - withdrawAmount; // หักเงินจริงทันที
+        // 5. ⚡ ล็อกการถอนซ้ำ และ บันทึกยอดรอถอน (โดยยังไม่หัก user.balance ออก)
         user.isWithdrawLocked = true;
         user.pendingWithdrawAmount = withdrawAmount;
 
@@ -7538,7 +7536,7 @@ app.post('/api/withdraw/create', async (req, res) => {
             await saveDataToFirebase();
         }
 
-        // 8. ยิง Flex Message แจ้งเตือนแอดมินทาง LINE ส่วนตัว
+        // 8. ยิง Flex Message แจ้งเตือนแอดมินทาง LINE
         const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
         const adminWithdrawAlertFlex = {
             "type": "flex",
@@ -7600,7 +7598,7 @@ app.post('/api/withdraw/create', async (req, res) => {
                             "layout": "horizontal",
                             "contents": [
                                 { "type": "text", "text": "💰 เครดิตคงเหลือ:", "size": "sm", "color": "#ffaa00", "weight": "bold" },
-                                { "type": "text", "text": `${user.balance.toLocaleString()} บาท`, "size": "sm", "color": "#ffaa00", "weight": "bold", "align": "end" }
+                                { "type": "text", "text": `${currentBalance.toLocaleString()} บาท`, "size": "sm", "color": "#ffaa00", "weight": "bold", "align": "end" }
                             ]
                         },
                         {

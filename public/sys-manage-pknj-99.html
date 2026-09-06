@@ -3,80 +3,131 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>POKNAJA - ระบบจัดการหลังบ้าน (Admin)</title>
+    <title>POKNAJA - Admin System & Live</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Firebase SDK (v8) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
-<body class="bg-gray-900 text-white min-h-screen p-4 sm:p-6">
+<body class="bg-gray-950 text-white min-h-screen p-3 sm:p-6 font-sans">
 
     <!-- Header -->
-    <header class="flex justify-between items-center mb-6 pb-4 border-b border-gray-800">
+    <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6 pb-4 border-b border-gray-800 max-w-7xl mx-auto">
         <div>
-            <h1 class="text-2xl font-black text-amber-400">POKNAJA ADMIN</h1>
-            <p class="text-xs text-gray-400">ระบบจัดการรายการฝาก-ถอน ค้างตรวจสอบ</p>
+            <h1 class="text-2xl font-black text-amber-400 tracking-wider">POKNAJA ADMIN</h1>
+            <p class="text-xs text-gray-400">ระบบจัดการหลังบ้าน + ถ่ายทอดสด + ตรวจสอบประวัติ</p>
         </div>
-        <div class="text-right">
+        <div class="flex items-center gap-2">
             <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                ● Live Real-time
+                ● Live Real-time Connected
             </span>
         </div>
     </header>
 
-    <main class="max-w-6xl mx-auto space-y-8">
+    <main class="max-w-7xl mx-auto space-y-8">
 
-        <!-- ตารางรายการฝากค้างตรวจสอบ (Pending Deposits) -->
-        <section class="bg-gray-800 rounded-2xl p-4 border border-gray-700 shadow-xl">
-            <h2 class="text-lg font-bold text-emerald-400 mb-4 flex items-center gap-2">
-                📥 รายการแจ้งฝาก (รอแอดมินอนุมัติ)
+        <!-- Zone 1: จัดการหน้าจอถ่ายทอดสด (Live Stream Management) -->
+        <section class="bg-gray-900 rounded-2xl p-4 sm:p-5 border border-gray-800 shadow-xl">
+            <h2 class="text-base font-bold text-amber-400 mb-3 flex items-center gap-2">
+                📹 ควบคุมวิดีโอถ่ายทอดสด (Facebook Live Embed)
             </h2>
-
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-sm text-gray-300">
-                    <thead class="bg-gray-900/60 text-xs text-gray-400 uppercase border-b border-gray-700">
-                        <tr>
-                            <th class="p-3">เวลา</th>
-                            <th class="p-3">ID ผู้เล่น / ชื่อ</th>
-                            <th class="p-3">ยอดเงิน</th>
-                            <th class="p-3 text-center">สลิป</th>
-                            <th class="p-3">เหตุผลที่ไม่ผ่าน Auto</th>
-                            <th class="p-3 text-center">จัดการ</th>
-                        </tr>
-                    </thead>
-                    <tbody id="deposit-pending-list" class="divide-y divide-gray-700/50">
-                        <!-- รายการฝากจะดึงจาก Firebase มาใส่ตรงนี้ -->
-                        <tr>
-                            <td colspan="6" class="text-center py-6 text-gray-500">ไม่มีรายการฝากค้างตรวจสอบ</td>
-                        </tr>
-                    </tbody>
-                </table>
+            <div class="flex flex-col md:flex-row gap-3 items-center">
+                <input type="text" id="live-url-input" placeholder="วางลิงก์วิดีโอ Facebook Live ที่นี่..." 
+                    class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-amber-400">
+                <button onclick="updateLiveUrl()" 
+                    class="w-full md:w-auto bg-amber-500 hover:bg-amber-400 text-black font-bold px-6 py-2 rounded-xl text-sm transition-all shrink-0">
+                    อัปเดตลิงก์ไลฟ์สด
+                </button>
+            </div>
+            
+            <!-- จอพรีวิวไลฟ์สดฝั่งแอดมิน -->
+            <div class="mt-4 max-w-md mx-auto aspect-video bg-black rounded-xl overflow-hidden border border-gray-800 relative">
+                <iframe id="admin-live-preview" class="w-full h-full border-0" allowfullscreen="true" 
+                    allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"></iframe>
             </div>
         </section>
 
-        <!-- ตารางรายการถอนค้างตรวจสอบ (Pending Withdrawals) -->
-        <section class="bg-gray-800 rounded-2xl p-4 border border-gray-700 shadow-xl">
-            <h2 class="text-lg font-bold text-rose-400 mb-4 flex items-center gap-2">
-                📤 รายการแจ้งถอน (รอแอดมินโอน)
-            </h2>
+        <!-- Zone 2: ตารางรายการฝาก-ถอนค้างตรวจสอบ (Pending Requests) -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            <!-- ฝากค้าง -->
+            <section class="bg-gray-900 rounded-2xl p-4 border border-gray-800 shadow-xl">
+                <h2 class="text-base font-bold text-emerald-400 mb-4 flex justify-between items-center">
+                    <span>📥 รายการแจ้งฝาก (ค้างตรวจ)</span>
+                    <span id="deposit-count" class="text-xs bg-emerald-500/20 px-2.5 py-0.5 rounded-full">0</span>
+                </h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs text-gray-300">
+                        <thead class="bg-gray-950 text-gray-400 uppercase border-b border-gray-800">
+                            <tr>
+                                <th class="p-2.5">เวลา / ID</th>
+                                <th class="p-2.5">ยอดเงิน</th>
+                                <th class="p-2.5 text-center">สลิป</th>
+                                <th class="p-2.5 text-center">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="deposit-pending-list" class="divide-y divide-gray-800">
+                            <tr><td colspan="4" class="text-center py-6 text-gray-500">ไม่มีรายการฝากค้าง</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
 
+            <!-- ถอนค้าง -->
+            <section class="bg-gray-900 rounded-2xl p-4 border border-gray-800 shadow-xl">
+                <h2 class="text-base font-bold text-rose-400 mb-4 flex justify-between items-center">
+                    <span>📤 รายการแจ้งถอน (รอโอน)</span>
+                    <span id="withdraw-count" class="text-xs bg-rose-500/20 px-2.5 py-0.5 rounded-full">0</span>
+                </h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs text-gray-300">
+                        <thead class="bg-gray-950 text-gray-400 uppercase border-b border-gray-800">
+                            <tr>
+                                <th class="p-2.5">ID / บัญชี</th>
+                                <th class="p-2.5">ยอดถอน</th>
+                                <th class="p-2.5 text-center">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="withdraw-pending-list" class="divide-y divide-gray-800">
+                            <tr><td colspan="3" class="text-center py-6 text-gray-500">ไม่มีรายการถอนค้าง</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+        </div>
+
+        <!-- Zone 3: ค้นหาและเช็กประวัติการเล่นย้อนหลัง (Betting History Search) -->
+        <section class="bg-gray-900 rounded-2xl p-4 sm:p-5 border border-gray-800 shadow-xl">
+            <h2 class="text-base font-bold text-blue-400 mb-4 flex items-center gap-2">
+                🔍 ค้นหาประวัติการแทงย้อนหลังสมาชิก
+            </h2>
+            
+            <div class="flex flex-col sm:flex-row gap-3 mb-4">
+                <input type="text" id="search-user-id" placeholder="พิมพ์ ID ผู้เล่น หรือ ชื่อผู้ใช้..." 
+                    class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-blue-400">
+                <button onclick="searchBetHistory()" 
+                    class="w-full sm:w-auto bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 py-2 rounded-xl text-sm transition-all shrink-0">
+                    ค้นหาประวัติ
+                </button>
+            </div>
+
+            <!-- ตารางแสดงประวัติการเล่น -->
             <div class="overflow-x-auto">
-                <table class="w-full text-left text-sm text-gray-300">
-                    <thead class="bg-gray-900/60 text-xs text-gray-400 uppercase border-b border-gray-700">
+                <table class="w-full text-left text-xs text-gray-300">
+                    <thead class="bg-gray-950 text-gray-400 uppercase border-b border-gray-800">
                         <tr>
-                            <th class="p-3">เวลา</th>
-                            <th class="p-3">ID ผู้เล่น</th>
-                            <th class="p-3">ธนาคาร / เลขบัญชี / ชื่อ</th>
-                            <th class="p-3">ยอดถอน</th>
-                            <th class="p-3 text-center">จัดการ</th>
+                            <th class="p-2.5">เวลาที่แทง</th>
+                            <th class="p-2.5">ID / ชื่อ</th>
+                            <th class="p-2.5">รอบที่</th>
+                            <th class="p-2.5">ฝั่งที่แทง</th>
+                            <th class="p-2.5">จำนวนเงิน</th>
+                            <th class="p-2.5 text-center">ผลลัพธ์</th>
                         </tr>
                     </thead>
-                    <tbody id="withdraw-pending-list" class="divide-y divide-gray-700/50">
-                        <!-- รายการถอนจะดึงจาก Firebase มาใส่ตรงนี้ -->
-                        <tr>
-                            <td colspan="5" class="text-center py-6 text-gray-500">ไม่มีรายการถอนค้างตรวจสอบ</td>
-                        </tr>
+                    <tbody id="bet-history-list" class="divide-y divide-gray-800">
+                        <tr><td colspan="6" class="text-center py-6 text-gray-500">กรุณากรอก ID ผู้เล่นเพื่อค้นหาข้อมูล</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -84,21 +135,132 @@
 
     </main>
 
-    <!-- Modal สำหรับเปิดดูรูปสลิปขนาดใหญ่ -->
-    <div id="image-modal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onclick="closeModal()">
-        <div class="max-w-md w-full bg-gray-800 p-2 rounded-2xl border border-gray-700">
-            <img id="modal-img" src="" alt="สลิปการโอน" class="w-full rounded-xl object-contain max-h-[80vh]">
-            <p class="text-center text-xs text-gray-400 mt-2">กดบริเวณใดก็ได้เพื่อปิด</p>
+    <!-- Modal สำหรับขยายดูรูปสลิป -->
+    <div id="image-modal" class="hidden fixed inset-0 bg-black/85 z-50 flex items-center justify-center p-4" onclick="closeModal()">
+        <div class="max-w-xs w-full bg-gray-900 p-2 rounded-2xl border border-gray-700 shadow-2xl">
+            <img id="modal-img" src="" alt="สลิป" class="w-full rounded-xl object-contain max-h-[75vh]">
+            <p class="text-center text-[10px] text-gray-400 mt-2">กดบริเวณใดก็ได้เพื่อปิด</p>
         </div>
     </div>
 
+    <!-- Firebase Configuration & Realtime Scripts -->
     <script>
-        // ฟังก์ชันเปิดดูรูปสลิปใหญ่
+        // 1. ตั้งค่า Firebase Config (ดึงจากโปรเจกต์เดิมของคุณ)
+        const firebaseConfig = {
+            databaseURL: "https://my-pokdeng-bot-default-rtdb.asia-southeast1.firebasedatabase.app/"
+        };
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const db = firebase.database();
+
+        // 2. ดึงข้อมูลรายการฝากค้าง (Pending Deposits)
+        db.ref('pending_deposits').on('value', (snapshot) => {
+            const list = document.getElementById('deposit-pending-list');
+            const data = snapshot.val();
+            list.innerHTML = '';
+            
+            if (!data) {
+                list.innerHTML = '<tr><td colspan="4" class="text-center py-6 text-gray-500">ไม่มีรายการฝากค้าง</td></tr>';
+                document.getElementById('deposit-count').innerText = '0';
+                return;
+            }
+
+            let count = 0;
+            Object.keys(data).forEach(key => {
+                const item = data[key];
+                if (item.status === 'pending') {
+                    count++;
+                    list.innerHTML += `
+                        <tr>
+                            <td class="p-2.5"><div class="font-bold text-white">${item.userId || '-'}</div><div class="text-[10px] text-gray-500">${item.time || ''}</div></td>
+                            <td class="p-2.5 font-bold text-emerald-400">${item.amount} ฿</td>
+                            <td class="p-2.5 text-center">
+                                <button onclick="showImage('${item.slipUrl}')" class="bg-gray-800 hover:bg-gray-700 text-xs px-2.5 py-1 rounded-lg border border-gray-700">🖼️ ดูสลิป</button>
+                            </td>
+                            <td class="p-2.5 text-center space-x-1">
+                                <button onclick="approveDeposit('${key}', '${item.userId}', ${item.amount})" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-1 rounded-lg font-bold">อนุมัติ</button>
+                                <button onclick="rejectDeposit('${key}')" class="bg-rose-600 hover:bg-rose-500 text-white px-2 py-1 rounded-lg font-bold">ปฏิเสธ</button>
+                            </td>
+                        </tr>
+                    `;
+                }
+            });
+            document.getElementById('deposit-count').innerText = count;
+        });
+
+        // 3. ฟังก์ชันการอนุมัติฝากเงิน (เพิ่มเครดิตเข้า usersWallets อัตโนมัติ)
+        function approveDeposit(key, userId, amount) {
+            if (confirm(`ยืนยันการอนุมัติฝากเงิน ${amount} บาท ให้ ID: ${userId}?`)) {
+                // เพิ่มเครดิต
+                db.ref(`usersWallets/${userId}/balance`).transaction((current) => (current || 0) + Number(amount));
+                // ปรับสถานะรายการ
+                db.ref(`pending_deposits/${key}`).update({ status: 'approved' });
+            }
+        }
+
+        function rejectDeposit(key) {
+            if (confirm('ปฏิเสธรายการฝากนี้?')) {
+                db.ref(`pending_deposits/${key}`).update({ status: 'rejected' });
+            }
+        }
+
+        // 4. ระบบค้นหาประวัติการเล่นย้อนหลัง (Betting History)
+        function searchBetHistory() {
+            const query = document.getElementById('search-user-id').value.trim();
+            const list = document.getElementById('bet-history-list');
+            if (!query) return alert('กรุณากรอก ID หรือชื่อผู้ใช้งานก่อนค้นหา');
+
+            list.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-gray-400">กำลังค้นหาข้อมูล...</td></tr>';
+
+            db.ref('bets').once('value', (snapshot) => {
+                const data = snapshot.val();
+                list.innerHTML = '';
+                let found = false;
+
+                if (data) {
+                    Object.keys(data).forEach(key => {
+                        const bet = data[key];
+                        if (String(bet.userId) === query || String(bet.userName).includes(query)) {
+                            found = true;
+                            const isWin = bet.winAmount > 0;
+                            list.innerHTML += `
+                                <tr>
+                                    <td class="p-2.5 text-gray-400">${bet.time || '-'}</td>
+                                    <td class="p-2.5 font-bold text-white">${bet.userId} [${bet.userName || ''}]</td>
+                                    <td class="p-2.5">รอบที่ ${bet.roundNo || '-'}</td>
+                                    <td class="p-2.5 text-amber-400 font-semibold">${bet.betSide || '-'}</td>
+                                    <td class="p-2.5 font-bold">${bet.amount} ฿</td>
+                                    <td class="p-2.5 text-center font-bold ${isWin ? 'text-emerald-400' : 'text-rose-400'}">
+                                        ${isWin ? '+' + bet.winAmount + ' ฿' : '-'}
+                                    </td>
+                                </tr>
+                            `;
+                        }
+                    });
+                }
+                if (!found) {
+                    list.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-gray-500">ไม่พบประวัติการแทงของสมาชิกท่านนี้</td></tr>';
+                }
+            });
+        }
+
+        // 5. อัปเดต URL ไลฟ์สด
+        function updateLiveUrl() {
+            const rawUrl = document.getElementById('live-url-input').value.trim();
+            if (!rawUrl) return alert('กรุณาวางลิงก์ถ่ายทอดสด');
+            const embedUrl = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(rawUrl)}&show_text=false`;
+            
+            db.ref('settings/live_url').set(rawUrl);
+            document.getElementById('admin-live-preview').src = embedUrl;
+            alert('อัปเดตช่องถ่ายทอดสดเรียบร้อยแล้ว!');
+        }
+
+        // 6. Modal รูปภาพ
         function showImage(src) {
             document.getElementById('modal-img').src = src;
             document.getElementById('image-modal').classList.remove('hidden');
         }
-
         function closeModal() {
             document.getElementById('image-modal').classList.add('hidden');
         }

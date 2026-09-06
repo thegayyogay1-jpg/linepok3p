@@ -7273,165 +7273,184 @@ app.post('/api/deposit/create', async (req, res) => {
     }
 });
 
-// 📌 API รับรูปสลิปจากหน้าเว็บ
+// ==========================================
+// API: รับสลิปการโอนเงิน (รองรับ Auto + ส่งแอดมินตรวจสอบ)
+// ==========================================
 app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
     try {
         const { userId, amount } = req.body;
-        const slipFile = req.file;
+        const depositAmount = parseFloat(amount);
 
-        if (!userId || userId === 'undefined' || !amount || !slipFile) {
-            return res.status(400).json({ success: false, message: 'ข้อมูลไม่ครบถ้วน (ไม่พบ userId หรือยอดเงิน)' });
+        if (!userId || !req.file) {
+            return res.status(400).json({ success: false, message: 'ข้อมูลไม่ครบถ้วน กรุณาแนบรูปภาพสลิป' });
         }
 
-        const user = usersWallets[userId];
+        // 1. ดึงข้อมูลสมาชิก
+        let user = usersWallets[userId];
+        if (!user && typeof getLatestWallet === 'function') {
+            user = await getLatestWallet(userId);
+        }
+
         if (!user) {
             return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลสมาชิกในระบบ' });
         }
 
-        const FormData = require('form-data');
-        const formData = new FormData();
-        formData.append('file', slipFile.buffer, {
-            filename: slipFile.originalname || 'slip.jpg',
-            contentType: slipFile.mimetype || 'image/jpeg'
-        }); 
+        // 2. ส่งสลิปไปตรวจสอบผ่าน SlipOK / OCR (ตามระบบที่คุณใช้อยู่)
+        let checkResult = { success: false, reason: 'เกิดข้อผิดพลาดในการอ่านสลิป' };
+        if (typeof verifySlipImage === 'function') {
+            checkResult = await verifySlipImage(req.file.buffer, depositAmount, user);
+        }
 
-        const slipResponse = await axios.post(
-            'https://connect.slip2go.com/api/verify-slip/qr-image/info',
-            formData,
-            {
-                headers: {
-                    'Authorization': 'Bearer H7PyVya4FcYuf_X_zGAW2oq2hN2+1uSVxK_4zOGsLe8=',
-                    ...formData.getHeaders()
-                }
-            }
-        );
+        // ---------------------------------------------------------
+        // 🟢 กรณีที่ 1: ตรวจสอบผ่านระบบ Auto สำเร็จ
+        // ---------------------------------------------------------
+        if (checkResult.success) {
+            const currentBal = Number(user.balance || 0);
+            const newBal = currentBal + depositAmount;
+            user.balance = newBal;
 
-        const slipData = slipResponse.data;
-
-        if ((slipData.code === "200000" || slipData.code === 200000) && slipData.data) {
-            const data = slipData.data;
-            const transRef = data.transRef;
-            const slipAmount = Number(data.amount);
-
-            // ⛔ [เช็กที่ 1] เวลาโอน
-            const rawSlipDate = data.transDate || data.transTimestamp || data.dateTime;
-            if (rawSlipDate) {
-                const slipTime = new Date(rawSlipDate).getTime();
-                const timeDiffMinutes = (Date.now() - slipTime) / (1000 * 60);
-                if (timeDiffMinutes > 15) {
-                    return res.status(400).json({ success: false, message: 'สลิปหมดอายุ! ต้องใช้สลิปที่ทำรายการภายใน 15 นาที' });
-                }
-            }
-
-            // ⛔ [เช็กที่ 2] บัญชีรับเงิน
-            const receiverAcc = data.receiver?.account?.number || data.receiver?.account?.bank || data.receiver?.account || '';
-            const receiverName = data.receiver?.name || data.receiver?.account?.name || '';
-            const cleanedReceiverAcc = String(receiverAcc).replace(/[^0-9]/g, '');
-            if (!cleanedReceiverAcc.includes("0371556125") && !receiverName.includes("ภาณุวัฒก์")) {
-                return res.status(400).json({ success: false, message: 'สลิปนี้ไม่ได้โอนเข้าบัญชีของทางร้าน' });
-            }
-
-            // ⛔ [เช็กที่ 3] ชื่อผู้โอน
-            const senderName = data.sender?.name || data.sender?.account?.name || 'ไม่ระบุ';
-            const registeredName = user.name || user.accountName;
-            if (registeredName) {
-                const cleanRegName = registeredName.replace(/(นาย|นางสาว|นาง|Mr\.|Mrs\.|Miss)/g, '').trim();
-                const cleanSenderName = senderName.replace(/(นาย|นางสาว|นาง|Mr\.|Mrs\.|Miss)/g, '').trim();
-                const firstName = cleanRegName.split(/\s+/)[0];
-
-                if (firstName && !cleanSenderName.includes(firstName)) {
-                    return res.status(400).json({ success: false, message: 'ชื่อผู้โอน ไม่ตรงกับชื่อสมาชิกที่ลงทะเบียนไว้' });
-                }
-            }
-
-          // -------------------------------------------------------------
-// ⛔ [เช็กที่ 4] ตรวจสอบ "เลขบัญชีผู้โอน" ตรงกับ Firebase
-// -------------------------------------------------------------
-const rawSender = data.sender || {};
-
-// 📌 ดึงเลขบัญชีรองรับทุกโครงสร้าง JSON (รวมถึง SCB: sender.account.bank.account)
-const senderAcc = 
-    rawSender.account?.bank?.account || 
-    rawSender.account?.number || 
-    rawSender.account?.bank || 
-    rawSender.account || 
-    rawSender.accountNo || 
-    '';
-
-const registeredAcc = user.bankAccount || user.accountNumber;
-
-if (registeredAcc) {
-    // ลบตัวอักษรและขีดออกทั้งหมด ให้เหลือเฉพาะตัวเลข (เช่น "xxxx-xx018-4" -> "0184")
-    const cleanUserAcc = String(registeredAcc).replace(/\D/g, '');
-    const cleanSenderAcc = String(senderAcc).replace(/\D/g, '');
-
-    const userAccLast4 = cleanUserAcc.slice(-4);
-    const userAccLast3 = cleanUserAcc.slice(-3);
-
-    // ตรวจสอบว่าเลขท้ายตรงกันหรือไม่
-    const isAccountMatch = 
-        cleanSenderAcc.includes(userAccLast4) ||
-        cleanSenderAcc.includes(userAccLast3) ||
-        (cleanSenderAcc.length > 0 && cleanUserAcc.endsWith(cleanSenderAcc)) ||
-        (cleanSenderAcc.length > 0 && cleanSenderAcc.endsWith(userAccLast4));
-
-    if (!isAccountMatch) {
-        console.log(`❌ Account Mismatch | Registered: ${cleanUserAcc} | From Slip: ${cleanSenderAcc}`);
-        return res.status(400).json({ 
-            success: false, 
-            message: `เลขบัญชีผู้โอนไม่ตรงกับที่ลงทะเบียนไว้ (ในระบบ: ...${userAccLast4})` 
-        });
-    }
-}
-
-            // ⛔ [เช็กที่ 5] สลิปซ้ำ
-            const isDuplicate = Object.values(slipTransactions).some(tx => tx.transRef === transRef && tx.status === 'APPROVED');
-            if (isDuplicate) {
-                return res.status(400).json({ success: false, message: 'สลิปนี้เคยถูกใช้งานไปแล้ว' });
-            }
-
-            // ⛔ [เช็กที่ 6] ยอดเงิน
-            const expectedAmount = Number(amount);
-            if (slipAmount < expectedAmount) {
-                return res.status(400).json({ success: false, message: 'ยอดเงินในสลิป น้อยกว่ายอดที่แจ้ง' });
-            }
-
-            // ✅ ปรับยอดเงิน + ปลดล็อกรายการค้าง
-            const memberNum = user.memberNumber;
-            const creditResult = await creditUserByMemberNumber(memberNum, slipAmount);
-
-            if (typeof pendingDeposits !== 'undefined' && pendingDeposits[userId]) {
-                delete pendingDeposits[userId];
-            }
-
+            // บันทึกประวัติสลิปลง slipTransactions (กันสแกนซ้ำ)
             const txId = `TX_${Date.now()}`;
-            slipTransactions[txId] = {
-                userId: userId,
-                memberNumber: memberNum || '---',
-                amount: slipAmount,
-                transRef: transRef,
-                senderName: senderName,
-                senderAccount: senderAcc,
-                transDate: rawSlipDate || 'ไม่ระบุ',
-                status: 'APPROVED',
-                created_at: new Date().toLocaleString('th-TH')
-            };
+            if (typeof db !== 'undefined' && checkResult.transRef) {
+                await db.ref(`slipTransactions/${txId}`).set({
+                    transRef: checkResult.transRef,
+                    userId: userId,
+                    memberNumber: user.memberNumber,
+                    amount: depositAmount,
+                    senderName: checkResult.senderName || user.name || '',
+                    status: 'APPROVED',
+                    created_at: new Date().toLocaleString('th-TH')
+                });
+            }
 
-            await saveDataToFirebase();
+            // เซฟข้อมูลลง Firebase
+            if (typeof saveDataToFirebase === 'function') {
+                await saveDataToFirebase();
+            }
 
             return res.json({
                 success: true,
-                message: 'เติมเงินสำเร็จเรียบร้อย!',
-                newBalance: creditResult.newBalance
+                message: 'เติมเงินสำเร็จเรียบร้อยแล้ว',
+                newBalance: newBal.toLocaleString()
             });
-
-        } else {
-            return res.status(400).json({ success: false, message: slipData.message || 'สลิปไม่ถูกต้อง' });
         }
 
+        // ---------------------------------------------------------
+        // ⏳ กรณีที่ 2: ตรวจสอบ Auto ไม่ผ่าน -> ส่งให้แอดมินตรวจสอบ
+        // ---------------------------------------------------------
+        const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
+        
+        // แปลงไฟล์รูปสลิปเป็น Base64 หรืออัปโหลดส่งให้แอดมินดู
+        const imageBase64 = req.file.buffer.toString('base64');
+        const imageUrl = `data:${req.file.mimetype};base64,${imageBase64}`;
+
+        const adminManualFlex = {
+            "type": "flex",
+            "altText": `🚨 แจ้งฝากเงินรอตรวจสอบ! คุณ ${user.name} ยอด ${depositAmount} บาท`,
+            "contents": {
+                "type": "bubble",
+                "header": {
+                    "type": "box",
+                    "layout": "vertical",
+                    "contents": [
+                        { "type": "text", "text": "⏳ มีรายการฝากเงินรอตรวจสอบ (สลิปเว็บ)", "weight": "bold", "color": "#ffaa00", "size": "md", "align": "center" }
+                    ]
+                },
+                "body": {
+                    "type": "box",
+                    "layout": "vertical",
+                    "spacing": "sm",
+                    "contents": [
+                        {
+                            "type": "box",
+                            "layout": "horizontal",
+                            "contents": [
+                                { "type": "text", "text": "🆔 สมาชิก:", "size": "sm", "color": "#8e8e93" },
+                                { "type": "text", "text": `ลำดับที่ ${user.memberNumber}`, "size": "sm", "color": "#ffffff", "weight": "bold", "align": "end" }
+                            ]
+                        },
+                        {
+                            "type": "box",
+                            "layout": "horizontal",
+                            "contents": [
+                                { "type": "text", "text": "👤 ชื่อสมาชิก:", "size": "sm", "color": "#8e8e93" },
+                                { "type": "text", "text": `คุณ ${user.name}`, "size": "sm", "color": "#ffffff", "weight": "bold", "align": "end" }
+                            ]
+                        },
+                        {
+                            "type": "box",
+                            "layout": "horizontal",
+                            "contents": [
+                                { "type": "text", "text": "💰 ยอดเงินแจ้งฝาก:", "size": "sm", "color": "#ffffff", "weight": "bold" },
+                                { "type": "text", "text": `${depositAmount.toLocaleString()} บาท`, "size": "md", "color": "#00bfff", "weight": "bold", "align": "end" }
+                            ]
+                        },
+                        {
+                            "type": "box",
+                            "layout": "vertical",
+                            "margin": "md",
+                            "contents": [
+                                { "type": "text", "text": `⚠️ เหตุผลที่ต้องตรวจ: ${checkResult.reason || 'ระบบอ่านสลิปอัตโนมัติไม่ได้'}`, "size": "xs", "color": "#ff3b47", "wrap": true }
+                            ]
+                        }
+                    ]
+                },
+                "footer": {
+                    "type": "box",
+                    "layout": "horizontal",
+                    "spacing": "sm",
+                    "contents": [
+                        {
+                            "type": "button",
+                            "style": "primary",
+                            "color": "#00aa5b",
+                            "height": "sm",
+                            "action": {
+                                "type": "message",
+                                "label": "✅ อนุมัติฝาก",
+                                "text": `d ${user.memberNumber} ${depositAmount}`
+                            }
+                        },
+                        {
+                            "type": "button",
+                            "style": "secondary",
+                            "color": "#ff3b47",
+                            "height": "sm",
+                            "action": {
+                                "type": "message",
+                                "label": "❌ ปฏิเสธ",
+                                "text": `ยกเลิกฝาก ${user.memberNumber}`
+                            }
+                        }
+                    ]
+                }
+            }
+        };
+
+        // ยิงแจ้งเตือนหาแอดมินทาง LINE
+        if (typeof axios !== 'undefined' && typeof TOKEN !== 'undefined') {
+            try {
+                await axios.post('https://api.line.me/v2/bot/message/push', {
+                    to: ADMIN_ID,
+                    messages: [adminManualFlex]
+                }, {
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` }
+                });
+            } catch (err) {
+                console.error("❌ ส่งสลิปหาแอดมินล้มเหลว:", err.message);
+            }
+        }
+
+        // ส่งคำตอบกลับไปหน้าเว็บ ให้ขึ้น Pop-up รอแอดมิน
+        return res.json({
+            success: false,
+            isPending: true,
+            message: `สลิปอยู่ระหว่างให้แอดมินตรวจสอบครับ\n(${checkResult.reason || 'กรุณารอแอดมินยืนยันสักครู่'})`
+        });
+
     } catch (error) {
-        console.error('❌ เกิดข้อผิดพลาดในการตรวจสลิป:', error.response?.data || error.message);
-        return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาด: ' + (error.message || 'ระบบตรวจสลิปมีปัญหา') });
+        console.error('Upload Slip API Error:', error);
+        return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการประมวลผลสลิป' });
     }
 });
 

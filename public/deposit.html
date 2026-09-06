@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>แจ้งฝากเงินออโต้</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f6f9;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            background: #ffffff;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+        h2 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="number"], input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        #statusMessage {
+            margin-top: 15px;
+            text-align: center;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>🏦 แจ้งฝากเงินออโต้</h2>
+    <form id="depositForm">
+        <div class="form-group">
+            <label for="amount">จำนวนเงินที่โอน (บาท):</label>
+            <input type="number" id="amount" placeholder="ระบุยอดเงิน เช่น 100" required>
+        </div>
+
+        <div class="form-group">
+            <label for="slip">แนบรูปภาพสลิปโอนเงิน:</label>
+            <input type="file" id="slip" accept="image/*" required>
+        </div>
+
+        <button type="submit" id="submitBtn">ยืนยันการฝากเงิน</button>
+    </form>
+
+    <div id="statusMessage"></div>
+</div>
+
+<script>
+    // ดึง userId จาก URL Parameter (เช่น ?userId=USER_ID_HERE)
+    const urlParams = new URLSearchParams(window.location.search);
+    const userId = urlParams.get('userId');
+
+    const form = document.getElementById('depositForm');
+    const statusMsg = document.getElementById('statusMessage');
+    const submitBtn = document.getElementById('submitBtn');
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        if (!userId) {
+            statusMsg.style.color = 'red';
+            statusMsg.innerText = '❌ ไม่พบข้อมูลผู้ใช้งาน (กรุณาเข้าผ่าน LINE หรือระบุ userId)';
+            return;
+        }
+
+        const amount = document.getElementById('amount').value;
+        const slipFile = document.getElementById('slip').files[0];
+
+        const formData = new FormData();
+        formData.append('userId', userId);
+        formData.append('amount', amount);
+        formData.append('slipImage', slipFile);
+
+        submitBtn.disabled = true;
+        submitBtn.innerText = 'กำลังตรวจสอบสลิป...';
+        statusMsg.innerText = '';
+
+        try {
+            const response = await fetch('/api/upload-slip', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                statusMsg.style.color = 'green';
+                statusMsg.innerText = `✅ ${result.message}\nเครดิตใหม่: ${result.newBalance} บาท`;
+                form.reset();
+            } else {
+                statusMsg.style.color = 'red';
+                statusMsg.innerText = `❌ ${result.message}`;
+            }
+        } catch (error) {
+            statusMsg.style.color = 'red';
+            statusMsg.innerText = '❌ เกิดข้อผิดพลาดในการส่งข้อมูล กรุณาลองใหม่อีกครั้ง';
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerText = 'ยืนยันการฝากเงิน';
+        }
+    });
+</script>
+
+</body>
+</html>

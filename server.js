@@ -7334,16 +7334,33 @@ app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
                 }
             }
 
-            // ⛔ [เช็กที่ 4] เลขบัญชีผู้โอน
+            // -------------------------------------------------------------
+            // ⛔ [เช็กที่ 4] ตรวจสอบ "เลขบัญชีผู้โอน" ตรงกับ Firebase (user.bankAccount)
+            // -------------------------------------------------------------
             const senderAcc = data.sender?.account?.number || data.sender?.account?.bank || data.sender?.account || '';
             const registeredAcc = user.bankAccount || user.accountNumber;
+            
             if (registeredAcc) {
+                // ลบตัวอักษรและเครื่องหมายขีด ออกให้เหลือเฉพาะตัวเลข
                 const cleanUserAcc = String(registeredAcc).replace(/[^0-9]/g, '');
                 const cleanSenderAcc = String(senderAcc).replace(/[^0-9]/g, '');
+            
+                // ดึงเลขท้าย 3 และ 4 ตัว ของบัญชีที่ลงทะเบียนไว้
                 const userAccLast4 = cleanUserAcc.slice(-4);
-
-                if (!cleanSenderAcc.includes(cleanUserAcc) && !cleanSenderAcc.endsWith(userAccLast4)) {
-                    return res.status(400).json({ success: false, message: 'เลขบัญชีผู้โอนไม่ตรงกับที่ลงทะเบียนไว้' });
+                const userAccLast3 = cleanUserAcc.slice(-3);
+            
+                // เช็กว่าเลขบัญชีผู้โอนตรงกับระบบหรือไม่ (เช็กเต็ม / เช็ก 4 ตัวท้าย / เช็ก 3 ตัวท้าย)
+                const isAccountMatch = 
+                    cleanSenderAcc.includes(cleanUserAcc) || 
+                    (userAccLast4 && cleanSenderAcc.endsWith(userAccLast4)) ||
+                    (userAccLast3 && cleanSenderAcc.endsWith(userAccLast3)) ||
+                    (userAccLast4 && cleanSenderAcc.includes(userAccLast4));
+            
+                if (!isAccountMatch) {
+                    return res.status(400).json({ 
+                        success: false, 
+                        message: `เลขบัญชีผู้โอนไม่ตรงกับที่ลงทะเบียนไว้ (ในระบบ: ...${userAccLast4})` 
+                    });
                 }
             }
 

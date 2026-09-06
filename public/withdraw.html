@@ -316,7 +316,7 @@
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script>
     let userId = "";
-    let currentBalance = 0;
+    let currentBalance = 0; // ตัวแปร Global
 
     async function initLiff() {
         try {
@@ -338,31 +338,33 @@
     initLiff();
 
     async function getUserData(uid) {
-    try {
-        const res = await fetch(`/api/user-profile?userId=${uid}`);
-        const data = await res.json();
-        
-        if (data.success) {
-            // ยอดเงิน
-            const balance = data.balance || 0;
-            document.getElementById('userBalance').innerText = Number(balance).toLocaleString('th-TH', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            });
+        try {
+            const res = await fetch(`/api/user-profile?userId=${uid}`);
+            const data = await res.json();
+            
+            if (data.success) {
+                // ✅ แก้ไขจุดนี้: แปลงค่าเป็น Number และอัปเดตลงตัวแปร currentBalance ตรงๆ
+                currentBalance = Number(data.balance) || 0;
 
-            // ธนาคาร เลขบัญชี และชื่อ
-            document.getElementById('userBank').innerText = data.bankName || 'ไม่ระบุ';
-            document.getElementById('userAcc').innerText = data.bankAccount || 'ไม่ระบุ';
-            if (document.getElementById('userName')) {
-                document.getElementById('userName').innerText = data.name || 'ไม่ระบุ';
+                // แสดงผลบนหน้าจอ
+                document.getElementById('userBalance').innerText = currentBalance.toLocaleString('th-TH', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                });
+
+                // ธนาคาร เลขบัญชี และชื่อ
+                document.getElementById('userBank').innerText = data.bankName || 'ไม่ระบุ';
+                document.getElementById('userAcc').innerText = data.bankAccount || 'ไม่ระบุ';
+                if (document.getElementById('userName')) {
+                    document.getElementById('userName').innerText = data.name || 'ไม่ระบุ';
+                }
+            } else {
+                console.warn('ไม่พบข้อมูลผู้ใช้:', data.message);
             }
-        } else {
-            console.warn('ไม่พบข้อมูลผู้ใช้:', data.message);
+        } catch (e) {
+            console.error('Fetch user data failed:', e);
         }
-    } catch (e) {
-        console.error('Fetch user data failed:', e);
     }
-}
 
     document.getElementById('withdrawForm').addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -374,6 +376,7 @@
 
         const amount = parseFloat(document.getElementById('withdrawAmount').value);
 
+        // ตอนนี้ currentBalance มีค่าเท่ากับยอดจริง (เช่น 22450) แล้ว เงื่อนไขนี้จะผ่านปกติครับ
         if (amount > currentBalance) {
             alert('❌ ยอดเงินของคุณไม่พอสำหรับการถอน');
             return;

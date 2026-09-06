@@ -103,7 +103,7 @@
     </div>
 </header>
     
-<!-- 📺 โซนหน้าต่างถ่ายทอดสด (ซูมออกเห็นครบทุกขา + เว้นช่องเปิดเสียง) -->
+<!-- 📺 โซนหน้าต่างถ่ายทอดสด (ปรับซูมออกกว้างสูงสุด + เห็นครบทุกขา) -->
 <div id="live-container" class="max-w-xl mx-auto my-3 px-2 hidden">
     <div class="bg-gray-800 rounded-2xl overflow-hidden border border-amber-500/40 shadow-2xl">
         <!-- แถบสถานะการถ่ายทอดสด -->
@@ -120,15 +120,15 @@
             </button>
         </div>
 
-        <!-- หน้าจอ Embed วิดีโอ -->
-        <div id="live-player-box" class="relative w-full h-[520px] bg-black overflow-hidden flex items-center justify-center">
+        <!-- หน้าจอ Embed วิดีโอ (ขยายความสูงกล่องเป็น 600px) -->
+        <div id="live-player-box" class="relative w-full h-[600px] bg-black overflow-hidden flex items-center justify-center">
             
-            <!-- 🛑 แผ่นใสกันกด Pause (เว้นพื้นที่มุมขวาบน 60px x 60px ไว้ให้กดปุ่มลำโพง Facebook) -->
+            <!-- 🛑 แผ่นใสกันกด Pause (เว้นช่องมุมขวาบนไว้กดเปิดเสียง Facebook) -->
             <div class="absolute inset-0 z-10 bg-transparent pointer-events-auto [clip-path:polygon(0_0,_calc(100%-60px)_0,_calc(100%-60px)_60px,_100%_60px,_100%_100%,_0_100%)]"></div>
 
-            <!-- iframe ปรับซูมออก (Scale 90%) เพื่อให้เห็นมุมกล้องกว้างขึ้น เก็บครบทุกขา -->
+            <!-- iframe ปรับขนาด w-full h-full และใช้ scale ซูมออก (สเกล 0.85 = ซูมออก 85%) -->
             <iframe id="user-live-iframe" 
-                class="absolute w-[110%] h-[110%] top-[-5%] left-[-5%] border-0 object-contain" 
+                class="w-full h-full border-0 transform scale-90 origin-center" 
                 allowfullscreen="true" 
                 allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share">
             </iframe>

@@ -288,38 +288,45 @@
             document.getElementById('image-modal').classList.add('hidden');
         }
 
-        // ดึงข้อมูลรายการแจ้งถอนเงินที่ค้างอยู่ (pending_withdraws)
-        db.ref('pending_withdraws').on('value', (snapshot) => {
+        // ==========================================
+        // 🛠️ ดึงข้อมูลรายการแจ้งถอนเงินจากบอทหลัก (withdrawQueue + usersWallets)
+        // ==========================================
+        db.ref('usersWallets').on('value', (snapshot) => {
             const list = document.getElementById('withdraw-pending-list');
-            const data = snapshot.val();
+            const users = snapshot.val();
             list.innerHTML = '';
             
-            if (!data) {
+            if (!users) {
                 list.innerHTML = '<tr><td colspan="3" class="text-center py-6 text-gray-500">ไม่มีรายการถอนค้าง</td></tr>';
                 document.getElementById('withdraw-count').innerText = '0';
                 return;
             }
-        
+
             let count = 0;
-            Object.keys(data).forEach(key => {
-                const item = data[key];
-                if (item.status === 'pending') {
+
+            // วนลูปหาเฉพาะสมาชิกที่ติดสถานะล็อกถอน (isWithdrawLocked === true)
+            Object.keys(users).forEach(userId => {
+                const user = users[userId];
+
+                if (user && user.isWithdrawLocked) {
                     count++;
+                    const withdrawAmt = user.pendingWithdrawAmount || 0;
+
                     list.innerHTML += `
                         <tr class="hover:bg-gray-800/40 transition">
                             <td class="p-2.5">
-                                <div class="font-bold text-white">${item.userId || '-'}</div>
-                                <div class="text-[10px] text-gray-400">${item.bankName || ''} - ${item.bankAccount || ''}</div>
-                                <div class="text-[10px] text-gray-500">${item.accountName || ''} | ${item.time || ''}</div>
+                                <div class="font-bold text-white">คุณ ${user.name || 'ไม่ระบุชื่อ'} (ลำดับที่: ${user.memberNumber || '-'})</div>
+                                <div class="text-[10px] text-gray-400">🏦 ${user.bankName || 'ไม่ระบุธนาคาร'} - ${user.bankAccount || 'ไม่ระบุเลขบัญชี'}</div>
+                                <div class="text-[10px] text-amber-400">💰 เงินคงเหลือในระบบ: ${Number(user.balance || 0).toLocaleString()} ฿</div>
                             </td>
-                            <td class="p-2.5 font-bold text-rose-400">${item.amount} ฿</td>
+                            <td class="p-2.5 font-bold text-rose-400 text-sm">${Number(withdrawAmt).toLocaleString()} ฿</td>
                             <td class="p-2.5 text-center">
                                 <div class="flex justify-center gap-1">
-                                    <button onclick="approveWithdraw('${key}')" class="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] px-2 py-1 rounded font-bold">
-                                        โอนแล้ว
+                                    <button onclick="approveWithdrawFromBot('${userId}', ${withdrawAmt})" class="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] px-2.5 py-1.5 rounded font-bold transition">
+                                        ✅ โอนแล้ว (อนุมัติ)
                                     </button>
-                                    <button onclick="rejectWithdraw('${key}', '${item.userId}', ${item.amount})" class="bg-rose-600 hover:bg-rose-500 text-white text-[10px] px-2 py-1 rounded font-bold">
-                                        ยกเลิก
+                                    <button onclick="rejectWithdrawFromBot('${userId}')" class="bg-rose-600 hover:bg-rose-500 text-white text-[10px] px-2.5 py-1.5 rounded font-bold transition">
+                                        ❌ ยกเลิก
                                     </button>
                                 </div>
                             </td>
@@ -327,24 +334,53 @@
                     `;
                 }
             });
+
+            if (count === 0) {
+                list.innerHTML = '<tr><td colspan="3" class="text-center py-6 text-gray-500">ไม่มีรายการถอนค้าง</td></tr>';
+            }
+
             document.getElementById('withdraw-count').innerText = count;
         });
-        
-        // ฟังก์ชันเมื่อแอดมินกดโอนเงินสำเร็จ
-        function approveWithdraw(key) {
-            if (confirm('ยืนยันว่าโอนเงินให้สมาชิกเรียบร้อยแล้ว?')) {
-                db.ref(`pending_withdraws/${key}`).update({ status: 'completed' });
+
+        // 🟢 ฟังก์ชันเมื่อแอดมินกด "โอนแล้ว" บนหน้าเว็บ
+        function approveWithdrawFromBot(userId, amount) {
+            if (confirm(`ยืนยันโอนเงินเรียบร้อยแล้วใช่หรือไม่?\nระบบจะทำการตัดเงิน ${amount} บาท และปลดล็อกบัญชีให้สมาชิก`)) {
+                
+                // 1. หักเงินออกจาก Wallet และ ปลดล็อกถอน
+                db.ref(`usersWallets/${userId}`).transaction((user) => {
+                    if (user) {
+                        user.balance = Math.max(0, (user.balance || 0) - Number(amount));
+                        user.isWithdrawLocked = false;
+                        user.pendingWithdrawAmount = 0;
+                    }
+                    return user;
+                }, (error, committed) => {
+                    if (committed) {
+                        // 2. ลบออกจาก withdrawQueue
+                        db.ref('withdrawQueue').once('value', (snap) => {
+                            const queue = snap.val() || [];
+                            const updatedQueue = queue.filter(q => String(q.memberNumber) !== String(usersWallets[userId]?.memberNumber));
+                            db.ref('withdrawQueue').set(updatedQueue);
+                        });
+
+                        alert('✅ อนุมัติการถอนสำเร็จ! หักเงินและปลดล็อกบัญชีเรียบร้อยแล้ว');
+                    } else {
+                        alert('❌ เกิดข้อผิดพลาด: ' + error);
+                    }
+                });
             }
         }
-        
-        // ฟังก์ชันปฏิเสธการถอน (คืนเครดิตเข้ากระเป๋าสมาชิก)
-        function rejectWithdraw(key, userId, amount) {
-            if (confirm(`ยกเลิกรายการถอนและคืนเงิน ${amount} บาท ให้ ID: ${userId}?`)) {
-                // คืนเงินเข้า Wallet สมาชิก
-                db.ref(`usersWallets/${userId}/balance`).transaction((current) => (current || 0) + Number(amount), (error, committed) => {
-                    if (committed) {
-                        db.ref(`pending_withdraws/${key}`).update({ status: 'rejected' });
-                        alert('ยกเลิกรายการและคืนเครดิตเรียบร้อยแล้ว');
+
+        // 🔴 ฟังก์ชันเมื่อแอดมินกด "ยกเลิก"
+        function rejectWithdrawFromBot(userId) {
+            if (confirm('ยกเลิกรายการถอนนี้ และปลดล็อกให้สมาชิกเล่นต่อได้หรือไม่?')) {
+                // ปลดล็อกบัญชี โดยไม่ต้องหักเงิน
+                db.ref(`usersWallets/${userId}`).update({
+                    isWithdrawLocked: false,
+                    pendingWithdrawAmount: 0
+                }, (error) => {
+                    if (!error) {
+                        alert('ปลดล็อกรายการถอนเรียบร้อยแล้ว');
                     }
                 });
             }

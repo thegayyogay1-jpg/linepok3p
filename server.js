@@ -7467,6 +7467,24 @@ app.post('/api/withdraw/create', async (req, res) => {
         const { userId, amount } = req.body;
         const withdrawAmount = parseInt(amount);
 
+        // 🔍 DEBUG 1: เช็กค่าที่รับมาจากหน้าเว็บ
+        console.log("=== DEBUG WITHDRAW REQUEST ===");
+        console.log("1. Received userId:", userId);
+        console.log("2. Received amount:", withdrawAmount);
+
+        let user = usersWallets[userId];
+
+        // 🔍 DEBUG 2: เช็กว่าเจอ User หรือไม่ และมี Balance เท่าไหร่ใน memory
+        if (user) {
+            console.log("3. Found user in usersWallets:", {
+                name: user.name,
+                balance: user.balance,
+                typeOfBalance: typeof user.balance
+            });
+        } else {
+            console.log("3. ❌ User NOT found in usersWallets for ID:", userId);
+        }
+
         if (!userId || isNaN(withdrawAmount) || withdrawAmount <= 0) {
             return res.status(400).json({ success: false, message: 'รูปแบบการถอนไม่ถูกต้อง กรุณาระบุจำนวนเงิน' });
         }

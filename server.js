@@ -7435,38 +7435,33 @@ if (registeredAcc) {
     }
 });
 
-// 📌 API สำหรับดึงข้อมูลโปรไฟล์ผู้ใช้ (ใส่ async เรียบร้อย)
+// ==========================================
+// API: ดึงข้อมูลโปรไฟล์และยอดเงินคงเหลือของผู้เล่น
+// ==========================================
 app.get('/api/user-profile', async (req, res) => {
     try {
         const { userId } = req.query;
-        if (!userId) return res.status(400).json({ success: false, message: 'ไม่พบ userId' });
+        if (!userId) return res.status(400).json({ success: false, message: 'Missing userId' });
 
         let user = usersWallets[userId];
-        if (!user && typeof db !== 'undefined') {
-            const userDoc = await db.collection('users').doc(userId).get();
-            if (userDoc.exists) {
-                user = userDoc.data();
-            }
-        }
-
         if (!user && typeof getLatestWallet === 'function') {
             user = await getLatestWallet(userId);
         }
 
-        if (user) {
-            return res.json({
-                success: true,
-                balance: user.balance || user.credit || 0,
-                bankName: user.bankName || user.bank || user.bank_name || 'ไม่ระบุ',
-                bankAccount: user.bankAccount || user.accountNumber || user.accountNo || 'ไม่ระบุ',
-                name: user.name || user.accountName || user.fullname || 'ไม่ระบุ'
-            });
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
         }
 
-        return res.status(404).json({ success: false, message: 'ไม่พบผู้ใช้' });
+        return res.json({
+            success: true,
+            // 📌 ส่งยอดคงเหลือจริงออกไปตรงๆ (ไม่เอา pendingWithdrawAmount มาบวกเพิ่ม)
+            balance: Number(user.balance || 0), 
+            bankName: user.bankName || user.bank || '',
+            bankAccount: user.bankAccount || user.accountNo || '',
+            name: user.name || ''
+        });
     } catch (e) {
-        console.error('Error fetching user profile:', e);
-        return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการดึงข้อมูล' });
+        return res.status(500).json({ success: false, message: e.message });
     }
 });
 // ==========================================

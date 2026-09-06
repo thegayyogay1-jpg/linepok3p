@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบแทงออนไลน์ - POKDENG & HILO</title>
+    <title>POKNAJA - ระบบแทงออนไลน์</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Firebase SDK (v8) -->
@@ -11,62 +11,94 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <!-- LINE LIFF SDK -->
     <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    
     <style>
-/* 🌟 เอฟเฟกต์ชิปเด้งตอนวาง (Bounce) */
-@keyframes chipPop {
-    0% { transform: scale(0) rotate(-45deg); opacity: 0; }
-    70% { transform: scale(1.2) rotate(10deg); opacity: 1; }
-    100% { transform: scale(1) rotate(0deg); opacity: 1; }
-}
+      /* 🌟 เอฟเฟกต์ชิปเด้งตอนวาง (Bounce) */
+      @keyframes chipPop {
+          0% { transform: scale(0) rotate(-45deg); opacity: 0; }
+          70% { transform: scale(1.2) rotate(10deg); opacity: 1; }
+          100% { transform: scale(1) rotate(0deg); opacity: 1; }
+      }
 
-/* 🌟 เอฟเฟกต์แสงเรืองรอบชิป (Pulse Glow) */
-@keyframes chipGlow {
-    0%, 100% { box-shadow: 0 0 6px rgba(255, 255, 255, 0.6), inset 0 0 4px rgba(255, 255, 255, 0.8); }
-    50% { box-shadow: 0 0 14px rgba(255, 255, 255, 0.9), inset 0 0 6px rgba(255, 255, 255, 1); }
-}
+      /* 🌟 เอฟเฟกต์แสงเรืองรอบชิป (Pulse Glow) */
+      @keyframes chipGlow {
+          0%, 100% { box-shadow: 0 0 6px rgba(255, 255, 255, 0.6), inset 0 0 4px rgba(255, 255, 255, 0.8); }
+          50% { box-shadow: 0 0 14px rgba(255, 255, 255, 0.9), inset 0 0 6px rgba(255, 255, 255, 1); }
+      }
 
-.chip-3d {
-    animation: chipPop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards, chipGlow 2s infinite ease-in-out;
-    border: 2px dashed rgba(255, 255, 255, 0.7); /* ลายขอบชิปคาสิโน */
-}
-</style>
+      .chip-3d {
+          animation: chipPop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards, chipGlow 2s infinite ease-in-out;
+          border: 2px dashed rgba(255, 255, 255, 0.7); /* ลายขอบชิปคาสิโน */
+      }
+
+      /* 🌟 เอฟเฟกต์โลโก้ 3D ขยับและประกายแสง */
+      @keyframes logo3D {
+        0%, 100% {
+          transform: translateY(0) rotateX(0deg);
+          filter: drop-shadow(0 4px 6px rgba(234, 179, 8, 0.4));
+        }
+        50% {
+          transform: translateY(-3px) rotateX(10deg);
+          filter: drop-shadow(0 10px 15px rgba(234, 179, 8, 0.8));
+        }
+      }
+
+      @keyframes shine {
+        0% { background-position: -200%; }
+        100% { background-position: 200%; }
+      }
+
+      .logo-3d-animated {
+        display: inline-block;
+        perspective: 1000px;
+        background: linear-gradient(110deg, #fef08a 0%, #f59e0b 25%, #ffffff 50%, #f59e0b 75%, #fef08a 100%);
+        background-size: 200% auto;
+        color: transparent;
+        -webkit-background-clip: text;
+        background-clip: text;
+        animation: logo3D 3.5s ease-in-out infinite, shine 3s linear infinite;
+        text-shadow: 0px 2px 4px rgba(0,0,0,0.5);
+      }
+    </style>
 </head>
 <body class="bg-gray-900 text-white min-h-screen pb-24">
 
-    <!-- Header ใหม่: เพิ่มปุ่มฝาก-ถอน และปรับ Layout ตามโจทย์ -->
-<header class="bg-gray-800 px-4 py-3 shadow-lg sticky top-0 z-50 border-b border-gray-700 space-y-2">
-    <!-- แถวที่ 1: โลโก้ POKNAJA ตรงกลาง -->
-    <div class="text-center border-b border-gray-700/50 pb-1.5">
-        <span class="text-xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-amber-400 to-yellow-500 drop-shadow-[0_2px_8px_rgba(234,179,8,0.4)]">
-            POKNAJA
-        </span>
-    </div>
-
-    <!-- ฝั่งซ้าย: ปุ่มฝาก / ปุ่มถอน -->
-<div class="flex gap-2">
-    <!-- ปุ่มฝากเงิน -->
-    <button onclick="window.location.href='https://liff.line.me/2011387264-5A3dDh8M'" class="px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white font-bold rounded-md shadow border border-green-400/40 transition-all active:scale-95 flex items-center gap-1 text-xs">
-        <span>📥</span> ฝาก
-    </button>
-
-    <!-- ปุ่มถอนเงิน -->
-    <button onclick="window.location.href='https://liff.line.me/2011387264-NTNwr9uN'" class="px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white font-bold rounded-md shadow border border-red-400/40 transition-all active:scale-95 flex items-center gap-1 text-xs">
-        <span>📤</span> ถอน
-    </button>
-</div>
-
-        <!-- ฝั่งขวา: ID สมาชิก / เครดิตคงเหลือ -->
-        <div class="text-right space-y-0.5">
-            <div class="text-gray-300 font-medium">
-                ID: <span id="user-id" class="text-white font-bold">-</span> 
-                [<span id="user-name" class="text-yellow-400 font-semibold">กำลังโหลด...</span>]
-            </div>
-            <div class="text-gray-300 font-medium">
-                เครดิต : <span id="user-balance" class="text-green-400 font-bold text-sm">0 ฿</span>
-            </div>
+    <!-- Header: ปุ่มฝากถอนเรียงแนวตั้ง + โลโก้ 3D ขยับได้ -->
+    <header class="bg-gray-900 px-4 py-3 shadow-2xl sticky top-0 z-50 border-b border-gray-800">
+        <!-- โลโก้ POKNAJA 3D แบบขยับและสะท้อนแสง -->
+        <div class="text-center mb-2">
+            <h1 class="logo-3d-animated text-2xl font-black tracking-widest uppercase">
+                POKNAJA
+            </h1>
         </div>
-    </div>
-</header>
+
+        <!-- ส่วนปุ่มฝาก-ถอน และ ข้อมูลผู้ใช้ -->
+        <div class="flex justify-between items-center">
+            
+            <!-- ฝั่งซ้าย: ปุ่มฝาก และ ปุ่มถอน -->
+            <div class="flex flex-col gap-2 w-28">
+                <a href="https://liff.line.me/2011387264-5A3dDh8M" class="flex items-center justify-center gap-1.5 py-1.5 px-3 bg-gradient-to-r from-emerald-600 to-green-500 hover:from-emerald-500 hover:to-green-400 text-white font-bold text-sm rounded-xl shadow-lg border border-green-400/30 transition-all transform active:scale-95 no-underline">
+                    <span class="text-base">📥</span> ฝาก
+                </a>
+                <a href="https://liff.line.me/2011387264-NTNwr9uN" class="flex items-center justify-center gap-1.5 py-1.5 px-3 bg-gradient-to-r from-red-600 to-rose-500 hover:from-red-500 hover:to-rose-400 text-white font-bold text-sm rounded-xl shadow-lg border border-red-400/30 transition-all transform active:scale-95 no-underline">
+                    <span class="text-base">📤</span> ถอน
+                </a>
+            </div>
+
+            <!-- ฝั่งขวา: ID และ ยอดเครดิตคงเหลือ -->
+            <div class="text-right space-y-1">
+                <div class="text-gray-200 text-sm font-semibold">
+                    ID: <span id="user-id" class="text-white font-extrabold">-</span> 
+                    [<span id="user-name" class="text-amber-400 font-bold">กำลังโหลด...</span>]
+                </div>
+                <div class="text-gray-300 text-sm font-medium flex items-center justify-end gap-1">
+                    <span>เครดิต :</span>
+                    <span id="user-balance" class="text-emerald-400 font-black text-lg drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]">0 ฿</span>
+                </div>
+            </div>
+
+        </div>
+    </header>
 
     <main class="max-w-xl mx-auto p-2 sm:p-4 space-y-4">
         

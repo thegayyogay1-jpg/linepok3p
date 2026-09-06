@@ -313,7 +313,7 @@
         <div class="form-group">
             <label for="withdrawAmount" class="form-label">ระบุจำนวนเงินที่ต้องการถอน</label>
             <div class="input-wrapper">
-                <input type="number" id="withdrawAmount" class="input-amount" placeholder="ขั้นต่ำ 100 บาท" min="100" required>
+                <input type="number" id="withdrawAmount" class="input-amount" placeholder="ขั้นต่ำ 10 บาท" min="10" required>
             </div>
         </div>
         
@@ -341,7 +341,7 @@
         <p id="modalMessage" style="color: #64748b; margin: 0 0 20px 0; font-size: 14px; line-height: 1.5;"></p>
         
         <!-- 2. ปุ่มตกลงที่จะเด้งกลับไปยังหน้าเล่น/แทง -->
-        <button onclick="goToGamePage()" class="btn-submit" style="background: #0f172a; padding: 12px;">ตกลง (กลับหน้าเล่น)</button>
+        <button onclick="goToGamePage()" class="btn-submit" style="background: #0f172a; padding: 12px;">ตกลง</button>
     </div>
 </div>
 
@@ -455,7 +455,7 @@
             loadingModal.style.display = 'none';
 
             if (result.success) {
-                document.getElementById('modalMessage').innerText = `ระบบได้รับคำขอถอนเงินจำนวน ${amount.toLocaleString('th-TH')} บาท เรียบร้อยแล้ว\nเงินจะเข้าบัญชีภายใน 1-3 นาทีครับ`;
+                document.getElementById('modalMessage').innerText = `ระบบได้รับคำขอถอนเงินจำนวน ${amount.toLocaleString('th-TH')} บาท เรียบร้อยแล้ว\nเงินจะเข้าบัญชีภายใน 5-10 นาที`;
                 document.getElementById('successModal').style.display = 'flex';
             } else {
                 statusMsg.style.color = '#ef4444';

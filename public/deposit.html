@@ -36,6 +36,21 @@
             0% { transform: scale(0.7); opacity: 0; }
             100% { transform: scale(1); opacity: 1; }
         }
+        /* สไตล์ไอคอนหมุน Loading */
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #1a73e8;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
@@ -98,6 +113,15 @@
         <p id="modalMessage" style="color: #666; margin: 10px 0;"></p>
         <!-- ปุ่มกดแล้วพาไปหน้าแทง -->
         <a href="https://liff.line.me/2011387264-7B981j5N" id="playBtn" class="btn-play">🎮 เข้าสู่หน้าเดิมพัน</a>
+    </div>
+</div>
+    
+    <!-- ⏳ Pop-up Loading ขณะกำลังตรวจสอบสลิป -->
+<div id="loadingModal" class="modal">
+    <div class="modal-content" style="padding: 40px 20px;">
+        <div class="spinner"></div>
+        <h3 style="margin-top: 20px; color: #333;">กำลังตรวจสอบสลิป...</h3>
+        <p style="color: #666; font-size: 14px; margin: 0;">กรุณารอสักครู่ ห้ามปิดหน้านี้นะครับ</p>
     </div>
 </div>
 
@@ -234,53 +258,58 @@
 
     // ส่งไฟล์สลิปไป Backend
     document.getElementById('slipForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
+    e.preventDefault();
 
-        if (!userId) {
-            alert('ไม่พบข้อมูลสมาชิก LINE กรุณาเปิดผ่าน LINE อีกครั้ง');
-            return;
-        }
+    if (!userId) {
+        alert('ไม่พบข้อมูลสมาชิก LINE กรุณาเปิดผ่าน LINE อีกครั้ง');
+        return;
+    }
 
-        const slipFile = document.getElementById('slipImage').files[0];
-        const formData = new FormData();
-        formData.append('userId', userId);
-        formData.append('amount', amountToDeposit);
-        formData.append('slipImage', slipFile);
+    const slipFile = document.getElementById('slipImage').files[0];
+    const formData = new FormData();
+    formData.append('userId', userId);
+    formData.append('amount', amountToDeposit);
+    formData.append('slipImage', slipFile);
 
-        const submitBtn = document.getElementById('submitBtn');
-        const statusMsg = document.getElementById('statusMessage');
+    const submitBtn = document.getElementById('submitBtn');
+    const statusMsg = document.getElementById('statusMessage');
+    const loadingModal = document.getElementById('loadingModal');
 
-        submitBtn.disabled = true;
-        submitBtn.innerText = '⏳ กำลังตรวจสอบสลิป... กรุณารอครู่นะครับ';
-        statusMsg.innerText = '';
+    // 🔒 ล็อกปุ่ม + แสดง Pop-up หมุนรอ
+    submitBtn.disabled = true;
+    loadingModal.style.display = 'flex';
+    statusMsg.innerText = '';
 
-        try {
-            const response = await fetch('/api/upload-slip', {
-                method: 'POST',
-                body: formData
-            });
+    try {
+        const response = await fetch('/api/upload-slip', {
+            method: 'POST',
+            body: formData
+        });
 
-            const result = await response.json();
+        const result = await response.json();
 
-            if (result.success) {
-                clearInterval(timerInterval); // หยุดนับเวลา
-                
-                // แสดง Pop-up สำเร็จ
-                document.getElementById('modalMessage').innerText = `เติมเงินสำเร็จ: +${amountToDeposit} บาท\nยอดเงินคงเหลือใหม่: ${result.newBalance} บาท`;
-                document.getElementById('successModal').style.display = 'flex';
+        // 🔓 ปิด Pop-up หมุนรอเมื่อได้รับคำตอบจากเซิร์ฟเวอร์
+        loadingModal.style.display = 'none';
 
-            } else {
-                statusMsg.style.color = 'red';
-                statusMsg.innerText = `❌ ${result.message}`;
-            }
-        } catch (err) {
+        if (result.success) {
+            clearInterval(timerInterval);
+            
+            // แสดง Pop-up สำเร็จ
+            document.getElementById('modalMessage').innerText = `เติมเงินสำเร็จ: +${amountToDeposit} บาท\nยอดเงินคงเหลือใหม่: ${result.newBalance} บาท`;
+            document.getElementById('successModal').style.display = 'flex';
+
+        } else {
             statusMsg.style.color = 'red';
-            statusMsg.innerText = '❌ เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์';
-        } finally {
-            submitBtn.disabled = false;
-            submitBtn.innerText = 'ยืนยันการแจ้งโอน';
+            statusMsg.innerText = `❌ ${result.message}`;
         }
-    });
+    } catch (err) {
+        loadingModal.style.display = 'none';
+        statusMsg.style.color = 'red';
+        statusMsg.innerText = '❌ เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์';
+    } finally {
+        submitBtn.disabled = false;
+    }
+});
 </script>
 
 </body>

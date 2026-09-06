@@ -7208,15 +7208,14 @@ app.post('/api/place-bet', async (req, res) => {
 const multer = require('multer');
 const upload = multer({ storage: multer.memoryStorage() }); // ตั้งค่าพักรูปไว้ใน Memory
 
-// 📌 API รับรูปสลิปจากหน้าเว็บ (ฉบับอัปเดต: ปลดล็อกรายการฝากค้างเมื่อโอนสำเร็จ)
-app.post('/api/deposit/create', async (req, res) => {
+// 📌 API รับรูปสลิปจากหน้าเว็บ
+app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
     try {
         const { userId, amount } = req.body;
         const slipFile = req.file;
 
-        // 1. ตรวจสอบข้อมูลเบื้องต้น
-        if (!userId || !amount || !slipFile) {
-            return res.status(400).json({ success: false, message: 'ข้อมูลไม่ครบถ้วน' });
+        if (!userId || userId === 'undefined' || !amount || !slipFile) {
+            return res.status(400).json({ success: false, message: 'ข้อมูลไม่ครบถ้วน (ไม่พบ userId หรือยอดเงิน)' });
         }
 
         const user = usersWallets[userId];
@@ -7224,7 +7223,6 @@ app.post('/api/deposit/create', async (req, res) => {
             return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลสมาชิกในระบบ' });
         }
 
-        // 2. เตรียมส่งรูปสลิปไปตรวจสอบกับ Slip2go API
         const FormData = require('form-data');
         const formData = new FormData();
         formData.append('file', slipFile.buffer, {
@@ -7245,130 +7243,75 @@ app.post('/api/deposit/create', async (req, res) => {
 
         const slipData = slipResponse.data;
 
-        // 3. ตรวจสอบผลการเช็กสลิปจาก Slip2Go
         if ((slipData.code === "200000" || slipData.code === 200000) && slipData.data) {
             const data = slipData.data;
-            const transRef = data.transRef;          // รหัสสลิป
-            const slipAmount = Number(data.amount);  // ยอดเงินในสลิป
+            const transRef = data.transRef;
+            const slipAmount = Number(data.amount);
 
-            // -------------------------------------------------------------
-            // ⛔ [เช็กที่ 1] ตรวจสอบ "วันที่และเวลาโอน" (ไม่เกิน 15 นาที)
-            // -------------------------------------------------------------
+            // ⛔ [เช็กที่ 1] เวลาโอน
             const rawSlipDate = data.transDate || data.transTimestamp || data.dateTime;
-
             if (rawSlipDate) {
                 const slipTime = new Date(rawSlipDate).getTime();
-                const currentTime = Date.now();
-                const timeDiffMinutes = (currentTime - slipTime) / (1000 * 60);
-
-                const MAX_ALLOWED_MINUTES = 15;
-
-                if (isNaN(slipTime)) {
-                    console.warn('⚠️ ไม่สามารถอ่านรูปแบบวันที่จากสลิปได้:', rawSlipDate);
-                } else if (timeDiffMinutes > MAX_ALLOWED_MINUTES) {
-                    return res.status(400).json({ 
-                        success: false, 
-                        message: `สลิปหมดอายุ! ต้องใช้สลิปที่ทำรายการภายใน ${MAX_ALLOWED_MINUTES} นาทีเท่านั้น` 
-                    });
-                } else if (timeDiffMinutes < -5) { 
-                    return res.status(400).json({ 
-                        success: false, 
-                        message: 'เวลาในสลิปไม่ถูกต้อง' 
-                    });
+                const timeDiffMinutes = (Date.now() - slipTime) / (1000 * 60);
+                if (timeDiffMinutes > 15) {
+                    return res.status(400).json({ success: false, message: 'สลิปหมดอายุ! ต้องใช้สลิปที่ทำรายการภายใน 15 นาที' });
                 }
             }
 
-            // -------------------------------------------------------------
-            // ⛔ [เช็กที่ 2] ตรวจสอบว่า "โอนเข้าบัญชีร้านเรา" หรือไม่
-            // -------------------------------------------------------------
-            const MY_ACCOUNT_NUMBER = "0371556125"; // เลขบัญชีรับเงินของร้าน
-            const MY_ACCOUNT_NAME = "ภาณุวัฒก์";      // ชื่อบัญชีรับเงินของร้าน
-
+            // ⛔ [เช็กที่ 2] บัญชีรับเงิน
             const receiverAcc = data.receiver?.account?.number || data.receiver?.account?.bank || data.receiver?.account || '';
             const receiverName = data.receiver?.name || data.receiver?.account?.name || '';
-
             const cleanedReceiverAcc = String(receiverAcc).replace(/[^0-9]/g, '');
-            const isRightReceiver = cleanedReceiverAcc.includes(MY_ACCOUNT_NUMBER) || receiverName.includes(MY_ACCOUNT_NAME);
-
-            if (!isRightReceiver) {
-                return res.status(400).json({ 
-                    success: false, 
-                    message: 'สลิปนี้ไม่ได้โอนเข้าบัญชีของทางร้าน' 
-                });
+            if (!cleanedReceiverAcc.includes("0371556125") && !receiverName.includes("ภาณุวัฒก์")) {
+                return res.status(400).json({ success: false, message: 'สลิปนี้ไม่ได้โอนเข้าบัญชีของทางร้าน' });
             }
 
-            // -------------------------------------------------------------
-            // ⛔ [เช็กที่ 3] ตรวจสอบ "ชื่อผู้โอน" ตรงกับ Firebase (user.name)
-            // -------------------------------------------------------------
-            const senderName = data.sender?.name || data.sender?.account?.name || data.sender?.displayName || 'ไม่ระบุ';
+            // ⛔ [เช็กที่ 3] ชื่อผู้โอน
+            const senderName = data.sender?.name || data.sender?.account?.name || 'ไม่ระบุ';
             const registeredName = user.name || user.accountName;
-
             if (registeredName) {
                 const cleanRegName = registeredName.replace(/(นาย|นางสาว|นาง|Mr\.|Mrs\.|Miss)/g, '').trim();
                 const cleanSenderName = senderName.replace(/(นาย|นางสาว|นาง|Mr\.|Mrs\.|Miss)/g, '').trim();
+                const firstName = cleanRegName.split(/\s+/)[0];
 
-                const nameParts = cleanRegName.split(/\s+/).filter(part => part.length > 1);
-                const firstName = nameParts[0];
-
-                const isFirstNameMatched = firstName && cleanSenderName.includes(firstName);
-
-                if (!isFirstNameMatched) {
-                    return res.status(400).json({ 
-                        success: false, 
-                        message: `ชื่อผู้โอน ไม่ตรงกับชื่อสมาชิกที่ลงทะเบียนไว้` 
-                    });
+                if (firstName && !cleanSenderName.includes(firstName)) {
+                    return res.status(400).json({ success: false, message: 'ชื่อผู้โอน ไม่ตรงกับชื่อสมาชิกที่ลงทะเบียนไว้' });
                 }
             }
 
-            // -------------------------------------------------------------
-            // ⛔ [เช็กที่ 4] ตรวจสอบ "เลขบัญชีผู้โอน" ตรงกับ Firebase (user.bankAccount)
-            // -------------------------------------------------------------
+            // ⛔ [เช็กที่ 4] เลขบัญชีผู้โอน
             const senderAcc = data.sender?.account?.number || data.sender?.account?.bank || data.sender?.account || '';
             const registeredAcc = user.bankAccount || user.accountNumber;
-
             if (registeredAcc) {
                 const cleanUserAcc = String(registeredAcc).replace(/[^0-9]/g, '');
                 const cleanSenderAcc = String(senderAcc).replace(/[^0-9]/g, '');
-
                 const userAccLast4 = cleanUserAcc.slice(-4);
-                const isAccountMatch = cleanSenderAcc.includes(cleanUserAcc) || cleanSenderAcc.endsWith(userAccLast4);
 
-                if (!isAccountMatch) {
-                    return res.status(400).json({ 
-                        success: false, 
-                        message: 'เลขบัญชีผู้โอนไม่ตรงกับที่ลงทะเบียนไว้' 
-                    });
+                if (!cleanSenderAcc.includes(cleanUserAcc) && !cleanSenderAcc.endsWith(userAccLast4)) {
+                    return res.status(400).json({ success: false, message: 'เลขบัญชีผู้โอนไม่ตรงกับที่ลงทะเบียนไว้' });
                 }
             }
 
-            // -------------------------------------------------------------
-            // ⛔ [เช็กที่ 5] เช็กสลิปซ้ำ (TransRef ซ้ำ)
-            // -------------------------------------------------------------
+            // ⛔ [เช็กที่ 5] สลิปซ้ำ
             const isDuplicate = Object.values(slipTransactions).some(tx => tx.transRef === transRef && tx.status === 'APPROVED');
             if (isDuplicate) {
                 return res.status(400).json({ success: false, message: 'สลิปนี้เคยถูกใช้งานไปแล้ว' });
             }
 
-            // -------------------------------------------------------------
-            // ⛔ [เช็กที่ 6] เช็กยอดเงินว่าตรงกับที่แจ้งฝากไหม
-            // -------------------------------------------------------------
+            // ⛔ [เช็กที่ 6] ยอดเงิน
             const expectedAmount = Number(amount);
             if (slipAmount < expectedAmount) {
-                return res.status(400).json({ success: false, message: `ยอดเงินในสลิป น้อยกว่ายอดที่แจ้ง ` });
+                return res.status(400).json({ success: false, message: 'ยอดเงินในสลิป น้อยกว่ายอดที่แจ้ง' });
             }
 
-            // -------------------------------------------------------------
-            // ✅ ผ่านหมดทุกข้อ -> ปรับยอดเงินออโต้ และลบรายการค้าง
-            // -------------------------------------------------------------
+            // ✅ ปรับยอดเงิน + ปลดล็อกรายการค้าง
             const memberNum = user.memberNumber;
             const creditResult = await creditUserByMemberNumber(memberNum, slipAmount);
 
-            // 🔓 [สำคัญ!] ลบรายการฝากค้างออกทันทีเพราะโอนสำเร็จแล้ว
-            if (pendingDeposits[userId]) {
+            if (typeof pendingDeposits !== 'undefined' && pendingDeposits[userId]) {
                 delete pendingDeposits[userId];
             }
 
-            // บันทึกประวัติ
             const txId = `TX_${Date.now()}`;
             slipTransactions[txId] = {
                 userId: userId,
@@ -7382,20 +7325,16 @@ app.post('/api/deposit/create', async (req, res) => {
                 created_at: new Date().toLocaleString('th-TH')
             };
 
-            // เซฟข้อมูลลง Firebase
             await saveDataToFirebase();
-
-            console.log(`🤖 [บอทเติมเงินออโต้] สำเร็จ! เติมให้เลขสมาชิก @${memberNum} จำนวน ${slipAmount} บาท`);
 
             return res.json({
                 success: true,
-                message: `เติมเงินสำเร็จเรียบร้อย!`,
+                message: 'เติมเงินสำเร็จเรียบร้อย!',
                 newBalance: creditResult.newBalance
             });
 
         } else {
-            const failMessage = slipData.message || 'ไม่สามารถอ่านข้อมูลสลิปได้ หรือสลิปไม่ถูกต้อง';
-            return res.status(400).json({ success: false, message: failMessage });
+            return res.status(400).json({ success: false, message: slipData.message || 'สลิปไม่ถูกต้อง' });
         }
 
     } catch (error) {
@@ -7403,13 +7342,13 @@ app.post('/api/deposit/create', async (req, res) => {
         return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาด: ' + (error.message || 'ระบบตรวจสลิปมีปัญหา') });
     }
 });
-// 📌 API สำหรับดึงข้อมูลโปรไฟล์ผู้ใช้ไปแสดงในหน้า LIFF (ปรับปรุงให้ดึงราบรื่นไม่ crash)
-app.post('/api/deposit/create', async (req, res) => {
+
+// 📌 API สำหรับดึงข้อมูลโปรไฟล์ผู้ใช้ (ใส่ async เรียบร้อย)
+app.get('/api/user-profile', async (req, res) => {
     try {
         const { userId } = req.query;
         if (!userId) return res.status(400).json({ success: false, message: 'ไม่พบ userId' });
 
-        // ถ้าใน RAM ยังไม่มี ให้ลองดึงสดจาก Firebase
         let user = usersWallets[userId];
         if (!user && typeof getLatestWallet === 'function') {
             user = await getLatestWallet(userId);

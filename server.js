@@ -7251,10 +7251,10 @@ if ((slipData.code === "200000" || slipData.code === 200000) && slipData.data) {
     const slipAmount = Number(data.amount);  // ยอดเงินในสลิป
 
     // -------------------------------------------------------------
-    // ⛔ [เช็กที่ 1] ตรวจสอบว่า "เงินโอนเข้าบัญชีร้านเรา" หรือไม่
+    // ⛔ [เช็กที่ 1] ตรวจสอบว่า "โอนเข้าบัญชีร้านเรา" หรือไม่
     // -------------------------------------------------------------
-    const MY_ACCOUNT_NUMBER = "0371556125"; // เลขบัญชีรับเงินของร้านน้า (ตัวเลขเท่านั้น)
-    const MY_ACCOUNT_NAME = "ภาณุวัฒก์";      // ชื่อบัญชีรับเงินของร้านน้า
+    const MY_ACCOUNT_NUMBER = "0371556125"; // เลขบัญชีรับเงินของร้าน (ตัวเลขเท่านั้น)
+    const MY_ACCOUNT_NAME = "ภาณุวัฒก์";      // ชื่อบัญชีรับเงินของร้าน
 
     const receiverAcc = data.receiver?.account?.number || data.receiver?.account?.bank || data.receiver?.account || '';
     const receiverName = data.receiver?.name || data.receiver?.account?.name || '';
@@ -7270,44 +7270,53 @@ if ((slipData.code === "200000" || slipData.code === 200000) && slipData.data) {
     }
 
     // -------------------------------------------------------------
-    // ⛔ [เช็กที่ 2] ตรวจสอบ "เลขบัญชีผู้โอน" ตรงกับที่ลงทะเบียนไว้หรือไม่
+    // ⛔ [เช็กที่ 2] ตรวจสอบ "ชื่อผู้โอน" กับชื่อใน Firebase (user.name)
     // -------------------------------------------------------------
-    // ดึงเลขบัญชีผู้โอนจากสลิป
-    const senderAcc = data.sender?.account?.number || data.sender?.account?.bank || data.sender?.account || '';
     const senderName = data.sender?.name || data.sender?.account?.name || data.sender?.displayName || 'ไม่ระบุ';
+    
+    // ดึงชื่อสมาชิกจาก Firebase (ใช้ user.name หรือ fallback ไปที่ user.accountName)
+    const registeredName = user.name || user.accountName;
 
-    if (user.accountNumber) {
-        // ทำการลบขีด (-) หรืออักขระพิเศษออกจากทั้งสองฝั่งให้เหลือเฉพาะตัวเลข
-        const cleanUserAcc = String(user.accountNumber).replace(/[^0-9]/g, '');
-        const cleanSenderAcc = String(senderAcc).replace(/[^0-9]/g, '');
+    if (registeredName) {
+        // ลบคำนำหน้า (นาย, นาง, นางสาว, Mr, Mrs, Miss) ออกเพื่อความแม่นยำในการเทียบ
+        const cleanRegName = registeredName.replace(/(นาย|นางสาว|นาง|Mr\.|Mrs\.|Miss)/g, '').trim();
+        const cleanSenderName = senderName.replace(/(นาย|นางสาว|นาง|Mr\.|Mrs\.|Miss)/g, '').trim();
 
-        // ดึง 4 ตัวท้ายมาช่วยเช็ก (กรณี Slip2Go Mask เลขบัญชีบางตัวไว้)
-        const userAccLast4 = cleanUserAcc.slice(-4);
-        
-        // เช็กว่าเลขบัญชีผู้โอนตรงกัน หรือมีเลข 4 ตัวท้ายตรงกันหรือไม่
-        const isAccountMatch = cleanSenderAcc.includes(cleanUserAcc) || cleanSenderAcc.endsWith(userAccLast4);
+        // แยกชื่อ และ นามสกุล
+        const nameParts = cleanRegName.split(/\s+/).filter(part => part.length > 1);
 
-        if (!isAccountMatch) {
+        // เช็กว่า "ชื่อจริง" ต้องมีอยู่ในชื่อผู้โอนของสลิป
+        const firstName = nameParts[0]; // คำแรกคือชื่อจริง
+        const isFirstNameMatched = firstName && cleanSenderName.includes(firstName);
+
+        if (!isFirstNameMatched) {
             return res.status(400).json({ 
                 success: false, 
-                message: `เลขบัญชีผู้โอนไม่ตรงกับที่ลงทะเบียนไว้ (ลงทะเบียน: ${user.accountNumber})` 
+                message: `ชื่อผู้โอน (${senderName}) ไม่ตรงกับชื่อสมาชิกที่ลงทะเบียนไว้ (${registeredName})` 
             });
         }
     }
 
     // -------------------------------------------------------------
-    // 🔍 [เช็กที่ 3] ตรวจสอบชื่อผู้โอน (สำรองกรณีต้องการเช็กชื่อเพิ่มเติม)
+    // ⛔ [เช็กที่ 3] ตรวจสอบ "เลขบัญชีผู้โอน" กับเลขบัญชีใน Firebase (user.bankAccount)
     // -------------------------------------------------------------
-    if (user.accountName) {
-        const nameParts = user.accountName.trim().split(/\s+/);
-        const validParts = nameParts.filter(part => part.length > 2);
-        
-        const isNameMatched = validParts.some(part => senderName.includes(part));
-        
-        if (!isNameMatched) {
+    const senderAcc = data.sender?.account?.number || data.sender?.account?.bank || data.sender?.account || '';
+    
+    // ดึงเลขบัญชีจาก Firebase (ใช้ user.bankAccount หรือ fallback ไปที่ user.accountNumber)
+    const registeredAcc = user.bankAccount || user.accountNumber;
+
+    if (registeredAcc) {
+        const cleanUserAcc = String(registeredAcc).replace(/[^0-9]/g, '');
+        const cleanSenderAcc = String(senderAcc).replace(/[^0-9]/g, '');
+
+        // ดึง 4 ตัวท้ายมาช่วยเช็ก (กรณีธนาคารซ่อน/Mask เลขบัญชีไว้)
+        const userAccLast4 = cleanUserAcc.slice(-4);
+        const isAccountMatch = cleanSenderAcc.includes(cleanUserAcc) || cleanSenderAcc.endsWith(userAccLast4);
+
+        if (!isAccountMatch) {
             return res.status(400).json({ 
                 success: false, 
-                message: `ชื่อบัญชีผู้โอน (${senderName}) ไม่ตรงกับชื่อที่ลงทะเบียนไว้` 
+                message: `เลขบัญชีผู้โอนไม่ตรงกับที่ลงทะเบียนไว้` 
             });
         }
     }
@@ -7329,7 +7338,7 @@ if ((slipData.code === "200000" || slipData.code === 200000) && slipData.data) {
     }
 
     // -------------------------------------------------------------
-    // ✅ ผ่านทุกเงื่อนไข -> ทำการปรับยอดเงินให้ออโต้
+    // ✅ ผ่านทุกเงื่อนไข -> ปรับยอดเงินให้ออโต้
     // -------------------------------------------------------------
     const memberNum = user.memberNumber;
     const creditResult = await creditUserByMemberNumber(memberNum, slipAmount);
@@ -7354,7 +7363,7 @@ if ((slipData.code === "200000" || slipData.code === 200000) && slipData.data) {
 
     return res.json({
         success: true,
-        message: `เติมเงินสำเร็จเรียบร้อย! (@${memberNum} +${slipAmount} บาท)`,
+        message: `เติมเงินสำเร็จเรียบร้อย!)`,
         newBalance: creditResult.newBalance
     });
 

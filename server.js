@@ -7447,6 +7447,89 @@ app.get('/api/user-profile', async (req, res) => {
         return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการดึงข้อมูล' });
     }
 });
+// ==========================================
+// API: แจ้งถอนเงินผ่านหน้าเว็บ (/api/withdraw/create)
+// ==========================================
+app.post('/api/withdraw/create', async (req, res) => {
+    try {
+        const { userId, amount } = req.body;
+
+        if (!userId || !amount || amount < 100) {
+            return res.status(400).json({ success: false, message: 'ข้อมูลไม่ถูกต้อง หรือถอนขั้นต่ำ 100 บาท' });
+        }
+
+        const userRef = db.collection('users').doc(userId);
+        const userDoc = await userRef.get();
+
+        if (!userDoc.exists) {
+            return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลสมาชิก' });
+        }
+
+        const userData = userDoc.data();
+
+        // 1. ตรวจสอบว่า บัญชีถูกล็อกอยู่หรือไม่ (เช่น มีรายการถอนค้างอยู่)
+        if (userData.isLocked) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'ท่านมีรายการถอนค้างอยู่ หรือบัญชีถูกล็อกชั่วคราว กรุณารอแอดมินทำรายการ' 
+            });
+        }
+
+        // 2. ตรวจสอบยอดเงินคงเหลือ
+        const currentBalance = userData.balance || 0;
+        if (amount > currentBalance) {
+            return res.status(400).json({ success: false, message: 'ยอดเงินคงเหลือไม่เพียงพอ' });
+        }
+
+        // 3. ล็อกบัญชีผู้ใช้ทันที (isLocked = true) เพื่อห้ามถอนซ้ำ / ห้ามแทง
+        await userRef.update({
+            isLocked: true,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        // 4. บันทึกรายการถอนลง Firestore (สถานะ pending)
+        const withdrawRef = await db.collection('withdrawals').add({
+            userId: userId,
+            userName: userData.name || 'ไม่ระบุ',
+            bankName: userData.bankName || 'ไม่ระบุ',
+            bankAccount: userData.bankAccount || 'ไม่ระบุ',
+            amount: parseFloat(amount),
+            status: 'pending', // pending, approved, rejected
+            createdAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        const withdrawId = withdrawRef.id;
+
+        // 5. ส่งข้อความแจ้งเตือนหา "แอดมินเท่านั้น" (1 ข้อความ เพื่อประหยัดโควตา LINE)
+        const adminMessage = {
+            type: 'text',
+            text: `💸 **มีรายการถอนเงินใหม่!**\n\n` +
+                  `👤 ผู้ใช้: ${userData.name}\n` +
+                  `💰 จำนวน: ${amount.toLocaleString('th-TH')} บาท\n` +
+                  `🏦 ธนาคาร: ${userData.bankName}\n` +
+                  `🔢 เลขบัญชี: ${userData.bankAccount}\n` +
+                  `🆔 รหัสรายการ: ${withdrawId}\n\n` +
+                  `⚠️ บัญชีถูกล็อกชั่วคราวแล้ว รอแอนมินตรวจสอบและอนุมัติ`
+        };
+
+        // ยิงหา Admin LINE ID หรือ Admin Group ID (ถ้าเซ็ตไว้)
+        if (process.env.ADMIN_LINE_USER_ID) {
+            await pushLineMessage(process.env.ADMIN_LINE_USER_ID, adminMessage);
+        }
+
+        // 6. ตอบกลับหน้าเว็บสมาชิก (ไม่ยิง LINE หาผู้ใช้เพื่อเซฟข้อความ)
+        return res.json({
+            success: true,
+            message: 'ส่งคำขอถอนเงินเรียบร้อยแล้ว กรุณารอแอดมินโอนยอด',
+            withdrawId: withdrawId
+        });
+
+    } catch (error) {
+        console.error('Withdraw Error:', error);
+        return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์' });
+    }
+});
+
 app.use(express.static(__dirname));
 // ==================== [ จุดรัน Server ] ====================
 app.listen(process.env.PORT || 3000, () => { console.log('Server is running...'); });

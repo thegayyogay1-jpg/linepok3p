@@ -7209,7 +7209,7 @@ const multer = require('multer');
 const upload = multer({ storage: multer.memoryStorage() }); // ตั้งค่าพักรูปไว้ใน Memory
 
 // 📌 API รับรูปสลิปจากหน้าเว็บ (ฉบับอัปเดต: ปลดล็อกรายการฝากค้างเมื่อโอนสำเร็จ)
-app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
+app.post('/api/deposit/create', async (req, res) => {
     try {
         const { userId, amount } = req.body;
         const slipFile = req.file;
@@ -7404,7 +7404,7 @@ app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
     }
 });
 // 📌 API สำหรับดึงข้อมูลโปรไฟล์ผู้ใช้ไปแสดงในหน้า LIFF (ปรับปรุงให้ดึงราบรื่นไม่ crash)
-app.get('/api/user-profile', async (req, res) => {
+app.post('/api/deposit/create', async (req, res) => {
     try {
         const { userId } = req.query;
         if (!userId) return res.status(400).json({ success: false, message: 'ไม่พบ userId' });

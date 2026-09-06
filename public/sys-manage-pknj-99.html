@@ -336,21 +336,23 @@ db.ref('system_data/withdrawQueue').on('value', (snapshot) => {
     document.getElementById('withdraw-count').innerText = count;
 });
 
-// 🟢 ฟังก์ชันเมื่อแอดมินกด "โอนแล้ว"
+// 🟢 ฟังก์ชันเมื่อแอดมินกด "โอนแล้ว" บนหน้าเว็บ
 function approveWithdrawQueue(index, memberNumber) {
     if (confirm(`ยืนยันโอนเงินเรียบร้อยแล้วใช่หรือไม่?`)) {
-        // 1. ดึงรายการถอนปัจจุบันใน Firebase มาลบรายการที่เลือกออก
+        
+        // 1. ดึงคิวทั้งหมดลงมาแล้วกรองรายการคนนี้ออก
         db.ref('system_data/withdrawQueue').once('value', (snap) => {
-            let queue = snap.val() || [];
-            if (Array.isArray(queue)) {
-                queue.splice(index, 1);
-            } else {
-                delete queue[index];
-            }
-            db.ref('system_data/withdrawQueue').set(queue);
+            const queue = snap.val() || [];
+            const queueList = Array.isArray(queue) ? queue : Object.values(queue);
+            
+            // กรองรายการที่ไม่ใช่สมาชิกคนนี้ออก
+            const updatedQueue = queueList.filter(item => item && String(item.memberNumber) !== String(memberNumber));
+            
+            // บันทึกคิวใหม่กลับขึ้น Firebase
+            db.ref('system_data/withdrawQueue').set(updatedQueue);
         });
 
-        // 2. ปลดล็อกและหักเงินใน system_data/usersWallets
+        // 2. หักเงินและปลดล็อกบัญชีสมาชิกใน usersWallets
         db.ref('system_data/usersWallets').once('value', (snap) => {
             const users = snap.val() || {};
             const targetKey = Object.keys(users).find(k => String(users[k].memberNumber) === String(memberNumber));
@@ -370,21 +372,21 @@ function approveWithdrawQueue(index, memberNumber) {
     }
 }
 
-// 🔴 ฟังก์ชันเมื่อแอดมินกด "ยกเลิก"
+// 🔴 ฟังก์ชันเมื่อแอดมินกด "ยกเลิก" บนหน้าเว็บ
 function rejectWithdrawQueue(index, memberNumber) {
     if (confirm('ต้องการยกเลิกรายการถอนนี้ใช่หรือไม่?')) {
-        // 1. ลบออกจากคิว
+        
+        // 1. ดึงคิวทั้งหมดลงมาแล้วกรองรายการคนนี้ออก
         db.ref('system_data/withdrawQueue').once('value', (snap) => {
-            let queue = snap.val() || [];
-            if (Array.isArray(queue)) {
-                queue.splice(index, 1);
-            } else {
-                delete queue[index];
-            }
-            db.ref('system_data/withdrawQueue').set(queue);
+            const queue = snap.val() || [];
+            const queueList = Array.isArray(queue) ? queue : Object.values(queue);
+            
+            const updatedQueue = queueList.filter(item => item && String(item.memberNumber) !== String(memberNumber));
+            
+            db.ref('system_data/withdrawQueue').set(updatedQueue);
         });
 
-        // 2. ปลดล็อกบัญชีใน usersWallets
+        // 2. ปลดล็อกบัญชีสมาชิกใน usersWallets
         db.ref('system_data/usersWallets').once('value', (snap) => {
             const users = snap.val() || {};
             const targetKey = Object.keys(users).find(k => String(users[k].memberNumber) === String(memberNumber));

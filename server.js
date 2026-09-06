@@ -7335,25 +7335,188 @@ app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
             });
         }
 
-        // ---------------------------------------------------------
-        // ⏳ กรณีที่ 2: ตรวจสอบ Auto ไม่ผ่าน -> ส่งให้แอดมินตรวจสอบ
-        // ---------------------------------------------------------
+        // 📌 API รับรูปสลิปจากหน้าเว็บ (ทำงานร่วมกับระบบ Auto + ส่งแอดมินกรณีไม่ผ่าน)
+app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
+    try {
+        const { userId, amount } = req.body;
+        const slipFile = req.file;
+
+        if (!userId || userId === 'undefined' || !amount || !slipFile) {
+            return res.status(400).json({ success: false, message: 'ข้อมูลไม่ครบถ้วน (ไม่พบ userId หรือยอดเงิน)' });
+        }
+
+        const user = usersWallets[userId];
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลสมาชิกในระบบ' });
+        }
+
+        const depositAmount = Number(amount);
+        let failReason = ""; // ตัวแปรเก็บสาเหตุที่ Auto ไม่ผ่าน
+
+        // -------------------------------------------------------------
+        // 1. ส่งรูปสลิปไปตรวจสอบกับ Slip2Go API
+        // -------------------------------------------------------------
+        let isAutoApproved = false;
+        let transRef = "";
+        let senderName = "ไม่ระบุ";
+        let senderAcc = "";
+        let rawSlipDate = "";
+
+        try {
+            const FormData = require('form-data');
+            const formData = new FormData();
+            formData.append('file', slipFile.buffer, {
+                filename: slipFile.originalname || 'slip.jpg',
+                contentType: slipFile.mimetype || 'image/jpeg'
+            }); 
+
+            const slipResponse = await axios.post(
+                'https://connect.slip2go.com/api/verify-slip/qr-image/info',
+                formData,
+                {
+                    headers: {
+                        'Authorization': 'Bearer H7PyVya4FcYuf_X_zGAW2oq2hN2+1uSVxK_4zOGsLe8=',
+                        ...formData.getHeaders()
+                    }
+                }
+            );
+
+            const slipData = slipResponse.data;
+
+            if ((slipData.code === "200000" || slipData.code === 200000) && slipData.data) {
+                const data = slipData.data;
+                transRef = data.transRef;
+                const slipAmount = Number(data.amount);
+                rawSlipDate = data.transDate || data.transTimestamp || data.dateTime;
+                senderName = data.sender?.name || data.sender?.account?.name || 'ไม่ระบุ';
+
+                const rawSender = data.sender || {};
+                senderAcc = rawSender.account?.bank?.account || rawSender.account?.number || rawSender.account?.bank || rawSender.account || rawSender.accountNo || '';
+
+                // ⛔ [เช็กที่ 1] สลิปซ้ำ
+                const isDuplicate = Object.values(slipTransactions).some(tx => tx.transRef === transRef && tx.status === 'APPROVED');
+                
+                if (isDuplicate) {
+                    failReason = "สลิปนี้เคยถูกใช้งานไปแล้ว";
+                } else {
+                    // ⛔ [เช็กที่ 2] เวลาโอน (ไม่เกิน 15 นาที)
+                    if (rawSlipDate) {
+                        const slipTime = new Date(rawSlipDate).getTime();
+                        const timeDiffMinutes = (Date.now() - slipTime) / (1000 * 60);
+                        if (timeDiffMinutes > 15) failReason = "สลิปหมดอายุ (ทำรายการเกิน 15 นาที)";
+                    }
+
+                    // ⛔ [เช็กที่ 3] บัญชีรับเงิน
+                    const receiverAcc = data.receiver?.account?.number || data.receiver?.account?.bank || data.receiver?.account || '';
+                    const receiverName = data.receiver?.name || data.receiver?.account?.name || '';
+                    const cleanedReceiverAcc = String(receiverAcc).replace(/[^0-9]/g, '');
+                    if (!cleanedReceiverAcc.includes("0371556125") && !receiverName.includes("ภาณุวัฒก์")) {
+                        failReason = "สลิปไม่ได้โอนเข้าบัญชีร้าน";
+                    }
+
+                    // ⛔ [เช็กที่ 4] ยอดเงิน
+                    if (slipAmount < depositAmount) {
+                        failReason = `ยอดเงินในสลิป (${slipAmount}) น้อยกว่าที่แจ้ง (${depositAmount})`;
+                    }
+
+                    // ⛔ [เช็กที่ 5] ชื่อผู้โอน
+                    const registeredName = user.name || user.accountName;
+                    if (registeredName && !failReason) {
+                        const cleanRegName = registeredName.replace(/(นาย|นางสาว|นาง|Mr\.|Mrs\.|Miss)/g, '').trim();
+                        const cleanSenderName = senderName.replace(/(นาย|นางสาว|นาง|Mr\.|Mrs\.|Miss)/g, '').trim();
+                        const firstName = cleanRegName.split(/\s+/)[0];
+
+                        if (firstName && !cleanSenderName.includes(firstName)) {
+                            failReason = "ชื่อผู้โอนไม่ตรงกับชื่อสมาชิก";
+                        }
+                    }
+
+                    // ⛔ [เช็กที่ 6] เลขบัญชีผู้โอน
+                    const registeredAcc = user.bankAccount || user.accountNumber;
+                    if (registeredAcc && !failReason) {
+                        const cleanUserAcc = String(registeredAcc).replace(/\D/g, '');
+                        const cleanSenderAcc = String(senderAcc).replace(/\D/g, '');
+                        const userAccLast4 = cleanUserAcc.slice(-4);
+                        const userAccLast3 = cleanUserAcc.slice(-3);
+
+                        const isAccountMatch = 
+                            cleanSenderAcc.includes(userAccLast4) ||
+                            cleanSenderAcc.includes(userAccLast3) ||
+                            (cleanSenderAcc.length > 0 && cleanUserAcc.endsWith(cleanSenderAcc)) ||
+                            (cleanSenderAcc.length > 0 && cleanSenderAcc.endsWith(userAccLast4));
+
+                        if (!isAccountMatch) {
+                            failReason = `เลขบัญชีผู้โอนไม่ตรง (ระบบ: ...${userAccLast4})`;
+                        }
+                    }
+
+                    // หากผ่านทุกข้อ
+                    if (!failReason) {
+                        isAutoApproved = true;
+                    }
+                }
+            } else {
+                failReason = slipData.message || 'อ่านข้อมูลสลิปไม่ได้';
+            }
+
+        } catch (apiErr) {
+            console.error('Slip2Go Error:', apiErr.response?.data || apiErr.message);
+            failReason = "ระบบสแกนสลิปขัดข้อง";
+        }
+
+        // =============================================================
+        // 🟢 กรณีที่ 1: ตรวจสอบผ่านระบบ Auto สำเร็จ
+        // =============================================================
+        if (isAutoApproved) {
+            const memberNum = user.memberNumber;
+            const creditResult = await creditUserByMemberNumber(memberNum, depositAmount);
+
+            if (typeof pendingDeposits !== 'undefined' && pendingDeposits[userId]) {
+                delete pendingDeposits[userId];
+            }
+
+            const txId = `TX_${Date.now()}`;
+            slipTransactions[txId] = {
+                userId: userId,
+                memberNumber: memberNum || '---',
+                amount: depositAmount,
+                transRef: transRef,
+                senderName: senderName,
+                senderAccount: senderAcc,
+                transDate: rawSlipDate || 'ไม่ระบุ',
+                status: 'APPROVED',
+                created_at: new Date().toLocaleString('th-TH')
+            };
+
+            await saveDataToFirebase();
+
+            return res.json({
+                success: true,
+                message: 'เติมเงินสำเร็จเรียบร้อย!',
+                newBalance: creditResult.newBalance
+            });
+        }
+
+        // =============================================================
+        // ⏳ กรณีที่ 2: Auto ไม่ผ่าน -> ส่งให้แอดมินตรวจสอบทาง LINE
+        // =============================================================
         const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
         
-        // แปลงไฟล์รูปสลิปเป็น Base64 หรืออัปโหลดส่งให้แอดมินดู
-        const imageBase64 = req.file.buffer.toString('base64');
-        const imageUrl = `data:${req.file.mimetype};base64,${imageBase64}`;
-
         const adminManualFlex = {
             "type": "flex",
             "altText": `🚨 แจ้งฝากเงินรอตรวจสอบ! คุณ ${user.name} ยอด ${depositAmount} บาท`,
             "contents": {
                 "type": "bubble",
+                "styles": {
+                    "header": { "backgroundColor": "#141416" },
+                    "body": { "backgroundColor": "#1e1e22" },
+                    "footer": { "backgroundColor": "#141416" }
+                },
                 "header": {
                     "type": "box",
                     "layout": "vertical",
                     "contents": [
-                        { "type": "text", "text": "⏳ มีรายการฝากเงินรอตรวจสอบ (สลิปเว็บ)", "weight": "bold", "color": "#ffaa00", "size": "md", "align": "center" }
+                        { "type": "text", "text": "⏳ มีรายการฝากเงินรอตรวจสอบ (จากหน้าเว็บ)", "weight": "bold", "color": "#ffaa00", "size": "md", "align": "center" }
                     ]
                 },
                 "body": {
@@ -7365,7 +7528,7 @@ app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
                             "type": "box",
                             "layout": "horizontal",
                             "contents": [
-                                { "type": "text", "text": "🆔 สมาชิก:", "size": "sm", "color": "#8e8e93" },
+                                { "type": "text", "text": "🆔 สมาชิกเด่น:", "size": "sm", "color": "#8e8e93" },
                                 { "type": "text", "text": `ลำดับที่ ${user.memberNumber}`, "size": "sm", "color": "#ffffff", "weight": "bold", "align": "end" }
                             ]
                         },
@@ -7373,7 +7536,7 @@ app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
                             "type": "box",
                             "layout": "horizontal",
                             "contents": [
-                                { "type": "text", "text": "👤 ชื่อสมาชิก:", "size": "sm", "color": "#8e8e93" },
+                                { "type": "text", "text": "👤 ชื่อลูกค้า:", "size": "sm", "color": "#8e8e93" },
                                 { "type": "text", "text": `คุณ ${user.name}`, "size": "sm", "color": "#ffffff", "weight": "bold", "align": "end" }
                             ]
                         },
@@ -7381,7 +7544,7 @@ app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
                             "type": "box",
                             "layout": "horizontal",
                             "contents": [
-                                { "type": "text", "text": "💰 ยอดเงินแจ้งฝาก:", "size": "sm", "color": "#ffffff", "weight": "bold" },
+                                { "type": "text", "text": "💰 ยอดเงินที่แจ้ง:", "size": "sm", "color": "#ffffff", "weight": "bold" },
                                 { "type": "text", "text": `${depositAmount.toLocaleString()} บาท`, "size": "md", "color": "#00bfff", "weight": "bold", "align": "end" }
                             ]
                         },
@@ -7390,7 +7553,7 @@ app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
                             "layout": "vertical",
                             "margin": "md",
                             "contents": [
-                                { "type": "text", "text": `⚠️ เหตุผลที่ต้องตรวจ: ${checkResult.reason || 'ระบบอ่านสลิปอัตโนมัติไม่ได้'}`, "size": "xs", "color": "#ff3b47", "wrap": true }
+                                { "type": "text", "text": `⚠️ เหตุผลที่ไม่ผ่าน Auto: ${failReason}`, "size": "xs", "color": "#ff3b47", "wrap": true }
                             ]
                         }
                     ]
@@ -7427,7 +7590,7 @@ app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
             }
         };
 
-        // ยิงแจ้งเตือนหาแอดมินทาง LINE
+        // ยิงเข้า LINE แอดมิน
         if (typeof axios !== 'undefined' && typeof TOKEN !== 'undefined') {
             try {
                 await axios.post('https://api.line.me/v2/bot/message/push', {
@@ -7437,20 +7600,20 @@ app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` }
                 });
             } catch (err) {
-                console.error("❌ ส่งสลิปหาแอดมินล้มเหลว:", err.message);
+                console.error("❌ ส่งแจ้งเตือนหาแอดมินล้มเหลว:", err.message);
             }
         }
 
-        // ส่งคำตอบกลับไปหน้าเว็บ ให้ขึ้น Pop-up รอแอดมิน
+        // ส่ง response กลับหน้าเว็บ ให้เด้ง Pop-up "กรุณารอแอดมินตรวจสอบ"
         return res.json({
             success: false,
             isPending: true,
-            message: `สลิปอยู่ระหว่างให้แอดมินตรวจสอบครับ\n(${checkResult.reason || 'กรุณารอแอดมินยืนยันสักครู่'})`
+            message: `สลิปถูกส่งให้แอดมินเรียบร้อยแล้ว\nสาเหตุ: ${failReason}\nกรุณารอแอดมินยืนยันสักครู่ครับ`
         });
 
     } catch (error) {
-        console.error('Upload Slip API Error:', error);
-        return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการประมวลผลสลิป' });
+        console.error('❌ Upload Slip Error:', error);
+        return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการประมวลผลระบบ' });
     }
 });
 

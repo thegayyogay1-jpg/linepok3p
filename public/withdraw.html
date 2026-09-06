@@ -357,14 +357,19 @@
             if (liff.isLoggedIn()) {
                 const profile = await liff.getProfile();
                 userId = profile.userId;
-                
-                // ดึงข้อมูลครั้งแรก
-                await getUserData(userId);
-                
-                // 3. ตั้งเวลาอัปเดตยอดเงินแบบเรียลไทม์ทุกๆ 5 วินาที
-                startRealtimeBalance();
             } else {
-                liff.login();
+                const urlParams = new URLSearchParams(window.location.search);
+                userId = urlParams.get('userId');
+                if (!userId) {
+                    liff.login();
+                    return;
+                }
+            }
+
+            // เมื่อได้ userId แน่นอนแล้ว ให้ดึงข้อมูลและเริ่ม Realtime Loop
+            if (userId) {
+                await getUserData(userId);
+                startRealtimeBalance();
             }
         } catch (err) {
             console.error("LIFF Error:", err);
@@ -380,8 +385,10 @@
 
     // ฟังก์ชันดึงข้อมูลผู้ใช้และยอดเงิน
     async function getUserData(uid) {
+        if (!uid) return;
         try {
-            const res = await fetch(`/api/user-profile?userId=${uid}`);
+            // ใส่ timestamp (_t) เพื่อป้องกัน Browser Caching ยอดเงินเก่า
+            const res = await fetch(`/api/user-profile?userId=${uid}&_t=${Date.now()}`);
             const data = await res.json();
             
             if (data.success) {
@@ -394,8 +401,12 @@
                     maximumFractionDigits: 2
                 });
 
-                document.getElementById('userBank').innerText = data.bankName || 'ไม่ระบุ';
-                document.getElementById('userAcc').innerText = data.bankAccount || 'ไม่ระบุ';
+                if (document.getElementById('userBank')) {
+                    document.getElementById('userBank').innerText = data.bankName || 'ไม่ระบุ';
+                }
+                if (document.getElementById('userAcc')) {
+                    document.getElementById('userAcc').innerText = data.bankAccount || 'ไม่ระบุ';
+                }
                 if (document.getElementById('userName')) {
                     document.getElementById('userName').innerText = data.name || 'ไม่ระบุ';
                 }
@@ -412,13 +423,13 @@
             if (userId) {
                 getUserData(userId);
             }
-        }, 5000); // ทำงานทุกๆ 5000ms (5 วินาที)
+        }, 5000); // ทำงานทุกๆ 5 วินาที
     }
 
     // ฟังก์ชันย้อนกลับไปยังหน้าแทง/หน้าเล่น
     function goToGamePage() {
-    window.location.href = "https://liff.line.me/2011387264-7B981j5N"; // 👈 ใส่ลิงก์หน้าแทงตรงนี้
-}
+        window.location.href = "https://liff.line.me/2011387264-7B981j5N";
+    }
 
     // จัดการส่งฟอร์มถอนเงิน
     document.getElementById('withdrawForm').addEventListener('submit', async (e) => {
@@ -429,7 +440,13 @@
             return;
         }
 
-        const amount = parseFloat(document.getElementById('withdrawAmount').value);
+        const amountInput = document.getElementById('withdrawAmount');
+        const amount = parseFloat(amountInput.value);
+
+        if (isNaN(amount) || amount <= 0) {
+            alert('❌ กรุณาระบุจำนวนเงินที่ถูกต้อง');
+            return;
+        }
 
         if (amount > currentBalance) {
             alert('❌ ยอดเงินของคุณไม่พอสำหรับการถอน');
@@ -455,6 +472,12 @@
             loadingModal.style.display = 'none';
 
             if (result.success) {
+                // ล้างช่องกรอกเงิน
+                amountInput.value = '';
+
+                // อัปเดตยอดเงินในหน้าเว็บทันที
+                await getUserData(userId);
+
                 document.getElementById('modalMessage').innerText = `ระบบได้รับคำขอถอนเงินจำนวน ${amount.toLocaleString('th-TH')} บาท เรียบร้อยแล้ว\nเงินจะเข้าบัญชีภายใน 5-10 นาที`;
                 document.getElementById('successModal').style.display = 'flex';
             } else {

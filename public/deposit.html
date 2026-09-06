@@ -85,21 +85,43 @@
     <div id="statusMessage"></div>
 </div>
 
+<!-- ดึง SDK ของ LINE LIFF -->
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script>
-    // ดึง userId จาก URL Parameter (เช่น ?userId=USER_ID_HERE)
-    const urlParams = new URLSearchParams(window.location.search);
-    const userId = urlParams.get('userId');
+    let userId = "";
 
     const form = document.getElementById('depositForm');
     const statusMsg = document.getElementById('statusMessage');
     const submitBtn = document.getElementById('submitBtn');
 
+    // 1. เริ่มการทำงานของ LINE LIFF เพื่อดึง userId
+    async function main() {
+        try {
+            // ⚠️ เปลี่ยน YOUR_LIFF_ID เป็น LIFF ID ที่ได้จาก LINE Developers (เช่น 200xxxxxxx-xxxxxxx)
+            await liff.init({ liffId: "2011466617-EdngTg1w" }); 
+
+            if (liff.isLoggedIn()) {
+                const profile = await liff.getProfile();
+                userId = profile.userId;
+            } else {
+                liff.login(); // ถ้ายังไม่ได้ล็อกอิน ให้เด้งหน้าล็อกอิน LINE
+            }
+        } catch (err) {
+            console.error("LIFF Initialization failed", err);
+            // กรณีเปิดทดสอบผ่าน Browser ปกติ ให้ลองดึงจาก URL Parameter แทน
+            const urlParams = new URLSearchParams(window.location.search);
+            userId = urlParams.get('userId');
+        }
+    }
+    main();
+
+    // 2. ประมวลผลเมื่อกดส่งฟอร์มฝากเงิน
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
 
         if (!userId) {
             statusMsg.style.color = 'red';
-            statusMsg.innerText = '❌ ไม่พบข้อมูลผู้ใช้งาน (กรุณาเข้าผ่าน LINE หรือระบุ userId)';
+            statusMsg.innerText = '❌ ไม่พบข้อมูลผู้ใช้งาน LINE กรุณาลองเปิดใหม่อีกครั้ง';
             return;
         }
 
@@ -127,6 +149,7 @@
                 statusMsg.style.color = 'green';
                 statusMsg.innerText = `✅ ${result.message}\nเครดิตใหม่: ${result.newBalance} บาท`;
                 form.reset();
+                setTimeout(() => { liff.closeWindow(); }, 2500); // เติมสำเร็จให้ปิดหน้า LIFF ออโต้ใน 2.5 วินาที
             } else {
                 statusMsg.style.color = 'red';
                 statusMsg.innerText = `❌ ${result.message}`;

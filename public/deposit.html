@@ -6,19 +6,36 @@
     <title>ระบบฝากเงินออโต้</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; display: flex; justify-content: center; }
-        .card { background: #ffffff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
+        .card { background: #ffffff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 400px; position: relative; }
         h2 { text-align: center; color: #1a73e8; margin-top: 0; }
         .step { display: none; }
         .step.active { display: block; }
         .bank-info { background: #e8f0fe; border-left: 4px solid #1a73e8; padding: 15px; border-radius: 6px; margin: 15px 0; }
         .bank-info p { margin: 5px 0; font-weight: bold; color: #333; }
         .warning-text { color: #d93025; font-size: 13px; margin-bottom: 15px; }
+        .user-acc-box { background: #fff3cd; border: 1px solid #ffeeba; color: #856404; padding: 10px; border-radius: 6px; font-weight: bold; text-align: center; margin-bottom: 15px; }
         input[type="number"], input[type="file"] { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
         button { width: 100%; padding: 12px; background-color: #1a73e8; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; }
         button:hover { background-color: #1557b0; }
         .btn-copy { background-color: #34a853; margin-top: 5px; }
         .btn-copy:hover { background-color: #2d8e47; }
+        .btn-admin { background-color: #06C755; margin-top: 10px; display: flex; align-items: center; justify-content: center; text-decoration: none; color: white; border-radius: 6px; padding: 12px; font-weight: bold; }
+        .btn-admin:hover { background-color: #05b34c; }
+        .timer-box { text-align: center; background: #fff0f0; border: 1px solid #ffcdd2; padding: 10px; border-radius: 6px; margin-bottom: 15px; }
+        .timer-text { font-size: 24px; font-weight: bold; color: #d93025; }
         #statusMessage { margin-top: 15px; text-align: center; font-weight: bold; }
+
+        /* Modal / Pop-up เอฟเฟกต์เติมเงินสำเร็จ */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: white; padding: 30px; border-radius: 16px; text-align: center; width: 80%; max-width: 320px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); animation: popIn 0.3s ease-out; }
+        .success-icon { font-size: 60px; color: #34a853; margin-bottom: 10px; }
+        .btn-play { background-color: #ff9800; color: white; padding: 12px; border-radius: 8px; font-size: 18px; font-weight: bold; text-decoration: none; display: block; margin-top: 15px; }
+        .btn-play:hover { background-color: #e68a00; }
+
+        @keyframes popIn {
+            0% { transform: scale(0.7); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
     </style>
 </head>
 <body>
@@ -31,11 +48,25 @@
         <label for="depositAmount"><b>ระบุจำนวนเงินที่ต้องการฝาก (บาท):</b></label>
         <input type="number" id="depositAmount" placeholder="เช่น 100" min="1" required>
         <p class="warning-text">⚠️ **คำเตือน:** กรุณาใช้บัญชีธนาคารที่คุณลงทะเบียนไว้กับระบบในการโอนเงินเท่านั้น</p>
-        <button type="button" onclick="goToStep2()">ถัดไป (รับเลขบัญชี)</button>
+        <button type="button" id="nextBtn" onclick="goToStep2()">ถัดไป (รับเลขบัญชี)</button>
+        
+        <!-- ปุ่มติดต่อแอดมิน -->
+        <a href="https://line.me/ti/p/~YOUR_LINE_ID" target="_blank" class="btn-admin">💬 ติดต่อแอดมิน</a>
     </div>
 
     <!-- Step 2: โอนเงิน & แนบสลิป -->
     <div id="step2" class="step">
+        <!-- ตัวนับเวลาถอยหลัง -->
+        <div class="timer-box">
+            <div>กรุณาทำรายการโอนภายในเวลา</div>
+            <div id="timerDisplay" class="timer-text">05:00</div>
+        </div>
+
+        <!-- กล่องแจ้งเตือนเลขบัญชีฝากของสมาชิก (ดึงจาก Firebase) -->
+        <div class="user-acc-box">
+            📌 กรุณาโอนจากเลขบัญชี: <span id="userRegisteredAcc">กำลังดึงข้อมูล...</span> เท่านั้น
+        </div>
+
         <div class="bank-info">
             <p>🏦 ธนาคาร: กสิกรไทย </p>
             <p>🔢 เลขบัญชี: <span id="accNum">0371556125</span></p>
@@ -51,25 +82,39 @@
             <input type="file" id="slipImage" accept="image/*" required>
             <button type="submit" id="submitBtn">ยืนยันการแจ้งโอน</button>
         </form>
+
         <button type="button" onclick="goToStep1()" style="background-color: #6c757d; margin-top: 10px;">ย้อนกลับ</button>
+        <a href="https://lin.ee/QwOZ9Cf" target="_blank" class="btn-admin">💬 ติดต่อแอดมิน</a>
     </div>
 
     <div id="statusMessage"></div>
+</div>
+
+<!-- 🏆 Pop-up เอฟเฟกต์เติมเงินสำเร็จ -->
+<div id="successModal" class="modal">
+    <div class="modal-content">
+        <div class="success-icon">🎉</div>
+        <h3 style="margin: 5px 0; color: #333;">เติมเงินสำเร็จ!</h3>
+        <p id="modalMessage" style="color: #666; margin: 10px 0;"></p>
+        <!-- ปุ่มกดแล้วพาไปหน้าแทง -->
+        <a href="https://liff.line.me/2011387264-7B981j5N" id="playBtn" class="btn-play">🎮 เข้าสู่หน้าเดิมพัน</a>
+    </div>
 </div>
 
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script>
     let userId = "";
     let amountToDeposit = 0;
+    let timerInterval = null;
 
     // เริ่มการทำงาน LINE LIFF
     async function initLiff() {
         try {
-            // ⚠️ เปลี่ยน YOUR_LIFF_ID เป็น LIFF ID ของคุณ
             await liff.init({ liffId: "2011466617-EdngTg1w" });
             if (liff.isLoggedIn()) {
                 const profile = await liff.getProfile();
                 userId = profile.userId;
+                getUserAccountFromFirebase(userId);
             } else {
                 liff.login();
             }
@@ -77,23 +122,100 @@
             console.error("LIFF Init Error:", err);
             const urlParams = new URLSearchParams(window.location.search);
             userId = urlParams.get('userId');
+            if (userId) getUserAccountFromFirebase(userId);
         }
     }
     initLiff();
 
-    function goToStep2() {
+    // ดึงเลขบัญชีผู้ใช้จาก Firebase มาแสดงบนหน้าเว็บ
+    async function getUserAccountFromFirebase(uid) {
+        try {
+            const res = await fetch(`/api/user-profile?userId=${uid}`);
+            const data = await res.json();
+            if (data.success && data.bankAccount) {
+                document.getElementById('userRegisteredAcc').innerText = data.bankAccount;
+            } else {
+                document.getElementById('userRegisteredAcc').innerText = "ที่ลงทะเบียนไว้";
+            }
+        } catch (e) {
+            document.getElementById('userRegisteredAcc').innerText = "ที่ลงทะเบียนไว้";
+        }
+    }
+
+    // ฟังก์ชันเริ่มนับเวลาถอยหลัง
+    function startTimer(durationSeconds) {
+        clearInterval(timerInterval);
+        let timer = durationSeconds;
+
+        timerInterval = setInterval(() => {
+            let minutes = parseInt(timer / 60, 10);
+            let seconds = parseInt(timer % 60, 10);
+
+            minutes = minutes < 10 ? "0" + minutes : minutes;
+            seconds = seconds < 10 ? "0" + seconds : seconds;
+
+            document.getElementById('timerDisplay').innerText = minutes + ":" + seconds;
+
+            if (--timer < 0) {
+                clearInterval(timerInterval);
+                alert("⏰ หมดเวลาทำรายการ กรุณาเริ่มรายการใหม่อีกครั้ง");
+                goToStep1();
+            }
+        }, 1000);
+    }
+
+    async function goToStep2() {
         const amtInput = document.getElementById('depositAmount').value;
         if (!amtInput || amtInput <= 0) {
             alert('กรุณากรอกจำนวนเงินให้ถูกต้อง');
             return;
         }
-        amountToDeposit = amtInput;
-        document.getElementById('displayAmount').innerText = amountToDeposit;
-        document.getElementById('step1').classList.remove('active');
-        document.getElementById('step2').classList.add('active');
+
+        const nextBtn = document.getElementById('nextBtn');
+        nextBtn.disabled = true;
+        nextBtn.innerText = 'กำลังตรวจสอบ...';
+
+        try {
+            // ยิงไปเช็กรายการค้าง + เริ่มนับถอยหลังที่ Backend
+            const res = await fetch('/api/deposit/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: userId, amount: amtInput })
+            });
+
+            const data = await res.json();
+
+            if (!data.success && data.isPendingExists) {
+                // กรณีมีรายการค้างอยู่
+                alert(`⚠️ ${data.message}\n(ยอดค้าง: ${data.pendingAmount} บาท)`);
+                amountToDeposit = data.pendingAmount;
+                document.getElementById('displayAmount').innerText = amountToDeposit;
+                startTimer(data.remainingSeconds);
+                
+                document.getElementById('step1').classList.remove('active');
+                document.getElementById('step2').classList.add('active');
+            } else if (data.success) {
+                // สร้างรายการใหม่สำเร็จ
+                amountToDeposit = amtInput;
+                document.getElementById('displayAmount').innerText = amountToDeposit;
+                startTimer(data.remainingSeconds || 300);
+
+                document.getElementById('step1').classList.remove('active');
+                document.getElementById('step2').classList.add('active');
+            } else {
+                alert(data.message || 'เกิดข้อผิดพลาดในการสร้างรายการ');
+            }
+
+        } catch (err) {
+            alert('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
+        } finally {
+            nextBtn.disabled = false;
+            nextBtn.innerText = 'ถัดไป (รับเลขบัญชี)';
+        }
     }
 
     function goToStep1() {
+        clearInterval(timerInterval);
         document.getElementById('step2').classList.remove('active');
         document.getElementById('step1').classList.add('active');
     }
@@ -123,7 +245,7 @@
         const statusMsg = document.getElementById('statusMessage');
 
         submitBtn.disabled = true;
-        submitBtn.innerText = 'กำลังตรวจสอบสลิป...';
+        submitBtn.innerText = '⏳ กำลังตรวจสอบสลิป... กรุณารอครู่นะครับ';
         statusMsg.innerText = '';
 
         try {
@@ -135,9 +257,12 @@
             const result = await response.json();
 
             if (result.success) {
-                statusMsg.style.color = 'green';
-                statusMsg.innerText = `✅ ${result.message}\nเครดิตใหม่: ${result.newBalance} บาท`;
-                setTimeout(() => { if (typeof liff !== 'undefined') liff.closeWindow(); }, 2500);
+                clearInterval(timerInterval); // หยุดนับเวลา
+                
+                // แสดง Pop-up สำเร็จ
+                document.getElementById('modalMessage').innerText = `เติมเงินสำเร็จ: +${amountToDeposit} บาท\nยอดเงินคงเหลือใหม่: ${result.newBalance} บาท`;
+                document.getElementById('successModal').style.display = 'flex';
+
             } else {
                 statusMsg.style.color = 'red';
                 statusMsg.innerText = `❌ ${result.message}`;

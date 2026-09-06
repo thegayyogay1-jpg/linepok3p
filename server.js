@@ -7684,6 +7684,35 @@ app.post('/api/withdraw/create', async (req, res) => {
     }
 });
 
+// 📌 API สำหรับแอดมินกดอนุมัติการฝากเงินจากหน้าเว็บ
+app.post('/api/admin/approve-deposit', async (req, res) => {
+    try {
+        const { depositId, memberNumber, amount } = req.body;
+
+        if (!depositId || !memberNumber || !amount) {
+            return res.status(400).json({ success: false, message: 'ข้อมูลไม่ครบถ้วน' });
+        }
+
+        // 1. เติมเงินให้สมาชิก
+        const creditResult = await creditUserByMemberNumber(memberNumber, Number(amount));
+
+        // 2. อัปเดตสถานะใน Firebase เป็น APPROVED
+        if (typeof db !== 'undefined') {
+            await db.ref(`pendingDeposits/${depositId}`).update({ status: 'APPROVED' });
+        }
+
+        return res.json({
+            success: true,
+            message: 'อนุมัติการฝากเงินสำเร็จ',
+            newBalance: creditResult.newBalance
+        });
+
+    } catch (error) {
+        console.error('Approve Deposit Error:', error);
+        return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการอนุมัติ' });
+    }
+});
+
 app.use(express.static(__dirname));
 // ==================== [ จุดรัน Server ] ====================
 app.listen(process.env.PORT || 3000, () => { console.log('Server is running...'); });

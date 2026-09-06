@@ -7509,7 +7509,7 @@ app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
                             "action": {
                                 "type": "message",
                                 "label": "✅ อนุมัติฝาก",
-                                "text": `d ${user.memberNumber} ${depositAmount}`
+                                "text": `@ ${user.memberNumber} ${depositAmount}`
                             }
                         },
                         {

@@ -7460,84 +7460,188 @@ app.get('/api/user-profile', async (req, res) => {
     }
 });
 // ==========================================
-// API: แจ้งถอนเงินผ่านหน้าเว็บ (/api/withdraw/create)
+// API: แจ้งถอนเงินผ่านหน้าเว็บ (เชื่อมต่อกับระบบหลัก)
 // ==========================================
 app.post('/api/withdraw/create', async (req, res) => {
     try {
         const { userId, amount } = req.body;
+        const withdrawAmount = parseInt(amount);
 
-        if (!userId || !amount || amount < 100) {
-            return res.status(400).json({ success: false, message: 'ข้อมูลไม่ถูกต้อง หรือถอนขั้นต่ำ 100 บาท' });
+        if (!userId || isNaN(withdrawAmount) || withdrawAmount <= 0) {
+            return res.status(400).json({ success: false, message: 'รูปแบบการถอนไม่ถูกต้อง กรุณาระบุจำนวนเงิน' });
         }
 
-        const userRef = db.collection('users').doc(userId);
-        const userDoc = await userRef.get();
+        // 1. ดึงข้อมูลสมาชิกจาก usersWallets (แหล่งเดียวกับระบบหลัก)
+        let user = usersWallets[userId];
 
-        if (!userDoc.exists) {
-            return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลสมาชิก' });
+        if (!user && typeof getLatestWallet === 'function') {
+            user = await getLatestWallet(userId);
         }
 
-        const userData = userDoc.data();
+        if (!user) {
+            return res.status(404).json({ success: false, message: '⚠️ คุณยังไม่ได้ลงทะเบียนสมาชิกในระบบครับ' });
+        }
 
-        // 1. ตรวจสอบว่า บัญชีถูกล็อกอยู่หรือไม่ (เช่น มีรายการถอนค้างอยู่)
-        if (userData.isLocked) {
+        // 2. เช็กสถานะการล็อกถอนค้าง
+        if (user.isWithdrawLocked) {
             return res.status(400).json({ 
                 success: false, 
-                message: 'ท่านมีรายการถอนค้างอยู่ หรือบัญชีถูกล็อกชั่วคราว กรุณารอแอดมินทำรายการ' 
+                message: `❌ ไม่สามารถทำรายการซ้ำได้ครับ!\nคุณ ${user.name} มีรายการแจ้งถอนค้างอยู่จำนวน ${user.pendingWithdrawAmount} บาท อยู่ในระหว่างรอแอดมินอนุมัติครับ` 
             });
         }
 
-        // 2. ตรวจสอบยอดเงินคงเหลือ
-        const currentBalance = userData.balance || 0;
-        if (amount > currentBalance) {
-            return res.status(400).json({ success: false, message: 'ยอดเงินคงเหลือไม่เพียงพอ' });
+        // 3. เช็กยอดเทิร์นโอเวอร์คงค้าง
+        if (user.turnoverTarget && user.turnoverTarget > 0) {
+            return res.status(400).json({ 
+                success: false, 
+                message: `❌ ไม่สามารถแจ้งถอนเงินได้ครับ!\nเนื่องจากคุณเลือกรับโบนัสและยังทำยอดเทิร์นไม่ครบ\nยอดเทิร์นคงค้างที่ต้องเล่นเพิ่มอีก: ${user.turnoverTarget} บาท` 
+            });
         }
 
-        // 3. ล็อกบัญชีผู้ใช้ทันที (isLocked = true) เพื่อห้ามถอนซ้ำ / ห้ามแทง
-        await userRef.update({
-            isLocked: true,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp()
-        });
+        // 4. เช็กยอดเงินคงเหลือ (ใช้ user.balance ตามระบบหลัก)
+        const currentBalance = Number(user.balance || 0);
+        if (currentBalance < withdrawAmount) {
+            return res.status(400).json({ 
+                success: false, 
+                message: `❌ แจ้งถอนล้มเหลว: ยอดเครดิตของคุณมีไม่เพียงพอครับ (เครดิตปัจจุบัน: ${currentBalance.toLocaleString()} บาท)` 
+            });
+        }
 
-        // 4. บันทึกรายการถอนลง Firestore (สถานะ pending)
-        const withdrawRef = await db.collection('withdrawals').add({
-            userId: userId,
-            userName: userData.name || 'ไม่ระบุ',
-            bankName: userData.bankName || 'ไม่ระบุ',
-            bankAccount: userData.bankAccount || 'ไม่ระบุ',
-            amount: parseFloat(amount),
-            status: 'pending', // pending, approved, rejected
-            createdAt: admin.firestore.FieldValue.serverTimestamp()
-        });
+        // 5. อัปเดตสถานะล็อกบัญชีและตั้งค่ายอดรอถอน
+        user.isWithdrawLocked = true;
+        user.pendingWithdrawAmount = withdrawAmount;
 
-        const withdrawId = withdrawRef.id;
+        // 6. เพิ่มเข้าคิวถอนเงิน (withdrawQueue)
+        if (typeof withdrawQueue !== 'undefined') {
+            withdrawQueue.push({ 
+                memberNumber: user.memberNumber, 
+                name: user.name, 
+                amount: withdrawAmount, 
+                time: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) 
+            });
+        }
 
-        // 5. ส่งข้อความแจ้งเตือนหา "แอดมินเท่านั้น" (1 ข้อความ เพื่อประหยัดโควตา LINE)
-        const adminMessage = {
-            type: 'text',
-            text: `💸 **มีรายการถอนเงินใหม่!**\n\n` +
-                  `👤 ผู้ใช้: ${userData.name}\n` +
-                  `💰 จำนวน: ${amount.toLocaleString('th-TH')} บาท\n` +
-                  `🏦 ธนาคาร: ${userData.bankName}\n` +
-                  `🔢 เลขบัญชี: ${userData.bankAccount}\n` +
-                  `🆔 รหัสรายการ: ${withdrawId}\n\n` +
-                  `⚠️ บัญชีถูกล็อกชั่วคราวแล้ว รอแอนมินตรวจสอบและอนุมัติ`
+        // 7. เซฟลง Firebase
+        if (typeof saveDataToFirebase === 'function') {
+            await saveDataToFirebase();
+        }
+
+        // 8. ยิง Flex Message แจ้งเตือนแอดมินทาง LINE ส่วนตัว
+        const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
+        const adminWithdrawAlertFlex = {
+            "type": "flex",
+            "altText": `🚨 แจ้งถอนใหม่! คุณ ${user.name} ยอด ${withdrawAmount} บาท`,
+            "contents": {
+                "type": "bubble",
+                "styles": {
+                    "header": { "backgroundColor": "#141416" },
+                    "body": { "backgroundColor": "#1e1e22" },
+                    "footer": { "backgroundColor": "#141416" }
+                },
+                "header": {
+                    "type": "box",
+                    "layout": "vertical",
+                    "contents": [
+                        { "type": "text", "text": "🚨 มีรายการแจ้งถอนเงินใหม่! (จากหน้าเว็บ)", "weight": "bold", "color": "#ff3b47", "size": "md", "align": "center" }
+                    ]
+                },
+                "body": {
+                    "type": "box",
+                    "layout": "vertical",
+                    "spacing": "sm",
+                    "contents": [
+                        {
+                            "type": "box",
+                            "layout": "horizontal",
+                            "contents": [
+                                { "type": "text", "text": "🆔 สมาชิกเด่น:", "size": "sm", "color": "#8e8e93" },
+                                { "type": "text", "text": `ลำดับที่ ${user.memberNumber}`, "size": "sm", "color": "#ffffff", "weight": "bold", "align": "end" }
+                            ]
+                        },
+                        {
+                            "type": "box",
+                            "layout": "horizontal",
+                            "contents": [
+                                { "type": "text", "text": "👤 ชื่อลูกค้า:", "size": "sm", "color": "#8e8e93" },
+                                { "type": "text", "text": `คุณ ${user.name}`, "size": "sm", "color": "#ffffff", "weight": "bold", "align": "end" }
+                            ]
+                        },
+                        {
+                            "type": "box",
+                            "layout": "horizontal",
+                            "contents": [
+                                { "type": "text", "text": "🏦 ธนาคาร:", "size": "sm", "color": "#8e8e93" },
+                                { "type": "text", "text": `${user.bankName || "ไม่ได้ระบุ"}`, "size": "sm", "color": "#ffffff", "weight": "bold", "align": "end" }
+                            ]
+                        },
+                        {
+                            "type": "box",
+                            "layout": "horizontal",
+                            "contents": [
+                                { "type": "text", "text": "💳 เลขบัญชี:", "size": "sm", "color": "#8e8e93" },
+                                { "type": "text", "text": `${user.bankAccount || "ไม่ได้ระบุ"}`, "size": "sm", "color": "#00bfff", "weight": "bold", "align": "end" }
+                            ]
+                        },
+                        { "type": "separator", "margin": "xs", "color": "#3a3a3c" },
+                        {
+                            "type": "box",
+                            "layout": "horizontal",
+                            "contents": [
+                                { "type": "text", "text": "💰 เงินรวมในระบบ:", "size": "sm", "color": "#ffaa00", "weight": "bold" },
+                                { "type": "text", "text": `${currentBalance.toLocaleString()} บาท`, "size": "sm", "color": "#ffaa00", "weight": "bold", "align": "end" }
+                            ]
+                        },
+                        {
+                            "type": "box",
+                            "layout": "horizontal",
+                            "contents": [
+                                { "type": "text", "text": "💸 ยอดที่แจ้งถอน:", "size": "sm", "color": "#ffffff", "weight": "bold" },
+                                { "type": "text", "text": `${withdrawAmount.toLocaleString()} บาท`, "size": "md", "color": "#ff3b47", "weight": "bold", "align": "end" }
+                            ]
+                        }
+                    ]
+                },
+                "footer": {
+                    "type": "box",
+                    "layout": "vertical",
+                    "spacing": "sm",
+                    "contents": [
+                        {
+                            "type": "button",
+                            "style": "primary",
+                            "color": "#00aa5b",
+                            "height": "sm",
+                            "action": {
+                                "type": "message",
+                                "label": "✅ อนุมัติโอนเงินสำเร็จ (y)",
+                                "text": `y ${user.memberNumber}`
+                            }
+                        }
+                    ]
+                }
+            }
         };
 
-        // ยิงหา Admin LINE ID หรือ Admin Group ID (ถ้าเซ็ตไว้)
-        if (process.env.ADMIN_LINE_USER_ID) {
-            await pushLineMessage(process.env.ADMIN_LINE_USER_ID, adminMessage);
+        if (typeof axios !== 'undefined' && typeof TOKEN !== 'undefined') {
+            try {
+                await axios.post('https://api.line.me/v2/bot/message/push', {
+                    to: ADMIN_ID,
+                    messages: [adminWithdrawAlertFlex]
+                }, {
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` }
+                });
+            } catch (err) {
+                console.error("❌ ส่งแจ้งถอนเข้าแอดมินล้มเหลว:", err.message);
+            }
         }
 
-        // 6. ตอบกลับหน้าเว็บสมาชิก (ไม่ยิง LINE หาผู้ใช้เพื่อเซฟข้อความ)
         return res.json({
             success: true,
-            message: 'ส่งคำขอถอนเงินเรียบร้อยแล้ว กรุณารอแอดมินโอนยอด',
-            withdrawId: withdrawId
+            message: 'ส่งคำขอถอนเงินเรียบร้อยแล้ว กรุณารอแอดมินอนุมัติ'
         });
 
     } catch (error) {
-        console.error('Withdraw Error:', error);
+        console.error('Withdraw API Error:', error);
         return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์' });
     }
 });

@@ -7432,6 +7432,13 @@ app.get('/api/user-profile', async (req, res) => {
         if (!userId) return res.status(400).json({ success: false, message: 'ไม่พบ userId' });
 
         let user = usersWallets[userId];
+        if (!user && typeof db !== 'undefined') {
+            const userDoc = await db.collection('users').doc(userId).get();
+            if (userDoc.exists) {
+                user = userDoc.data();
+            }
+        }
+
         if (!user && typeof getLatestWallet === 'function') {
             user = await getLatestWallet(userId);
         }
@@ -7439,11 +7446,16 @@ app.get('/api/user-profile', async (req, res) => {
         if (user) {
             return res.json({
                 success: true,
-                bankAccount: user.bankAccount || user.accountNumber || 'ไม่พบข้อมูล'
+                balance: user.balance || user.credit || 0,
+                bankName: user.bankName || user.bank || user.bank_name || 'ไม่ระบุ',
+                bankAccount: user.bankAccount || user.accountNumber || user.accountNo || 'ไม่ระบุ',
+                name: user.name || user.accountName || user.fullname || 'ไม่ระบุ'
             });
         }
+
         return res.status(404).json({ success: false, message: 'ไม่พบผู้ใช้' });
     } catch (e) {
+        console.error('Error fetching user profile:', e);
         return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการดึงข้อมูล' });
     }
 });

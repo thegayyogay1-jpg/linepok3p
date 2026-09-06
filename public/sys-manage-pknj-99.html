@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POKNAJA - ระบบจัดการหลังบ้าน (Admin)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Firebase SDK (v8) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen p-4 sm:p-6">
+
+    <!-- Header -->
+    <header class="flex justify-between items-center mb-6 pb-4 border-b border-gray-800">
+        <div>
+            <h1 class="text-2xl font-black text-amber-400">POKNAJA ADMIN</h1>
+            <p class="text-xs text-gray-400">ระบบจัดการรายการฝาก-ถอน ค้างตรวจสอบ</p>
+        </div>
+        <div class="text-right">
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                ● Live Real-time
+            </span>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto space-y-8">
+
+        <!-- ตารางรายการฝากค้างตรวจสอบ (Pending Deposits) -->
+        <section class="bg-gray-800 rounded-2xl p-4 border border-gray-700 shadow-xl">
+            <h2 class="text-lg font-bold text-emerald-400 mb-4 flex items-center gap-2">
+                📥 รายการแจ้งฝาก (รอแอดมินอนุมัติ)
+            </h2>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm text-gray-300">
+                    <thead class="bg-gray-900/60 text-xs text-gray-400 uppercase border-b border-gray-700">
+                        <tr>
+                            <th class="p-3">เวลา</th>
+                            <th class="p-3">ID ผู้เล่น / ชื่อ</th>
+                            <th class="p-3">ยอดเงิน</th>
+                            <th class="p-3 text-center">สลิป</th>
+                            <th class="p-3">เหตุผลที่ไม่ผ่าน Auto</th>
+                            <th class="p-3 text-center">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="deposit-pending-list" class="divide-y divide-gray-700/50">
+                        <!-- รายการฝากจะดึงจาก Firebase มาใส่ตรงนี้ -->
+                        <tr>
+                            <td colspan="6" class="text-center py-6 text-gray-500">ไม่มีรายการฝากค้างตรวจสอบ</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- ตารางรายการถอนค้างตรวจสอบ (Pending Withdrawals) -->
+        <section class="bg-gray-800 rounded-2xl p-4 border border-gray-700 shadow-xl">
+            <h2 class="text-lg font-bold text-rose-400 mb-4 flex items-center gap-2">
+                📤 รายการแจ้งถอน (รอแอดมินโอน)
+            </h2>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm text-gray-300">
+                    <thead class="bg-gray-900/60 text-xs text-gray-400 uppercase border-b border-gray-700">
+                        <tr>
+                            <th class="p-3">เวลา</th>
+                            <th class="p-3">ID ผู้เล่น</th>
+                            <th class="p-3">ธนาคาร / เลขบัญชี / ชื่อ</th>
+                            <th class="p-3">ยอดถอน</th>
+                            <th class="p-3 text-center">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="withdraw-pending-list" class="divide-y divide-gray-700/50">
+                        <!-- รายการถอนจะดึงจาก Firebase มาใส่ตรงนี้ -->
+                        <tr>
+                            <td colspan="5" class="text-center py-6 text-gray-500">ไม่มีรายการถอนค้างตรวจสอบ</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal สำหรับเปิดดูรูปสลิปขนาดใหญ่ -->
+    <div id="image-modal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onclick="closeModal()">
+        <div class="max-w-md w-full bg-gray-800 p-2 rounded-2xl border border-gray-700">
+            <img id="modal-img" src="" alt="สลิปการโอน" class="w-full rounded-xl object-contain max-h-[80vh]">
+            <p class="text-center text-xs text-gray-400 mt-2">กดบริเวณใดก็ได้เพื่อปิด</p>
+        </div>
+    </div>
+
+    <script>
+        // ฟังก์ชันเปิดดูรูปสลิปใหญ่
+        function showImage(src) {
+            document.getElementById('modal-img').src = src;
+            document.getElementById('image-modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('image-modal').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>

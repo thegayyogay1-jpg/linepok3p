@@ -63,42 +63,45 @@
 </head>
 <body class="bg-gray-900 text-white min-h-screen pb-24">
 
-    <!-- Header: ปุ่มฝากถอนเรียงแนวตั้ง + โลโก้ 3D ขยับได้ -->
-    <header class="bg-gray-900 px-4 py-3 shadow-2xl sticky top-0 z-50 border-b border-gray-800">
-        <!-- โลโก้ POKNAJA 3D แบบขยับและสะท้อนแสง -->
-        <div class="text-center mb-2">
-            <h1 class="logo-3d-animated text-2xl font-black tracking-widest uppercase">
-                POKNAJA
-            </h1>
+    <!-- Header ปรับแก้ ID ซ้ำ + ปุ่มฝากถอนทรงเต็ม + ยอดเครดิตตัวใหญ่เด่น -->
+<header class="bg-gray-900 px-4 py-3 shadow-2xl sticky top-0 z-50 border-b border-gray-800">
+    <!-- โลโก้ POKNAJA 3D -->
+    <div class="text-center mb-2">
+        <h1 class="logo-3d-animated text-2xl font-black tracking-widest uppercase">
+            POKNAJA
+        </h1>
+    </div>
+
+    <!-- ส่วนปุ่มฝาก-ถอน และ ข้อมูลผู้ใช้ -->
+    <div class="flex justify-between items-center gap-2">
+        
+        <!-- ฝั่งซ้าย: ปุ่มฝาก และ ปุ่มถอน (ขยายเต็มกว้าง สไตล์กลมมนทรงนูน) -->
+        <div class="flex flex-col gap-2 w-32">
+            <a href="https://liff.line.me/2011387264-5A3dDh8M" class="flex items-center justify-center gap-1.5 py-2 px-4 bg-gradient-to-r from-emerald-600 to-green-500 hover:from-emerald-500 hover:to-green-400 text-white font-bold text-base rounded-2xl shadow-lg border border-green-400/40 transition-all transform active:scale-95 no-underline">
+                <span>📥</span> ฝาก
+            </a>
+            <a href="https://liff.line.me/2011387264-NTNwr9uN" class="flex items-center justify-center gap-1.5 py-2 px-4 bg-gradient-to-r from-red-600 to-rose-500 hover:from-red-500 hover:to-rose-400 text-white font-bold text-base rounded-2xl shadow-lg border border-red-400/40 transition-all transform active:scale-95 no-underline">
+                <span>📤</span> ถอน
+            </a>
         </div>
 
-        <!-- ส่วนปุ่มฝาก-ถอน และ ข้อมูลผู้ใช้ -->
-        <div class="flex justify-between items-center">
+        <!-- ฝั่งขวา: ID และ ยอดเครดิตคงเหลือ (จัดทรงตามภาพตัวอย่าง) -->
+        <div class="text-right space-y-1">
+            <!-- ซ่อนคำว่า ID: ใน HTML ออก เพื่อไม่ให้ซ้อนกับค่าที่ดึงมาจาก JS -->
+            <div class="text-gray-200 text-sm font-semibold">
+                <span id="user-id" class="text-white font-extrabold">-</span> 
+                [<span id="user-name" class="text-amber-400 font-bold">กำลังโหลด...</span>]
+            </div>
             
-            <!-- ฝั่งซ้าย: ปุ่มฝาก และ ปุ่มถอน -->
-            <div class="flex flex-col gap-2 w-28">
-                <a href="https://liff.line.me/2011387264-5A3dDh8M" class="flex items-center justify-center gap-1.5 py-1.5 px-3 bg-gradient-to-r from-emerald-600 to-green-500 hover:from-emerald-500 hover:to-green-400 text-white font-bold text-sm rounded-xl shadow-lg border border-green-400/30 transition-all transform active:scale-95 no-underline">
-                    <span class="text-base">📥</span> ฝาก
-                </a>
-                <a href="https://liff.line.me/2011387264-NTNwr9uN" class="flex items-center justify-center gap-1.5 py-1.5 px-3 bg-gradient-to-r from-red-600 to-rose-500 hover:from-red-500 hover:to-rose-400 text-white font-bold text-sm rounded-xl shadow-lg border border-red-400/30 transition-all transform active:scale-95 no-underline">
-                    <span class="text-base">📤</span> ถอน
-                </a>
+            <!-- ยอดเงินเครดิตตัวใหญ่เด่นชัด -->
+            <div class="text-gray-300 text-sm font-medium">
+                <span>เครดิต : </span>
+                <span id="user-balance" class="text-emerald-400 font-black text-2xl drop-shadow-[0_0_10px_rgba(52,211,153,0.4)] ml-1">0 ฿</span>
             </div>
-
-            <!-- ฝั่งขวา: ID และ ยอดเครดิตคงเหลือ -->
-            <div class="text-right space-y-1">
-                <div class="text-gray-200 text-sm font-semibold">
-                    ID: <span id="user-id" class="text-white font-extrabold">-</span> 
-                    [<span id="user-name" class="text-amber-400 font-bold">กำลังโหลด...</span>]
-                </div>
-                <div class="text-gray-300 text-sm font-medium flex items-center justify-end gap-1">
-                    <span>เครดิต :</span>
-                    <span id="user-balance" class="text-emerald-400 font-black text-lg drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]">0 ฿</span>
-                </div>
-            </div>
-
         </div>
-    </header>
+
+    </div>
+</header>
 
     <main class="max-w-xl mx-auto p-2 sm:p-4 space-y-4">
         

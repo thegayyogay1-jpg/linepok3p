@@ -102,6 +102,30 @@
 
     </div>
 </header>
+    
+<!-- 📺 โซนหน้าต่างถ่ายทอดสด (Live Stream) -->
+    <div id="live-container" class="max-w-xl mx-auto my-3 px-2 hidden">
+        <div class="bg-gray-800 rounded-2xl overflow-hidden border border-amber-500/40 shadow-2xl">
+            <!-- แถบสถานะการถ่ายทอดสด -->
+            <div class="bg-gray-900/90 px-3 py-1.5 flex justify-between items-center border-b border-gray-700">
+                <span class="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+                    <span class="relative flex h-2.5 w-2.5">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                    </span>
+                    ถ่ายทอดสดสดจากโต๊ะ (LIVE)
+                </span>
+                <button onclick="toggleLivePlayer()" class="text-[10px] bg-gray-700 hover:bg-gray-600 px-2 py-0.5 rounded text-gray-300">
+                    ซ่อน/แสดง
+                </button>
+            </div>
+            <!-- หน้าจอ Embed วิดีโอ -->
+            <div id="live-player-box" class="relative w-full aspect-video bg-black flex items-center justify-center">
+                <iframe id="user-live-iframe" class="w-full h-full border-0" allowfullscreen="true" 
+                    allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"></iframe>
+            </div>
+        </div>
+    </div>
 
     <main class="max-w-xl mx-auto p-2 sm:p-4 space-y-4">
         
@@ -1322,5 +1346,37 @@ function toggleLoading(show, message = "กำลังประมวลผล 
 
     </div>
 </div>
+    <!-- 📍 วางสคริปต์ถ่ายทอดสดตรงนี้ (ก่อนปิด </body>) -->
+<script>
+    // ดึงลิงก์ไลฟ์สดจาก Firebase อัตโนมัติ
+    db.ref('settings/live_url').on('value', (snapshot) => {
+        const rawUrl = snapshot.val();
+        const liveContainer = document.getElementById('live-container');
+        const iframe = document.getElementById('user-live-iframe');
+
+        if (rawUrl && rawUrl.trim() !== '') {
+            let embedUrl = '';
+            if (rawUrl.includes('facebook.com')) {
+                embedUrl = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(rawUrl)}&show_text=false`;
+            } else if (rawUrl.includes('youtube.com') || rawUrl.includes('youtu.be')) {
+                const videoId = rawUrl.split('v=')[1] || rawUrl.split('/').pop();
+                embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+            } else {
+                embedUrl = rawUrl;
+            }
+            if (iframe) iframe.src = embedUrl;
+            if (liveContainer) liveContainer.classList.remove('hidden');
+        } else {
+            if (liveContainer) liveContainer.classList.add('hidden');
+            if (iframe) iframe.src = '';
+        }
+    });
+
+    // ปุ่มกด ซ่อน/แสดง จอไลฟ์สด
+    function toggleLivePlayer() {
+        const box = document.getElementById('live-player-box');
+        if (box) box.classList.toggle('hidden');
+    }
+</script>
 </body>
 </html>

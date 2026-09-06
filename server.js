@@ -7041,9 +7041,6 @@ if (event.source.type === 'user') {
     res.sendStatus(200);
 });
 
-app.get('/', (req, res) => { res.send('ระบบลงทะเบียนรันปกติ'); });
-app.use(express.static('public'));
-
 // Endpoint สำหรับรับโพยจากหน้าเว็บ LIFF
 app.get('/', (req, res) => { res.send('ระบบลงทะเบียนรันปกติ'); });
 app.use(express.static('public'));
@@ -7182,8 +7179,98 @@ app.post('/api/place-bet', async (req, res) => {
 
     res.json({ success: true, newBalance: user.balance });
 });
+const multer = require('multer');
+const upload = multer({ storage: multer.memoryStorage() }); // ตั้งค่าพักรูปไว้ใน Memory
 
+// 📌 API รับรูปสลิปจากหน้าเว็บ
+app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
+    try {
+        const { userId, amount } = req.body;
+        const slipFile = req.file;
+
+        // 1. ตรวจสอบข้อมูลเบื้องต้น
+        if (!userId || !amount || !slipFile) {
+            return res.status(400).json({ success: false, message: 'ข้อมูลไม่ครบถ้วน' });
+        }
+
+        const user = usersWallets[userId];
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลสมาชิกในระบบ' });
+        }
+
+        // 2. เตรียมส่งรูปสลิปไปตรวจสอบกับ Slip2go API
+        const FormData = require('form-data');
+        const formData = new FormData();
+        // Slip2go ใช้ key ชื่อ 'files' หรือ 'image' (ดูตามหน้าเอกสาร REST API ของ Slip2go)
+        formData.append('files', slipFile.buffer, slipFile.originalname); 
+
+        const slipResponse = await axios.post(
+            'https://connect.slip2go.com/api/verify-slip/image/info', // 👈 ใส่ URL Endpoint จากหน้า Slip2go
+            formData,
+            {
+                headers: {
+                    'Authorization': 'Bearer H7PyVya4FcYuf_X_zGAW2oq2hN2+1uSVxK_4zOGsLe8=',
+                    ...formData.getHeaders()
+                }
+            }
+        );
+
+        const slipData = slipResponse.data;
+
+        // 3. ตรวจสอบผลการเช็กสลิปจาก API
+        if (slipData.success && slipData.data) {
+            const data = slipData.data;
+            const transRef = data.transRef;         // รหัสสลิป
+            const slipAmount = Number(data.amount); // ยอดเงินในสลิป
+            const senderName = data.sender?.displayName || 'ไม่ระบุ';
+
+            // 🔍 เช็กสลิปซ้ำ
+            const isDuplicate = Object.values(slipTransactions).some(tx => tx.transRef === transRef && tx.status === 'APPROVED');
+            if (isDuplicate) {
+                return res.status(400).json({ success: false, message: 'สลิปนี้เคยถูกใช้งานไปแล้ว' });
+            }
+
+            // 🔍 เช็กยอดเงินว่าตรงกับที่แจ้งฝากไหม
+            const expectedAmount = Number(amount);
+            if (slipAmount < expectedAmount) {
+                return res.status(400).json({ success: false, message: `ยอดเงินในสลิป (${slipAmount} ฿) ไม่ตรงกับยอดที่แจ้ง (${expectedAmount} ฿)` });
+            }
+
+            // ✅ หากผ่านทุกเงื่อนไข -> ทำการปรับยอดเงินให้ออโต้
+            const txId = `TX_${Date.now()}`;
+            user.balance = (user.balance || 0) + slipAmount; // เติมเงินเข้ากระเป๋าเดิม
+
+            // บันทึกประวัติลง slipTransactions
+            slipTransactions[txId] = {
+                userId: userId,
+                memberNumber: user.memberNumber || '---',
+                amount: slipAmount,
+                transRef: transRef,
+                senderName: senderName,
+                status: 'APPROVED',
+                created_at: new Date().toLocaleString('th-TH')
+            };
+
+            // เซฟข้อมูลลง Firebase
+            await saveDataToFirebase();
+
+            console.log(`✅ [ฝากสลิปออโต้สำเร็จ] ยูสเซอร์ [${user.memberNumber || '-'}] | ยอด ${slipAmount} ฿ | เครดิตใหม่: ${user.balance} ฿`);
+
+            return res.json({
+                success: true,
+                message: 'เติมเงินสำเร็จเรียบร้อยแล้ว!',
+                newBalance: user.balance
+            });
+
+        } else {
+            return res.status(400).json({ success: false, message: 'ไม่สามารถอ่านข้อมูลจากสลิปได้ กรุณาตรวจสอบรูปถ่าย' });
+        }
+
+    } catch (error) {
+        console.error('❌ เกิดข้อผิดพลาดในการตรวจสลิป:', error.response?.data || error.message);
+        return res.status(500).json({ success: false, message: 'ระบบตรวจสลิปมีปัญหา กรุณาลองใหม่อีกครั้ง' });
+    }
+});
+app.use(express.static(__dirname));
 // ==================== [ จุดรัน Server ] ====================
 app.listen(process.env.PORT || 3000, () => { console.log('Server is running...'); });
-// เปิดทางให้เข้าถึงไฟล์รูปภาพสลิปที่เซฟไว้ในเครื่องได้ตรงๆ
-app.use(express.static(__dirname));

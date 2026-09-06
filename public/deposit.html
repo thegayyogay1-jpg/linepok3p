@@ -7,7 +7,29 @@
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; display: flex; justify-content: center; }
         .card { background: #ffffff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 400px; position: relative; }
-        h2 { text-align: center; color: #1a73e8; margin-top: 0; }
+        
+        /* 🟢 ปุ่มย้อนกลับมุมบนซ้าย */
+        .btn-back-top {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: #f0f2f5;
+            color: #333;
+            text-decoration: none;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        .btn-back-top:hover {
+            background: #e4e6eb;
+        }
+
+        h2 { text-align: center; color: #1a73e8; margin-top: 15px; }
         .step { display: none; }
         .step.active { display: block; }
         .bank-info { background: #e8f0fe; border-left: 4px solid #1a73e8; padding: 15px; border-radius: 6px; margin: 15px 0; }
@@ -52,62 +74,67 @@
             100% { transform: rotate(360deg); }
         }
         /* Custom Upload Box สไตล์ใหม่ */
-.file-upload-box {
-    border: 2px dashed #b3c5ff;
-    background-color: #f8faff;
-    border-radius: 12px;
-    padding: 25px 15px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: block;
-    margin-bottom: 15px;
-}
+        .file-upload-box {
+            border: 2px dashed #b3c5ff;
+            background-color: #f8faff;
+            border-radius: 12px;
+            padding: 25px 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: block;
+            margin-bottom: 15px;
+        }
 
-.file-upload-box:hover {
-    background-color: #f0f4ff;
-    border-color: #1a73e8;
-}
+        .file-upload-box:hover {
+            background-color: #f0f4ff;
+            border-color: #1a73e8;
+        }
 
-.upload-icon {
-    font-size: 32px;
-    color: #1a73e8;
-    margin-bottom: 8px;
-}
+        .upload-icon {
+            font-size: 32px;
+            color: #1a73e8;
+            margin-bottom: 8px;
+        }
 
-.upload-title {
-    font-size: 16px;
-    font-weight: bold;
-    color: #202124;
-    margin-bottom: 4px;
-}
+        .upload-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #202124;
+            margin-bottom: 4px;
+        }
 
-.upload-subtitle {
-    font-size: 12px;
-    color: #5f6368;
-    margin-bottom: 12px;
-}
+        .upload-subtitle {
+            font-size: 12px;
+            color: #5f6368;
+            margin-bottom: 12px;
+        }
 
-.btn-select-file {
-    display: inline-block;
-    padding: 6px 16px;
-    border: 1px solid #1a73e8;
-    color: #1a73e8;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: bold;
-    background-color: #ffffff;
-}
+        .btn-select-file {
+            display: inline-block;
+            padding: 6px 16px;
+            border: 1px solid #1a73e8;
+            color: #1a73e8;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            background-color: #ffffff;
+        }
 
-/* ซ่อน input file เดิม */
-#slipImage {
-    display: none;
-}
+        /* ซ่อน input file เดิม */
+        #slipImage {
+            display: none;
+        }
     </style>
 </head>
 <body>
 
 <div class="card">
+    <!-- 🟢 ปุ่มกลับหน้าเดิมพัน (นำทางไปหน้าแทง) -->
+    <a href="https://liff.line.me/2011387264-7B981j5N" class="btn-back-top">
+        <span>⬅️</span> กลับ
+    </a>
+
     <h2>🏦 ฝากเงินระบบออโต้</h2>
 
     <!-- Step 1: ระบุยอดเงิน -->
@@ -145,19 +172,19 @@
         <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
 
         <form id="slipForm">
-    <!-- กล่อง Upload ใหญ่กดง่าย -->
-    <label for="slipImage" class="file-upload-box">
-        <div class="upload-icon">📤</div>
-        <div class="upload-title" id="uploadTitleText">แนบสลิปยืนยันการโอน</div>
-        <div class="upload-subtitle">รองรับ JPG, PNG</div>
-        <div class="btn-select-file" id="btnFileText">เลือกรูปภาพ</div>
-    </label>
-    
-    <!-- Input File (ถูกซ่อนไว้ด้วย CSS) -->
-    <input type="file" id="slipImage" accept="image/*" required onchange="updateFileName(this)">
+            <!-- กล่อง Upload ใหญ่กดง่าย -->
+            <label for="slipImage" class="file-upload-box">
+                <div class="upload-icon">📤</div>
+                <div class="upload-title" id="uploadTitleText">แนบสลิปยืนยันการโอน</div>
+                <div class="upload-subtitle">รองรับ JPG, PNG</div>
+                <div class="btn-select-file" id="btnFileText">เลือกรูปภาพ</div>
+            </label>
+            
+            <!-- Input File (ถูกซ่อนไว้ด้วย CSS) -->
+            <input type="file" id="slipImage" accept="image/*" required onchange="updateFileName(this)">
 
-    <button type="submit" id="submitBtn">ยืนยันการแจ้งโอน</button>
-</form>
+            <button type="submit" id="submitBtn">ยืนยันการแจ้งโอน</button>
+        </form>
 
         <button type="button" onclick="goToStep1()" style="background-color: #6c757d; margin-top: 10px;">ย้อนกลับ</button>
         <a href="https://lin.ee/QwOZ9Cf" target="_blank" class="btn-admin">💬 ติดต่อแอดมิน</a>
@@ -177,7 +204,7 @@
     </div>
 </div>
     
-    <!-- ⏳ Pop-up Loading ขณะกำลังตรวจสอบสลิป -->
+<!-- ⏳ Pop-up Loading ขณะกำลังตรวจสอบสลิป -->
 <div id="loadingModal" class="modal">
     <div class="modal-content" style="padding: 40px 20px;">
         <div class="spinner"></div>
@@ -191,6 +218,14 @@
     let userId = "";
     let amountToDeposit = 0;
     let timerInterval = null;
+
+    // 🟢 URL หน้าแทงหลักของคุณ
+    const GAME_PAGE_URL = "https://liff.line.me/2011387264-7B981j5N";
+
+    // 🟢 ฟังก์ชันสำหรับปุ่ม "⬅️ กลับ" ไปยังหน้าแทง (ไม่ต้องพ่วง userId)
+function goToGamePage() {
+    window.location.href = GAME_PAGE_URL;
+}
 
     // เริ่มการทำงาน LINE LIFF
     async function initLiff() {
@@ -250,76 +285,72 @@
     }
 
     function updateFileName(input) {
-    const titleText = document.getElementById('uploadTitleText');
-    const btnText = document.getElementById('btnFileText');
-    
-    if (input.files && input.files[0]) {
-        const fileName = input.files[0].name;
-        titleText.innerText = `📄 ${fileName}`;
-        titleText.style.color = '#1a73e8';
-        btnText.innerText = 'เปลี่ยนรูปภาพ';
-    } else {
-        titleText.innerText = 'แนบสลิปยืนยันการโอน';
-        titleText.style.color = '#202124';
-        btnText.innerText = 'เลือกรูปภาพ';
+        const titleText = document.getElementById('uploadTitleText');
+        const btnText = document.getElementById('btnFileText');
+        
+        if (input.files && input.files[0]) {
+            const fileName = input.files[0].name;
+            titleText.innerText = `📄 ${fileName}`;
+            titleText.style.color = '#1a73e8';
+            btnText.innerText = 'เปลี่ยนรูปภาพ';
+        } else {
+            titleText.innerText = 'แนบสลิปยืนยันการโอน';
+            titleText.style.color = '#202124';
+            btnText.innerText = 'เลือกรูปภาพ';
+        }
     }
-}
 
     async function goToStep2() {
-    // 🔒 [จุดที่เพิ่ม] ดักจับกรณี LIFF ยังโหลด userId ไม่เสร็จ หรือเปิดนอกแอป LINE
-    if (!userId) {
-        alert('⚠️ กำลังดึงข้อมูลสมาชิก LINE กรุณารอสักครู่แล้วลองกดใหม่อีกครั้งครับ');
-        return; // หยุดการทำงาน ไม่ให้ยิง Request ไป Backend
-    }
-
-    const amtInput = document.getElementById('depositAmount').value;
-    if (!amtInput || amtInput <= 0) {
-        alert('กรุณากรอกจำนวนเงินให้ถูกต้อง');
-        return;
-    }
-
-    const nextBtn = document.getElementById('nextBtn');
-    nextBtn.disabled = true;
-    nextBtn.innerText = 'กำลังตรวจสอบ...';
-
-    try {
-        // ยิงไปเช็กรายการค้าง + เริ่มนับถอยหลังที่ Backend
-        const res = await fetch('/api/deposit/create', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: userId, amount: amtInput })
-        });
-
-        const data = await res.json();
-
-        if (!data.success && data.isPendingExists) {
-            // กรณีมีรายการค้างอยู่
-            alert(`⚠️ ${data.message}\n(ยอดค้าง: ${data.pendingAmount} บาท)`);
-            amountToDeposit = data.pendingAmount;
-            document.getElementById('displayAmount').innerText = amountToDeposit;
-            startTimer(data.remainingSeconds);
-            
-            document.getElementById('step1').classList.remove('active');
-            document.getElementById('step2').classList.add('active');
-        } else if (data.success) {
-            // สร้างรายการใหม่สำเร็จ
-            amountToDeposit = amtInput;
-            document.getElementById('displayAmount').innerText = amountToDeposit;
-            startTimer(data.remainingSeconds || 300);
-
-            document.getElementById('step1').classList.remove('active');
-            document.getElementById('step2').classList.add('active');
-        } else {
-            alert(data.message || 'เกิดข้อผิดพลาดในการสร้างรายการ');
+        if (!userId) {
+            alert('⚠️ กำลังดึงข้อมูลสมาชิก LINE กรุณารอสักครู่แล้วลองกดใหม่อีกครั้งครับ');
+            return;
         }
 
-    } catch (err) {
-        alert('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
-    } finally {
-        nextBtn.disabled = false;
-        nextBtn.innerText = 'ถัดไป (รับเลขบัญชี)';
+        const amtInput = document.getElementById('depositAmount').value;
+        if (!amtInput || amtInput <= 0) {
+            alert('กรุณากรอกจำนวนเงินให้ถูกต้อง');
+            return;
+        }
+
+        const nextBtn = document.getElementById('nextBtn');
+        nextBtn.disabled = true;
+        nextBtn.innerText = 'กำลังตรวจสอบ...';
+
+        try {
+            const res = await fetch('/api/deposit/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: userId, amount: amtInput })
+            });
+
+            const data = await res.json();
+
+            if (!data.success && data.isPendingExists) {
+                alert(`⚠️ ${data.message}\n(ยอดค้าง: ${data.pendingAmount} บาท)`);
+                amountToDeposit = data.pendingAmount;
+                document.getElementById('displayAmount').innerText = amountToDeposit;
+                startTimer(data.remainingSeconds);
+                
+                document.getElementById('step1').classList.remove('active');
+                document.getElementById('step2').classList.add('active');
+            } else if (data.success) {
+                amountToDeposit = amtInput;
+                document.getElementById('displayAmount').innerText = amountToDeposit;
+                startTimer(data.remainingSeconds || 300);
+
+                document.getElementById('step1').classList.remove('active');
+                document.getElementById('step2').classList.add('active');
+            } else {
+                alert(data.message || 'เกิดข้อผิดพลาดในการสร้างรายการ');
+            }
+
+        } catch (err) {
+            alert('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
+        } finally {
+            nextBtn.disabled = false;
+            nextBtn.innerText = 'ถัดไป (รับเลขบัญชี)';
+        }
     }
-}
 
     function goToStep1() {
         clearInterval(timerInterval);
@@ -335,58 +366,55 @@
 
     // ส่งไฟล์สลิปไป Backend
     document.getElementById('slipForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
+        e.preventDefault();
 
-    if (!userId) {
-        alert('ไม่พบข้อมูลสมาชิก LINE กรุณาเปิดผ่าน LINE อีกครั้ง');
-        return;
-    }
-
-    const slipFile = document.getElementById('slipImage').files[0];
-    const formData = new FormData();
-    formData.append('userId', userId);
-    formData.append('amount', amountToDeposit);
-    formData.append('slipImage', slipFile);
-
-    const submitBtn = document.getElementById('submitBtn');
-    const statusMsg = document.getElementById('statusMessage');
-    const loadingModal = document.getElementById('loadingModal');
-
-    // 🔒 ล็อกปุ่ม + แสดง Pop-up หมุนรอ
-    submitBtn.disabled = true;
-    loadingModal.style.display = 'flex';
-    statusMsg.innerText = '';
-
-    try {
-        const response = await fetch('/api/upload-slip', {
-            method: 'POST',
-            body: formData
-        });
-
-        const result = await response.json();
-
-        // 🔓 ปิด Pop-up หมุนรอเมื่อได้รับคำตอบจากเซิร์ฟเวอร์
-        loadingModal.style.display = 'none';
-
-        if (result.success) {
-            clearInterval(timerInterval);
-            
-            // แสดง Pop-up สำเร็จ
-            document.getElementById('modalMessage').innerText = `เติมเงินสำเร็จ: +${amountToDeposit} บาท\nยอดเงินคงเหลือใหม่: ${result.newBalance} บาท`;
-            document.getElementById('successModal').style.display = 'flex';
-
-        } else {
-            statusMsg.style.color = 'red';
-            statusMsg.innerText = `❌ ${result.message}`;
+        if (!userId) {
+            alert('ไม่พบข้อมูลสมาชิก LINE กรุณาเปิดผ่าน LINE อีกครั้ง');
+            return;
         }
-    } catch (err) {
-        loadingModal.style.display = 'none';
-        statusMsg.style.color = 'red';
-        statusMsg.innerText = '❌ เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์';
-    } finally {
-        submitBtn.disabled = false;
-    }
-});
+
+        const slipFile = document.getElementById('slipImage').files[0];
+        const formData = new FormData();
+        formData.append('userId', userId);
+        formData.append('amount', amountToDeposit);
+        formData.append('slipImage', slipFile);
+
+        const submitBtn = document.getElementById('submitBtn');
+        const statusMsg = document.getElementById('statusMessage');
+        const loadingModal = document.getElementById('loadingModal');
+
+        submitBtn.disabled = true;
+        loadingModal.style.display = 'flex';
+        statusMsg.innerText = '';
+
+        try {
+            const response = await fetch('/api/upload-slip', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            loadingModal.style.display = 'none';
+
+            if (result.success) {
+                clearInterval(timerInterval);
+                
+                document.getElementById('modalMessage').innerText = `เติมเงินสำเร็จ: +${amountToDeposit} บาท\nยอดเงินคงเหลือใหม่: ${result.newBalance} บาท`;
+                document.getElementById('successModal').style.display = 'flex';
+
+            } else {
+                statusMsg.style.color = 'red';
+                statusMsg.innerText = `❌ ${result.message}`;
+            }
+        } catch (err) {
+            loadingModal.style.display = 'none';
+            statusMsg.style.color = 'red';
+            statusMsg.innerText = '❌ เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์';
+        } finally {
+            submitBtn.disabled = false;
+        }
+    });
 </script>
 
 </body>

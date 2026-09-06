@@ -103,7 +103,7 @@
     </div>
 </header>
     
-<!-- 📺 โซนหน้าต่างถ่ายทอดสด (เว้นแถบด้านล่างให้กดเปิดเสียง Facebook ได้) -->
+<!-- 📺 โซนหน้าต่างถ่ายทอดสด (ระบบกัน Pause แบบ Double Tap Unmute) -->
 <div id="live-container" class="max-w-xl mx-auto my-3 px-2 hidden">
     <div class="bg-gray-800 rounded-2xl overflow-hidden border border-amber-500/40 shadow-2xl">
         <!-- แถบสถานะการถ่ายทอดสด -->
@@ -123,12 +123,17 @@
         <!-- หน้าจอ Embed วิดีโอ -->
         <div id="live-player-box" class="relative w-full h-[600px] bg-black overflow-hidden flex items-center justify-center">
             
-            <!-- 🛑 แผ่นใสกันกด Pause (เจาะเว้นพื้นที่แถบด้านล่างสุด 50px ไว้ให้กดปุ่มลำโพงเปิดเสียง Facebook) -->
-            <div class="absolute inset-0 z-10 bg-transparent pointer-events-auto [clip-path:polygon(0_0,_100%_0,_100%_calc(100%-50px),_0_calc(100%-50px))]"></div>
+            <!-- 🛑 แผ่นใสอัจฉริยะ (ดักจับการแตะครั้งแรก เพื่อเปิดทางให้กดเปิดเสียงได้โดยวิดีโอไม่หยุด) -->
+            <div id="touch-guard" onclick="handleFirstTouch()" class="absolute inset-0 z-10 bg-transparent cursor-pointer">
+                <!-- คำแนะนำสั้นๆ ลอยเตือน (จะหายไปเมื่อเริ่มแตะ) -->
+                <div id="guard-hint" class="absolute top-2 left-1/2 -translate-x-1/2 bg-black/70 text-amber-400 text-[11px] px-3 py-1 rounded-full pointer-events-none transition-opacity">
+                    👆 แตะ 1 ครั้งเพื่อเปิดเมนูเสียง
+                </div>
+            </div>
 
             <!-- iframe ถ่ายทอดสด -->
             <iframe id="user-live-iframe" 
-                class="w-full h-full border-0 transform scale-90 origin-center" 
+                class="w-full h-full border-0 transform scale-90 origin-center pointer-events-auto" 
                 allowfullscreen="true" 
                 allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share">
             </iframe>
@@ -1357,7 +1362,7 @@ function toggleLoading(show, message = "กำลังประมวลผล 
 </div>
     <!-- 📍 วางสคริปต์ถ่ายทอดสดตรงนี้ (ก่อนปิด </body>) -->
 <script>
-   let currentLiveUrl = '';
+   let unlockTimer = null;
 
 // ดึงลิงก์ไลฟ์สดจาก Firebase
 db.ref('settings/live_url').on('value', (snapshot) => {
@@ -1382,6 +1387,27 @@ db.ref('settings/live_url').on('value', (snapshot) => {
         if (iframe) iframe.src = '';
     }
 });
+
+// ฟังก์ชันการจัดการเมื่อสมาชิกแตะหน้าจอครั้งแรก
+function handleFirstTouch() {
+    const guard = document.getElementById('touch-guard');
+    const hint = document.getElementById('guard-hint');
+    
+    if (!guard) return;
+
+    // 1. ปิดการทำงานของแผ่นใสชั่วคราว (pointer-events = none) เพื่อให้การแตะครั้งต่อไปทะลุไปถึง Facebook
+    guard.style.pointerEvents = 'none';
+    if (hint) hint.style.opacity = '0';
+
+    // 2. ล้างเวลาเดิม (ถ้ามี)
+    if (unlockTimer) clearTimeout(unlockTimer);
+
+    // 3. ปล่อยให้สมาชิกกดเปิดเสียงได้เป็นเวลา 4 วินาที หลังจากนั้นจะดึงแผ่นใสกลับมาล็อกกันกด Pause เหมือนเดิม
+    unlockTimer = setTimeout(() => {
+        guard.style.pointerEvents = 'auto';
+        if (hint) hint.style.opacity = '1';
+    }, 4000);
+}
 
 function toggleLivePlayer() {
     const box = document.getElementById('live-player-box');

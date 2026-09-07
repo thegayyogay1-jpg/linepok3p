@@ -6028,35 +6028,51 @@ if (userMsg === 'c') {
 
     // ♠️ 2.1 ดึงโพยป๊อกเด้ง (แตกโพยเป็นรายขา -> รวมยอดตามเลขขา)
     if (myPokdengBets && myPokdengBets.length > 0) {
-        // ใช้ Object เก็บข้อมูลแยกตามเลขขา เช่น legMap["1"], legMap["2"]
+        // ใช้ Object เก็บข้อมูลแยกตามเลขขา เช่น legMap["1"], legMap["จ1"]
         const legMap = {};
 
         myPokdengBets.forEach((bet) => {
-            // ดึงรายการขาจากการแทงรอบนี้ (รองรับทั้ง Array และ Number/String)
+            // เช็กว่าเป็นฝั่งเจ้ามือหรือไม่
+            const isDealerBet = (bet.betType && (bet.betType.startsWith('จ') || bet.betType === 'รจ')) || 
+                                (typeof bet.detail === 'string' && bet.detail.includes('เจ้ามือ'));
+
+            // ดึงรายการขาจากการแทงรอบนี้
             let legs = [];
             if (Array.isArray(bet.legs)) {
                 legs = bet.legs;
             } else if (bet.leg !== undefined) {
                 legs = [bet.leg];
             } else if (typeof bet.detail === 'string') {
-                // ดึงตัวเลขจากข้อความ เช่น "แทงขา [1, 2, 3]"
+                // ดึงตัวเลขจากข้อความ เช่น "แทงขา [1, 2, 3]" หรือ "เจ้ามือสู้ขา [1, 2, 3]"
                 const match = bet.detail.match(/\[(.*?)\]/);
                 if (match && match[1]) {
                     legs = match[1].split(',').map(s => s.trim());
                 }
             }
 
+            // ถ้าหาขาไม่พบ แต่มี betType เช่น "จ1" หรือ "จ" ให้ดึงขาจาก betType
+            if (legs.length === 0 && bet.betType) {
+                const cleanType = bet.betType.replace('จ', '').replace('รจ', '');
+                legs = cleanType ? cleanType.split('') : ["จ"];
+            }
+
             // คำนวณยอดเงินต่อขา
             const totalBetAmt = Number(bet.actualBet || bet.amount || 0);
             const betPerLeg = legs.length > 0 ? (totalBetAmt / legs.length) : totalBetAmt;
 
-            // ถ้าหาขาไม่พบ ให้จัดเข้ากลุ่มทั่วไป
+            // ถ้าหาขาไม่พบจริงๆ ให้จัดเข้ากลุ่มทั่วไป
             if (legs.length === 0) {
                 legs = ["ทั่วไป"];
             }
 
             legs.forEach((legKey) => {
-                const keyStr = String(legKey);
+                let keyStr = String(legKey);
+
+                // 🟢 ถ้าเป็นฝั่งเจ้ามือ ให้เติม "จ" นำหน้า keyStr เพื่อไม่ให้สับสนกับขาผู้เล่น
+                if (isDealerBet && !keyStr.startsWith('จ') && keyStr !== "ทั่วไป") {
+                    keyStr = `จ${keyStr}`;
+                }
+
                 if (!legMap[keyStr]) {
                     legMap[keyStr] = {
                         amounts: [],
@@ -6075,9 +6091,12 @@ if (userMsg === 'c') {
             });
         });
 
-        // เรียงลำดับขา (1, 2, 3...) แล้วนำมาสร้าง Flex Text
+        // เรียงลำดับขา (ขาผู้เล่น 1, 2... ขึ้นก่อน ตามด้วย ขาเจ้ามือ จ1, จ2...)
         const sortedLegs = Object.keys(legMap).sort((a, b) => {
-            const numA = parseInt(a), numB = parseInt(b);
+            const isDealerA = a.startsWith('จ'), isDealerB = b.startsWith('จ');
+            if (isDealerA !== isDealerB) return isDealerA ? 1 : -1;
+
+            const numA = parseInt(a.replace('จ', '')), numB = parseInt(b.replace('จ', ''));
             if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
             return a.localeCompare(b);
         });
@@ -6090,31 +6109,31 @@ if (userMsg === 'c') {
                 ? `(${data.amounts.join('+')}) = ${data.totalAmount.toLocaleString()} บาท` 
                 : `${data.totalAmount.toLocaleString()} บาท`;
             
-let label = "";
+            let label = "";
 
-// 1. เช็กว่าเป็นฝั่งเจ้ามือ (เช็กจาก legKey ที่ขึ้นต้นด้วย จ หรือ รจ หรือ dealer)
-if (typeof legKey === 'string' && (legKey.startsWith('จ') || legKey.startsWith('รจ') || legKey === 'dealer')) {
-    const subLeg = legKey.replace('จ', '').replace('รจ', '');
-    if (subLeg) {
-        // กรณีระบุขา เช่น จ123 หรือ จ1 -> แสดงเลขขาเจ้ามือที่สู้
-        const formattedLegs = subLeg.split('').join(', ');
-        label = `เจ้ามือสู้ขา ${formattedLegs}`;
-    } else {
-        // กรณี จ หรือ รจ เฉยๆ -> แสดงเจ้ามือ
-        label = `เจ้ามือ`;
-    }
-} 
-// 2. ถ้าเป็นตัวเลขขาผู้เล่นปกติ เช่น 1, 2, 3
-else if (!isNaN(parseInt(legKey))) {
-    label = `ขา ${legKey}`;
-} 
-// 3. กรณีอื่นๆ
-else {
-    label = legKey;
-}
+            // 1. เช็กว่าเป็นฝั่งเจ้ามือ
+            if (typeof legKey === 'string' && (legKey.startsWith('จ') || legKey.startsWith('รจ') || legKey === 'dealer')) {
+                const subLeg = legKey.replace('จ', '').replace('รจ', '');
+                if (subLeg) {
+                    // กรณีระบุขา เช่น จ1 -> แสดงเลขขาเจ้ามือที่สู้
+                    const formattedLegs = subLeg.split('').join(', ');
+                    label = `เจ้ามือสู้ขา ${formattedLegs}`;
+                } else {
+                    // กรณี จ หรือ รจ เฉยๆ -> แสดงเจ้ามือ
+                    label = `เจ้ามือ`;
+                }
+            } 
+            // 2. ถ้าเป็นตัวเลขขาผู้เล่นปกติ เช่น 1, 2, 3
+            else if (!isNaN(parseInt(legKey))) {
+                label = `ขา ${legKey}`;
+            } 
+            // 3. กรณีอื่นๆ
+            else {
+                label = legKey;
+            }
 
-let betText = `${itemNo++}. ♠️${label} : ${historyText}`;
-
+            let betText = `${itemNo++}. ♠️${label} : ${historyText}`;
+    
             if (data.drawStatus) {
                 betText += ` 🃏 (จั่ว)`;
             }

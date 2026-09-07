@@ -4931,7 +4931,38 @@ const userTotalWinLoss = pokdengWinLoss + hiloNetWinLoss;
                  console.error(`❌ เกิดข้อผิดพลาดในการคิดเงินของ uId ${uId}:`, error);
             }    
         } // ปิดลูป for (let uId in roundBets)
-            
+
+            // =========================================================================
+// 🚀 บันทึกผลกลางลง Firebase
+// =========================================================================
+try {
+    const dices = Array.isArray(tempHiloDices) ? tempHiloDices : [];
+    const hiloSum = dices.reduce((a, b) => Number(a) + Number(b), 0);
+    
+    let hiloType = 'ต่ำ';
+    if (dices.length === 3 && dices[0] == dices[1] && dices[1] == dices[2] && dices[0] !== undefined) {
+        hiloType = 'ตอง ' + dices[0];
+    } else if (hiloSum === 11) {
+        hiloType = '11 ไฮโล';
+    } else if (hiloSum >= 12) {
+        hiloType = 'สูง';
+    }
+
+    await db.ref('currentRoundResult').set({
+        round: currentRound,
+        dealer: tempDealerResult || null,
+        dealerPoint: tempDealerResult ? tempDealerResult.point : 0,
+        dealerDeng: tempDealerResult ? tempDealerResult.deng : 1,
+        legs: tempRoomResults || [],
+        hiloDices: dices,
+        hiloSum: hiloSum,
+        hiloType: hiloType,
+        userSummaries: tempUserSummaries, // 👈 ส่ง Object ที่สมบูรณ์จากลูปขึ้น Firebase
+        timestamp: Date.now()
+    });
+} catch (err) {
+    console.error("❌ Save currentRoundResult Error:", err);
+}
             // 🛡️ เซฟลง Firebase แบบปลอดภัย หาก DB กระตุก บอทจะไม่ค้างและยังส่ง Flex สรุปยอดได้ปกติ
         try {
             await saveDataToFirebase();

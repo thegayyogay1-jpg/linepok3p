@@ -4911,35 +4911,20 @@ const userTotalWinLoss = pokdengWinLoss + hiloNetWinLoss;
         // =========================================================================
         // 🚀 [ย้ายมาวางตรงนี้] บันทึกผลกลางลง Firebase (ทำงานแค่ครั้งเดียวต่อรอบ)
         // =========================================================================
-      try {
-    // 1. ตรวจสอบให้แน่ใจว่า dices เป็น Array เสมอ
+      // ในฝั่ง Node.js ตอนสรุปผลรอบการเล่น
+try {
     const dices = Array.isArray(tempHiloDices) ? tempHiloDices : [];
+    const hiloSum = dices.reduce((a, b) => Number(a) + Number(b), 0);
     
-    // คำนวณผลรวมเต๋าแบบปลอดภัย
-    let hiloSum = 0;
-    if (dices.length > 0) {
-        hiloSum = dices.reduce((a, b) => Number(a) + Number(b), 0);
-    }
-
-    // เช็คออกตอง
     let hiloType = 'ต่ำ';
-    const isTriple = dices.length === 3 && dices[0] == dices[1] && dices[1] == dices[2];
-
-    if (isTriple && dices[0] !== undefined) {
+    if (dices.length === 3 && dices[0] == dices[1] && dices[1] == dices[2] && dices[0] !== undefined) {
         hiloType = 'ตอง ' + dices[0];
     } else if (hiloSum === 11) {
         hiloType = '11 ไฮโล';
     } else if (hiloSum >= 12) {
         hiloType = 'สูง';
-    } else {
-        hiloType = 'ต่ำ';
     }
 
-    // 2. ดึงค่าเจ้ามือแบบปลอดภัย (ไม่ใช้ ?. เพื่อป้องกัน Node.js เวอร์ชันเก่าพัง)
-    const dPoint = (tempDealerResult && tempDealerResult.point !== undefined) ? tempDealerResult.point : 0;
-    const dDeng = (tempDealerResult && tempDealerResult.deng !== undefined) ? tempDealerResult.deng : 1;
-
-    // 3. บันทึกลง Firebase
     await db.ref('currentRoundResult').set({
         round: currentRound,
         dealer: tempDealerResult || null,

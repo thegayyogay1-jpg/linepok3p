@@ -7529,6 +7529,13 @@ app.get('/api/user-profile', async (req, res) => {
         return res.status(500).json({ success: false, message: e.message });
     }
 });
+
+// วางไว้ในไฟล์หลัก backend เพื่อซิงก์ Firebase เข้า RAM
+db.ref('system_data/usersWallets').on('value', (snapshot) => {
+    if (snapshot.exists()) {
+        usersWallets = snapshot.val();
+    }
+});
 // ==========================================
 // API: แจ้งถอนเงินผ่านหน้าเว็บ (ปรับแก้ไขการซิงก์ข้อมูลลง Firebase และ RAM ให้ตรงกัน)
 // ==========================================

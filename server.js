@@ -5221,85 +5221,26 @@ global.currentReplyFlex = {
 }
         
 // ==================== [ 10. ระบบคู่มือ: คำสั่งสมาชิก (คส), กติกา (กต) และ บัญชี (บช) ] ====================
-if (userMsg === 'คส' || userMsg === 'กต' || userMsg === 'บช' || userMsg === '/บช') {
-    replyText = null;
-
-    if (userMsg === 'คส') {
-        replyMessage = {
-            type: 'text',
-            text: `📜 **[ คู่มือคำสั่งสำหรับสมาชิกทุกท่าน ]** 📜\n\n` +
-                  `🔹 **C** ➡️ เช็กเลขสมาชิก ยอดเครดิต และสลิปโพยค้าง + เลขบัญชี\n` +
-                  `🔹 **บช** ➡️ ดูเลขบัญชีธนาคารสำหรับเติมเงิน\n` +
-                  `🔹 **[เลขขา]-[จำนวนเงิน]** ➡️ ส่งโพยเดิมพัน (เช่น 123-100)\n` +
-                  `🔹 **รข-[จำนวนเงิน]** ➡️ แทงเหมาหมดทุกขา ขาละเท่าๆ กัน\n` +
-                  `🔹 **รจ-[จำนวนเงิน]** ➡️ แทงเจ้ามือชนผู้เล่นทุกขา ขาละเท่าๆ กัน\n` +
-                  `🔹 **R** ➡️ ขอดึงโพยคืน/ยกเลิกโพยทั้งหมดในรอบนั้น (ตอนเปิดแทง)\n` +
-                  `🔹 **[เลขขา]+** ➡️ ขอจั่วไพ่ใบที่ 3 เพิ่มเติม (เฉพาะขาผู้เล่นปกติ)\n\n` +
-                  `💡 *หมายเหตุ: ทุกคำสั่งสามารถพิมพ์ได้ทั้งตัวพิมพ์เล็กและตัวพิมพ์ใหญ่ครับ*`
-        };
-    } 
-    else if (userMsg === 'กต') {
-        replyMessage = {
-            type: 'text',
-            text: `💡 สมาชิกพิมพ์ "คส" เพื่อดูวิธีการส่งโพยและคำสั่งอื่นๆ`
-        };
-    }
-}
-    // ==================== [ คำสั่ง บช / /บช ] ====================
-if (userMsg === 'บช' || userMsg === '/บช') {
-    replyText = null; // ปิดข้อความธรรมดา
-
-    // 🌟 กำหนดค่าลง global.currentReplyFlex เพื่อให้บล็อกยิงข้อความดักจับไปส่ง
-    global.currentReplyFlex = {
-        type: 'flex',
-        altText: 'กรุณาพิมพ์ฝากเงิน หรือกดปุ่มเข้าหน้าฝากเงิน',
-        contents: {
-            type: 'bubble',
-            size: 'kilo',
-            body: {
-                type: 'box',
-                layout: 'vertical',
-                backgroundColor: '#111827',
-                contents: [
-                    {
-                        type: 'text',
-                        text: '🏦 แจ้งฝากเงิน 🏦',
-                        weight: 'bold',
-                        color: '#f59e0b',
-                        size: 'md',
-                        align: 'center'
-                    },
-                    {
-                        type: 'text',
-                        text: 'กรุณาพิมพ์ ฝากตามด้วยจำนวนเงิน\nตัวอย่าง: ฝาก100\n\nหรือกดปุ่มด้านล่างเพื่อทำรายการ:',
-                        wrap: true,
-                        size: 'xs',
-                        color: '#cccccc',
-                        margin: 'md',
-                        align: 'center'
-                    }
-                ]
-            },
-            footer: {
-                type: 'box',
-                layout: 'vertical',
-                backgroundColor: '#111827',
-                contents: [
-                    {
-                        type: 'button',
-                        action: {
-                            type: 'uri',
-                            label: '💳 เข้าหน้าฝากเงิน',
-                            uri: 'https://liff.line.me/2011387264-5A3dDh8M'
-                        },
-                        style: 'primary',
-                        color: '#10b981'
-                    }
-                ]
+            else if (userMsg === 'คส' || userMsg === 'กต' || userMsg === 'บช' || userMsg === '/บช') {
+                if (userMsg === 'คส') {
+                    replyText = `📜 **[ คู่มือคำสั่งสำหรับสมาชิกทุกท่าน ]** 📜\n\n` +
+                                `🔹 **C** ➡️ เช็กเลขสมาชิก ยอดเครดิต และสลิปโพยค้าง + เลขบัญชี\n` +
+                                `🔹 **บช** ➡️ ดูเลขบัญชีธนาคารสำหรับเติมเงิน\n` +
+                                `🔹 **[เลขขา]-[จำนวนเงิน]** ➡️ ส่งโพยเดิมพัน (เช่น 123-100)\n` +
+                                `🔹 **รข-[จำนวนเงิน]** ➡️ แทงเหมาหมดทุกขา ขาละเท่าๆ กัน\n` +
+                                `🔹 **รจ-[จำนวนเงิน]** ➡️ แทงเจ้ามือชนผู้เล่นทุกขา ขาละเท่าๆ กัน\n` +
+                                `🔹 **R** ➡️ ขอดึงโพยคืน/ยกเลิกโพยทั้งหมดในรอบนั้น (ตอนเปิดแทง)\n` +
+                                `🔹 **[เลขขา]+** ➡️ ขอจั่วไพ่ใบที่ 3 เพิ่มเติม (เฉพาะขาผู้เล่นปกติ)\n\n` +
+                                `💡 *หมายเหตุ: ทุกคำสั่งสามารถพิมพ์ได้ทั้งตัวพิมพ์เล็กและตัวพิมพ์ใหญ่ครับ*`;
+                } 
+                else if (userMsg === 'กต') {
+                    replyText = `💡 สมาชิกพิมพ์ "คส" เพื่อดูวิธีการส่งโพยและคำสั่งอื่นๆ`;
+                }
+                else if (userMsg === 'บช' || userMsg === '/บช') {
+                    // 🏦 บล็อกข้อความตอบกลับเรื่องบัญชีธนาคารโดยเฉพาะ
+                    replyText = `🏦 [ กรุณา พิม ฝากจำนวนเงิน ] 🏦`;
+                }
             }
-        }
-    };
-}
                 // ==================== [ ระบบดึงโพยและผลไพ่ย้อนหลังรายบุคคล (vรอบ,mสมาชิก) ] ====================
             else if (userMsg.startsWith('v') && userMsg.includes(',m')) {
                 // แยกข้อความด้วยเครื่องหมายจุลภาค (,)
@@ -7189,66 +7130,65 @@ if (event.source.type === 'user') {
 }
 
             // ==================== [ 🚀 บล็อกยิงข้อความตอบกลับ LINE แบบสมบูรณ์ ป้องกันข้อความว่าง ] ====================
-if (replyText || global.currentReplyFlex || userMsg === 'กต' || userMsg === 'คส') {
-    try {
-        let sendMessages = [];
+            if (replyText || global.currentReplyFlex) {
+                try {
+                    let sendMessages = [];
 
-        // 🌟 1. ดักจับ Flex Message (การ์ดดำทอง / บัญชีฝากเงิน) ถ้ามีค่าให้ยัดลงถังเป็นอย่างแรก
-        if (global.currentReplyFlex) {
-            sendMessages.push(global.currentReplyFlex);
-        }
+                    // 🌟 1. ดักจับ Flex Message (การ์ดดำทอง) ถ้ามีค่าให้ยัดลงถังเป็นอย่างแรก
+                    if (global.currentReplyFlex) {
+                        sendMessages.push(global.currentReplyFlex);
+                    }
 
-        // 🌟 2. ดักจับรูปภาพ กต / คส
-        if (userMsg === 'กต') {
-            sendMessages.push(
-                {
-                    type: 'image',
-                    originalContentUrl: 'https://img2.pic.in.th/Modern-Game-Rules-Poster-for-Pokdeng.jpg', 
-                    previewImageUrl: 'https://img2.pic.in.th/Modern-Game-Rules-Poster-for-Pokdeng.jpg'     
-                },
-                {
-                    type: 'image',
-                    originalContentUrl: 'https://img2.pic.in.th/Abstract-Playful-Classroom-Rules.jpg', 
-                    previewImageUrl: 'https://img2.pic.in.th/Abstract-Playful-Classroom-Rules.jpg'     
+                    else if (userMsg === 'กต') {
+                        sendMessages.unshift({
+                            type: 'image',
+                            originalContentUrl: 'https://img2.pic.in.th/Modern-Game-Rules-Poster-for-Pokdeng.jpg', 
+                            previewImageUrl: 'https://img2.pic.in.th/Modern-Game-Rules-Poster-for-Pokdeng.jpg'     
+                        },
+                        {
+                            type: 'image',
+                            originalContentUrl: 'https://img2.pic.in.th/Abstract-Playful-Classroom-Rules.jpg', 
+                            previewImageUrl: 'https://img2.pic.in.th/Abstract-Playful-Classroom-Rules.jpg'     
+                        });
+                    }
+                    else if (userMsg === 'คส') {
+                        replyText = null;
+                        sendMessages = [{
+                            type: 'image',
+                            originalContentUrl: 'https://img1.pic.in.th/images/546565.png', 
+                            previewImageUrl: 'https://img1.pic.in.th/images/546565.png'     
+                        }];
+                    }
+                    
+                    // 🌟 3. ส่งข้อความตัวหนังสือปกติ (ดักจับ: ต้องไม่เป็นค่าว่าง ไม่เป็น null)
+                    if (replyText && replyText.trim() !== "") {
+                        sendMessages.push({ type: 'text', text: replyText });
+                    }
+
+                    // 🧼 เคลียร์ค่าแรมของ Flex ออกเพื่อป้องกันบั๊กค้างคาในระบบ
+                    global.currentReplyFlex = null; 
+                    
+                    // 🚀 4. สั่งยิงข้อมูลหา LINE (ถ้าในถังมีข้อความหรือรูปภาพ ให้ทำการส่งทันที)
+                    if (sendMessages.length > 0) {
+                        await axios.post('https://api.line.me/v2/bot/message/reply', {
+                            replyToken: replyToken,
+                            messages: sendMessages 
+                        }, {
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${TOKEN}`
+                            }
+                        });
+                    }
+                } catch (error) {
+                    console.error("❌ ส่งข้อความกลับล้มเหลว:", error.response ? error.response.data : error.message);
                 }
-            );
-        }
-        else if (userMsg === 'คส') {
-            sendMessages.push({
-                type: 'image',
-                originalContentUrl: 'https://img1.pic.in.th/images/546565.png', 
-                previewImageUrl: 'https://img1.pic.in.th/images/546565.png'     
-            });
-        }
-        
-        // 🌟 3. ส่งข้อความตัวหนังสือปกติ (ดักจับ: ต้องไม่เป็นค่าว่าง ไม่เป็น null)
-        if (replyText && replyText.trim() !== "") {
-            sendMessages.push({ type: 'text', text: replyText });
-        }
-
-        // 🧼 เคลียร์ค่าแรมของ Flex ออกเพื่อป้องกันบั๊กค้างคาในระบบ
-        global.currentReplyFlex = null; 
-        
-        // 🚀 4. สั่งยิงข้อมูลหา LINE (ถ้าในถังมีข้อความหรือรูปภาพ ให้ทำการส่งทันที)
-        if (sendMessages.length > 0) {
-            await axios.post('https://api.line.me/v2/bot/message/reply', {
-                replyToken: replyToken,
-                messages: sendMessages 
-            }, {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${TOKEN}`
-                }
-            });
-        }
-    } catch (error) {
-        console.error("❌ ส่งข้อความกลับล้มเหลว:", error.response ? error.response.data : error.message);
-    }
-}
+            }
         }
     }
     res.sendStatus(200);
 });
+
 ////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////
 

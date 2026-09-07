@@ -1272,46 +1272,46 @@ function listenToRoundResults() {
     });
 }
 
-// ดักฟังผลการแข่ง Real-time และสรุปผลตามรูปแบบตัวอย่าง
+// ฟังก์ชันดึงผลมาแสดงใน Pop-up แบบพอดีหน้าจอ
 function checkAndShowUserResult(roundData) {
     if (!roundData) return;
 
     let htmlContent = '';
 
-    // 1. ส่วนป๊อกเด้ง (แต้มเจ้ามือ + ผลขา 1 ถึง 6)
-    const dealerPoint = roundData.dealerPoint ?? (roundData.dealer ? roundData.dealer.point : 0);
-    const dealerDeng = roundData.dealerDeng ?? (roundData.dealer ? roundData.dealer.deng : 1);
+    // --- 1. ผลป๊อกเด้ง ---
+    const dealerObj = roundData.dealer || {};
+    const dealerPoint = roundData.dealerPoint !== undefined ? roundData.dealerPoint : (dealerObj.point !== undefined ? dealerObj.point : 0);
+    const dealerDeng = roundData.dealerDeng !== undefined ? roundData.dealerDeng : (dealerObj.deng !== undefined ? dealerObj.deng : 1);
+
+    // ดึงข้อมูลขา 1-6
+    const legsData = roundData.legs || roundData.players || [];
 
     htmlContent += `
-        <div class="bg-gray-900/80 p-3 rounded-2xl border border-gray-700/60 mb-3 text-center">
-            <div class="text-xs text-amber-400 font-bold mb-2">👑 เจ้ามือ : <span class="text-lg text-white font-extrabold">${dealerPoint}</span> แต้ม (${dealerDeng}เด้ง)</div>
-            
-            <!-- ตารางแสดงผลขา 1 - 6 -->
-            <div class="grid grid-cols-6 gap-1 mt-1">
+        <div class="bg-gray-900/80 p-2.5 rounded-xl border border-gray-700/60 text-center">
+            <div class="text-[11px] text-amber-400 font-bold mb-1.5">👑 เจ้ามือ : <span class="text-sm text-white font-black">${dealerPoint}</span> แต้ม (${dealerDeng}เด้ง)</div>
+            <div class="grid grid-cols-6 gap-1">
     `;
 
-    // วนลูปแสดงผลขา 1-6
     for (let i = 1; i <= 6; i++) {
-        const playerKey = `player${i}` || `ขา${i}`;
-        const pData = (roundData.players && roundData.players[i-1]) || (roundData[playerKey]) || {};
+        // ค้นหาข้อมูลขา i
+        const leg = legsData.find(l => (l.leg === i || l.id === i)) || legsData[i - 1] || {};
         
-        // กำหนดสีและข้อความตามผลแพ้ชนะ/ป๊อก
-        let bgClass = "bg-gray-700 text-gray-200";
-        let statusText = pData.point !== undefined ? `${pData.point}` : "-";
+        let bgClass = "bg-gray-700 text-gray-300";
+        let statusText = leg.point !== undefined ? `${leg.point}` : "-";
 
-        if (pData.isPok) {
+        if (leg.isPok) {
             bgClass = "bg-lime-500 text-black font-black";
-            statusText = `P${pData.point}`;
-        } else if (pData.winState === 'win' || pData.diff > 0) {
+            statusText = `P${leg.point}`;
+        } else if (leg.winState === 'win' || leg.diff > 0) {
             bgClass = "bg-emerald-600 text-white font-bold";
-        } else if (pData.winState === 'lose' || pData.diff < 0) {
+        } else if (leg.winState === 'lose' || leg.diff < 0) {
             bgClass = "bg-rose-600 text-white font-bold";
         }
 
         htmlContent += `
             <div class="flex flex-col items-center">
-                <span class="text-[9px] text-gray-400 font-bold mb-0.5">ขา ${i}</span>
-                <div class="${bgClass} w-full py-1.5 rounded-lg text-xs flex items-center justify-center shadow">
+                <span class="text-[8px] text-gray-400 font-semibold mb-0.5">ขา ${i}</span>
+                <div class="${bgClass} w-full py-1 rounded-md text-[10px] flex items-center justify-center shadow-sm">
                     ${statusText}
                 </div>
             </div>
@@ -1323,56 +1323,59 @@ function checkAndShowUserResult(roundData) {
         </div>
     `;
 
-    // 2. ส่วนผลไฮโล (ลูกเต๋า 3 ลูก + ผลรวม + ต่ำ/สูง)
-    const dices = roundData.hiloDices || (roundData.hilo ? roundData.hilo.dices : [1, 2, 3]);
-    const totalPoint = dices.reduce((a, b) => a + b, 0);
-    const hiloType = roundData.hiloType || (totalPoint >= 12 ? 'สูง' : (totalPoint <= 10 ? 'ต่ำ' : '11 ไฮโล'));
-    const hiloColor = hiloType === 'สูง' ? 'bg-rose-500' : 'bg-sky-500';
+    // --- 2. ผลไฮโล ---
+    const dices = Array.isArray(roundData.hiloDices) ? roundData.hiloDices : [];
+    const hiloSum = roundData.hiloSum !== undefined ? roundData.hiloSum : dices.reduce((a, b) => Number(a) + Number(b), 0);
+    const hiloType = roundData.hiloType || (hiloSum >= 12 ? 'สูง' : 'ต่ำ');
+    
+    let hiloColor = 'bg-sky-500';
+    if (hiloType.includes('ตอง')) hiloColor = 'bg-purple-600 border border-amber-400 text-amber-300';
+    else if (hiloType === '11 ไฮโล') hiloColor = 'bg-amber-500 text-black';
+    else if (hiloType === 'สูง') hiloColor = 'bg-rose-500';
 
     htmlContent += `
-        <div class="bg-gray-900/80 p-3 rounded-2xl border border-gray-700/60 mb-3 text-center">
-            <div class="text-[11px] font-bold text-gray-300 mb-2">🎲 ผลรางวัลไฮโล</div>
-            <div class="flex justify-center items-center gap-2 mb-2">
-                <span class="bg-white text-gray-900 font-black px-2.5 py-1 rounded-lg text-sm shadow">${dices[0] || 1}</span>
-                <span class="bg-white text-gray-900 font-black px-2.5 py-1 rounded-lg text-sm shadow">${dices[1] || 2}</span>
-                <span class="bg-white text-gray-900 font-black px-2.5 py-1 rounded-lg text-sm shadow">${dices[2] || 3}</span>
+        <div class="bg-gray-900/80 p-2.5 rounded-xl border border-gray-700/60 text-center">
+            <div class="text-[10px] font-bold text-gray-300 mb-1">🎲 ผลรางวัลไฮโล</div>
+            <div class="flex justify-center items-center gap-1.5 mb-1.5">
+                <span class="bg-white text-gray-900 font-black px-2 py-0.5 rounded-md text-xs shadow-sm">${dices[0] ?? '-'}</span>
+                <span class="bg-white text-gray-900 font-black px-2 py-0.5 rounded-md text-xs shadow-sm">${dices[1] ?? '-'}</span>
+                <span class="bg-white text-gray-900 font-black px-2 py-0.5 rounded-md text-xs shadow-sm">${dices[2] ?? '-'}</span>
             </div>
-            <div class="flex justify-center gap-2 text-xs font-bold">
-                <span class="bg-gray-800 text-amber-300 px-3 py-1 rounded-md border border-gray-700">${totalPoint} แต้ม</span>
-                <span class="${hiloColor} text-white px-3 py-1 rounded-md shadow">${hiloType}</span>
+            <div class="flex justify-center gap-1.5 text-[10px] font-bold">
+                <span class="bg-gray-800 text-amber-300 px-2 py-0.5 rounded border border-gray-700">${hiloSum} แต้ม</span>
+                <span class="${hiloColor} text-white px-2 py-0.5 rounded shadow-sm">${hiloType}</span>
             </div>
         </div>
     `;
 
-    // 3. ส่วนสรุปยอดได้เสียรายบุคคลของผู้เล่นปัจจุบัน
-    const myPokProfit = roundData.myPokProfit || 0;
-    const myHiloProfit = roundData.myHiloProfit || 0;
-    const totalProfit = myPokProfit + myHiloProfit;
-    const currentCredit = roundData.userCredit || 0;
+    // --- 3. สรุปยอดได้เสียรายบุคคล ---
+    const userSummary = (roundData.userSummaries && currentUserId) ? roundData.userSummaries[currentUserId] : null;
+    const pokProfit = userSummary ? (userSummary.pokProfit || 0) : (roundData.myPokProfit || 0);
+    const hiloProfit = userSummary ? (userSummary.hiloProfit || 0) : (roundData.myHiloProfit || 0);
+    const totalProfit = pokProfit + hiloProfit;
+    const credit = userSummary ? (userSummary.credit || 0) : (roundData.userCredit || 0);
 
     const totalColor = totalProfit >= 0 ? 'text-emerald-400' : 'text-rose-400';
     const totalSign = totalProfit >= 0 ? '+' : '';
 
     htmlContent += `
-        <div class="bg-gray-900/90 p-3 rounded-2xl border border-amber-500/30 text-left space-y-1">
-            <div class="text-xs font-bold text-amber-400 border-b border-gray-800 pb-1 mb-1.5 flex justify-between">
-                <span>สรุปผลได้เสียรอบนี้</span>
-            </div>
-            <div class="flex justify-between text-xs text-gray-300">
+        <div class="bg-gray-900/90 p-2.5 rounded-xl border border-amber-500/30 text-left space-y-0.5">
+            <div class="text-[10px] font-bold text-amber-400 border-b border-gray-800 pb-1 mb-1">สรุปผลได้เสียรอบนี้</div>
+            <div class="flex justify-between text-[11px] text-gray-300">
                 <span>🎴 ป๊อกเด้ง:</span>
-                <span class="${myPokProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'} font-bold">${myPokProfit >= 0 ? '+' : ''}${myPokProfit} บาท</span>
+                <span class="${pokProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'} font-bold">${pokProfit >= 0 ? '+' : ''}${pokProfit} บาท</span>
             </div>
-            <div class="flex justify-between text-xs text-gray-300">
+            <div class="flex justify-between text-[11px] text-gray-300">
                 <span>🎲 ไฮโล:</span>
-                <span class="${myHiloProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'} font-bold">${myHiloProfit >= 0 ? '+' : ''}${myHiloProfit} บาท</span>
+                <span class="${hiloProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'} font-bold">${hiloProfit >= 0 ? '+' : ''}${hiloProfit} บาท</span>
             </div>
-            <div class="flex justify-between text-xs border-t border-gray-800 pt-1.5 mt-1">
+            <div class="flex justify-between text-[11px] border-t border-gray-800 pt-1 mt-1">
                 <span class="font-bold text-white">• ยอดสุทธิรวม:</span>
-                <span class="${totalColor} font-black text-sm">${totalSign}${totalProfit} บาท</span>
+                <span class="${totalColor} font-black text-xs">${totalSign}${totalProfit} บาท</span>
             </div>
-            <div class="flex justify-between text-xs text-gray-400">
+            <div class="flex justify-between text-[10px] text-gray-400">
                 <span>• เครดิตคงเหลือ:</span>
-                <span class="text-amber-300 font-bold">${currentCredit} บ.</span>
+                <span class="text-amber-300 font-bold">${credit} บ.</span>
             </div>
         </div>
     `;
@@ -1400,35 +1403,35 @@ function closeRoundResultModal() {
     window.onload = initLIFF;
     selectChip(50);
 </script>
-    <!-- 🏆 Pop-up สรุปผลการแทงประจำรอบ (เด้งเมื่อแอดมินส่งคำสั่ง ok) -->
-<div id="round-result-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4 transition-all duration-300">
-    <div class="bg-gray-800 border border-gray-700/80 p-6 rounded-3xl flex flex-col items-center gap-3 max-w-xs w-full text-center shadow-2xl relative overflow-hidden transform transition-all duration-300 scale-95" id="result-card">
+    <!-- 🏆 Pop-up สรุปผลการแข่งขัน (ปรับขนาดกระชับ ไม่ต้องเลื่อน Scrollbar) -->
+<div id="round-result-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-3 transition-all duration-300">
+    <div class="bg-gray-800 border border-gray-700/80 p-4 rounded-2xl flex flex-col items-center gap-2 max-w-sm w-full text-center shadow-2xl relative overflow-hidden transform transition-all scale-95" id="result-card">
         
         <!-- แสงเรืองด้านหลัง -->
-        <div id="result-glow" class="absolute -top-10 -left-10 w-40 h-40 bg-yellow-500/20 rounded-full blur-3xl pointer-events-none"></div>
+        <div id="result-glow" class="absolute -top-10 -left-10 w-32 h-32 bg-yellow-500/20 rounded-full blur-2xl pointer-events-none"></div>
 
-        <!-- ไอคอนแสดงสถานะ -->
-        <div id="result-icon" class="text-6xl transform animate-bounce my-1">
+        <!-- ไอคอนถ้วยรางวัล (ย่อขนาดลง) -->
+        <div id="result-icon" class="text-3xl my-0.5">
             🏆
         </div>
 
         <!-- หัวข้อรอบ -->
-        <div class="text-xs text-yellow-400 font-bold uppercase tracking-widest" id="result-round-title">
+        <div class="text-[10px] text-yellow-400 font-bold uppercase tracking-widest leading-none" id="result-round-title">
             สรุปผลรอบที่ #0
         </div>
 
         <!-- ข้อความสรุป -->
-        <div class="text-xl font-black text-white" id="result-headline">
+        <div class="text-base font-black text-white leading-tight" id="result-headline">
             สรุปผลการแข่งขัน
         </div>
 
-        <!-- รายละเอียดไพ่/ไฮโลที่ออกในรอบนั้น -->
-        <div id="result-details" class="text-xs text-gray-300 bg-gray-700/40 border border-gray-600/40 rounded-xl p-2.5 w-full max-h-48 overflow-y-auto text-left space-y-1 my-1">
+        <!-- รายละเอียดไพ่/ไฮโล/ยอดเงิน (ลบ Scrollbar ออก ให้พอดีการแสดงผล) -->
+        <div id="result-details" class="w-full text-left space-y-2 my-1">
             <!-- ข้อมูลจะถูกใส่ผ่าน JS -->
         </div>
 
         <!-- ปุ่มปิด -->
-        <button onclick="closeRoundResultModal()" class="w-full py-2.5 mt-1 bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-gray-950 font-black text-sm rounded-xl shadow-lg active:scale-95 transition-all">
+        <button onclick="closeRoundResultModal()" class="w-full py-2 bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-gray-950 font-black text-xs rounded-xl shadow-lg active:scale-95 transition-all mt-1">
             รับทราบ / ปิด
         </button>
     </div>

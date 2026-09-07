@@ -298,7 +298,7 @@ db.ref('system_data/withdrawQueue').on('value', (snapshot) => {
 
     // เช็กว่ามีข้อมูลในคิวถอนหรือไม่
     if (!data || (Array.isArray(data) && data.length === 0)) {
-        list.innerHTML = '<tr><td colspan="3" class="text-center py-6 text-gray-500">ไม่มีรายการถอนค้าง</td></tr>';
+        list.innerHTML = '<tr><td colspan="4" class="text-center py-6 text-gray-500">ไม่มีรายการถอนค้าง</td></tr>';
         document.getElementById('withdraw-count').innerText = '0';
         return;
     }

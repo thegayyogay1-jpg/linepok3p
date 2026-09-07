@@ -7224,7 +7224,6 @@ app.post('/api/place-bet', async (req, res) => {
 });
 
 // 1. นำเข้า Libraries
-const express = require('express');
 const multer = require('multer');
 const upload = multer({ storage: multer.memoryStorage() });
 const app = express();

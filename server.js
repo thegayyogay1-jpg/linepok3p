@@ -4948,18 +4948,34 @@ try {
         hiloType = 'สูง';
     }
 
-    await db.ref('currentRoundResult').set({
-        round: currentRound,
+    // 🛡️ ดึงแต้มเจ้ามือ ป้องกัน undefined
+    const dealerPointValue = tempDealerResult 
+        ? (tempDealerResult.point ?? tempDealerResult.score ?? 0) 
+        : 0;
+
+    const dealerDengValue = tempDealerResult 
+        ? (tempDealerResult.deng ?? tempDealerResult.mult ?? 1) 
+        : 1;
+
+    // 📦 สร้าง Payload
+    const rawPayload = {
+        round: currentRound || 0,
         dealer: tempDealerResult || null,
-        dealerPoint: tempDealerResult ? tempDealerResult.point : 0,
-        dealerDeng: tempDealerResult ? tempDealerResult.deng : 1,
+        dealerPoint: dealerPointValue,
+        dealerDeng: dealerDengValue,
         legs: tempRoomResults || [],
         hiloDices: dices,
         hiloSum: hiloSum,
         hiloType: hiloType,
-        userSummaries: tempUserSummaries, // 👈 ส่ง Object ที่สมบูรณ์จากลูปขึ้น Firebase
+        userSummaries: tempUserSummaries || {},
         timestamp: Date.now()
-    });
+    };
+
+    // 🧼 แปลงเป็น Clean JSON เพื่อลบทุก field ที่เป็น undefined ออกจาก Object
+    const safePayload = JSON.parse(JSON.stringify(rawPayload));
+
+    await db.ref('currentRoundResult').set(safePayload);
+    console.log("✅ บันทึก currentRoundResult ลง Firebase สำเร็จ!");
 } catch (err) {
     console.error("❌ Save currentRoundResult Error:", err);
 }

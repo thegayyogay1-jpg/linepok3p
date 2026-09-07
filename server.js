@@ -7222,8 +7222,15 @@ app.post('/api/place-bet', async (req, res) => {
 
     res.json({ success: true, newBalance: user.balance });
 });
+
+// 1. นำเข้า Libraries
+const express = require('express');
 const multer = require('multer');
-const upload = multer({ storage: multer.memoryStorage() }); // ตั้งค่าพักรูปไว้ใน Memory
+const upload = multer({ storage: multer.memoryStorage() });
+const app = express();
+
+// 2. Middleware ต่างๆ (เช่น express.json(), cors)
+app.use(express.json());
 
 // 📌 API รับรูปสลิปจากหน้าเว็บ (บันทึกลง Firebase เพื่อแสดงบนหน้าเว็บแอดมิน)
 app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
@@ -7713,6 +7720,13 @@ app.post('/api/admin/approve-deposit', async (req, res) => {
         console.error('Approve Deposit Error:', error);
         return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการอนุมัติ' });
     }
+});
+// ----------------------------------------------------
+// 5. สั่งให้ Server รัน (app.listen) อยู่ท้ายสุดเสมอ
+// ----------------------------------------------------
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
 });
 
 app.use(express.static(__dirname));

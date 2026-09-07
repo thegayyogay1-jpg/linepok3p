@@ -6089,7 +6089,20 @@ if (userMsg === 'c') {
                 ? `(${data.amounts.join('+')}) = ${data.totalAmount.toLocaleString()} บาท` 
                 : `${data.totalAmount.toLocaleString()} บาท`;
 
-            const label = isNaN(parseInt(legKey)) ? legKey : `ขา ${legKey}`;
+            // 🟢 ปรับการสร้าง label ให้ตรวจจับฝั่งเจ้ามือชัดเจน
+            let label = "";
+            
+            if (legKey.startsWith('จ') || legKey === 'dealer' || legKey === 'รจ') {
+                // ถ้าระบุขาเจ้ามือ เช่น จ1, จ123 ให้แสดงเลขขาเจ้ามือ หรือถ้า จ เฉยๆ ให้แสดง เจ้ามือ
+                const subLeg = legKey.replace('จ', '').replace('รจ', '');
+                label = subLeg ? `เจ้ามือสู้ขา ${subLeg}` : `เจ้ามือ`;
+            } else if (!isNaN(parseInt(legKey))) {
+                // ถ้าเป็นตัวเลขขาผู้เล่นปกติ เช่น 1, 2, 3
+                label = `ขา ${legKey}`;
+            } else {
+                // กรณีอื่นๆ (ถ้ามี)
+                label = legKey;
+            }
             let betText = `${itemNo++}. ♠️${label} : ${historyText}`;
 
             if (data.drawStatus) {

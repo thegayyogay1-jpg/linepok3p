@@ -4948,19 +4948,31 @@ try {
         hiloType = 'สูง';
     }
 
-    // 🟢 [ปรับแก้] ดึงแต้มโดยยึด twoCards (2 ใบ) เป็นหลักก่อน
-    const formattedLegs = (tempRoomResults || []).map((leg, index) => {
-        if (!leg) return { legIndex: index + 1, point: "-", deng: 1 };
+    // 🟢 [แก้ไขจุดนี้] รองรับทั้ง Array และ Object ป้องกัน Error .map is not a function
+    let legsArray = [];
+    if (Array.isArray(tempRoomResults)) {
+        legsArray = tempRoomResults;
+    } else if (tempRoomResults && typeof tempRoomResults === 'object') {
+        legsArray = Object.values(tempRoomResults);
+    }
+
+    const formattedLegs = legsArray.map((leg, index) => {
+        if (!leg || typeof leg !== 'object') {
+            return { legIndex: index + 1, point: "-", deng: 1 };
+        }
         
-        // สลับเอา twoCards ขึ้นก่อน threeCards
-        const activeCards = leg.twoCards || leg.threeCards || {};
+        // ยึด twoCards (2 ใบ) เป็นหลักตามที่ต้องการ
+        const twoCards = leg.twoCards || {};
+        const threeCards = leg.threeCards || {};
+        const activeCards = (twoCards && twoCards.score !== undefined) ? twoCards : threeCards;
+        
         const pointVal = activeCards.score !== undefined ? activeCards.score : (leg.point ?? "-");
         const dengVal = activeCards.mult !== undefined ? activeCards.mult : (leg.deng ?? 1);
 
         return {
             ...leg,
             legIndex: leg.leg || (index + 1),
-            point: pointVal, // 👈 ได้แต้มของไพ่ 2 ใบก่อนเสมอ
+            point: pointVal, // 👈 แปะ point ให้อยู่ชั้นนอกสุด
             deng: dengVal
         };
     });

@@ -462,6 +462,7 @@ async function processPokDengBet(userId, betText) {
             actualBet: bet.actualBet,
             holdCost: (bet.actualBet * maxHandMultiplier),
             maxMultiplier: maxHandMultiplier,
+            isDealer: bet.type.startsWith('จ') || bet.type === 'รจ', // 🟢 เพิ่ม Flag บอกว่าเป็นโพยเจ้ามือ
             time: new Date().toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok' }),
             source: 'web'
         });
@@ -6089,21 +6090,30 @@ if (userMsg === 'c') {
                 ? `(${data.amounts.join('+')}) = ${data.totalAmount.toLocaleString()} บาท` 
                 : `${data.totalAmount.toLocaleString()} บาท`;
 
-            // 🟢 ปรับการสร้าง label ให้ตรวจจับฝั่งเจ้ามือชัดเจน
             let label = "";
-            
-            if (legKey.startsWith('จ') || legKey === 'dealer' || legKey === 'รจ') {
-                // ถ้าระบุขาเจ้ามือ เช่น จ1, จ123 ให้แสดงเลขขาเจ้ามือ หรือถ้า จ เฉยๆ ให้แสดง เจ้ามือ
-                const subLeg = legKey.replace('จ', '').replace('รจ', '');
-                label = subLeg ? `เจ้ามือสู้ขา ${subLeg}` : `เจ้ามือ`;
-            } else if (!isNaN(parseInt(legKey))) {
-                // ถ้าเป็นตัวเลขขาผู้เล่นปกติ เช่น 1, 2, 3
-                label = `ขา ${legKey}`;
-            } else {
-                // กรณีอื่นๆ (ถ้ามี)
-                label = legKey;
-            }
-            let betText = `${itemNo++}. ♠️${label} : ${historyText}`;
+
+// 1. เช็กว่าเป็นฝั่งเจ้ามือ (เช็กจาก legKey ที่ขึ้นต้นด้วย จ/รจ หรือ flag isDealer)
+if (legKey.startsWith('จ') || legKey === 'dealer' || legKey === 'รจ' || (typeof bet !== 'undefined' && bet.isDealer)) {
+    const subLeg = legKey.replace('จ', '').replace('รจ', '');
+    if (subLeg) {
+        // กรณีระบุขา เช่น จ123 หรือ จ1 -> แสดงเลขขาเจ้ามือที่สู้
+        const formattedLegs = subLeg.split('').join(', ');
+        label = `เจ้ามือสู้ขา ${formattedLegs}`;
+    } else {
+        // กรณี จ หรือ รจ เฉยๆ -> แสดงเจ้ามือ
+        label = `เจ้ามือ`;
+    }
+} 
+// 2. ถ้าเป็นตัวเลขขาผู้เล่นปกติ เช่น 1, 2, 3
+else if (!isNaN(parseInt(legKey))) {
+    label = `ขา ${legKey}`;
+} 
+// 3. กรณีอื่นๆ
+else {
+    label = legKey;
+}
+
+let betText = `${itemNo++}. ♠️${label} : ${historyText}`;
 
             if (data.drawStatus) {
                 betText += ` 🃏 (จั่ว)`;

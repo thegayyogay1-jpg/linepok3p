@@ -1280,7 +1280,68 @@ function toggleLoading(show, message = "กำลังประมวลผล 
             document.getElementById('tab-pok').className = 'flex-1 py-2 text-sm font-bold rounded-md text-gray-400';
         }
     }
+    
+// Variable กันเด้งซ้ำรอบเดิม
+let lastNotifiedRound = 0;
 
+// ฟังผลการแข่ง Real-time จาก Firebase เมื่อแอดมินส่ง ok
+function listenToRoundResults() {
+    db.ref('currentRoundResult').on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (!data || !data.round) return;
+
+        // ถ้าเป็นรอบใหม่
+        if (data.round > lastNotifiedRound && currentUserId) {
+            lastNotifiedRound = data.round;
+            checkAndShowUserResult(data);
+        }
+    });
+}
+
+// เช็ครายการแทงและดึงผลมาแสดง
+function checkAndShowUserResult(roundData) {
+    let detailHtml = '';
+    const pokListRaw = Array.isArray(localPokBets) ? localPokBets : (localPokBets ? Object.values(localPokBets) : []);
+    const hiloListRaw = Array.isArray(localHiloBets) ? localHiloBets : (localHiloBets ? Object.values(localHiloBets) : []);
+
+    // ถ้าไม่มีรายการแทงเลย ไม่ต้องเด้ง Pop-up
+    if (pokListRaw.length === 0 && hiloListRaw.length === 0) return;
+
+    // 1. ถ้ามีแทงป๊อกเด้ง
+    if (pokListRaw.length > 0 && roundData.dealer) {
+        detailHtml += `<div class="font-bold text-yellow-400 border-b border-gray-600 pb-0.5 mb-1">🎴 ผลป๊อกเด้ง</div>`;
+        detailHtml += `<div class="text-[11px] text-gray-300 mb-1">เจ้ามือ: <span class="text-amber-300 font-bold">${roundData.dealer.point || 0} แต้ม (${roundData.dealer.deng || 1}เด้ง)</span></div>`;
+    }
+
+    // 2. ถ้ามีแทงไฮโล
+    if (hiloListRaw.length > 0 && roundData.hiloDices) {
+        const dices = roundData.hiloDices;
+        const sum = dices.reduce((a, b) => a + b, 0);
+        detailHtml += `<div class="font-bold text-purple-400 border-b border-gray-600 pb-0.5 my-1">🎲 ผลไฮโล</div>`;
+        detailHtml += `<div class="text-[11px] text-gray-300">ลูกเต๋า: <span class="text-amber-300 font-bold">${dices.join(' - ')}</span> (รวม ${sum} แต้ม)</div>`;
+    }
+
+    showResultModal(roundData.round, detailHtml);
+}
+
+// แสดง Pop-up Modal
+function showResultModal(roundNum, detailHtml) {
+    const modal = document.getElementById('round-result-modal');
+    const title = document.getElementById('result-round-title');
+    const detailsContainer = document.getElementById('result-details');
+    
+    if (title) title.innerText = `สรุปผลรอบที่ #${roundNum}`;
+    if (detailsContainer) detailsContainer.innerHTML = detailHtml || 'สรุปผลเรียบร้อยแล้ว';
+
+    if (modal) modal.classList.remove('hidden');
+}
+
+// ปิด Pop-up Modal
+function closeRoundResultModal() {
+    const modal = document.getElementById('round-result-modal');
+    if (modal) modal.classList.add('hidden');
+}
+    
     window.onload = initLIFF;
     selectChip(50);
 

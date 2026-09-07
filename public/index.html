@@ -1305,11 +1305,16 @@ function listenToRoundResults() {
 function checkAndShowUserResult(roundData) {
     if (!roundData) return;
 
+    // 🔍 เพิ่ม Log เพื่อดูค่าจริงที่ดึงได้
+    console.log("👉 currentUserId คือ:", typeof currentUserId !== 'undefined' ? currentUserId : 'ไม่มีตัวแปรนี้');
+    console.log("👉 ข้อมูล userSummaries ใน Firebase ทั้งหมด:", roundData.userSummaries);
     // ดึงสรุปยอดรายบุคคลจาก roundData.userSummaries หรือข้อมูลผู้เล่นปัจจุบัน
     let userSummary = null;
     if (roundData.userSummaries && typeof currentUserId !== 'undefined' && currentUserId) {
         userSummary = roundData.userSummaries[currentUserId];
     }
+
+    console.log("👉 ผลลัพธ์ userSummary ที่หาเจอ:", userSummary);
 
     let detailHtml = '';
 

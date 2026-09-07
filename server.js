@@ -4670,7 +4670,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
                                 }
                                 // 🛡️ ถ้าค้ำประกันมาแค่ 2 เด้ง ชนะเท่าไหร่ก็โดนแคปไม่เกิน 2 เด้ง (ถ้าค้ำครบ 3 เด้งปล่อยได้เต็ม)
                                 if (bet.maxMultiplier && bet.maxMultiplier < 3 && winMultiplier > bet.maxMultiplier) {
-                                    userTotalWinLoss = bet.maxMultiplier;
+                                    winMultiplier = bet.maxMultiplier;
                                  }
                                 
                                 let grossWin = betPrice * winMultiplier; // กำไรเต็มก่อนหัก
@@ -4907,7 +4907,22 @@ const userTotalWinLoss = pokdengWinLoss + hiloNetWinLoss;
                  console.error(`❌ เกิดข้อผิดพลาดในการคิดเงินของ uId ${uId}:`, error);
             }    
         } // ปิดลูป for (let uId in roundBets)
-
+        
+        // =========================================================================
+        // 🚀 [ย้ายมาวางตรงนี้] บันทึกผลกลางลง Firebase (ทำงานแค่ครั้งเดียวต่อรอบ)
+        // =========================================================================
+        try {
+            await db.ref('currentRoundResult').set({
+                round: currentRound,
+                dealer: tempDealerResult, // ผลเจ้ามือ
+                legs: tempRoomResults,    // ผลไพ่ขา 1-6
+                hiloDices: tempHiloDices || [], // ผลไฮโล
+                timestamp: Date.now()
+            });
+        } catch (err) {
+            console.error("❌ บันทึก currentRoundResult ล้มเหลว:", err);
+        }
+            
             // 🛡️ เซฟลง Firebase แบบปลอดภัย หาก DB กระตุก บอทจะไม่ค้างและยังส่ง Flex สรุปยอดได้ปกติ
         try {
             await saveDataToFirebase();
@@ -5114,7 +5129,7 @@ global.currentReplyFlex = {
         }
     } // ปิดตัว else ของเงื่อนไขตรวจเช็กแต้มค้างคัดกรองหลัก
 }
-           // 📌 1. Log รับข้อความจากผู้ใช้
+        
 console.log('📌 [LOG] Received userMsg:', JSON.stringify(userMsg));
 
 // ==================== [ 10. ระบบคู่มือ: คำสั่งสมาชิก (คส), กติกา (กต) และ บัญชี (บช) ] ====================

@@ -4911,17 +4911,22 @@ const userTotalWinLoss = pokdengWinLoss + hiloNetWinLoss;
         // =========================================================================
         // 🚀 [ย้ายมาวางตรงนี้] บันทึกผลกลางลง Firebase (ทำงานแค่ครั้งเดียวต่อรอบ)
         // =========================================================================
-       try {
-    // 1. คำนวณผลรวมและผลลัพธ์ไฮโล (ตอง / 11 ไฮโล / สูง / ต่ำ)
-    const dices = tempHiloDices || [];
-    const hiloSum = dices.reduce((a, b) => a + b, 0);
+      try {
+    // 1. ตรวจสอบให้แน่ใจว่า dices เป็น Array เสมอ
+    const dices = Array.isArray(tempHiloDices) ? tempHiloDices : [];
+    
+    // คำนวณผลรวมเต๋าแบบปลอดภัย
+    let hiloSum = 0;
+    if (dices.length > 0) {
+        hiloSum = dices.reduce((a, b) => Number(a) + Number(b), 0);
+    }
+
+    // เช็คออกตอง
     let hiloType = 'ต่ำ';
+    const isTriple = dices.length === 3 && dices[0] == dices[1] && dices[1] == dices[2];
 
-    // เช็คว่าออกตองหรือไม่ (ลูกเต๋าทั้ง 3 ลูกหน้าเหมือนกันหมด)
-    const isTriple = dices.length === 3 && dices[0] === dices[1] && dices[1] === dices[2];
-
-    if (isTriple) {
-        hiloType = `ตอง ${dices[0]}`; // เช่น "ตอง 5"
+    if (isTriple && dices[0] !== undefined) {
+        hiloType = 'ตอง ' + dices[0];
     } else if (hiloSum === 11) {
         hiloType = '11 ไฮโล';
     } else if (hiloSum >= 12) {
@@ -4930,28 +4935,30 @@ const userTotalWinLoss = pokdengWinLoss + hiloNetWinLoss;
         hiloType = 'ต่ำ';
     }
 
-    // 2. บันทึกลง Firebase currentRoundResult
-    await db.ref('currentRoundResult').set({
-        round: currentRound,
-        
-        // 🎴 ผลเจ้ามือ
-        dealer: tempDealerResult,
-        dealerPoint: tempDealerResult?.point ?? 0,
-        dealerDeng: tempDealerResult?.deng ?? 1,
+    // 2. ดึงค่าเจ้ามือแบบปลอดภัย (ไม่ใช้ ?. เพื่อป้องกัน Node.js เวอร์ชันเก่าพัง)
+    const dPoint = (tempDealerResult && tempDealerResult.point !== undefined) ? tempDealerResult.point : 0;
+    const dDeng = (tempDealerResult && tempDealerResult.deng !== undefined) ? tempDealerResult.deng : 1;
 
-        // 🎴 ผลขา 1-6
+    // 3. บันทึกลง Firebase
+    await db.ref('currentRoundResult').set({
+        round: typeof currentRound !== 'undefined' ? currentRound : 1,
+        
+        dealer: tempDealerResult || null,
+        dealerPoint: dPoint,
+        dealerDeng: dDeng,
+
         legs: tempRoomResults || [],
 
-        // 🎲 ผลไฮโล
         hiloDices: dices,
         hiloSum: hiloSum,
-        hiloType: hiloType, // จะส่งค่าเป็น "ตอง 5", "11 ไฮโล", "สูง", หรือ "ต่ำ"
+        hiloType: hiloType,
 
         timestamp: Date.now()
     });
 
     console.log("✅ บันทึก currentRoundResult สำเร็จ");
 } catch (err) {
+    // catch ป้องกันไม่ให้แครชกระทบคำสั่งอื่น
     console.error("❌ บันทึก currentRoundResult ล้มเหลว:", err);
 }
             

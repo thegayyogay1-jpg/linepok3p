@@ -165,126 +165,70 @@
         }
         const db = firebase.database();
 
-       // ฟังก์ชันแปลง Timestamp ให้เป็น เวลา/วันที่ ที่อ่านง่าย
-function formatTimestamp(timeValue) {
-    if (!timeValue) return '-';
-    
-    // ถ้าเป็น string ที่มี DEP_ ติดมาด้วย ให้แกะเอาตัวเลข timestamp ออกมา
-    let ts = timeValue;
-    if (typeof timeValue === 'string' && timeValue.includes('DEP_')) {
-        ts = Number(timeValue.replace('DEP_', ''));
-    } else if (!isNaN(timeValue)) {
-        ts = Number(timeValue);
-    }
-    
-    // ถ้าแปลงเป็นตัวเลขได้ ให้สร้าง Date object
-    if (!isNaN(ts) && ts > 1000000000000) {
-        const date = new Date(ts);
-        const day = String(date.getDate()).padStart(2, '0');
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const year = date.getFullYear() + 543; // แปลงเป็น พ.ศ. (ถ้าต้องการ ค.ศ. ให้ตัด + 543 ออก)
-        const hours = String(date.getHours()).padStart(2, '0');
-        const minutes = String(date.getMinutes()).padStart(2, '0');
-        const seconds = String(date.getSeconds()).padStart(2, '0');
-        return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
-    }
-    
-    return timeValue; // คืนค่าเดิมถ้าไม่ใช่ Timestamp
-}
+        // 2. ดึงข้อมูลรายการฝากเงินที่สแกนไม่ผ่าน (deposit_pending_reviews)
+        db.ref('deposit_pending_reviews').on('value', (snapshot) => {
+            const list = document.getElementById('deposit-pending-list');
+            const data = snapshot.val();
+            list.innerHTML = '';
 
-// ดึงข้อมูลรายการฝากรอตรวจสอบ
-db.ref('pendingDeposits').on('value', async (snapshot) => {
-    const tableBody = document.getElementById('pendingDepositTableBody') || document.querySelector('tbody');
-    const countBadge = document.querySelector('.card span') || document.querySelector('.badge');
-    
-    if (!tableBody) return;
-    
-    tableBody.innerHTML = '';
-    const data = snapshot.val();
-    
-    if (!data) {
-        tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #888; padding: 20px;">ไม่มีรายการฝากค้างตรวจสอบ</td></tr>';
-        if (countBadge) countBadge.innerText = '0';
-        return;
-    }
-
-    // 💡 ดึงข้อมูลผู้ใช้ทั้งหมดจาก system_data/usersWallets ล่วงหน้า
-    const usersSnap = await db.ref('system_data/usersWallets').once('value');
-    const usersData = usersSnap.val() || {};
-
-    let pendingCount = 0;
-    
-    Object.keys(data).forEach(key => {
-        const item = data[key];
-        
-        if (item.status && item.status.toUpperCase() === 'PENDING') {
-            pendingCount++;
-
-            // 🔍 ค้นหาข้อมูลสมาชิกใน usersWallets (หาจาก userId, memberNumber หรือ key)
-            const targetUid = item.userId || item.uid || item.memberNumber;
-            let userData = usersData[targetUid] || {};
-            
-            // ถ้าค้นหาตรงๆ ไม่เจอ ให้ลูปหาด้วย ID หรือ memberNumber
-            if (!userData.accountNo && !userData.bankAccount) {
-                const foundUser = Object.values(usersData).find(u => 
-                    String(u.memberNumber) === String(targetUid) ||
-                    String(u.userId) === String(targetUid) ||
-                    String(u.id) === String(targetUid)
-                );
-                if (foundUser) userData = foundUser;
+            if (!data) {
+                list.innerHTML = '<tr><td colspan="5" class="text-center py-6 text-gray-500">ไม่มีรายการฝากค้างตรวจสอบ</td></tr>';
+                document.getElementById('deposit-count').innerText = '0';
+                return;
             }
 
-            // อ่านข้อมูลสมาชิก
-            const memberId = userData.memberNumber || item.memberNumber || item.userId || '-';
-            const accountName = userData.name || userData.accountName || userData.displayName || item.name || 'ไม่ระบุชื่อ';
-            const bankName = userData.bankName || userData.bank || item.bankName || 'ไม่ระบุธนาคาร';
-            const accountNo = userData.accountNo || userData.bankAccount || item.accountNo || '-';
+            // 💡 ดึงข้อมูลกระเป๋าเงินสมาชิกเพื่อเอา ชื่อ, เลขสมาชิก และบัญชีธนาคาร
+            const usersSnap = await db.ref('system_data/usersWallets').once('value');
+            const usersData = usersSnap.val() || {};
 
-            // ⏰ คำนวณเวลาให้ถูกต้อง (ถ้าสร้างจาก ID DEP_1788768693791 จะใช้ตัวเลขนั้นแปลงเป็นเวลา)
-            const formattedTime = formatTimestamp(item.created_at || item.timestamp || item.id || key);
-
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td style="padding: 10px; text-align: left;">
-                    <div style="font-weight: bold; color: #fff;">คุณ ${accountName} (ID: ${memberId})</div>
-                    <div style="font-size: 11px; color: #38bdf8; font-family: monospace; margin-top: 2px;">
-                        🏦 ${bankName}: ${accountNo}
-                    </div>
-                    <div style="font-size: 10px; color: #9ca3af; margin-top: 2px;">
-                        ⏰ ${formattedTime}
+            let count = 0;
+            Object.keys(data).forEach(key => {
+                const item = data[key];
+                count++;
+                // ค้นหาผู้ใช้จาก userId หรือ memberNumber
+                const userObj = Object.values(usersData).find(u => 
+                    String(u.userId) === String(item.userId) || 
+                    String(u.memberNumber) === String(item.userId) ||
+                    String(u.memberNumber) === String(item.memberNumber)
+                ) || {};
+                // อ่านค่าข้อมูลสมาชิก
+                const name = item.name || userObj.name || userObj.displayName || 'ไม่ระบุชื่อ';
+                const memberId = item.memberNumber || userObj.memberNumber || item.userId || '-';
+                const bankName = item.bankName || userObj.bankName || userObj.bank || 'ไม่ระบุธนาคาร';
+                const accountNo = item.accountNo || item.bankAccount || userObj.accountNo || userObj.bankAccount || '-';
+                
+                list.innerHTML += `
+            <tr class="hover:bg-gray-800/40 transition">
+                <td class="p-2.5">
+                    <div class="font-bold text-white">คุณ ${name} (ID: ${memberId})</div>
+                    <div class="text-[10px] text-gray-400">⏰ เวลาแจ้งฝาก: ${item.time || item.timestamp || '-'}</div>
+                    <div class="text-[10px] text-amber-400 font-mono mt-0.5">
+                        🏦 ${bankName} : ${accountNo}
                     </div>
                 </td>
-                <td style="padding: 10px; color: #00bfff; font-weight: bold;">
-                    ${Number(item.amount || 0).toLocaleString()} บาท
-                </td>
-                <td style="padding: 10px; text-align: center;">
-                    <button onclick="showImage('${item.slipImage || item.slipUrl}')" 
-                            style="background: #27272a; color: #fbbf24; border: 1px solid #3f3f46; padding: 4px 8px; border-radius: 6px; cursor: pointer; font-size: 11px;">
+                <td class="p-2.5 font-bold text-emerald-400">${item.amount} ฿</td>
+                <td class="p-2.5 text-center">
+                    <button onclick="showImage('${item.slipUrl || item.slipImage}')" class="bg-gray-800 hover:bg-gray-700 text-amber-400 text-[10px] px-2 py-1 rounded-lg border border-gray-700">
                         🖼️ ดูสลิป
                     </button>
                 </td>
-                <td style="padding: 10px; color: #ff3b47; font-size: 12px;">
-                    ${item.reason || item.failReason || '-'}
+                <td class="p-2.5 text-red-400 font-medium text-[11px]">
+                    ${item.failReason || item.reason || 'สแกนสลิปไม่ผ่าน'}
                 </td>
-                <td style="padding: 10px; text-align: center;">
-                    <button onclick="approveDeposit('${key}', '${targetUid}', ${item.amount})" 
-                            style="background: #00aa5b; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; margin-right: 5px; font-weight: bold;">
-                        อนุมัติ
-                    </button>
-                    <button onclick="rejectDeposit('${key}')" 
-                            style="background: #ff3b47; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold;">
-                        ปฏิเสธ
-                    </button>
+                <td class="p-2.5 text-center">
+                    <div class="flex justify-center gap-1">
+                        <button onclick="approveDeposit('${key}', '${item.userId || memberId}', ${item.amount})" class="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] px-2 py-1 rounded font-bold">
+                            อนุมัติ
+                        </button>
+                        <button onclick="rejectDeposit('${key}')" class="bg-rose-600 hover:bg-rose-500 text-white text-[10px] px-2 py-1 rounded font-bold">
+                            ปฏิเสธ
+                        </button>
+                    </div>
                 </td>
-            `;
-            tableBody.appendChild(tr);
-        }
+            </tr>
+        `;
     });
-
-    if (countBadge) countBadge.innerText = pendingCount;
-    if (pendingCount === 0) {
-        tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #888; padding: 20px;">ไม่มีรายการฝากค้างตรวจสอบ</td></tr>';
-    }
+    document.getElementById('deposit-count').innerText = count;
 });
 
         // 3. ฟังก์ชันการอนุมัติฝากเงิน (เพิ่มเครดิตเข้า usersWallets อัตโนมัติ + ลบเคสค้าง)
@@ -512,56 +456,114 @@ function rejectWithdrawQueue(index, memberNumber) {
         alert('ยกเลิกรายการถอนและปลดล็อกบัญชีเรียบร้อยแล้ว');
     }
 }
-
-       // ดึงข้อมูลรายการฝากเงินรอตรวจสอบจาก Firebase
-db.ref('pendingDeposits').on('value', (snapshot) => {
-    // 1. หาตำแหน่ง tbody ของตารางรายการฝากเงินสแกนไม่ผ่าน
-    // (ลองดึงจาก id หรือเลือก tbody ตัวแรกในหน้าเว็บ)
-    const tableBody = document.getElementById('pendingDepositTableBody') || 
-                      document.querySelector('table tbody') ||
-                      document.querySelector('.card tbody');
-    const countBadge = document.querySelector('.card span') || document.querySelector('.badge');
-    if (!tableBody) {
-        console.error('❌ หาตำแหน่งตารางไม่พบ กรุณาใส่ id="pendingDepositTableBody" ที่แท็ก <tbody>');
-        return;
+        // ฟังก์ชันแปลง Timestamp ให้เป็น เวลา/วันที่ ที่อ่านง่าย
+function formatTimestamp(timeValue) {
+    if (!timeValue) return '-';
+    
+    // ถ้าเป็น string ที่มี DEP_ ติดมาด้วย ให้แกะเอาตัวเลข timestamp ออกมา
+    let ts = timeValue;
+    if (typeof timeValue === 'string' && timeValue.includes('DEP_')) {
+        ts = Number(timeValue.replace('DEP_', ''));
+    } else if (!isNaN(timeValue)) {
+        ts = Number(timeValue);
     }
+    
+    // ถ้าแปลงเป็นตัวเลขได้ ให้สร้าง Date object
+    if (!isNaN(ts) && ts > 1000000000000) {
+        const date = new Date(ts);
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear() + 543; // แปลงเป็น พ.ศ. (ถ้าต้องการ ค.ศ. ให้ตัด + 543 ออก)
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
+        return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+    }
+    
+    return timeValue; // คืนค่าเดิมถ้าไม่ใช่ Timestamp
+}
+
+       // ดึงข้อมูลรายการฝากรอตรวจสอบ
+db.ref('pendingDeposits').on('value', async (snapshot) => {
+    const tableBody = document.getElementById('pendingDepositTableBody') || document.querySelector('tbody');
+    const countBadge = document.querySelector('.card span') || document.querySelector('.badge');
+    
+    if (!tableBody) return;
+    
     tableBody.innerHTML = '';
     const data = snapshot.val();
+    
     if (!data) {
         tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #888; padding: 20px;">ไม่มีรายการฝากค้างตรวจสอบ</td></tr>';
         if (countBadge) countBadge.innerText = '0';
         return;
     }
+
+    // 💡 ดึงข้อมูลผู้ใช้ทั้งหมดจาก system_data/usersWallets ล่วงหน้า
+    const usersSnap = await db.ref('system_data/usersWallets').once('value');
+    const usersData = usersSnap.val() || {};
+
     let pendingCount = 0;
-    Object.values(data).forEach(item => {
-        // เช็คสถานะ PENDING (รองรับทั้งตัวพิมพ์เล็กและใหญ่)
+    
+    Object.keys(data).forEach(key => {
+        const item = data[key];
+        
         if (item.status && item.status.toUpperCase() === 'PENDING') {
             pendingCount++;
+
+            // 🔍 ค้นหาข้อมูลสมาชิกใน usersWallets (หาจาก userId, memberNumber หรือ key)
+            const targetUid = item.userId || item.uid || item.memberNumber;
+            let userData = usersData[targetUid] || {};
+            
+            // ถ้าค้นหาตรงๆ ไม่เจอ ให้ลูปหาด้วย ID หรือ memberNumber
+            if (!userData.accountNo && !userData.bankAccount) {
+                const foundUser = Object.values(usersData).find(u => 
+                    String(u.memberNumber) === String(targetUid) ||
+                    String(u.userId) === String(targetUid) ||
+                    String(u.id) === String(targetUid)
+                );
+                if (foundUser) userData = foundUser;
+            }
+
+            // อ่านข้อมูลสมาชิก
+            const memberId = userData.memberNumber || item.memberNumber || item.userId || '-';
+            const accountName = userData.name || userData.accountName || userData.displayName || item.name || 'ไม่ระบุชื่อ';
+            const bankName = userData.bankName || userData.bank || item.bankName || 'ไม่ระบุธนาคาร';
+            const accountNo = userData.accountNo || userData.bankAccount || item.accountNo || '-';
+
+            // ⏰ คำนวณเวลาให้ถูกต้อง (ถ้าสร้างจาก ID DEP_1788768693791 จะใช้ตัวเลขนั้นแปลงเป็นเวลา)
+            const formattedTime = formatTimestamp(item.created_at || item.timestamp || item.id || key);
+
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td style="padding: 10px;">
-                    <div>${item.created_at || '-'}</div>
-                    <small style="color: #888;">ID: ${item.id || '-'}</small>
+                <td style="padding: 10px; text-align: left;">
+                    <div style="font-weight: bold; color: #fff;">คุณ ${accountName} (ID: ${memberId})</div>
+                    <div style="font-size: 11px; color: #38bdf8; font-family: monospace; margin-top: 2px;">
+                        🏦 ${bankName}: ${accountNo}
+                    </div>
+                    <div style="font-size: 10px; color: #9ca3af; margin-top: 2px;">
+                        ⏰ ${formattedTime}
+                    </div>
                 </td>
                 <td style="padding: 10px; color: #00bfff; font-weight: bold;">
                     ${Number(item.amount || 0).toLocaleString()} บาท
                 </td>
-                <td style="padding: 10px;">
-                    <img src="${item.slipImage}" 
-                         style="width: 45px; height: 60px; object-fit: cover; border-radius: 4px; cursor: pointer; border: 1px solid #444;" 
-                         onclick="showImage('${item.slipImage}')" 
-                         title="คลิกเพื่อดูสลิปเต็ม">
+                <td style="padding: 10px; text-align: center;">
+                    <button onclick="showImage('${item.slipImage || item.slipUrl}')" 
+                            style="background: #27272a; color: #fbbf24; border: 1px solid #3f3f46; padding: 4px 8px; border-radius: 6px; cursor: pointer; font-size: 11px;">
+                        🖼️ ดูสลิป
+                    </button>
                 </td>
-                <td style="padding: 10px; color: #ff3b47;">
-                    ${item.reason || '-'}
+                <td style="padding: 10px; color: #ff3b47; font-size: 12px;">
+                    ${item.reason || item.failReason || '-'}
                 </td>
-                <td style="padding: 10px;">
-                    <button onclick="approveDeposit('${item.id}', '${item.memberNumber}', ${item.amount})" 
-                            style="background: #00aa5b; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; margin-right: 5px;">
+                <td style="padding: 10px; text-align: center;">
+                    <button onclick="approveDeposit('${key}', '${targetUid}', ${item.amount})" 
+                            style="background: #00aa5b; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; margin-right: 5px; font-weight: bold;">
                         อนุมัติ
                     </button>
-                    <button onclick="rejectDeposit('${item.id}')" 
-                            style="background: #ff3b47; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">
+                    <button onclick="rejectDeposit('${key}')" 
+                            style="background: #ff3b47; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold;">
                         ปฏิเสธ
                     </button>
                 </td>
@@ -569,11 +571,8 @@ db.ref('pendingDeposits').on('value', (snapshot) => {
             tableBody.appendChild(tr);
         }
     });
-    
-    // อัปเดตตัวเลขจำนวนรายการค้างบน Badge มุมขวาบน
-    if (countBadge) {
-        countBadge.innerText = pendingCount;
-    }
+
+    if (countBadge) countBadge.innerText = pendingCount;
     if (pendingCount === 0) {
         tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #888; padding: 20px;">ไม่มีรายการฝากค้างตรวจสอบ</td></tr>';
     }

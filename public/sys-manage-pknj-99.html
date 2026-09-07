@@ -438,6 +438,7 @@ function rejectWithdrawQueue(index, memberNumber) {
     }
 }
 
+        // ดึงข้อมูลรายการฝากเงินรอตรวจสอบจาก Firebase
        db.ref('pendingDeposits').on('value', async (snapshot) => {
     const tableBody = document.getElementById('pendingDepositTableBody') || 
                       document.querySelector('table tbody') ||
@@ -476,21 +477,21 @@ function rejectWithdrawQueue(index, memberNumber) {
             const displayName = item.userName || item.name || 'ไม่ระบุชื่อ';
             const displayUserId = item.memberNumber || item.userId || '-';
 
-            // 2. 💡 ดึงข้อมูลธนาคารจากโหนด users ตาม userId หรือ memberNumber
-            let bankName = item.bank || item.bankName || '-';
-            let accountNumber = item.accountNumber || item.bankAccount || item.accNo || '-';
+            // หา LINE User ID จากวัตถุรายการฝาก (เช็กฟิลด์ userId หรือ lineId)
+            const targetUserId = item.userId || item.lineId || item.userKey;
 
-            // ถ้าใน pendingDeposits ไม่มีข้อมูลธนาคาร ให้ไปดึงจากโหนด users
-            if ((bankName === '-' || accountNumber === '-') && displayUserId !== '-') {
+            if ((bankName === '-' || accountNumber === '-') && targetUserId) {
                 try {
-                    const userSnap = await db.ref(`users/${displayUserId}`).once('value');
-                    const userData = userSnap.val();
-                    if (userData) {
-                        bankName = userData.bank || userData.bankName || bankName;
-                        accountNumber = userData.accountNumber || userData.bankAccount || userData.accNo || accountNumber;
+                    // ดึงตรงจากโหนด usersWallets/{LINE_USER_ID}
+                    const walletSnap = await db.ref(`usersWallets/${targetUserId}`).once('value');
+                    const walletData = walletSnap.val();
+                    
+                    if (walletData) {
+                        bankName = walletData.bankName || bankName;
+                        accountNumber = walletData.bankAccount || accountNumber;
                     }
                 } catch (e) {
-                    console.log("ไม่สามารถดึงข้อมูลโหนด users ได้:", e);
+                    console.error("❌ ไม่สามารถดึงข้อมูลจาก usersWallets ได้:", e);
                 }
             }
 

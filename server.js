@@ -7225,6 +7225,23 @@ app.post('/api/place-bet', async (req, res) => {
     res.json({ success: true, newBalance: user.balance });
 });
 
+// 📌 API สำหรับขอรับเลขบัญชี (สร้างรายการฝาก)
+app.post('/api/deposit/create', async (req, res) => {
+    try {
+        const { userId, amount } = req.body;
+
+        // ตอบกลับข้อมูลเพื่อให้ Frontend ย้ายไปหน้า Step 2
+        return res.json({
+            success: true,
+            amount: Number(amount),
+            remainingSeconds: 300 // เวลาถอยหลัง 5 นาที
+        });
+    } catch (error) {
+        console.error('Create Deposit Error:', error);
+        return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดบนเซิร์ฟเวอร์' });
+    }
+});
+
 // 📌 API รับรูปสลิปจากหน้าเว็บ (บันทึกลง Firebase เพื่อแสดงบนหน้าเว็บแอดมิน)
 app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
     try {

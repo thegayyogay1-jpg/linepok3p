@@ -1712,14 +1712,34 @@ function checkAndShowUserResult(roundData) {
     const dealerObj = roundData.dealer || {};
     const dealerPoint = roundData.dealerPoint !== undefined ? roundData.dealerPoint : (dealerObj.point !== undefined ? dealerObj.point : 0);
     const dealerDeng = roundData.dealerDeng !== undefined ? roundData.dealerDeng : (dealerObj.deng !== undefined ? dealerObj.deng : 1);
+    const dealerIsPok = roundData.dealerIsPok !== undefined ? roundData.dealerIsPok : (dealerObj.isPok || false);
     const legsData = roundData.legs || roundData.players || [];
+    
+    // 🟢 1. แปลงแต้มเจ้ามือโดยใช้ formatPokScore
+    const dealerScoreText = formatPokScore(dealerPoint, dealerIsPok, dealerDeng);
+    
+    // 🟢 2. จัดรูปแบบข้อความแสดงผล (ถ้าเป็น P9/P8 หรือไพ่พิเศษ ให้โชว์คำอ่านสวยงาม)
+    let dealerDisplayText = "";
+    if (dealerScoreText.startsWith("P9")) {
+        dealerDisplayText = "ป๊อก 9";
+    } else if (dealerScoreText.startsWith("P8")) {
+        dealerDisplayText = "ป๊อก 8";
+    } else if (["ตอง", "สเตทฟลัช", "เรียง", "เซียน", "7.5"].includes(dealerScoreText)) {
+        dealerDisplayText = dealerScoreText;
+    } else {
+        const dpNum = Number(dealerPoint);
+        const realDealerPoint = dpNum >= 100 ? Math.floor(dpNum / 100) : (dpNum % 10);
+        dealerDisplayText = `${realDealerPoint} แต้ม`;
+    }
+
+    const dealerDengText = Number(dealerDeng) > 1 ? `<span class="text-xs text-amber-300 font-normal">(${dealerDeng}เด้ง)</span>` : '';
 
     detailHtml += `
         <div class="bg-gray-900/90 p-3 rounded-2xl border border-gray-700/80 text-center shadow-lg mb-3">
             <div class="flex flex-col items-center justify-center mb-2">
                 <span class="text-xl leading-none mb-0.5">👑</span>
                 <span class="text-[11px] text-amber-400 font-bold uppercase tracking-wider">เจ้ามือ</span>
-                <span class="text-lg text-white font-black drop-shadow">${dealerPoint} แต้ม <span class="text-xs text-amber-300 font-normal">(${dealerDeng}เด้ง)</span></span>
+                <span class="text-lg text-white font-black drop-shadow">${dealerDisplayText} ${dealerDengText}</span>
             </div>
 
             <div class="grid grid-cols-6 gap-1.5">

@@ -438,17 +438,13 @@ function rejectWithdrawQueue(index, memberNumber) {
     }
 }
 
-       // ดึงข้อมูลรายการฝากเงินรอตรวจสอบจาก Firebase
-db.ref('pendingDeposits').on('value', (snapshot) => {
+       db.ref('pendingDeposits').on('value', async (snapshot) => {
     const tableBody = document.getElementById('pendingDepositTableBody') || 
                       document.querySelector('table tbody') ||
                       document.querySelector('.card tbody');
     const countBadge = document.querySelector('.card span') || document.querySelector('.badge');
     
-    if (!tableBody) {
-        console.error('❌ หาตำแหน่งตารางไม่พบ');
-        return;
-    }
+    if (!tableBody) return;
     
     tableBody.innerHTML = '';
     const data = snapshot.val();
@@ -461,9 +457,10 @@ db.ref('pendingDeposits').on('value', (snapshot) => {
     
     let pendingCount = 0;
     
-    Object.keys(data).forEach(key => {
-        const item = data[key];
-        
+    // ดึงข้อมูลรายการฝากทั้งหมด
+    const entries = Object.entries(data);
+
+    for (const [key, item] of entries) {
         if (item.status && item.status.toUpperCase() === 'PENDING') {
             pendingCount++;
             
@@ -476,13 +473,26 @@ db.ref('pendingDeposits').on('value', (snapshot) => {
                 }
             }
 
-            // 2. ดึงชื่อผู้ใช้ และ Member ID
             const displayName = item.userName || item.name || 'ไม่ระบุชื่อ';
             const displayUserId = item.memberNumber || item.userId || '-';
 
-            // 3. 💡 ดึงข้อมูลธนาคาร และ เลขบัญชี (ดึงรองรับหลายรูปแบบ Key)
-            const bankName = item.bank || item.bankName || item.userBank || '-';
-            const accountNumber = item.accountNumber || item.bankAccount || item.accNo || item.accountNo || '-';
+            // 2. 💡 ดึงข้อมูลธนาคารจากโหนด users ตาม userId หรือ memberNumber
+            let bankName = item.bank || item.bankName || '-';
+            let accountNumber = item.accountNumber || item.bankAccount || item.accNo || '-';
+
+            // ถ้าใน pendingDeposits ไม่มีข้อมูลธนาคาร ให้ไปดึงจากโหนด users
+            if ((bankName === '-' || accountNumber === '-') && displayUserId !== '-') {
+                try {
+                    const userSnap = await db.ref(`users/${displayUserId}`).once('value');
+                    const userData = userSnap.val();
+                    if (userData) {
+                        bankName = userData.bank || userData.bankName || bankName;
+                        accountNumber = userData.accountNumber || userData.bankAccount || userData.accNo || accountNumber;
+                    }
+                } catch (e) {
+                    console.log("ไม่สามารถดึงข้อมูลโหนด users ได้:", e);
+                }
+            }
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
@@ -501,8 +511,7 @@ db.ref('pendingDeposits').on('value', (snapshot) => {
                     ${item.slipImage ? `
                         <img src="${item.slipImage}" 
                              style="width: 45px; height: 60px; object-fit: cover; border-radius: 4px; cursor: pointer; border: 1px solid #444;" 
-                             onclick="showImage('${item.slipImage}')" 
-                             title="คลิกเพื่อดูสลิปเต็ม">
+                             onclick="showImage('${item.slipImage}')">
                     ` : '<span style="color:#666;">ไม่มีสลิป</span>'}
                 </td>
                 <td style="padding: 10px; color: #ff3b47;">
@@ -521,7 +530,7 @@ db.ref('pendingDeposits').on('value', (snapshot) => {
             `;
             tableBody.appendChild(tr);
         }
-    });
+    }
 
     if (countBadge) countBadge.innerText = pendingCount;
     

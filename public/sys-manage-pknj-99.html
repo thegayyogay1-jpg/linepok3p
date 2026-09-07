@@ -177,28 +177,48 @@
                 return;
             }
 
+            // 💡 ดึงข้อมูลกระเป๋าเงินสมาชิกเพื่อเอา ชื่อ, เลขสมาชิก และบัญชีธนาคาร
+            const usersSnap = await db.ref('system_data/usersWallets').once('value');
+            const usersData = usersSnap.val() || {};
+
             let count = 0;
             Object.keys(data).forEach(key => {
                 const item = data[key];
                 count++;
+                // ค้นหาผู้ใช้จาก userId หรือ memberNumber
+                const userObj = Object.values(usersData).find(u => 
+                    String(u.userId) === String(item.userId) || 
+                    String(u.memberNumber) === String(item.userId) ||
+                    String(u.memberNumber) === String(item.memberNumber)
+                ) || {};
+        
+                // อ่านค่าข้อมูลสมาชิก
+                const name = item.name || userObj.name || userObj.displayName || 'ไม่ระบุชื่อ';
+                const memberId = item.memberNumber || userObj.memberNumber || item.userId || '-';
+                const bankName = item.bankName || userObj.bankName || userObj.bank || 'ไม่ระบุธนาคาร';
+                const accountNo = item.accountNo || item.bankAccount || userObj.accountNo || userObj.bankAccount || '-';
+                
                 list.innerHTML += `
                     <tr class="hover:bg-gray-800/40 transition">
                         <td class="p-2.5">
-                            <div class="font-bold text-white">${item.userId || item.username || '-'}</div>
-                            <div class="text-[10px] text-gray-500">${item.time || item.timestamp || ''}</div>
+                            <div class="font-bold text-white">คุณ ${name} (ID: ${memberId})</div>
+                            <div class="text-[10px] text-gray-400">⏰ เวลาแจ้งฝาก: ${item.time || item.timestamp || '-'}</div>
+                            <div class="text-[10px] text-amber-400 font-mono mt-0.5">
+                                🏦 ${bankName} : ${accountNo}
+                            </div>
                         </td>
                         <td class="p-2.5 font-bold text-emerald-400">${item.amount} ฿</td>
                         <td class="p-2.5 text-center">
-                            <button onclick="showImage('${item.slipUrl}')" class="bg-gray-800 hover:bg-gray-700 text-amber-400 text-[10px] px-2 py-1 rounded-lg border border-gray-700">
+                            <button onclick="showImage('${item.slipUrl || item.slipImage}')" class="bg-gray-800 hover:bg-gray-700 text-amber-400 text-[10px] px-2 py-1 rounded-lg border border-gray-700">
                                 🖼️ ดูสลิป
                             </button>
                         </td>
                         <td class="p-2.5 text-red-400 font-medium text-[11px]">
-                            ${item.failReason || 'สแกนสลิปไม่ผ่าน'}
+                            ${item.failReason || item.reason || 'สแกนสลิปไม่ผ่าน'}
                         </td>
                         <td class="p-2.5 text-center">
                             <div class="flex justify-center gap-1">
-                                <button onclick="approveDeposit('${key}', '${item.userId}', ${item.amount})" class="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] px-2 py-1 rounded font-bold">
+                                <button onclick="approveDeposit('${key}', '${item.userId || memberId}', ${item.amount})" class="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] px-2 py-1 rounded font-bold">
                                     อนุมัติ
                                 </button>
                                 <button onclick="rejectDeposit('${key}')" class="bg-rose-600 hover:bg-rose-500 text-white text-[10px] px-2 py-1 rounded font-bold">
@@ -209,7 +229,7 @@
                     </tr>
                 `;
             });
-           document.getElementById('deposit-count').innerText = count;
+            document.getElementById('deposit-count').innerText = count;
         });
 
         // 3. ฟังก์ชันการอนุมัติฝากเงิน (เพิ่มเครดิตเข้า usersWallets อัตโนมัติ + ลบเคสค้าง)

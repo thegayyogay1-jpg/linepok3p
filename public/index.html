@@ -1302,27 +1302,6 @@ function listenToRoundResults() {
     });
 }
 
-// 🟢 เพิ่มฟังก์ชันแปลงแต้ม score เป็นชื่อไพ่พิเศษ และเช็กเด้งเฉพาะแต้มปกติ
-function formatPokDisplay(score, isPok, dengVal) {
-    const s = Number(score);
-    if (isNaN(s)) return score || "-";
-
-    // 1. ไพ่พิเศษ ไม่ต้องใส่ "ด" ต่อท้าย
-    if (s === 700) return "ตอง";
-    if (s === 600) return "สเตทฟลัช";
-    if (s === 500) return "เรียง";
-    if (s === 400) return "เซียน";
-
-    // 2. แต้มปกติ / ป๊อก ใส่ "ด" ต่อท้ายเมื่อมี 2 เด้งขึ้นไป
-    const dengSuffix = (Number(dengVal) > 1) ? "ด" : "";
-    if (s === 7.5) return `7.5${dengSuffix}`;
-    if (s === 900 || (isPok && s === 9)) return `P9${dengSuffix}`;
-    if (s === 800 || (isPok && s === 8)) return `P8${dengSuffix}`;
-
-    const normalPoint = isPok ? (s % 100) : (s % 10);
-    return `${normalPoint}${dengSuffix}`;
-}
-
 // 2. ประมวลผลและเปิด Pop-up แสดงข้อมูลรอบปัจจุบัน (ใช้โครงสร้างเดิมของคุณ 100%)
 function checkAndShowUserResult(roundData) {
     if (!roundData) return;
@@ -1643,38 +1622,7 @@ function closeRoundResultModal() {
         if (liveContainer) liveContainer.classList.add('hidden');
     }
 });
-    // 2. ประมวลผลและเปิด Pop-up แสดงข้อมูลรอบปัจจุบัน
-function checkAndShowUserResult(roundData) {
-    if (!roundData) return;
-
-    // ดึงสรุปยอดรายบุคคลจาก roundData.userSummaries
-    let userSummary = null;
-    if (roundData.userSummaries && typeof currentUserId !== 'undefined' && currentUserId) {
-        userSummary = roundData.userSummaries[currentUserId];
-    }
-
-    let detailHtml = '';
-
-    // --- ส่วนที่ 1: ผลป๊อกเด้ง (เจ้ามือ + ขา 1-6) ---
-    const dealerObj = roundData.dealer || {};
-    const dealerPoint = roundData.dealerPoint !== undefined ? roundData.dealerPoint : (dealerObj.point !== undefined ? dealerObj.point : 0);
-    const dealerDeng = roundData.dealerDeng !== undefined ? roundData.dealerDeng : (dealerObj.deng !== undefined ? dealerObj.deng : 1);
-    const legsData = roundData.legs || roundData.players || [];
-
-    detailHtml += `
-        <div class="bg-gray-900/90 p-3 rounded-2xl border border-gray-700/80 text-center shadow-lg mb-2.5">
-            <!-- 👑 เจ้ามือ จัดเรียงใหญ่ชัดเจน -->
-            <div class="flex flex-col items-center justify-center mb-2">
-                <span class="text-xl leading-none mb-0.5">👑</span>
-                <span class="text-[11px] text-amber-400 font-bold uppercase tracking-wider">เจ้ามือ</span>
-                <span class="text-lg text-white font-black drop-shadow">${dealerPoint} แต้ม <span class="text-xs text-amber-300 font-normal">(${dealerDeng}เด้ง)</span></span>
-            </div>
-
-            <!-- กล่องแสดงขา 1 ถึง 6 (ขยายขนาดตัวอักษรและ padding ให้เต็มตา) -->
-            <div class="grid grid-cols-6 gap-1.5">
-    `;
-
-    // 🟢 ฟังก์ชันช่วยแปลงแต้ม Score และกรองไพ่พิเศษไม่ให้ติดตัว "ด"
+    // 🟢 ฟังก์ชันช่วยแปลงแต้ม Score และกรองไพ่พิเศษไม่ให้ติดตัว "ด" (ใช้ฟังก์ชันนี้ตัวเดียวพอครับ)
 function formatPokScore(score, isPok, dengVal) {
     const s = Number(score);
     if (isNaN(s)) return score || "-";
@@ -1714,8 +1662,8 @@ function checkAndShowUserResult(roundData) {
     const dealerDeng = roundData.dealerDeng !== undefined ? roundData.dealerDeng : (dealerObj.deng !== undefined ? dealerObj.deng : 1);
     const dealerIsPok = roundData.dealerIsPok !== undefined ? roundData.dealerIsPok : (dealerObj.isPok || false);
     const legsData = roundData.legs || roundData.players || [];
-    
-    // 🟢 คำนวณข้อความแต้มเจ้ามือตรงนี้
+
+    // 🌟 คำนวณข้อความแสดงผลเจ้ามือ
     const dealerScoreText = formatPokScore(dealerPoint, dealerIsPok, dealerDeng);
     let dealerDisplayText = "";
     if (dealerScoreText.startsWith("P9")) {
@@ -1761,7 +1709,6 @@ function checkAndShowUserResult(roundData) {
             rawScore = leg.point;
         }
 
-        // แปลงแต้มและเด้ง
         const displayText = formatPokScore(rawScore, leg.isPok, dengVal);
         const numericPoint = Number(rawScore);
 
@@ -1788,7 +1735,6 @@ function checkAndShowUserResult(roundData) {
         `;
     }
 
-    // ปิด Div ของส่วนป๊อกเด้งแยกออกมาชัดเจน (ไม่ให้ซ้อน Grid)
     detailHtml += `
             </div>
         </div>

@@ -446,7 +446,7 @@ db.ref('pendingDeposits').on('value', (snapshot) => {
     const countBadge = document.querySelector('.card span') || document.querySelector('.badge');
     
     if (!tableBody) {
-        console.error('❌ หาตำแหน่งตารางไม่พบ กรุณาใส่ id="pendingDepositTableBody" ที่แท็ก <tbody>');
+        console.error('❌ หาตำแหน่งตารางไม่พบ');
         return;
     }
     
@@ -461,36 +461,40 @@ db.ref('pendingDeposits').on('value', (snapshot) => {
     
     let pendingCount = 0;
     
-    // แปลง Object ให้เป็น Array และ วนลูป
     Object.keys(data).forEach(key => {
         const item = data[key];
         
-        // เช็กสถานะ PENDING
         if (item.status && item.status.toUpperCase() === 'PENDING') {
             pendingCount++;
             
-            // 💡 แก้ไขเรื่องวันที่: ถ้าไม่มี created_at ให้แปลงจาก ID (DEP_Timestamp)
+            // 1. จัดการเรื่องวันที่
             let formattedDate = item.created_at || '-';
             if (formattedDate === '-' && item.id) {
                 const timestamp = Number(item.id.replace('DEP_', ''));
                 if (!isNaN(timestamp)) {
-                    const dateObj = new Date(timestamp);
-                    formattedDate = dateObj.toLocaleString('th-TH'); // แปลงเป็นวันที่แบบไทย
+                    formattedDate = new Date(timestamp).toLocaleString('th-TH');
                 }
             }
 
-            // 💡 ดึงชื่อผู้ใช้งาน/ID ให้ครอบคลุมทุก Key
+            // 2. ดึงชื่อผู้ใช้ และ Member ID
             const displayName = item.userName || item.name || 'ไม่ระบุชื่อ';
             const displayUserId = item.memberNumber || item.userId || '-';
 
+            // 3. 💡 ดึงข้อมูลธนาคาร และ เลขบัญชี (ดึงรองรับหลายรูปแบบ Key)
+            const bankName = item.bank || item.bankName || item.userBank || '-';
+            const accountNumber = item.accountNumber || item.bankAccount || item.accNo || item.accountNo || '-';
+
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td style="padding: 10px;">
-                    <div style="font-weight: bold; color: #fff;">${displayName}</div>
-                    <div style="font-size: 11px; color: #aaa;">ID/Member: ${displayUserId}</div>
-                    <small style="color: #888;">เวลา: ${formattedDate}</small>
+                <td style="padding: 10px; text-align: left;">
+                    <div style="font-weight: bold; color: #fff; font-size: 15px;">${displayName}</div>
+                    <div style="font-size: 12px; color: #4da6ff; margin-top: 2px;">
+                        🏦 ${bankName} : <span style="font-family: monospace; font-size: 13px; color: #fff;">${accountNumber}</span>
+                    </div>
+                    <div style="font-size: 11px; color: #aaa; margin-top: 2px;">ID/Member: ${displayUserId}</div>
+                    <small style="color: #888; font-size: 10px;">เวลา: ${formattedDate}</small>
                 </td>
-                <td style="padding: 10px; color: #00bfff; font-weight: bold;">
+                <td style="padding: 10px; color: #00bfff; font-weight: bold; font-size: 16px;">
                     ${Number(item.amount || 0).toLocaleString()} บาท
                 </td>
                 <td style="padding: 10px;">
@@ -519,9 +523,7 @@ db.ref('pendingDeposits').on('value', (snapshot) => {
         }
     });
 
-    if (countBadge) {
-        countBadge.innerText = pendingCount;
-    }
+    if (countBadge) countBadge.innerText = pendingCount;
     
     if (pendingCount === 0) {
         tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #888; padding: 20px;">ไม่มีรายการฝากค้างตรวจสอบ</td></tr>';

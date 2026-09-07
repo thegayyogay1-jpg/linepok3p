@@ -5116,10 +5116,10 @@ global.currentReplyFlex = {
 }
             
             // ==================== [ 10. ระบบคู่มือ: คำสั่งสมาชิก (คส), กติกา (กต) และ บัญชี (บช) ] ====================
-const cleanMsg = (userMsg || '').trim().toLowerCase();
+if (userMsg === 'คส' || userMsg === 'กต' || userMsg === 'บช' || userMsg === '/บช') {
+    replyText = null;
 
-if (cleanMsg === 'คส' || cleanMsg === 'กต' || cleanMsg === 'บช' || cleanMsg === '/บช') {
-    if (cleanMsg === 'คส') {
+    if (userMsg === 'คส') {
         replyMessage = {
             type: 'text',
             text: `📜 **[ คู่มือคำสั่งสำหรับสมาชิกทุกท่าน ]** 📜\n\n` +
@@ -5133,13 +5133,35 @@ if (cleanMsg === 'คส' || cleanMsg === 'กต' || cleanMsg === 'บช' || c
                   `💡 *หมายเหตุ: ทุกคำสั่งสามารถพิมพ์ได้ทั้งตัวพิมพ์เล็กและตัวพิมพ์ใหญ่ครับ*`
         };
     } 
-    else if (cleanMsg === 'กต') {
+    else if (userMsg === 'กต') {
         replyMessage = {
             type: 'text',
             text: `💡 สมาชิกพิมพ์ "คส" เพื่อดูวิธีการส่งโพยและคำสั่งอื่นๆ`
         };
     }
-    else if (cleanMsg === 'บช' || cleanMsg === '/บช') {
+    else if (userMsg === 'บช' || userMsg === '/บช') {
+        // 🌟 สร้าง bodyElements แบบเดียวกับคำสั่ง c
+        const bodyElements = [
+            {
+                type: 'text',
+                text: '🏦 แจ้งฝากเงิน 🏦',
+                weight: 'bold',
+                color: '#f59e0b',
+                size: 'md',
+                align: 'center'
+            },
+            {
+                type: 'text',
+                text: 'กรุณาพิมพ์ ฝากตามด้วยจำนวนเงิน\nตัวอย่าง: ฝาก100\n\nหรือกดปุ่มด้านล่างเพื่อทำรายการ:',
+                wrap: true,
+                size: 'xs',
+                color: '#cccccc',
+                margin: 'md',
+                align: 'center'
+            }
+        ];
+
+        // 🌟 ประกอบ Flex Message Object ให้ตรงกับแพทเทิร์นการ์ด c
         replyMessage = {
             type: 'flex',
             altText: 'กรุณาพิมพ์ฝากเงิน หรือกดปุ่มเข้าหน้าฝากเงิน',
@@ -5149,30 +5171,13 @@ if (cleanMsg === 'คส' || cleanMsg === 'กต' || cleanMsg === 'บช' || c
                 body: {
                     type: 'box',
                     layout: 'vertical',
-                    contents: [
-                        {
-                            type: 'text',
-                            text: '🏦 แจ้งฝากเงิน 🏦',
-                            weight: 'bold',
-                            color: '#f59e0b',
-                            size: 'md',
-                            align: 'center'
-                        },
-                        {
-                            type: 'text',
-                            text: 'กรุณาพิมพ์ ฝากตามด้วยจำนวนเงิน\nตัวอย่าง: ฝาก100\n\nหรือกดปุ่มด้านล่างเพื่อทำรายการ:',
-                            wrap: true,
-                            size: 'xs',
-                            color: '#cccccc',
-                            margin: 'md',
-                            align: 'center'
-                        }
-                    ],
-                    backgroundColor: '#111827'
+                    backgroundColor: '#111827',
+                    contents: bodyElements
                 },
                 footer: {
                     type: 'box',
                     layout: 'vertical',
+                    backgroundColor: '#111827',
                     contents: [
                         {
                             type: 'button',
@@ -5184,8 +5189,7 @@ if (cleanMsg === 'คส' || cleanMsg === 'กต' || cleanMsg === 'บช' || c
                             style: 'primary',
                             color: '#10b981'
                         }
-                    ],
-                    backgroundColor: '#111827'
+                    ]
                 }
             }
         };

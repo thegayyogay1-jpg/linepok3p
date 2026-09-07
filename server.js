@@ -5355,10 +5355,17 @@ global.currentReplyFlex = {
 
                         // 💡 เพิ่มเข้าคิวถอนเงิน
                         withdrawQueue.push({ 
-                            memberNumber: user.memberNumber, 
+                            memberNumber: user.memberNumber,
                             name: user.name, 
                             amount: withdrawAmount, 
-                            time: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) 
+                            time: new Date().toLocaleTimeString('th-TH', { 
+                                timeZone: 'Asia/Bangkok', 
+                                hour: '2-digit', 
+                                minute: '2-digit',
+                                hour12: false 
+                            }),
+                            bankName: user.bankName,
+                            accountNo: user.bankAccount
                         });
                         
                         await saveDataToFirebase(); // เซฟถาวรลง Firebase
@@ -7595,10 +7602,17 @@ app.post('/api/withdraw/create', async (req, res) => {
 
         // 6. เพิ่มเข้าคิวถอนเงิน (อัปเดตใน RAM ของบอท)
         const queueItem = { 
-            memberNumber: user.memberNumber, 
+            memberNumber: user.memberNumber,
             name: user.name, 
             amount: withdrawAmount, 
-            time: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) 
+            time: new Date().toLocaleTimeString('th-TH', { 
+                timeZone: 'Asia/Bangkok', 
+                hour: '2-digit', 
+                minute: '2-digit',
+                hour12: false 
+            }),
+            bankName: user.bankName,
+            accountNo: user.bankAccount
         };
 
         if (typeof withdrawQueue !== 'undefined') {

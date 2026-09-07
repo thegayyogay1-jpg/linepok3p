@@ -4576,6 +4576,7 @@ else if (userMsg === 'ok' || userMsg === 'no') {
             
             let hasAnyBet = false;
             let flexUserContents = []; // 🎨 อาเรย์สำหรับเก็บดีไซน์กล่องรายคนใน Flex Message
+            let tempUserSummaries = {}; // 👈 [เพิ่มบรรทัดนี้] สร้าง Object มารองรับเก็บข้อมูลรายบุคคล
 
             // 🎲 ดึงข้อมูลโพยไฮโลจาก Firebase / Variable (หากไม่มีให้เป็นวัตถุว่าง)
             const activeHiloBets = hiloRoundBets || {};
@@ -4916,44 +4917,20 @@ const userTotalWinLoss = pokdengWinLoss + hiloNetWinLoss;
                 let oldSign = userTotalWinLoss > 0 ? "🟢 +" : (userTotalWinLoss < 0 ? "🔴 " : "🟡 ");
                 let oldFeeNote = (isUserBettingOnDealer && userTotalWinLoss !== 0) ? " \n(หักต๋งขาเจ้ามือที่ชนะแล้ว)" : "";
                 summaryPayoutText += `👤 [ ${user.memberNumber || '-'} ] ${displayName}\n  ยอดสุทธิ: ${oldSign}${userTotalWinLoss} บาท${oldFeeNote}\n เครดิตคงเหลือ: ${user.balance} บ.\n──────────────────\n`;
-            } catch (error) {
+                
+                    // 🟢 [เพิ่มส่วนนี้] ยัดข้อมูลสรุปรายคนใส่ tempUserSummaries สำหรับส่งขึ้น Firebase
+                tempUserSummaries[uId] = {
+                    displayName: displayName,
+                    pokdengWinLoss: pokdengWinLoss,
+                    hiloWinLoss: hiloNetWinLoss,
+                    totalWinLoss: userTotalWinLoss,
+                    balance: user.balance
+                };
+                } catch (error) {
                  // 🛡️ หากเกิด Error กับคนไหน ให้พ่น Log บอก แล้วไปคิดเงินคนถัดไปทันที ลูปไม่ดับแน่นอน
                  console.error(`❌ เกิดข้อผิดพลาดในการคิดเงินของ uId ${uId}:`, error);
             }    
         } // ปิดลูป for (let uId in roundBets)
-        
-        // =========================================================================
-        // 🚀 [ย้ายมาวางตรงนี้] บันทึกผลกลางลง Firebase (ทำงานแค่ครั้งเดียวต่อรอบ)
-        // =========================================================================
-      // ในฝั่ง Node.js ตอนสรุปผลรอบการเล่น
-try {
-    const dices = Array.isArray(tempHiloDices) ? tempHiloDices : [];
-    const hiloSum = dices.reduce((a, b) => Number(a) + Number(b), 0);
-    
-    let hiloType = 'ต่ำ';
-    if (dices.length === 3 && dices[0] == dices[1] && dices[1] == dices[2] && dices[0] !== undefined) {
-        hiloType = 'ตอง ' + dices[0];
-    } else if (hiloSum === 11) {
-        hiloType = '11 ไฮโล';
-    } else if (hiloSum >= 12) {
-        hiloType = 'สูง';
-    }
-
-    await db.ref('currentRoundResult').set({
-        round: currentRound,
-        dealer: tempDealerResult || null,
-        dealerPoint: tempDealerResult ? tempDealerResult.point : 0,
-        dealerDeng: tempDealerResult ? tempDealerResult.deng : 1,
-        legs: tempRoomResults || [],
-        hiloDices: dices,
-        hiloSum: hiloSum,
-        hiloType: hiloType,
-        userSummaries: tempUserSummaries || {}, // 👈 ส่ง Map ยอดเงินรายบุคคล { userId: { pokProfit, hiloProfit, credit } }
-        timestamp: Date.now()
-    });
-} catch (err) {
-    console.error("❌ Save currentRoundResult Error:", err);
-}
             
             // 🛡️ เซฟลง Firebase แบบปลอดภัย หาก DB กระตุก บอทจะไม่ค้างและยังส่ง Flex สรุปยอดได้ปกติ
         try {
@@ -5162,8 +5139,6 @@ global.currentReplyFlex = {
     } // ปิดตัว else ของเงื่อนไขตรวจเช็กแต้มค้างคัดกรองหลัก
 }
         
-console.log('📌 [LOG] Received userMsg:', JSON.stringify(userMsg));
-
 // ==================== [ 10. ระบบคู่มือ: คำสั่งสมาชิก (คส), กติกา (กต) และ บัญชี (บช) ] ====================
 if (userMsg === 'คส' || userMsg === 'กต' || userMsg === 'บช' || userMsg === '/บช') {
     replyText = null;

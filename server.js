@@ -6090,6 +6090,8 @@ if (userMsg === 'c') {
                 ? `(${data.amounts.join('+')}) = ${data.totalAmount.toLocaleString()} บาท` 
                 : `${data.totalAmount.toLocaleString()} บาท`;
             
+legKey = bet.betType || legKey;
+            
 let label = "";
 
 // 1. เช็กว่าเป็นฝั่งเจ้ามือ (เช็กจาก legKey ที่ขึ้นต้นด้วย จ/รจ)

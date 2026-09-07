@@ -7230,6 +7230,58 @@ app.post('/api/deposit/create', async (req, res) => {
     try {
         const { userId, amount } = req.body;
 
+        if (!userId) {
+            return res.status(400).json({ success: false, message: 'ไม่พบ userId' });
+        }
+
+        // 🛑 [เช็กที่ 1] มีรายการสลิปรอแอดมินอนุมัติค้างอยู่หรือไม่
+        if (typeof db !== 'undefined') {
+            const pendingSnap = await db.ref('pendingDeposits').once('value');
+            const pendingData = pendingSnap.val() || {};
+            
+            const hasPendingAdmin = Object.values(pendingData).some(
+                item => String(item.userId) === String(userId) && item.status === 'PENDING'
+            );
+
+            if (hasPendingAdmin) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'คุณมีรายการฝากค้างรอแอดมินตรวจสอบอยู่ กรุณารอแอดมินอนุมัติสักครู่ครับ'
+                });
+            }
+        }
+
+        // ⏱️ [เช็กที่ 2] เช็ก Session การขอเลขบัญชีค้างภายใน 5 นาที
+        const now = Date.now();
+        const EXPIRE_TIME = 5 * 60 * 1000; // 5 นาที (300,000 ms)
+
+        if (typeof db !== 'undefined') {
+            const sessionSnap = await db.ref(`activeDepositSessions/${userId}`).once('value');
+            const currentSession = sessionSnap.val();
+
+            if (currentSession) {
+                const timePassed = now - currentSession.createdAt;
+
+                // หากยังไม่เกิน 5 นาที -> ส่ง Session เดิมกลับไป
+                if (timePassed < EXPIRE_TIME) {
+                    const remainingSeconds = Math.ceil((EXPIRE_TIME - timePassed) / 1000);
+                    return res.json({
+                        success: true,
+                        isExisting: true, // บอก Frontend ว่าเป็นรายการเดิมที่ค้างอยู่
+                        amount: Number(currentSession.amount),
+                        remainingSeconds: remainingSeconds,
+                        message: 'คุณมีรายการฝากค้างอยู่ กรุณาโอนเงินตามเวลาที่กำหนด'
+                    });
+                }
+            }
+
+            // หากไม่มี Session หรือหมดอายุแล้ว -> สร้าง Session ใหม่ 5 นาที
+            await db.ref(`activeDepositSessions/${userId}`).set({
+                amount: Number(amount),
+                createdAt: now
+            });
+        }
+
         // ตอบกลับข้อมูลเพื่อให้ Frontend ย้ายไปหน้า Step 2
         return res.json({
             success: true,
@@ -7375,6 +7427,11 @@ app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
 
             if (typeof pendingDeposits !== 'undefined' && pendingDeposits[userId]) {
                 delete pendingDeposits[userId];
+            }
+
+            // 🧹 ล้าง Session ค้างเมื่อเติมเงินสำเร็จ
+            if (typeof db !== 'undefined') {
+                await db.ref(`activeDepositSessions/${userId}`).remove();
             }
 
             const txId = `TX_${Date.now()}`;

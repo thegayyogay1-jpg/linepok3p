@@ -170,7 +170,7 @@
             const list = document.getElementById('deposit-pending-list');
             const data = snapshot.val();
             list.innerHTML = '';
-
+            
             if (!data) {
                 list.innerHTML = '<tr><td colspan="5" class="text-center py-6 text-gray-500">ไม่มีรายการฝากค้างตรวจสอบ</td></tr>';
                 document.getElementById('deposit-count').innerText = '0';
@@ -209,7 +209,7 @@
                     </tr>
                 `;
             });
-           document.getElementById('deposit-count').innerText = count;
+            document.getElementById('deposit-count').innerText = count;
         });
 
         // 3. ฟังก์ชันการอนุมัติฝากเงิน (เพิ่มเครดิตเข้า usersWallets อัตโนมัติ + ลบเคสค้าง)

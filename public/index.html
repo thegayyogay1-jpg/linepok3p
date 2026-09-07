@@ -854,11 +854,15 @@ function updateChipSelectorUI() {
         const currentAmount = pendingBets[betKey] || 0;
         pendingBets[betKey] = currentAmount + selectedChipValue;
 
-        // 🌟 ระบุ ID ช่องที่เพิ่งกดลงเงินล่าสุด
+        // 🌟 ระบุ ID ช่องตามโหมดการเล่น (แทงผู้เล่น vs แทงเจ้ามือ)
         let targetElementId = '';
         if (activeTab === 'pok') {
-            const rawKey = betKey.replace('จ', '');
-            targetElementId = `pok-chip-${rawKey}`;
+            if (betKey.startsWith('จ')) {
+                const rawKey = betKey.replace('จ', '');
+                targetElementId = `pok-chip-dealer-${rawKey}`; // ID ชิปฝั่งเจ้ามือ
+            } else {
+                targetElementId = `pok-chip-${betKey}`; // ID ชิปฝั่งผู้เล่น
+            }
         } else {
             targetElementId = `hilo-chip-${betKey}`;
         }
@@ -882,8 +886,12 @@ function updateChipSelectorUI() {
             total += amount;
             let elementId = '';
             if (activeTab === 'pok') {
-                const rawKey = key.replace('เจ้าสู้ขา', '');
-                elementId = `pok-chip-${rawKey}`;
+                if (key.startsWith('จ')) {
+                    const rawKey = key.replace('จ', '');
+                    elementId = `pok-chip-dealer-${rawKey}`; // ดึง ID ชิปเจ้ามือ
+                } else {
+                    elementId = `pok-chip-${key}`; // ดึง ID ชิปผู้เล่น
+                }
             } else {
                 elementId = `hilo-chip-${key}`;
             }

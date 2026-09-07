@@ -337,23 +337,25 @@ function goToGamePage() {
 
             const data = await res.json();
 
-            // 1. กรณีติดค้างรอแอดมินอนุมัติ (สลิปเดิมไม่ผ่าน)
+            // 1. กรณีติดค้างรอแอดมินอนุมัติจริง (สลิปเดิมรอตรวจสอบ)
             if (!data.success && data.isPendingExists) {
                 showPendingAlert(data.message || 'คุณมีรายการฝากค้างรอแอดมินตรวจสอบอยู่');
                 return;
             }
 
-            // 2. กรณีมียอดเดิมค้างอยู่ (ยังไม่หมดเวลา 5 นาที) -> บังคับใช้อยอดเดิม
+            // 2. กรณีมียอดเดิมค้างอยู่ (ยังไม่หมดเวลา) -> สลับไป Step 2 + ล็อคยอดเดิม + แสดง Pop-up แจ้ง
             if (data.success && data.isExisting) {
-                showPendingAlert(`ท่านมีรายการฝากค้างอยู่จำนวน ${data.amount} บาท ระบบจะใช้อยอดเดิมนี้ในการทำรายการ`);
-                
                 amountToDeposit = data.amount;
-                document.getElementById('depositAmount').value = data.amount; // อัปเดตช่องกรอกให้ตรงยอดเดิม
-                document.getElementById('displayAmount').innerText = data.amount;
+                document.getElementById('depositAmount').value = data.amount; // รีเซ็ตช่องกรอกหน้า Step 1 ให้เป็นยอดเดิม
+                document.getElementById('displayAmount').innerText = data.amount; // แสดงยอดเดิมใน Step 2
                 startTimer(data.remainingSeconds);
 
+                // 🟢 สลับไปหน้า Step 2 (หน้าโอนเงิน/แนบสลิป) ก่อน
                 document.getElementById('step1').classList.remove('active');
                 document.getElementById('step2').classList.add('active');
+
+                // 🟢 แจ้งเตือน Pop-up (เมื่อผู้ใช้กดปิด Pop-up ก็จะอยู่หน้า Step 2 ยอดเดิมพอดี)
+                showPendingAlert(`ท่านมีรายการฝากค้างอยู่จำนวน ${data.amount} บาท ระบบจะใช้อยอดเดิมนี้ในการทำรายการ`);
             } 
             // 3. กรณีสร้างรายการใหม่สำเร็จ
             else if (data.success) {
@@ -364,7 +366,7 @@ function goToGamePage() {
                 document.getElementById('step1').classList.remove('active');
                 document.getElementById('step2').classList.add('active');
             } 
-            // 4. กรณีเกิดข้อผิดพลาดอื่นๆ
+            // 4. ข้อผิดพลาดอื่นๆ
             else {
                 showPendingAlert(data.message || 'เกิดข้อผิดพลาดในการสร้างรายการ');
             }
@@ -397,7 +399,6 @@ function goToGamePage() {
 
     function closePendingModal() {
         document.getElementById('pendingModal').style.display = 'none';
-        goToStep1();
     }
 
     // ส่งไฟล์สลิปไป Backend

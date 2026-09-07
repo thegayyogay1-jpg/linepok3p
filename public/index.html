@@ -1715,10 +1715,8 @@ function checkAndShowUserResult(roundData) {
     const dealerIsPok = roundData.dealerIsPok !== undefined ? roundData.dealerIsPok : (dealerObj.isPok || false);
     const legsData = roundData.legs || roundData.players || [];
     
-    // 🟢 1. แปลงแต้มเจ้ามือโดยใช้ formatPokScore
+    // 🟢 คำนวณข้อความแต้มเจ้ามือตรงนี้
     const dealerScoreText = formatPokScore(dealerPoint, dealerIsPok, dealerDeng);
-    
-    // 🟢 2. จัดรูปแบบข้อความแสดงผล (ถ้าเป็น P9/P8 หรือไพ่พิเศษ ให้โชว์คำอ่านสวยงาม)
     let dealerDisplayText = "";
     if (dealerScoreText.startsWith("P9")) {
         dealerDisplayText = "ป๊อก 9";

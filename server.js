@@ -4941,25 +4941,19 @@ const userTotalWinLoss = pokdengWinLoss + hiloNetWinLoss;
 
     // 3. บันทึกลง Firebase
     await db.ref('currentRoundResult').set({
-        round: typeof currentRound !== 'undefined' ? currentRound : 1,
-        
+        round: currentRound,
         dealer: tempDealerResult || null,
-        dealerPoint: dPoint,
-        dealerDeng: dDeng,
-
+        dealerPoint: tempDealerResult ? tempDealerResult.point : 0,
+        dealerDeng: tempDealerResult ? tempDealerResult.deng : 1,
         legs: tempRoomResults || [],
-
         hiloDices: dices,
         hiloSum: hiloSum,
         hiloType: hiloType,
-
+        userSummaries: tempUserSummaries || {}, // 👈 ส่ง Map ยอดเงินรายบุคคล { userId: { pokProfit, hiloProfit, credit } }
         timestamp: Date.now()
     });
-
-    console.log("✅ บันทึก currentRoundResult สำเร็จ");
 } catch (err) {
-    // catch ป้องกันไม่ให้แครชกระทบคำสั่งอื่น
-    console.error("❌ บันทึก currentRoundResult ล้มเหลว:", err);
+    console.error("❌ Save currentRoundResult Error:", err);
 }
             
             // 🛡️ เซฟลง Firebase แบบปลอดภัย หาก DB กระตุก บอทจะไม่ค้างและยังส่ง Flex สรุปยอดได้ปกติ

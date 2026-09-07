@@ -1311,11 +1311,10 @@ function formatPokDisplay(score, isPok, dengVal) {
     if (s === 600) return "สเตทฟลัช";
     if (s === 500) return "เรียง";
     if (s === 400) return "เซียน";
-    if (s === 7.5) return "7.5";
 
     // 2. แต้มปกติ / ป๊อก ใส่ "ด" ต่อท้ายเมื่อมี 2 เด้งขึ้นไป
     const dengSuffix = (Number(dengVal) > 1) ? "ด" : "";
-
+    if (s === 7.5) return `7.5${dengSuffix}`;
     if (s === 900 || (isPok && s === 9)) return `P9${dengSuffix}`;
     if (s === 800 || (isPok && s === 8)) return `P8${dengSuffix}`;
 

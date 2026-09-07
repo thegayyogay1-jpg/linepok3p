@@ -212,28 +212,60 @@
            document.getElementById('deposit-count').innerText = count;
         });
 
-        // 3. ฟังก์ชันการอนุมัติฝากเงิน (เพิ่มเครดิตเข้า usersWallets อัตโนมัติ + ลบเคสค้าง)
-        function approveDeposit(key, userId, amount) {
-            if (confirm(`ยืนยันการอนุมัติฝากเงิน ฿${amount} ให้ ID: ${userId}?`)) {
-                
-                // เพิ่มเครดิตให้สมาชิก
-                db.ref(`usersWallets/${userId}/balance`).transaction((current) => (current || 0) + Number(amount), (error, committed) => {
-                    if (committed) {
-                        // ลบออกจากรายการค้างตรวจสอบเมื่อปรับเงินสำเร็จ
-                        db.ref(`deposit_pending_reviews/${key}`).remove();
-                        alert('ปรับเพิ่มเครดิตเรียบร้อยแล้ว!');
-                    } else if (error) {
-                        alert('เกิดข้อผิดพลาดในการปรับเครดิต: ' + error);
-                    }
-                });
+        // 3. ฟังก์ชันการอนุมัติฝากเงิน (ยิงผ่าน Express Backend)
+async function approveDeposit(key, userId, amount) {
+    if (confirm(`ยืนยันการอนุมัติฝากเงิน ฿${amount} ให้ ID: ${userId}?`)) {
+        try {
+            const response = await fetch('/api/admin/approve-deposit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    depositId: key,
+                    userId: userId,
+                    amount: amount
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                alert('✅ ปรับเพิ่มเครดิตและอนุมัติเรียบร้อยแล้ว!');
+            } else {
+                alert('❌ เกิดข้อผิดพลาด: ' + result.message);
             }
+        } catch (error) {
+            console.error('Approve Error:', error);
+            alert('❌ ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
         }
-        // ปฏิเสธรายการฝาก
-        function rejectDeposit(key) {
-            if (confirm('ปฏิเสธรายการฝากนี้หรือไม่?')) {
-                db.ref(`deposit_pending_reviews/${key}`).remove();
+    }
+}
+
+// ปฏิเสธรายการฝาก (ยิงผ่าน Express Backend)
+async function rejectDeposit(key, userId) {
+    if (confirm('ปฏิเสธรายการฝากนี้หรือไม่?')) {
+        try {
+            const response = await fetch('/api/admin/reject-deposit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    depositId: key,
+                    userId: userId
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                alert('🚫 ปฏิเสธรายการเรียบร้อยแล้ว');
+            } else {
+                alert('❌ เกิดข้อผิดพลาด: ' + result.message);
             }
+        } catch (error) {
+            console.error('Reject Error:', error);
+            alert('❌ ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
         }
+    }
+}
         // 4. ระบบค้นหาประวัติการเล่นย้อนหลัง (Betting History)
         function searchBetHistory() {
             const query = document.getElementById('search-user-id').value.trim();

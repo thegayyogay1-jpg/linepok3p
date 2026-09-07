@@ -4948,34 +4948,39 @@ try {
         hiloType = 'สูง';
     }
 
-    // 🟢 [แก้ไขจุดนี้] รองรับทั้ง Array และ Object ป้องกัน Error .map is not a function
-    let legsArray = [];
-    if (Array.isArray(tempRoomResults)) {
-        legsArray = tempRoomResults;
-    } else if (tempRoomResults && typeof tempRoomResults === 'object') {
-        legsArray = Object.values(tempRoomResults);
+    // 🟢 [แก้ไข] ดึงและแปลงข้อมูล legs ให้ตรงตามโครงสร้าง Firebase ชัวร์ 100%
+    const formattedLegs = [];
+    if (tempRoomResults) {
+        Object.keys(tempRoomResults).forEach(key => {
+            const leg = tempRoomResults[key];
+            if (!leg || typeof leg !== 'object') return;
+
+            // ยึด twoCards (2 ใบ) เป็นหลักตามต้องการ
+            const twoCards = leg.twoCards || {};
+            const threeCards = leg.threeCards || {};
+            const activeCards = (twoCards && twoCards.score !== undefined) ? twoCards : threeCards;
+
+            const pointVal = activeCards.score !== undefined ? activeCards.score : (leg.point ?? "-");
+            const dengVal = activeCards.mult !== undefined ? activeCards.mult : (leg.deng ?? 1);
+
+            // เก็บใส่ Array ตาม index ของขาจริง
+            const legIdx = Number(leg.leg || key);
+            formattedLegs[legIdx] = {
+                ...leg,
+                leg: legIdx,
+                legIndex: legIdx,
+                point: pointVal, // 👈 แปะ point ให้ Firebase อ่านได้โดยตรง
+                deng: dengVal
+            };
+        });
     }
 
-    const formattedLegs = legsArray.map((leg, index) => {
-        if (!leg || typeof leg !== 'object') {
-            return { legIndex: index + 1, point: "-", deng: 1 };
+    // เติมขาที่แหว่งไปให้ครบถ้วน
+    for (let i = 1; i <= 6; i++) {
+        if (!formattedLegs[i]) {
+            formattedLegs[i] = { leg: i, legIndex: i, point: "-", deng: 1 };
         }
-        
-        // ยึด twoCards (2 ใบ) เป็นหลักตามที่ต้องการ
-        const twoCards = leg.twoCards || {};
-        const threeCards = leg.threeCards || {};
-        const activeCards = (twoCards && twoCards.score !== undefined) ? twoCards : threeCards;
-        
-        const pointVal = activeCards.score !== undefined ? activeCards.score : (leg.point ?? "-");
-        const dengVal = activeCards.mult !== undefined ? activeCards.mult : (leg.deng ?? 1);
-
-        return {
-            ...leg,
-            legIndex: leg.leg || (index + 1),
-            point: pointVal, // 👈 แปะ point ให้อยู่ชั้นนอกสุด
-            deng: dengVal
-        };
-    });
+    }
 
     // 🛡️ ดึงแต้มเจ้ามือ ป้องกัน undefined
     const dealerPointValue = tempDealerResult 

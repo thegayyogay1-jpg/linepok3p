@@ -1595,59 +1595,74 @@ function checkAndShowUserResult(roundData) {
             <div class="grid grid-cols-6 gap-1.5">
     `;
 
-    for (let i = 1; i <= 6; i++) {
-        const leg = legsData.find(l => l && (l.leg === i || l.id === i)) || legsData[i] || legsData[i - 1] || {};
+    // 🟢 เพิ่มฟังก์ชันช่วยแปลงแต้ม Score ให้อ่านเป็นชื่อไพ่พิเศษ
+function formatPokScore(score, isPok) {
+    const s = Number(score);
+    if (isNaN(s)) return score || "-";
 
-        const twoCards = leg.twoCards || {};
-        const threeCards = leg.threeCards || {};
+    if (s === 900 || (isPok && s === 9)) return "P9";
+    if (s === 800 || (isPok && s === 8)) return "P8";
+    if (s === 700) return "ตอง";
+    if (s === 600) return "สเตทฟลัช";
+    if (s === 500) return "เรียง";
+    if (s === 400) return "เซียน";
+    if (s === 7.5) return "7.5";
 
-        let legPoint = "-";
-        let numericPoint = null;
+    // ถ้าเป็นแต้มธรรมดา 0-9
+    return isPok ? `P${s % 100}` : `${s % 10}`;
+}
+    
+    // 🟢 ปรับฟังก์ชันดึงค่าเด้ง และแปลงแต้มพร้อมแปะ "ด" ต่อท้าย
+for (let i = 1; i <= 6; i++) {
+    const leg = legsData.find(l => l && (l.leg === i || l.id === i)) || legsData[i] || legsData[i - 1] || {};
 
-        if (twoCards.score !== undefined) {
-            legPoint = twoCards.score;
-            numericPoint = Number(twoCards.score);
-        } else if (threeCards.score !== undefined) {
-            legPoint = threeCards.score;
-            numericPoint = Number(threeCards.score);
-        } else if (leg.point !== undefined) {
-            legPoint = leg.point;
-            numericPoint = Number(leg.point);
+    const twoCards = leg.twoCards || {};
+    const threeCards = leg.threeCards || {};
+
+    // 1. ดึงข้อมูลเด้ง (ดึงจาก activeCards หรือ leg.deng)
+    const activeCards = (twoCards.score !== undefined) ? twoCards : threeCards;
+    const dengVal = Number(activeCards.mult ?? activeCards.deng ?? leg.deng ?? 1);
+    const dengSuffix = dengVal > 1 ? "ด" : ""; // ถ้า 2 เด้งขึ้นไปให้ใส่ "ด"
+
+    // 2. ดึงแต้ม rawScore
+    let rawScore = null;
+    if (twoCards.score !== undefined) {
+        rawScore = twoCards.score;
+    } else if (threeCards.score !== undefined) {
+        rawScore = threeCards.score;
+    } else if (leg.point !== undefined) {
+        rawScore = leg.point;
+    }
+
+    // 3. แปลงแต้ม Score และต่อท้ายด้วย "ด"
+    let baseText = formatPokScore(rawScore, leg.isPok);
+    
+    // ถ้าไม่ใช่มือที่ไม่มีแต้ม (-) ให้ต่อท้ายด้วย ด ถ้ารอบนั้นมีเด้ง
+    let displayText = (baseText !== "-") ? `${baseText}${dengSuffix}` : "-";
+    const numericPoint = Number(rawScore);
+
+    let bgClass = "bg-gray-700/60 text-gray-400 border border-gray-600/40";
+    const dPoint = Number(dealerPoint);
+
+    if (numericPoint !== null && !isNaN(numericPoint)) {
+        if (leg.winState === 'win' || leg.diff > 0 || numericPoint > dPoint) {
+            bgClass = "bg-emerald-600 text-white font-black shadow-md shadow-emerald-900/50 border border-emerald-400/50";
+        } else if (leg.winState === 'lose' || leg.diff < 0 || numericPoint < dPoint) {
+            bgClass = "bg-rose-600 text-white font-black shadow-md shadow-rose-900/50 border border-rose-400/50";
+        } else if (numericPoint === dPoint) {
+            bgClass = "bg-amber-300 text-amber-950 font-black shadow-md border border-amber-200";
         }
-
-        let bgClass = "bg-gray-700/60 text-gray-400 border border-gray-600/40";
-        let statusText = `${legPoint}`;
-
-        const dPoint = Number(dealerPoint);
-
-        if (numericPoint !== null && !isNaN(numericPoint)) {
-            if (leg.winState === 'win' || leg.diff > 0 || numericPoint > dPoint) {
-                bgClass = "bg-emerald-600 text-white font-black shadow-md shadow-emerald-900/50 border border-emerald-400/50";
-            } else if (leg.winState === 'lose' || leg.diff < 0 || numericPoint < dPoint) {
-                bgClass = "bg-rose-600 text-white font-black shadow-md shadow-rose-900/50 border border-rose-400/50";
-            } else if (numericPoint === dPoint) {
-                bgClass = "bg-amber-300 text-amber-950 font-black shadow-md border border-amber-200";
-            }
-        }
-
-        if (leg.isPok) {
-            statusText = `P${legPoint}`;
-        }
-
-        detailHtml += `
-            <div class="flex flex-col items-center">
-                <span class="text-[9px] text-gray-300 font-bold mb-0.5">ขา ${i}</span>
-                <div class="${bgClass} w-full py-1.5 rounded-lg text-xs flex items-center justify-center transition-all">
-                    ${statusText}
-                </div>
-            </div>
-        `;
     }
 
     detailHtml += `
+        <div class="flex flex-col items-center">
+            <span class="text-[9px] text-gray-300 font-bold mb-0.5">ขา ${i}</span>
+            <div class="${bgClass} w-full py-1.5 rounded-lg text-[11px] flex items-center justify-center transition-all truncate px-0.5">
+                ${displayText}
             </div>
         </div>
     `;
+}
 
     // --- ส่วนที่ 2: ผลไฮโล (ขยายขนาดลูกเต๋าและแท็กผลลัพธ์) ---
     if (roundData.hiloDices && Array.isArray(roundData.hiloDices)) {

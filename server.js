@@ -2,6 +2,8 @@ const express = require('express');
 const axios = require('axios');
 const fs = require('fs'); // 📁 เติมตรงนี้เพื่อให้ระบบรู้จักการเขียนไฟล์ลงเครื่องครับน้า
 const admin = require('firebase-admin'); // 👈 เพิ่มการดึง Library Firebase Admin
+const multer = require('multer'); // 👈 รวมไว้ด้านบนสุด
+const upload = multer({ storage: multer.memoryStorage() }); // 👈 รวมไว้ด้านบนสุด
 const app = express();
 app.use(express.json());
 global.currentReplyFlex = null; // 👈 แทรกบรรทัดนี้ลงไปตรงนี้ครับ
@@ -7223,13 +7225,6 @@ app.post('/api/place-bet', async (req, res) => {
     res.json({ success: true, newBalance: user.balance });
 });
 
-// 1. นำเข้า Libraries
-const multer = require('multer');
-const upload = multer({ storage: multer.memoryStorage() });
-
-// 2. Middleware ต่างๆ (เช่น express.json(), cors)
-app.use(express.json());
-
 // 📌 API รับรูปสลิปจากหน้าเว็บ (บันทึกลง Firebase เพื่อแสดงบนหน้าเว็บแอดมิน)
 app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
     try {
@@ -7239,14 +7234,6 @@ app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
         if (!userId || userId === 'undefined' || !amount || !slipFile) {
             return res.status(400).json({ success: false, message: 'ข้อมูลไม่ครบถ้วน (ไม่พบ userId หรือยอดเงิน)' });
         }
-
-        const user = usersWallets[userId];
-        if (!user) {
-            return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลสมาชิกในระบบ' });
-        }
-
-        const depositAmount = Number(amount);
-        let failReason = "";
 
         // 1. ส่งรูปสลิปไปตรวจสอบกับ Slip2Go API
         let isAutoApproved = false;
@@ -7419,13 +7406,7 @@ app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
         return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการประมวลผลระบบ' });
     }
 });
-// ----------------------------------------------------
-// 5. สั่งให้ Server รัน (app.listen) อยู่ท้ายสุดเสมอ
-// ----------------------------------------------------
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-});
+
 // ==========================================
 // API: ดึงข้อมูลโปรไฟล์และยอดเงินคงเหลือของผู้เล่น
 // ==========================================

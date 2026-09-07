@@ -5281,7 +5281,7 @@ global.currentReplyFlex = {
                                         "action": {
                                             "type": "uri",
                                             "label": "💳 กดลิงก์เพื่อทำรายการฝากเงิน",
-                                            "uri": "https://your-deposit-link.com" // 👈 เปลี่ยน URL หน้าฝากเงินตรงนี้ได้เลยครับ
+                                            "uri": "https://liff.line.me/2011387264-5A3dDh8M" // 👈 เปลี่ยน URL หน้าฝากเงินตรงนี้ได้เลยครับ
                                         }
                                     }
                                 ]

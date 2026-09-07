@@ -447,7 +447,8 @@ async function processPokDengBet(userId, betText) {
     // หักเงินค้ำประกันและบันทึกโพย
     user.balance -= finalHoldCost;
 
-    if (!roundBets[userId]) {
+    // 🟢 เช็กว่าไม่ใช่ Array หรือไม่มีค่า ให้รีเซ็ตเป็น Array เปล่า [] เสมอ
+    if (!roundBets[userId] || !Array.isArray(roundBets[userId])) {
         roundBets[userId] = [];
     }
 

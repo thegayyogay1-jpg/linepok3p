@@ -7420,25 +7420,6 @@ app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
     }
 });
 // ----------------------------------------------------
-// 4. วางโค้ดใหม่ (/api/upload-slip) ต่อท้ายตรงนี้ได้เลย
-// ----------------------------------------------------
-app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
-    try {
-        const { userId, amount } = req.body;
-        const slipFile = req.file;
-
-        if (!userId || userId === 'undefined' || !amount || !slipFile) {
-            return res.status(400).json({ success: false, message: 'ข้อมูลไม่ครบถ้วน (ไม่พบ userId หรือยอดเงิน)' });
-        }
-        
-        // ... Logic การเช็ค Slip2Go และ Firebase ตามที่คุณเขียนไว้ ...
-        
-    } catch (error) {
-        console.error('❌ Upload Slip Error:', error);
-        return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการประมวลผลระบบ' });
-    }
-});
-// ----------------------------------------------------
 // 5. สั่งให้ Server รัน (app.listen) อยู่ท้ายสุดเสมอ
 // ----------------------------------------------------
 const PORT = process.env.PORT || 3000;

@@ -474,7 +474,7 @@ db.ref('pendingDeposits').on('value', (snapshot) => {
                 <td style="padding: 10px;">
                     <img src="${item.slipImage}" 
                          style="width: 45px; height: 60px; object-fit: cover; border-radius: 4px; cursor: pointer; border: 1px solid #444;" 
-                         onclick="window.open('${item.slipImage}')" 
+                         onclick="showImage('${item.slipImage}')" 
                          title="คลิกเพื่อดูสลิปเต็ม">
                 </td>
                 <td style="padding: 10px; color: #ff3b47;">

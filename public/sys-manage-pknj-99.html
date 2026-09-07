@@ -212,60 +212,29 @@
            document.getElementById('deposit-count').innerText = count;
         });
 
-        // 3. ฟังก์ชันการอนุมัติฝากเงิน (ยิงผ่าน Express Backend)
-async function approveDeposit(key, userId, amount) {
-    if (confirm(`ยืนยันการอนุมัติฝากเงิน ฿${amount} ให้ ID: ${userId}?`)) {
-        try {
-            const response = await fetch('/api/admin/approve-deposit', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    depositId: key,
-                    userId: userId,
-                    amount: amount
-                })
-            });
-
-            const result = await response.json();
-
-            if (result.success) {
-                alert('✅ ปรับเพิ่มเครดิตและอนุมัติเรียบร้อยแล้ว!');
-            } else {
-                alert('❌ เกิดข้อผิดพลาด: ' + result.message);
+        // 3. ฟังก์ชันการอนุมัติฝากเงิน (เพิ่มเครดิตเข้า usersWallets อัตโนมัติ + ลบเคสค้าง)
+        function approveDeposit(key, userId, amount) {
+            if (confirm(`ยืนยันการอนุมัติฝากเงิน ฿${amount} ให้ ID: ${userId}?`)) {
+                
+                // เพิ่มเครดิตให้สมาชิก
+                db.ref(`usersWallets/${userId}/balance`).transaction((current) => (current || 0) + Number(amount), (error, committed) => {
+                    if (committed) {
+                        // ลบออกจากรายการค้างตรวจสอบเมื่อปรับเงินสำเร็จ
+                        db.ref(`deposit_pending_reviews/${key}`).remove();
+                        alert('ปรับเพิ่มเครดิตเรียบร้อยแล้ว!');
+                    } else if (error) {
+                        alert('เกิดข้อผิดพลาดในการปรับเครดิต: ' + error);
+                    }
+                });
             }
-        } catch (error) {
-            console.error('Approve Error:', error);
-            alert('❌ ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
         }
-    }
-}
-
-// ปฏิเสธรายการฝาก (ยิงผ่าน Express Backend)
-async function rejectDeposit(key, userId) {
-    if (confirm('ปฏิเสธรายการฝากนี้หรือไม่?')) {
-        try {
-            const response = await fetch('/api/admin/reject-deposit', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    depositId: key,
-                    userId: userId
-                })
-            });
-
-            const result = await response.json();
-
-            if (result.success) {
-                alert('🚫 ปฏิเสธรายการเรียบร้อยแล้ว');
-            } else {
-                alert('❌ เกิดข้อผิดพลาด: ' + result.message);
+        // ปฏิเสธรายการฝาก
+        function rejectDeposit(key) {
+            if (confirm('ปฏิเสธรายการฝากนี้หรือไม่?')) {
+                db.ref(`deposit_pending_reviews/${key}`).remove();
             }
-        } catch (error) {
-            console.error('Reject Error:', error);
-            alert('❌ ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
         }
-    }
-}
+
         // 4. ระบบค้นหาประวัติการเล่นย้อนหลัง (Betting History)
         function searchBetHistory() {
             const query = document.getElementById('search-user-id').value.trim();
@@ -585,35 +554,62 @@ function rejectWithdrawQueue(index, memberNumber) {
     }
 });
 
-    // ฟังก์ชันกดปุ่มอนุมัติฝากเงิน
-    async function approveDeposit(depositId, memberNumber, amount) {
-        if (!confirm(`ยืนยันเติมเงิน ${amount} บาท ให้สมาชิกลำดับที่ ${memberNumber} ?`)) return;
-        try {
-            const response = await fetch('/api/admin/approve-deposit', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ depositId, memberNumber, amount })
-            });
-            const resData = await response.json();
-            if (resData.success) {
-                alert('✅ อนุมัติและเติมเงินเรียบร้อยแล้ว');
-            } else {
-                alert('❌ เกิดข้อผิดพลาด: ' + resData.message);
+    // ฟังก์ชันกดปุ่มอนุมัติฝากเงิน (ใช้โลจิกเดิม + สั่งล้าง activeDepositSessions เพิ่มเติม)
+async function approveDeposit(depositId, memberNumber, amount) {
+    if (!confirm(`ยืนยันเติมเงิน ${amount} บาท ให้สมาชิกลำดับที่ ${memberNumber} ?`)) return;
+    try {
+        // 1. เรียก API อนุมัติเติมเงิน (ตามโค้ดเดิมของคุณ)
+        const response = await fetch('/api/admin/approve-deposit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ depositId, memberNumber, amount })
+        });
+        const resData = await response.json();
+        
+        if (resData.success) {
+            // 2. ⚡ [ส่วนที่เพิ่ม] สั่งล้าง Session ถอยหลัง 5 นาที เพื่อให้ลูกค้ากดฝากใหม่ได้ทันที
+            // ดึง lineId หรือ userId จากรายการนั้นเพื่อลบ session
+            const depSnap = await db.ref(`pendingDeposits/${depositId}`).once('value');
+            const depData = depSnap.val();
+            const targetUserId = depData?.userId || depData?.lineId;
+
+            if (targetUserId) {
+                await db.ref(`activeDepositSessions/${targetUserId}`).remove();
             }
-        } catch (err) {
-            alert('❌ ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
+
+            alert('✅ อนุมัติและเติมเงินเรียบร้อยแล้ว');
+        } else {
+            alert('❌ เกิดข้อผิดพลาด: ' + resData.message);
         }
+    } catch (err) {
+        console.error(err);
+        alert('❌ ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
     }
-    // ฟังก์ชันกดปุ่มปฏิเสธ
-    async function rejectDeposit(depositId) {
-        if (!confirm('ยืนยันปฏิเสธรายการนี้ ?')) return;
-        try {
-            await db.ref(`pendingDeposits/${depositId}`).update({ status: 'REJECTED' });
-            alert('❌ ปฏิเสธรายการเรียบร้อยแล้ว');
-        } catch (err) {
-            alert('เกิดข้อผิดพลาดในการยกเลิก');
+}
+
+// ฟังก์ชันกดปุ่มปฏิเสธ (ใช้โลจิกเดิม + สั่งล้าง activeDepositSessions เพิ่มเติม)
+async function rejectDeposit(depositId) {
+    if (!confirm('ยืนยันปฏิเสธรายการนี้ ?')) return;
+    try {
+        // 1. ⚡ [ส่วนที่เพิ่ม] อ่านข้อมูลเพื่อเอา userId มาล้าง Session ก่อนเปลี่ยนสถานะ
+        const depSnap = await db.ref(`pendingDeposits/${depositId}`).once('value');
+        const depData = depSnap.val();
+        const targetUserId = depData?.userId || depData?.lineId;
+
+        // 2. เปลี่ยนสถานะรายการเป็น REJECTED (ตามโค้ดเดิม)
+        await db.ref(`pendingDeposits/${depositId}`).update({ status: 'REJECTED' });
+
+        // 3. ⚡ [ส่วนที่เพิ่ม] สั่งลบ Session ถอยหลัง 5 นาที ออกทันที
+        if (targetUserId) {
+            await db.ref(`activeDepositSessions/${targetUserId}`).remove();
         }
+
+        alert('❌ ปฏิเสธรายการเรียบร้อยแล้ว');
+    } catch (err) {
+        console.error(err);
+        alert('เกิดข้อผิดพลาดในการยกเลิก');
     }
+}
 </script>
 </body>
 </html>

@@ -4911,17 +4911,49 @@ const userTotalWinLoss = pokdengWinLoss + hiloNetWinLoss;
         // =========================================================================
         // 🚀 [ย้ายมาวางตรงนี้] บันทึกผลกลางลง Firebase (ทำงานแค่ครั้งเดียวต่อรอบ)
         // =========================================================================
-        try {
-            await db.ref('currentRoundResult').set({
-                round: currentRound,
-                dealer: tempDealerResult, // ผลเจ้ามือ
-                legs: tempRoomResults,    // ผลไพ่ขา 1-6
-                hiloDices: tempHiloDices || [], // ผลไฮโล
-                timestamp: Date.now()
-            });
-        } catch (err) {
-            console.error("❌ บันทึก currentRoundResult ล้มเหลว:", err);
-        }
+       try {
+    // 1. คำนวณผลรวมและผลลัพธ์ไฮโล (ตอง / 11 ไฮโล / สูง / ต่ำ)
+    const dices = tempHiloDices || [];
+    const hiloSum = dices.reduce((a, b) => a + b, 0);
+    let hiloType = 'ต่ำ';
+
+    // เช็คว่าออกตองหรือไม่ (ลูกเต๋าทั้ง 3 ลูกหน้าเหมือนกันหมด)
+    const isTriple = dices.length === 3 && dices[0] === dices[1] && dices[1] === dices[2];
+
+    if (isTriple) {
+        hiloType = `ตอง ${dices[0]}`; // เช่น "ตอง 5"
+    } else if (hiloSum === 11) {
+        hiloType = '11 ไฮโล';
+    } else if (hiloSum >= 12) {
+        hiloType = 'สูง';
+    } else {
+        hiloType = 'ต่ำ';
+    }
+
+    // 2. บันทึกลง Firebase currentRoundResult
+    await db.ref('currentRoundResult').set({
+        round: currentRound,
+        
+        // 🎴 ผลเจ้ามือ
+        dealer: tempDealerResult,
+        dealerPoint: tempDealerResult?.point ?? 0,
+        dealerDeng: tempDealerResult?.deng ?? 1,
+
+        // 🎴 ผลขา 1-6
+        legs: tempRoomResults || [],
+
+        // 🎲 ผลไฮโล
+        hiloDices: dices,
+        hiloSum: hiloSum,
+        hiloType: hiloType, // จะส่งค่าเป็น "ตอง 5", "11 ไฮโล", "สูง", หรือ "ต่ำ"
+
+        timestamp: Date.now()
+    });
+
+    console.log("✅ บันทึก currentRoundResult สำเร็จ");
+} catch (err) {
+    console.error("❌ บันทึก currentRoundResult ล้มเหลว:", err);
+}
             
             // 🛡️ เซฟลง Firebase แบบปลอดภัย หาก DB กระตุก บอทจะไม่ค้างและยังส่ง Flex สรุปยอดได้ปกติ
         try {

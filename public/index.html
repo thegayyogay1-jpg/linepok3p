@@ -910,7 +910,7 @@ function buildIndividualBetCommands(pendingBetsObj, activeTab) {
 
         if (activeTab === 'pok') {
             // ป๊อกเด้ง: แปลงให้ได้รูปแบบ "1-10" หรือ "เจ้าสู้ขา1-10"
-            const isDealer = key.startsWith('จ');
+            const isDealer = key.startsWith('เจ้าสู้ขา');
             const legNum = key.replace('เจ้าสู้ขา', '').replace('ขาที่', '').trim();
             const prefix = isDealer ? `จ${legNum}` : `${legNum}`;
             

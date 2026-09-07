@@ -5132,20 +5132,53 @@ global.currentReplyFlex = {
                     replyText = `💡 สมาชิกพิมพ์ "คส" เพื่อดูวิธีการส่งโพยและคำสั่งอื่นๆ`;
                 }
                 else if (userMsg === 'บช' || userMsg === '/บช') {
-                    // 🏦 ส่งเป็น Template Buttons Message (ข้อความ + ปุ่มลิงก์)
                     replyMessage = {
-                        type: 'template',
-                        altText: 'กรุณาพิมพ์ฝากจำนวนเงิน หรือ กดปุ่มเข้าหน้าฝากเงิน',
-                        template: {
-                            type: 'buttons',
-                            text: '🏦 [ กรุณา พิมพ์ ฝากตามด้วยจำนวนเงิน ] 🏦\nตัวอย่าง: ฝาก 100\n\nหรือคลิกปุ่มด้านล่างเพื่อเข้าหน้าฝากเงิน:',
-                            actions: [
-                                {
-                                    type: 'uri',
-                                    label: '🌐 เข้าสู่หน้าฝากเงิน',
-                                    uri: 'https://liff.line.me/2011387264-5A3dDh8M' // 👈 เปลี่ยนเป็น URL หน้าฝากเงินของคุณ
-                                }
-                            ]
+                        type: 'flex',
+                        altText: 'กรุณาพิมพ์ฝากเงิน หรือกดปุ่มเข้าหน้าฝากเงิน',
+                        contents: {
+                            type: 'bubble',
+                            size: 'kilo',
+                            body: {
+                                type: 'box',
+                                layout: 'vertical',
+                                contents: [
+                                    {
+                                        type: 'text',
+                                        text: '🏦 แจ้งฝากเงิน 🏦',
+                                        weight: 'bold',
+                                        color: '#f59e0b',
+                                        size: 'md',
+                                        align: 'center'
+                                    },
+                                    {
+                                        type: 'text',
+                                        text: 'กรุณาพิมพ์ ฝากตามด้วยจำนวนเงิน\nตัวอย่าง: ฝาก100\n\nหรือกดปุ่มด้านล่างเพื่อทำรายการ:',
+                                        wrap: true,
+                                        size: 'xs',
+                                        color: '#cccccc',
+                                        margin: 'md',
+                                        align: 'center'
+                                    }
+                                ],
+                                backgroundColor: '#111827'
+                            },
+                            footer: {
+                                type: 'box',
+                                layout: 'vertical',
+                                contents: [
+                                    {
+                                        type: 'button',
+                                        action: {
+                                            type: 'uri',
+                                            label: '💳 เข้าหน้าฝากเงิน',
+                                            uri: 'https://liff.line.me/2011387264-5A3dDh8M' // 👈 เปลี่ยนเป็น URL หน้าฝากเงินของคุณ
+                                        },
+                                        style: 'primary',
+                                        color: '#10b981'
+                                    }
+                                ],
+                                backgroundColor: '#111827'
+                            }
                         }
                     };
                 }

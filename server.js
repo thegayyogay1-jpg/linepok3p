@@ -5114,7 +5114,8 @@ global.currentReplyFlex = {
         }
     } // ปิดตัว else ของเงื่อนไขตรวจเช็กแต้มค้างคัดกรองหลัก
 }
-            
+            // Place this inside your webhook handler function right after getting event.message.text
+console.log('📌 [LOG] Received userMsg:', JSON.stringify(userMsg));
             // ==================== [ 10. ระบบคู่มือ: คำสั่งสมาชิก (คส), กติกา (กต) และ บัญชี (บช) ] ====================
 if (userMsg === 'คส' || userMsg === 'กต' || userMsg === 'บช' || userMsg === '/บช') {
     replyText = null;
@@ -5194,6 +5195,17 @@ if (userMsg === 'คส' || userMsg === 'กต' || userMsg === 'บช' || user
             }
         };
     }
+}
+    try {
+    if (replyMessage) {
+        console.log('🚀 [LOG] Sending replyMessage via client.replyMessage');
+        await client.replyMessage(event.replyToken, replyMessage);
+    } else if (replyText) {
+        console.log('🚀 [LOG] Sending replyText');
+        await client.replyMessage(event.replyToken, { type: 'text', text: replyText });
+    }
+} catch (err) {
+    console.error('❌ [ERROR] LINE API Reply Error:', err.response ? err.response.data : err.message);
 }
                 // ==================== [ ระบบดึงโพยและผลไพ่ย้อนหลังรายบุคคล (vรอบ,mสมาชิก) ] ====================
             else if (userMsg.startsWith('v') && userMsg.includes(',m')) {

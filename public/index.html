@@ -64,7 +64,7 @@
 <body class="bg-gray-900 text-white min-h-screen pb-24">
 
     <!-- 🏆 Pop-up สรุปผลการแข่งขัน -->
-<div id="round-result-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50  flex items-center justify-center p-3 transition-all duration-300">
+<div id="round-result-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-3 transition-all duration-300">
     <div class="bg-gray-800 border border-gray-700/80 p-4 rounded-2xl flex flex-col items-center gap-2 max-w-sm w-full text-center shadow-2xl relative overflow-hidden transform transition-all scale-95" id="result-card">
         
         <div id="result-glow" class="absolute -top-10 -left-10 w-32 h-32 bg-yellow-500/20 rounded-full blur-2xl pointer-events-none"></div>
@@ -1519,29 +1519,30 @@ function checkAndShowUserResult(roundData) {
     `;
 
     for (let i = 1; i <= 6; i++) {
-        const leg = legsData.find(l => (l.leg === i || l.id === i)) || legsData[i - 1] || {};
-        
-        let bgClass = "bg-gray-700 text-gray-300";
-        let statusText = leg.point !== undefined ? `${leg.point}` : "-";
+    // 🟢 แก้ไขจุดนี้: ใส่ l && เพื่อป้องกัน l เป็น undefined ก่อนอ่านค่า .leg หรือ .id
+    const leg = legsData.find(l => l && (l.leg === i || l.id === i)) || legsData[i - 1] || {};
+    
+    let bgClass = "bg-gray-700 text-gray-300";
+    let statusText = leg.point !== undefined ? `${leg.point}` : "-";
 
-        if (leg.isPok) {
-            bgClass = "bg-lime-500 text-black font-black";
-            statusText = `P${leg.point}`;
-        } else if (leg.winState === 'win' || leg.diff > 0) {
-            bgClass = "bg-emerald-600 text-white font-bold";
-        } else if (leg.winState === 'lose' || leg.diff < 0) {
-            bgClass = "bg-rose-600 text-white font-bold";
-        }
-
-        htmlContent += `
-            <div class="flex flex-col items-center">
-                <span class="text-[8px] text-gray-400 font-semibold mb-0.5">ขา ${i}</span>
-                <div class="${bgClass} w-full py-1 rounded-md text-[10px] flex items-center justify-center shadow-sm">
-                    ${statusText}
-                </div>
-            </div>
-        `;
+    if (leg.isPok) {
+        bgClass = "bg-lime-500 text-black font-black";
+        statusText = `P${leg.point}`;
+    } else if (leg.winState === 'win' || leg.diff > 0) {
+        bgClass = "bg-emerald-600 text-white font-bold";
+    } else if (leg.winState === 'lose' || leg.diff < 0) {
+        bgClass = "bg-rose-600 text-white font-bold";
     }
+
+    htmlContent += `
+        <div class="flex flex-col items-center">
+            <span class="text-[8px] text-gray-400 font-semibold mb-0.5">ขา ${i}</span>
+            <div class="${bgClass} w-full py-1 rounded-md text-[10px] flex items-center justify-center shadow-sm">
+                ${statusText}
+            </div>
+        </div>
+    `;
+}
 
     htmlContent += `
             </div>

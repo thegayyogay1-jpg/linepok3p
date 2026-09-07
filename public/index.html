@@ -882,7 +882,7 @@ function updateChipSelectorUI() {
             total += amount;
             let elementId = '';
             if (activeTab === 'pok') {
-                const rawKey = key.replace('จ', '');
+                const rawKey = key.replace('เจ้าสู้ขา', '');
                 elementId = `pok-chip-${rawKey}`;
             } else {
                 elementId = `hilo-chip-${key}`;
@@ -910,9 +910,9 @@ function buildIndividualBetCommands(pendingBetsObj, activeTab) {
 
         if (activeTab === 'pok') {
             // ป๊อกเด้ง: แปลงให้ได้รูปแบบ "1-10" หรือ "เจ้าสู้ขา1-10"
-            const isDealer = key.startsWith('เจ้าสู้');
+            const isDealer = key.startsWith('จ');
             const legNum = key.replace('เจ้าสู้ขา', '').replace('ขาที่', '').trim();
-            const prefix = isDealer ? `เจ้าสู้ขา${legNum}` : `${legNum}`;
+            const prefix = isDealer ? `จ${legNum}` : `${legNum}`;
             
             commands.push(`${prefix}-${amount}`);
         } else {

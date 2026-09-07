@@ -1595,76 +1595,109 @@ function checkAndShowUserResult(roundData) {
             <div class="grid grid-cols-6 gap-1.5">
     `;
 
-    // 🟢 เพิ่มฟังก์ชันช่วยแปลงแต้ม Score ให้อ่านเป็นชื่อไพ่พิเศษ
-function formatPokScore(score, isPok) {
+    // 🟢 ฟังก์ชันช่วยแปลงแต้ม Score และกรองไพ่พิเศษไม่ให้ติดตัว "ด"
+function formatPokScore(score, isPok, dengVal) {
     const s = Number(score);
     if (isNaN(s)) return score || "-";
 
-    if (s === 900 || (isPok && s === 9)) return "P9";
-    if (s === 800 || (isPok && s === 8)) return "P8";
+    // 1. กลุ่มไพ่พิเศษ (ไม่ต้องใส่ "ด" ต่อท้าย)
     if (s === 700) return "ตอง";
     if (s === 600) return "สเตทฟลัช";
     if (s === 500) return "เรียง";
     if (s === 400) return "เซียน";
     if (s === 7.5) return "7.5";
 
-    // ถ้าเป็นแต้มธรรมดา 0-9
-    return isPok ? `P${s % 100}` : `${s % 10}`;
+    // 2. กลุ่มป๊อก และแต้มธรรมดา (เช็กต่อท้าย "ด" เฉพาะกลุ่มนี้)
+    const dengSuffix = (Number(dengVal) > 1) ? "ด" : "";
+
+    if (s === 900 || (isPok && s === 9)) return `P9${dengSuffix}`;
+    if (s === 800 || (isPok && s === 8)) return `P8${dengSuffix}`;
+
+    // แต้มธรรมดา 0-7
+    const normalPoint = isPok ? (s % 100) : (s % 10);
+    return `${normalPoint}${dengSuffix}`;
 }
-    
-    // 🟢 ปรับฟังก์ชันดึงค่าเด้ง และแปลงแต้มพร้อมแปะ "ด" ต่อท้าย
-for (let i = 1; i <= 6; i++) {
-    const leg = legsData.find(l => l && (l.leg === i || l.id === i)) || legsData[i] || legsData[i - 1] || {};
 
-    const twoCards = leg.twoCards || {};
-    const threeCards = leg.threeCards || {};
+// 2. ประมวลผลและเปิด Pop-up แสดงข้อมูลรอบปัจจุบัน
+function checkAndShowUserResult(roundData) {
+    if (!roundData) return;
 
-    // 1. ดึงข้อมูลเด้ง (ดึงจาก activeCards หรือ leg.deng)
-    const activeCards = (twoCards.score !== undefined) ? twoCards : threeCards;
-    const dengVal = Number(activeCards.mult ?? activeCards.deng ?? leg.deng ?? 1);
-    const dengSuffix = dengVal > 1 ? "ด" : ""; // ถ้า 2 เด้งขึ้นไปให้ใส่ "ด"
-
-    // 2. ดึงแต้ม rawScore
-    let rawScore = null;
-    if (twoCards.score !== undefined) {
-        rawScore = twoCards.score;
-    } else if (threeCards.score !== undefined) {
-        rawScore = threeCards.score;
-    } else if (leg.point !== undefined) {
-        rawScore = leg.point;
+    let userSummary = null;
+    if (roundData.userSummaries && typeof currentUserId !== 'undefined' && currentUserId) {
+        userSummary = roundData.userSummaries[currentUserId];
     }
 
-    // 3. แปลงแต้ม Score และต่อท้ายด้วย "ด"
-    let baseText = formatPokScore(rawScore, leg.isPok);
-    
-    // ถ้าไม่ใช่มือที่ไม่มีแต้ม (-) ให้ต่อท้ายด้วย ด ถ้ารอบนั้นมีเด้ง
-    let displayText = (baseText !== "-") ? `${baseText}${dengSuffix}` : "-";
-    const numericPoint = Number(rawScore);
+    let detailHtml = '';
 
-    let bgClass = "bg-gray-700/60 text-gray-400 border border-gray-600/40";
-    const dPoint = Number(dealerPoint);
-
-    if (numericPoint !== null && !isNaN(numericPoint)) {
-        if (leg.winState === 'win' || leg.diff > 0 || numericPoint > dPoint) {
-            bgClass = "bg-emerald-600 text-white font-black shadow-md shadow-emerald-900/50 border border-emerald-400/50";
-        } else if (leg.winState === 'lose' || leg.diff < 0 || numericPoint < dPoint) {
-            bgClass = "bg-rose-600 text-white font-black shadow-md shadow-rose-900/50 border border-rose-400/50";
-        } else if (numericPoint === dPoint) {
-            bgClass = "bg-amber-300 text-amber-950 font-black shadow-md border border-amber-200";
-        }
-    }
+    // --- ส่วนที่ 1: ผลป๊อกเด้ง (เจ้ามือ + ขา 1-6) ---
+    const dealerObj = roundData.dealer || {};
+    const dealerPoint = roundData.dealerPoint !== undefined ? roundData.dealerPoint : (dealerObj.point !== undefined ? dealerObj.point : 0);
+    const dealerDeng = roundData.dealerDeng !== undefined ? roundData.dealerDeng : (dealerObj.deng !== undefined ? dealerObj.deng : 1);
+    const legsData = roundData.legs || roundData.players || [];
 
     detailHtml += `
-        <div class="flex flex-col items-center">
-            <span class="text-[9px] text-gray-300 font-bold mb-0.5">ขา ${i}</span>
-            <div class="${bgClass} w-full py-1.5 rounded-lg text-[11px] flex items-center justify-center transition-all truncate px-0.5">
-                ${displayText}
+        <div class="bg-gray-900/90 p-3 rounded-2xl border border-gray-700/80 text-center shadow-lg mb-3">
+            <div class="flex flex-col items-center justify-center mb-2">
+                <span class="text-xl leading-none mb-0.5">👑</span>
+                <span class="text-[11px] text-amber-400 font-bold uppercase tracking-wider">เจ้ามือ</span>
+                <span class="text-lg text-white font-black drop-shadow">${dealerPoint} แต้ม <span class="text-xs text-amber-300 font-normal">(${dealerDeng}เด้ง)</span></span>
+            </div>
+
+            <div class="grid grid-cols-6 gap-1.5">
+    `;
+
+    for (let i = 1; i <= 6; i++) {
+        const leg = legsData.find(l => l && (l.leg === i || l.id === i)) || legsData[i] || legsData[i - 1] || {};
+
+        const twoCards = leg.twoCards || {};
+        const threeCards = leg.threeCards || {};
+        const activeCards = (twoCards.score !== undefined) ? twoCards : threeCards;
+
+        const dengVal = Number(activeCards.mult ?? activeCards.deng ?? leg.deng ?? 1);
+
+        let rawScore = null;
+        if (twoCards.score !== undefined) {
+            rawScore = twoCards.score;
+        } else if (threeCards.score !== undefined) {
+            rawScore = threeCards.score;
+        } else if (leg.point !== undefined) {
+            rawScore = leg.point;
+        }
+
+        // แปลงแต้มและเด้ง
+        const displayText = formatPokScore(rawScore, leg.isPok, dengVal);
+        const numericPoint = Number(rawScore);
+
+        let bgClass = "bg-gray-700/60 text-gray-400 border border-gray-600/40";
+        const dPoint = Number(dealerPoint);
+
+        if (numericPoint !== null && !isNaN(numericPoint)) {
+            if (leg.winState === 'win' || leg.diff > 0 || numericPoint > dPoint) {
+                bgClass = "bg-emerald-600 text-white font-black shadow-md shadow-emerald-900/50 border border-emerald-400/50";
+            } else if (leg.winState === 'lose' || leg.diff < 0 || numericPoint < dPoint) {
+                bgClass = "bg-rose-600 text-white font-black shadow-md shadow-rose-900/50 border border-rose-400/50";
+            } else if (numericPoint === dPoint) {
+                bgClass = "bg-amber-300 text-amber-950 font-black shadow-md border border-amber-200";
+            }
+        }
+
+        detailHtml += `
+            <div class="flex flex-col items-center">
+                <span class="text-[9px] text-gray-300 font-bold mb-0.5">ขา ${i}</span>
+                <div class="${bgClass} w-full py-1.5 rounded-lg text-[11px] flex items-center justify-center transition-all truncate px-0.5">
+                    ${displayText}
+                </div>
+            </div>
+        `;
+    }
+
+    // ปิด Div ของส่วนป๊อกเด้งแยกออกมาชัดเจน (ไม่ให้ซ้อน Grid)
+    detailHtml += `
             </div>
         </div>
     `;
-}
 
-    // --- ส่วนที่ 2: ผลไฮโล (ขยายขนาดลูกเต๋าและแท็กผลลัพธ์) ---
+    // --- ส่วนที่ 2: ผลไฮโล ---
     if (roundData.hiloDices && Array.isArray(roundData.hiloDices)) {
         const dices = roundData.hiloDices;
         const sum = roundData.hiloSum ?? dices.reduce((a, b) => Number(a) + Number(b), 0);
@@ -1672,7 +1705,7 @@ for (let i = 1; i <= 6; i++) {
         const hiloColor = (hiloType === 'สูง' || sum >= 12) ? 'bg-rose-600 text-white' : 'bg-sky-600 text-white';
 
         detailHtml += `
-            <div class="bg-gray-900/90 p-3 rounded-2xl border border-gray-700/80 mb-2.5 shadow-lg">
+            <div class="bg-gray-900/90 p-3 rounded-2xl border border-gray-700/80 mb-3 shadow-lg w-full">
                 <div class="text-xs font-bold text-purple-300 mb-1.5 flex items-center gap-1">
                     <span>🎲</span> ผลรางวัลไฮโล
                 </div>
@@ -1689,7 +1722,7 @@ for (let i = 1; i <= 6; i++) {
         `;
     }
 
-    // --- ส่วนที่ 3: สรุปยอดได้/เสียของผู้เล่น (แมปฟิลด์ตรงกับ Firebase) ---
+    // --- ส่วนที่ 3: สรุปยอดได้/เสียของผู้เล่น ---
     const pokWin = userSummary?.pokdengWinLoss ?? 0;
     const hiloWin = userSummary?.hiloWinLoss ?? 0;
     const totalWin = userSummary?.totalWinLoss ?? (pokWin + hiloWin);
@@ -1699,7 +1732,7 @@ for (let i = 1; i <= 6; i++) {
     const totalPrefix = totalWin > 0 ? '+' : '';
 
     detailHtml += `
-        <div class="bg-gray-900/90 p-3 rounded-2xl border border-amber-500/40 space-y-1.5 text-xs shadow-lg">
+        <div class="bg-gray-900/90 p-3 rounded-2xl border border-amber-500/40 space-y-1.5 text-xs shadow-lg w-full">
             <div class="font-bold text-amber-400 text-xs mb-1">สรุปผลได้เสียรอบนี้</div>
             <div class="flex justify-between text-gray-300 text-xs">
                 <span>🎴 ป๊อกเด้ง:</span>

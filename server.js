@@ -6090,9 +6090,12 @@ if (userMsg === 'c') {
                 ? `(${data.amounts.join('+')}) = ${data.totalAmount.toLocaleString()} บาท` 
                 : `${data.totalAmount.toLocaleString()} บาท`;
 
-            let label = "";
+            // 🟢 กำหนดให้ legKey ดึงมาจาก bet.betType
+const legKey = bet.betType || "";
 
-// 1. เช็กว่าเป็นฝั่งเจ้ามือ (เช็กจาก legKey ที่ขึ้นต้นด้วย จ/รจ หรือ flag isDealer)
+let label = "";
+
+// 1. เช็กว่าเป็นฝั่งเจ้ามือ (เช็กจาก legKey ที่ขึ้นต้นด้วย จ/รจ)
 if (legKey.startsWith('จ') || legKey === 'dealer' || legKey === 'รจ' || (typeof bet !== 'undefined' && bet.isDealer)) {
     const subLeg = legKey.replace('จ', '').replace('รจ', '');
     if (subLeg) {

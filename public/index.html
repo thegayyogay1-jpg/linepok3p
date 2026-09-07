@@ -1285,42 +1285,102 @@ function toggleLoading(show, message = "กำลังประมวลผล 
 // Variable กันเด้งซ้ำรอบเดิม
 let lastNotifiedRound = 0;
 
-// ฟังผลการแข่ง Real-time จาก Firebase เมื่อแอดมินส่ง ok
+// 1. ฟังผล Real-time จาก Firebase
 function listenToRoundResults() {
     db.ref('currentRoundResult').on('value', (snapshot) => {
         const data = snapshot.val();
+        console.log("ข้อมูลรอบล่าสุดจาก Firebase:", data);
+
         if (!data || !data.round) return;
 
-        // ถ้าเป็นรอบใหม่
-        if (data.round > lastNotifiedRound && currentUserId) {
+        // เช็คว่ารอบใหม่กว่ารอบที่เคยแสดงหรือไม่ (ไม่ใช้ currentUserId ในเงื่อนไขเพื่อป้องกันตัวแปรหลุด)
+        if (data.round > lastNotifiedRound) {
             lastNotifiedRound = data.round;
             checkAndShowUserResult(data);
         }
     });
 }
 
-// เช็ครายการแทงและดึงผลมาแสดง
+// 2. ประมวลผลและเปิด Pop-up แสดงข้อมูลรอบปัจจุบัน
 function checkAndShowUserResult(roundData) {
+    if (!roundData) return;
+
+    // ดึงสรุปยอดรายบุคคลจาก roundData.userSummaries หรือข้อมูลผู้เล่นปัจจุบัน
+    let userSummary = null;
+    if (roundData.userSummaries && typeof currentUserId !== 'undefined' && currentUserId) {
+        userSummary = roundData.userSummaries[currentUserId];
+    }
+
     let detailHtml = '';
-    const pokListRaw = Array.isArray(localPokBets) ? localPokBets : (localPokBets ? Object.values(localPokBets) : []);
-    const hiloListRaw = Array.isArray(localHiloBets) ? localHiloBets : (localHiloBets ? Object.values(localHiloBets) : []);
 
-    // ถ้าไม่มีรายการแทงเลย ไม่ต้องเด้ง Pop-up
-    if (pokListRaw.length === 0 && hiloListRaw.length === 0) return;
-
-    // 1. ถ้ามีแทงป๊อกเด้ง
-    if (pokListRaw.length > 0 && roundData.dealer) {
-        detailHtml += `<div class="font-bold text-yellow-400 border-b border-gray-600 pb-0.5 mb-1">🎴 ผลป๊อกเด้ง</div>`;
-        detailHtml += `<div class="text-[11px] text-gray-300 mb-1">เจ้ามือ: <span class="text-amber-300 font-bold">${roundData.dealer.point || 0} แต้ม (${roundData.dealer.deng || 1}เด้ง)</span></div>`;
+    // --- ส่วนที่ 1: ผลป๊อกเด้ง (เจ้ามือ) ---
+    if (roundData.dealer) {
+        const dealerPoint = roundData.dealer.point ?? roundData.dealer.points ?? 0;
+        const dealerDeng = roundData.dealer.deng ?? 1;
+        
+        detailHtml += `
+            <div class="bg-gray-900/60 p-2.5 rounded-xl border border-gray-700/60 mb-2">
+                <div class="flex justify-between items-center text-xs mb-1">
+                    <span class="font-bold text-amber-400">👑 เจ้ามือ</span>
+                    <span class="font-black text-white">${dealerPoint} แต้ม (${dealerDeng} เด้ง)</span>
+                </div>
+            </div>
+        `;
     }
 
-    // 2. ถ้ามีแทงไฮโล
-    if (hiloListRaw.length > 0 && roundData.hiloDices) {
+    // --- ส่วนที่ 2: ผลไฮโล ---
+    if (roundData.hiloDices && Array.isArray(roundData.hiloDices)) {
         const dices = roundData.hiloDices;
-        const sum = dices.reduce((a, b) => a + b, 0);
-        detailHtml += `<div class="font-bold text-purple-400 border-b border-gray-600 pb-0.5 my-1">🎲 ผลไฮโล</div>`;
-        detailHtml += `<div class="text-[11px] text-gray-300">ลูกเต๋า: <span class="text-amber-300 font-bold">${dices.join(' - ')}</span> (รวม ${sum} แต้ม)</div>`;
+        const sum = dices.reduce((a, b) => Number(a) + Number(b), 0);
+        const hiloResultText = sum >= 11 ? 'สูง' : 'ต่ำ';
+        const hiloColor = sum >= 11 ? 'text-rose-400' : 'text-sky-400';
+
+        detailHtml += `
+            <div class="bg-gray-900/60 p-2.5 rounded-xl border border-gray-700/60 mb-2">
+                <div class="text-[10px] font-bold text-purple-400 mb-1">🎲 ผลรางวัลไฮโล</div>
+                <div class="flex items-center justify-between">
+                    <div class="flex gap-1">
+                        ${dices.map(d => `<span class="w-6 h-6 bg-white text-gray-900 font-bold rounded flex items-center justify-center text-xs shadow">${d}</span>`).join('')}
+                    </div>
+                    <div class="text-right">
+                        <span class="text-xs font-bold text-amber-300">${sum} แต้ม</span>
+                        <span class="text-xs font-black ${hiloColor} ml-1">(${hiloResultText})</span>
+                    </div>
+                </div>
+            </div>
+        `;
     }
+
+    // --- ส่วนที่ 3: สรุปยอดได้/เสียของผู้เล่น ---
+    const pokWin = userSummary?.pokWin ?? 0;
+    const hiloWin = userSummary?.hiloWin ?? 0;
+    const totalWin = userSummary?.totalWin ?? (pokWin + hiloWin);
+    const balance = userSummary?.balance ?? userCredit ?? 0;
+
+    const totalClass = totalWin > 0 ? 'text-emerald-400' : (totalWin < 0 ? 'text-rose-400' : 'text-gray-300');
+    const totalPrefix = totalWin > 0 ? '+' : '';
+
+    detailHtml += `
+        <div class="bg-gray-900/80 p-2.5 rounded-xl border border-amber-500/30 space-y-1 text-xs">
+            <div class="font-bold text-amber-400 text-[11px] mb-1">สรุปผลได้เสียรอบนี้</div>
+            <div class="flex justify-between text-gray-300">
+                <span>🎴 ป๊อกเด้ง:</span>
+                <span class="font-bold ${pokWin > 0 ? 'text-emerald-400' : (pokWin < 0 ? 'text-rose-400' : '')}">${pokWin > 0 ? '+' : ''}${pokWin.toLocaleString()} บาท</span>
+            </div>
+            <div class="flex justify-between text-gray-300">
+                <span>🎲 ไฮโล:</span>
+                <span class="font-bold ${hiloWin > 0 ? 'text-emerald-400' : (hiloWin < 0 ? 'text-rose-400' : '')}">${hiloWin > 0 ? '+' : ''}${hiloWin.toLocaleString()} บาท</span>
+            </div>
+            <div class="border-t border-gray-700 pt-1 flex justify-between font-black text-sm">
+                <span class="text-white">• ยอดสุทธิรวม:</span>
+                <span class="${totalClass}">${totalPrefix}${totalWin.toLocaleString()} บาท</span>
+            </div>
+            <div class="flex justify-between text-[11px] text-gray-400 pt-0.5">
+                <span>• เครดิตคงเหลือ:</span>
+                <span class="text-amber-300 font-bold">${balance.toLocaleString()} บ.</span>
+            </div>
+        </div>
+    `;
 
     showResultModal(roundData.round, detailHtml);
 }

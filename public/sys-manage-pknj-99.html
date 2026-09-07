@@ -440,26 +440,27 @@ function rejectWithdrawQueue(index, memberNumber) {
 
        // ดึงข้อมูลรายการฝากเงินรอตรวจสอบจาก Firebase
 db.ref('pendingDeposits').on('value', (snapshot) => {
-    // 1. หาตำแหน่ง tbody ของตารางรายการฝากเงินสแกนไม่ผ่าน
-    // (ลองดึงจาก id หรือเลือก tbody ตัวแรกในหน้าเว็บ)
     const tableBody = document.getElementById('pendingDepositTableBody') || 
                       document.querySelector('table tbody') ||
                       document.querySelector('.card tbody');
     const countBadge = document.querySelector('.card span') || document.querySelector('.badge');
+    
     if (!tableBody) {
         console.error('❌ หาตำแหน่งตารางไม่พบ กรุณาใส่ id="pendingDepositTableBody" ที่แท็ก <tbody>');
         return;
     }
+    
     tableBody.innerHTML = '';
     const data = snapshot.val();
+    
     if (!data) {
         tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #888; padding: 20px;">ไม่มีรายการฝากค้างตรวจสอบ</td></tr>';
         if (countBadge) countBadge.innerText = '0';
         return;
     }
+    
     let pendingCount = 0;
     Object.values(data).forEach(item => {
-        // เช็คสถานะ PENDING (รองรับทั้งตัวพิมพ์เล็กและใหญ่)
         if (item.status && item.status.toUpperCase() === 'PENDING') {
             pendingCount++;
             const tr = document.createElement('tr');
@@ -471,11 +472,12 @@ db.ref('pendingDeposits').on('value', (snapshot) => {
                 <td style="padding: 10px; color: #00bfff; font-weight: bold;">
                     ${Number(item.amount || 0).toLocaleString()} บาท
                 </td>
-                <td style="padding: 10px;">
-                    <img src="${item.slipImage}" 
-                         style="width: 45px; height: 60px; object-fit: cover; border-radius: 4px; cursor: pointer; border: 1px solid #444;" 
-                         onclick="window.open('${item.slipImage}')" 
-                         title="คลิกเพื่อดูสลิปเต็ม">
+                <td style="padding: 10px; text-align: center;">
+                    <!-- ปุ่มเปิดดูรูปใน Modal ป๊อปอัป -->
+                    <button onclick="showImage('${item.slipImage}')" 
+                            style="background: #27272a; color: #fbbf24; border: 1px solid #3f3f46; padding: 4px 8px; border-radius: 6px; cursor: pointer; font-size: 11px;">
+                        🖼️ ดูสลิป
+                    </button>
                 </td>
                 <td style="padding: 10px; color: #ff3b47;">
                     ${item.reason || '-'}
@@ -494,6 +496,14 @@ db.ref('pendingDeposits').on('value', (snapshot) => {
             tableBody.appendChild(tr);
         }
     });
+    
+    if (countBadge) {
+        countBadge.innerText = pendingCount;
+    }
+    if (pendingCount === 0) {
+        tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #888; padding: 20px;">ไม่มีรายการฝากค้างตรวจสอบ</td></tr>';
+    }
+});
     
     // อัปเดตตัวเลขจำนวนรายการค้างบน Badge มุมขวาบน
     if (countBadge) {

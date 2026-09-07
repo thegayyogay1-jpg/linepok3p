@@ -849,7 +849,7 @@ function updateChipSelectorUI() {
         if (!isRoundOpen) return alert('⚠️ ขณะนี้ปิดรับแทงอยู่ครับ');
         let betKey = key;
         if (game === 'pok') {
-            betKey = pokMode === 'player' ? key : `เจ้าสู้ขา${key}`;
+            betKey = pokMode === 'player' ? key : `จ${key}`;
         }
         const currentAmount = pendingBets[betKey] || 0;
         pendingBets[betKey] = currentAmount + selectedChipValue;
@@ -857,7 +857,7 @@ function updateChipSelectorUI() {
         // 🌟 ระบุ ID ช่องที่เพิ่งกดลงเงินล่าสุด
         let targetElementId = '';
         if (activeTab === 'pok') {
-            const rawKey = betKey.replace('เจ้าสู้ขา', '');
+            const rawKey = betKey.replace('จ', '');
             targetElementId = `pok-chip-${rawKey}`;
         } else {
             targetElementId = `hilo-chip-${betKey}`;

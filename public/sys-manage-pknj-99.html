@@ -84,6 +84,7 @@
                         <thead class="bg-gray-950 text-gray-400 uppercase border-b border-gray-800 text-[10px]">
                             <tr>
                                 <th class="p-2.5">ID / บัญชี</th>
+                                <th class="p-2.5">ธนาคาร / เลขบัญชี</th>
                                 <th class="p-2.5">ยอดถอน</th>
                                 <th class="p-2.5 text-center">จัดการ</th>
                             </tr>
@@ -301,18 +302,40 @@ db.ref('system_data/withdrawQueue').on('value', (snapshot) => {
         document.getElementById('withdraw-count').innerText = '0';
         return;
     }
+    // 💡 ดึงข้อมูลกระเป๋าเงินสมาชิกเพื่อเอาข้อมูลธนาคาร
+    const usersSnap = await db.ref('system_data/usersWallets').once('value');
+    const usersData = usersSnap.val() || {};
     let count = 0;
-    
     // แปลงข้อมูลให้อยู่ในรูปแบบ Array
     const queueList = Array.isArray(data) ? data : Object.values(data);
     queueList.forEach((item, index) => {
         if (item) {
             count++;
+            // ค้นหาข้อมูลสมาชิกใน usersWallets เพื่อดึงเลขบัญชี
+            const userObj = Object.values(usersData).find(u => String(u.memberNumber) === String(item.memberNumber)) || {};
+            
+            // อ่านค่าธนาคารและเลขบัญชี (ดึงจาก item ก่อน ถ้าไม่มีให้ดึงจาก userObj)
+            const bankName = item.bankName || userObj.bankName || userObj.bank || 'ไม่ระบุธนาคาร';
+            const accountNo = item.accountNo || item.bankAccount || userObj.accountNo || userObj.bankAccount || '-';
+            
             list.innerHTML += `
                 <tr class="hover:bg-gray-800/40 transition">
                     <td class="p-2.5">
                         <div class="font-bold text-white">คุณ ${item.name || 'ไม่ระบุชื่อ'} (ID: ${item.memberNumber || '-'})</div>
                         <div class="text-[10px] text-gray-400">⏰ เวลาแจ้งถอน: ${item.time || '-'}</div>
+                    </td>
+                    <!-- 👈 คอลัมน์แสดงข้อมูลธนาคารและเลขบัญชีที่เพิ่มใหม่ -->
+                    <td class="p-2.5">
+                        <div class="font-bold text-amber-400 text-xs">${bankName}</div>
+                        <div class="text-xs text-emerald-400 font-mono flex items-center gap-1 mt-0.5">
+                            <span>${accountNo}</span>
+                            ${accountNo !== '-' ? `
+                                <button onclick="navigator.clipboard.writeText('${accountNo}'); alert('คัดลอกเลขบัญชี ${accountNo} แล้ว');" 
+                                        class="bg-gray-800 hover:bg-gray-700 text-gray-300 text-[9px] px-1.5 py-0.5 rounded border border-gray-700">
+                                    📋 ก๊อป
+                                </button>
+                            ` : ''}
+                        </div>
                     </td>
                     <td class="p-2.5 font-bold text-rose-400 text-sm">${Number(item.amount || 0).toLocaleString()} ฿</td>
                     <td class="p-2.5 text-center">

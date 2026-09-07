@@ -638,7 +638,7 @@ function renderAllBetsUI() {
         const rawText = String(bet.detail || bet.rawText || bet.target || 'ป๊อกเด้ง');
         const price = Number(bet.actualBet || bet.price || bet.amount || 0);
 
-        const isDealer = rawText.includes("เจ้าสู้");
+        const isDealer = rawText.includes("จ");
         const matchLeg = rawText.match(/\d+/);
         let keyName = rawText;
         if (matchLeg) {

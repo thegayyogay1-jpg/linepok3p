@@ -7408,6 +7408,8 @@ app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
             userId: userId,
             memberNumber: user.memberNumber || '---',
             userName: user.name || 'ไม่ระบุ',
+            bankName: user.bankName || 'ไม่ระบุ',       // 👈 เพิ่มชื่อธนาคาร
+            bankAccount: user.bankAccount || 'ไม่ระบุ',   // 👈 เพิ่มเลขบัญชี
             amount: depositAmount,
             slipImage: imageBase64,
             reason: failReason,

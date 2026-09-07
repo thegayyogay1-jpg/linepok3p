@@ -5223,7 +5223,7 @@ global.currentReplyFlex = {
 }
         
 // ==================== [ 10. ระบบคู่มือ: คำสั่งสมาชิก (คส), กติกา (กต) และ บัญชี (บช) ] ====================
-            else if (userMsg === 'คส' || userMsg === 'กต' || userMsg === 'บช' || userMsg === '/บช') {
+            else if (userMsg === 'คส' || userMsg === 'กต' ) {
                 if (userMsg === 'คส') {
                     replyText = `📜 **[ คู่มือคำสั่งสำหรับสมาชิกทุกท่าน ]** 📜\n\n` +
                                 `🔹 **C** ➡️ เช็กเลขสมาชิก ยอดเครดิต และสลิปโพยค้าง + เลขบัญชี\n` +
@@ -5238,11 +5238,59 @@ global.currentReplyFlex = {
                 else if (userMsg === 'กต') {
                     replyText = `💡 สมาชิกพิมพ์ "คส" เพื่อดูวิธีการส่งโพยและคำสั่งอื่นๆ`;
                 }
-                else if (userMsg === 'บช' || userMsg === '/บช') {
-                    // 🏦 บล็อกข้อความตอบกลับเรื่องบัญชีธนาคารโดยเฉพาะ
-                    replyText = `🏦 [ กรุณา พิม ฝากจำนวนเงิน ] 🏦`;
-                }
             }
+                else if (userMsg === 'บช' || userMsg === '/บช') {
+                    // 🏦 ส่ง Flex Message การ์ดฝากเงินพร้อมปุ่มกดลิงก์
+                    global.currentReplyFlex = {
+                        "type": "flex",
+                        "altText": "🏦 รายละเอียดการฝากเงิน",
+                        "contents": {
+                            "type": "bubble",
+                            "styles": {
+                                "body": { "backgroundColor": "#191424" } // สีม่วงดำสวยงามเข้าธีม
+                            },
+                            "body": {
+                                "type": "box",
+                                "layout": "vertical",
+                                "spacing": "md",
+                                "contents": [
+                                    { 
+                                        "type": "text", 
+                                        "text": "🏦 บัญชีธนาคารสำหรับเติมเงิน 🏦", 
+                                        "weight": "bold", 
+                                        "color": "#ffaa00", 
+                                        "size": "md", 
+                                        "align": "center" 
+                                    },
+                                    { "type": "separator", "color": "#2a2a35" },
+                                    { 
+                                        "type": "text", 
+                                        "text": "กรุณา พิมพ์ ฝากจำนวนเงิน\nหรือ กดลิงก์ด้านล่างเพื่อทำรายการฝากเงินครับ", 
+                                        "color": "#ffffff", 
+                                        "size": "sm", 
+                                        "align": "center",
+                                        "wrap": true
+                                    },
+                                    { "type": "separator", "color": "#2a2a35" },
+                                    {
+                                        "type": "button",
+                                        "style": "primary",
+                                        "color": "#00c853", // สีเขียวสำหรับปุ่มฝากเงิน
+                                        "height": "sm",
+                                        "margin": "md",
+                                        "action": {
+                                            "type": "uri",
+                                            "label": "💳 กดลิงก์เพื่อทำรายการฝากเงิน",
+                                            "uri": "https://your-deposit-link.com" // 👈 เปลี่ยน URL หน้าฝากเงินตรงนี้ได้เลยครับ
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    };
+                    replyText = ""; // ตั้งค่าว่างไว้เพื่อให้ระบบส่ง global.currentReplyFlex แทน
+                }
+                    
                 // ==================== [ ระบบดึงโพยและผลไพ่ย้อนหลังรายบุคคล (vรอบ,mสมาชิก) ] ====================
             else if (userMsg.startsWith('v') && userMsg.includes(',m')) {
                 // แยกข้อความด้วยเครื่องหมายจุลภาค (,)

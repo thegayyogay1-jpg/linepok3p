@@ -439,7 +439,7 @@ function rejectWithdrawQueue(index, memberNumber) {
 }
 
         // ดึงข้อมูลรายการฝากเงินรอตรวจสอบจาก Firebase
-     db.ref('pendingDeposits').on('value', async (snapshot) => {
+    db.ref('pendingDeposits').on('value', async (snapshot) => {
     const tableBody = document.getElementById('pendingDepositTableBody') || 
                       document.querySelector('table tbody') ||
                       document.querySelector('.card tbody');
@@ -454,6 +454,15 @@ function rejectWithdrawQueue(index, memberNumber) {
         tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #888; padding: 20px;">ไม่มีรายการฝากค้างตรวจสอบ</td></tr>';
         if (countBadge) countBadge.innerText = '0';
         return;
+    }
+
+    // 💡 ดึงข้อมูล usersWallets ทั้งหมดเตรียมไว้ก่อน
+    let walletsData = {};
+    try {
+        const walletsSnap = await db.ref('usersWallets').once('value');
+        walletsData = walletsSnap.val() || {};
+    } catch (e) {
+        console.error("❌ ไม่สามารถดึง usersWallets ได้:", e);
     }
     
     let pendingCount = 0;
@@ -475,25 +484,27 @@ function rejectWithdrawQueue(index, memberNumber) {
             const displayName = item.userName || item.name || 'ไม่ระบุชื่อ';
             const displayUserId = item.memberNumber || item.userId || '-';
 
-            // 2. ดึงข้อมูลธนาคารจาก usersWallets โดยใช้ userId (LINE ID)
+            // 2. ดึงข้อมูลธนาคาร
             let bankName = item.bankName || item.bank || '-';
             let accountNumber = item.bankAccount || item.accountNumber || '-';
 
-            // หา LINE User ID จากวัตถุรายการฝาก (เช็กฟิลด์ userId หรือ lineId)
-            const targetUserId = item.userId || item.lineId || item.userKey;
-
-            if ((bankName === '-' || accountNumber === '-') && targetUserId) {
-                try {
-                    // ดึงตรงจากโหนด usersWallets/{LINE_USER_ID}
-                    const walletSnap = await db.ref(`usersWallets/${targetUserId}`).once('value');
-                    const walletData = walletSnap.val();
-                    
-                    if (walletData) {
-                        bankName = walletData.bankName || bankName;
-                        accountNumber = walletData.bankAccount || accountNumber;
+            // 💡 ถ้าในรายการฝากไม่มีข้อมูล ให้ค้นหาใน walletsData ด้วย LINE ID หรือ memberNumber
+            if (bankName === '-' || accountNumber === '-') {
+                // กรณีที่ 1: ค้นหาด้วย LINE ID ตรงๆ
+                const targetUserId = item.userId || item.lineId || item.userKey;
+                if (targetUserId && walletsData[targetUserId]) {
+                    bankName = walletsData[targetUserId].bankName || bankName;
+                    accountNumber = walletsData[targetUserId].bankAccount || accountNumber;
+                } 
+                // กรณีที่ 2: ถ้าหาไม่เจอ ให้ค้นหาหาคนที่มี memberNumber ตรงกัน
+                else if (displayUserId !== '-') {
+                    const matchedUser = Object.values(walletsData).find(
+                        user => String(user.memberNumber) === String(displayUserId)
+                    );
+                    if (matchedUser) {
+                        bankName = matchedUser.bankName || bankName;
+                        accountNumber = matchedUser.bankAccount || accountNumber;
                     }
-                } catch (e) {
-                    console.error("❌ ไม่สามารถดึงข้อมูลจาก usersWallets ได้:", e);
                 }
             }
 

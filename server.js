@@ -7513,94 +7513,6 @@ app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
     }
 });
 
-// 📌 API สำหรับแอดมินกด "อนุมัติ" เติมเงิน
-app.post('/api/admin/approve-deposit', async (req, res) => {
-    try {
-        const { depositId, userId, amount } = req.body;
-
-        if (!depositId || !userId || !amount) {
-            return res.status(400).json({ success: false, message: 'ข้อมูลไม่ครบถ้วน' });
-        }
-
-        const depositAmount = Number(amount);
-
-        // 1. ดึงข้อมูล User จากระบบ
-        const user = usersWallets[userId];
-        if (!user) {
-            return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลสมาชิก' });
-        }
-
-        // 2. เติมเงินให้ลูกค้า
-        const memberNum = user.memberNumber;
-        const creditResult = await creditUserByMemberNumber(memberNum, depositAmount);
-
-        // 3. อัปเดตสถานะรายการใน Firebase เป็น APPROVED
-        if (typeof db !== 'undefined') {
-            await db.ref(`pendingDeposits/${depositId}`).update({
-                status: 'APPROVED',
-                approvedAt: new Date().toISOString()
-            });
-
-            // 🧹 ล้าง Session ฝากเงินค้างทิ้ง เพื่อให้ลูกค้าทำรายการใหม่ได้ทันที
-            await db.ref(`activeDepositSessions/${userId}`).remove();
-        }
-
-        // 4. บันทึก Transaction
-        const txId = `TX_ADMIN_${Date.now()}`;
-        slipTransactions[txId] = {
-            userId: userId,
-            memberNumber: memberNum || '---',
-            amount: depositAmount,
-            transRef: 'MANUAL_APPROVE_BY_ADMIN',
-            status: 'APPROVED',
-            created_at: new Date().toLocaleString('th-TH')
-        };
-
-        await saveDataToFirebase();
-
-        return res.json({
-            success: true,
-            message: 'อนุมัติรายการและเติมเงินเรียบร้อยแล้ว',
-            newBalance: creditResult.newBalance
-        });
-
-    } catch (error) {
-        console.error('❌ Admin Approve Error:', error);
-        return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการอนุมัติรายการ' });
-    }
-});
-
-// 📌 API สำหรับแอดมินกด "ปฏิเสธ" (ไม่อนุมัติ)
-app.post('/api/admin/reject-deposit', async (req, res) => {
-    try {
-        const { depositId, userId, rejectReason } = req.body;
-
-        if (!depositId || !userId) {
-            return res.status(400).json({ success: false, message: 'ข้อมูลไม่ครบถ้วน' });
-        }
-
-        // 1. อัปเดตสถานะใน Firebase เป็น REJECTED
-        if (typeof db !== 'undefined') {
-            await db.ref(`pendingDeposits/${depositId}`).update({
-                status: 'REJECTED',
-                rejectReason: rejectReason || 'แอดมินปฏิเสธรายการ',
-                rejectedAt: new Date().toISOString()
-            });
-
-            // 🧹 ล้าง Session ฝากเงินค้างทิ้ง เพื่อให้ลูกค้าสามารถกดขอเลขบัญชีทำรายการใหม่ได้
-            await db.ref(`activeDepositSessions/${userId}`).remove();
-        }
-
-        return res.json({
-            success: true,
-            message: 'ปฏิเสธรายการเรียบร้อยแล้ว'
-        });
-
-    } catch (error) {
-        console.error('❌ Admin Reject Error:', error);
-        return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการปฏิเสธรายการ' });
-    }
-});
 
 // ==========================================
 // API: ดึงข้อมูลโปรไฟล์และยอดเงินคงเหลือของผู้เล่น
@@ -7854,6 +7766,35 @@ app.post('/api/withdraw/create', async (req, res) => {
         return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์' });
     }
 });
+// 📌 API สำหรับแอดมินกดอนุมัติการฝากเงินจากหน้าเว็บ
+app.post('/api/admin/approve-deposit', async (req, res) => {
+    try {
+        const { depositId, memberNumber, amount } = req.body;
+
+        if (!depositId || !memberNumber || !amount) {
+            return res.status(400).json({ success: false, message: 'ข้อมูลไม่ครบถ้วน' });
+        }
+
+        // 1. เติมเงินให้สมาชิก
+        const creditResult = await creditUserByMemberNumber(memberNumber, Number(amount));
+
+        // 2. อัปเดตสถานะใน Firebase เป็น APPROVED
+        if (typeof db !== 'undefined') {
+            await db.ref(`pendingDeposits/${depositId}`).update({ status: 'APPROVED' });
+        }
+
+        return res.json({
+            success: true,
+            message: 'อนุมัติการฝากเงินสำเร็จ',
+            newBalance: creditResult.newBalance
+        });
+
+    } catch (error) {
+        console.error('Approve Deposit Error:', error);
+        return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการอนุมัติ' });
+    }
+});
+
 
 app.use(express.static(__dirname));
 // ==================== [ จุดรัน Server ] ====================

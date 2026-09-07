@@ -1584,30 +1584,44 @@ function checkAndShowUserResult(roundData) {
     `;
 
     for (let i = 1; i <= 6; i++) {
-    // 🟢 แก้ไขจุดนี้: ใส่ l && เพื่อป้องกัน l เป็น undefined ก่อนอ่านค่า .leg หรือ .id
-    const leg = legsData.find(l => l && (l.leg === i || l.id === i)) || legsData[i - 1] || {};
-    
-    let bgClass = "bg-gray-700 text-gray-300";
-    let statusText = leg.point !== undefined ? `${leg.point}` : "-";
+        // 🟢 1. ค้นหาข้อมูล leg ของขานั้นๆ
+        const leg = legsData.find(l => l && (l.leg === i || l.id === i)) || legsData[i] || legsData[i - 1] || {};
 
-    if (leg.isPok) {
-        bgClass = "bg-lime-500 text-black font-black";
-        statusText = `P${leg.point}`;
-    } else if (leg.winState === 'win' || leg.diff > 0) {
-        bgClass = "bg-emerald-600 text-white font-bold";
-    } else if (leg.winState === 'lose' || leg.diff < 0) {
-        bgClass = "bg-rose-600 text-white font-bold";
-    }
+        // 🟢 2. เจาะอ่านแต้มจาก twoCards เป็นหลักก่อนเสมอ
+        const twoCards = leg.twoCards || {};
+        const threeCards = leg.threeCards || {};
 
-    htmlContent += `
-        <div class="flex flex-col items-center">
-            <span class="text-[8px] text-gray-400 font-semibold mb-0.5">ขา ${i}</span>
-            <div class="${bgClass} w-full py-1 rounded-md text-[10px] flex items-center justify-center shadow-sm">
-                ${statusText}
+        let legPoint = "-";
+        if (twoCards.score !== undefined) {
+            legPoint = twoCards.score; // 🎯 ดึงจาก twoCards.score
+        } else if (threeCards.score !== undefined) {
+            legPoint = threeCards.score;
+        } else if (leg.point !== undefined) {
+            legPoint = leg.point;
+        }
+
+        // 🟢 3. กำหนดสีและข้อความแสดงผล
+        let bgClass = "bg-gray-700 text-gray-300";
+        let statusText = `${legPoint}`;
+
+        if (leg.isPok) {
+            bgClass = "bg-lime-500 text-black font-black";
+            statusText = `P${legPoint}`;
+        } else if (leg.winState === 'win' || leg.diff > 0) {
+            bgClass = "bg-emerald-600 text-white font-bold";
+        } else if (leg.winState === 'lose' || leg.diff < 0) {
+            bgClass = "bg-rose-600 text-white font-bold";
+        }
+
+        htmlContent += `
+            <div class="flex flex-col items-center">
+                <span class="text-[8px] text-gray-400 font-semibold mb-0.5">ขา ${i}</span>
+                <div class="${bgClass} w-full py-1 rounded-md text-[10px] flex items-center justify-center shadow-sm">
+                    ${statusText}
+                </div>
             </div>
-        </div>
-    `;
-}
+        `;
+    }
 
     htmlContent += `
             </div>

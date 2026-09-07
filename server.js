@@ -7530,7 +7530,7 @@ app.get('/api/user-profile', async (req, res) => {
     }
 });
 // ==========================================
-// API: แจ้งถอนเงินผ่านหน้าเว็บ (ปรับไม่ให้หักเงินก่อน รอแอดมินอนุมัติ)
+// API: แจ้งถอนเงินผ่านหน้าเว็บ (ปรับแก้ไขการซิงก์ข้อมูลลง Firebase และ RAM ให้ตรงกัน)
 // ==========================================
 app.post('/api/withdraw/create', async (req, res) => {
     try {
@@ -7582,21 +7582,39 @@ app.post('/api/withdraw/create', async (req, res) => {
             });
         }
 
-        // 5. ⚡ ล็อกการถอนซ้ำ และ บันทึกยอดรอถอน (โดยยังไม่หัก user.balance ออก)
+        // 5. ⚡ ล็อกการถอนซ้ำ และ บันทึกยอดรอถอน (อัปเดตใน RAM ของบอท)
         user.isWithdrawLocked = true;
         user.pendingWithdrawAmount = withdrawAmount;
 
-        // 6. เพิ่มเข้าคิวถอนเงิน (withdrawQueue)
+        // 6. เพิ่มเข้าคิวถอนเงิน (อัปเดตใน RAM ของบอท)
+        const queueItem = { 
+            memberNumber: user.memberNumber, 
+            name: user.name, 
+            amount: withdrawAmount, 
+            time: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) 
+        };
+
         if (typeof withdrawQueue !== 'undefined') {
-            withdrawQueue.push({ 
-                memberNumber: user.memberNumber, 
-                name: user.name, 
-                amount: withdrawAmount, 
-                time: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) 
-            });
+            withdrawQueue.push(queueItem);
         }
 
-        // 7. เซฟลง Firebase
+        // 🟢 7. [จุดแก้ไขสำคัญ] เขียนตรงเข้า Firebase ทั้ง usersWallets และ withdrawQueue ทันที!
+        try {
+            // 7.1 อัปเดตสถานะล็อกและยอดค้างถอนของยูสเซอร์ขึ้น Firebase
+            await db.ref(`system_data/usersWallets/${userId}`).update({
+                isWithdrawLocked: true,
+                pendingWithdrawAmount: withdrawAmount
+            });
+
+            // 7.2 อัปเดตคิวถอน (withdrawQueue) ขึ้น Firebase ให้หน้าเว็บแอดมินมองเห็น
+            if (typeof withdrawQueue !== 'undefined') {
+                await db.ref('system_data/withdrawQueue').set(withdrawQueue);
+            }
+        } catch (dbErr) {
+            console.error("❌ บันทึกข้อมูลลง Firebase ล้มเหลว:", dbErr);
+        }
+
+        // เรียกฟังก์ชันเซฟรวมเดิมไว้กันพลาด
         if (typeof saveDataToFirebase === 'function') {
             await saveDataToFirebase();
         }

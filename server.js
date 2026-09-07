@@ -744,6 +744,20 @@ async function processHiloBetSubmission(userId, rawMessage, source = 'web') {
         processedBets: processedHiloBets 
     };
 }
+// โค้ดฝั่งแอดมินเมื่อกด "ยืนยันผล" หรือ "ส่งผลการแข่ง"
+function sendRoundResultToFirebase(roundNum, dealerData, hiloDicesData, userSummariesData) {
+    
+    const resultData = {
+        round: roundNum, // <-- ต้องอัปเดตเป็นเลขรอบล่าสุด (เช่น 13)
+        dealer: dealerData,
+        hiloDices: hiloDicesData,
+        userSummaries: userSummariesData,
+        timestamp: firebase.database.ServerValue.TIMESTAMP
+    };
+
+    // เขียนลง Path นี้เพื่อให้หน้าผู้เล่นดึงไปเด้ง Pop-up
+    db.ref('currentRoundResult').set(resultData);
+}
 // ==========================================
 // 2. ฟังก์ชันช่วยเติมเงินออโต้ (วางไว้ตรงนี้)
 // ==========================================

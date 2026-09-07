@@ -332,33 +332,57 @@ db.ref('system_data/withdrawQueue').on('value', (snapshot) => {
     document.getElementById('withdraw-count').innerText = count;
 });
 
-// 🟢 ฟังก์ชันเมื่อแอดมินกด "โอนแล้ว" บนหน้าเว็บ
-function approveWithdrawQueue(index, memberNumber) {
+// 🟢 ฟังก์ชันเมื่อแอดมินกด "โอนแล้ว" บนหน้าเว็บ (ปรับปรุงให้ตรงกับฝั่งบอทหลัก 100%)
+async function approveWithdrawQueue(index, memberNumber) {
     if (confirm(`ยืนยันโอนเงินเรียบร้อยแล้วใช่หรือไม่?`)) {
-        // 1. ดึงคิวทั้งหมดลงมาแล้วกรองรายการคนนี้ออก
-        db.ref('system_data/withdrawQueue').once('value', (snap) => {
-            const queue = snap.val() || [];
+        try {
+            // 1. ดึงคิวทั้งหมดลงมาแล้วกรองรายการคนนี้ออก
+            const queueSnap = await db.ref('system_data/withdrawQueue').once('value');
+            const queue = queueSnap.val() || [];
             const queueList = Array.isArray(queue) ? queue : Object.values(queue);
+            
             // กรองรายการที่ไม่ใช่สมาชิกคนนี้ออก
             const updatedQueue = queueList.filter(item => item && String(item.memberNumber) !== String(memberNumber));
-            // บันทึกคิวใหม่กลับขึ้น Firebase
-            db.ref('system_data/withdrawQueue').set(updatedQueue);
-        });
-        // 2. หักเงินและปลดล็อกบัญชีสมาชิกใน usersWallets
-        db.ref('system_data/usersWallets').once('value', (snap) => {
-            const users = snap.val() || {};
+            
+            // บันทึกคิวใหม่กลับขึ้น Firebase (ถ้าหมดคิวให้ลบ node ทิ้ง)
+            if (updatedQueue.length === 0) {
+                await db.ref('system_data/withdrawQueue').remove();
+            } else {
+                await db.ref('system_data/withdrawQueue').set(updatedQueue);
+            }
+
+            // 2. หักเงิน ปลดล็อกบัญชี สะสมยอดถอน และล้างเทิร์นใน usersWallets
+            const usersSnap = await db.ref('system_data/usersWallets').once('value');
+            const users = usersSnap.val() || {};
             const targetKey = Object.keys(users).find(k => String(users[k].memberNumber) === String(memberNumber));
+
             if (targetKey) {
                 const user = users[targetKey];
-                const amt = user.pendingWithdrawAmount || 0;
-                db.ref(`system_data/usersWallets/${targetKey}`).update({
-                    balance: Math.max(0, (user.balance || 0) - amt),
-                    isWithdrawLocked: false,
-                    pendingWithdrawAmount: 0
+                const amt = Number(user.pendingWithdrawAmount || 0);
+                const currentBalance = Number(user.balance || 0);
+                const currentTotalWithdraw = Number(user.totalWithdraw || 0);
+
+                // อัปเดตข้อมูลให้ตรงตามโลจิกคำสั่ง Y ในบอทหลัก
+                await db.ref(`system_data/usersWallets/${targetKey}`).update({
+                    balance: Math.max(0, currentBalance - amt), // 1. หักเงิน
+                    totalWithdraw: currentTotalWithdraw + amt,  // 2. บวกสะสมยอดถอน
+                    activePromotion: null,                      // 3. ล้างโปรโมชั่น
+                    turnoverTarget: 0,                         // 4. ล้างเทิร์นโอเวอร์
+                    isWithdrawLocked: false,                    // 5. ปลดล็อกบัญชี
+                    pendingWithdrawAmount: 0                    // 6. ล้างยอดค้างถอน
                 });
+
+                // 3. (สำคัญมาก) ถ้ามี API หรือ Endpoint บน Backend สำหรับโหลดข้อมูลเข้า RAM ใหม่ ให้ยิงเรียกตรงนี้ 
+                // เพื่อให้ RAM ของบอทหลักอัปเดตตาม Firebase ทันที เช่น:
+                // await fetch('/api/reload-firebase-data', { method: 'POST' });
             }
-        });
-        alert('✅ ดำเนินการอนุมัติรายการถอนเรียบร้อยแล้ว');
+
+            alert('✅ ดำเนินการอนุมัติรายการถอนเรียบร้อยแล้ว');
+            
+        } catch (error) {
+            console.error("❌ เกิดข้อผิดพลาดในการอนุมัติรายการถอน:", error);
+            alert('❌ เกิดข้อผิดพลาดในการอนุมัติ กรุณาลองใหม่อีกครั้ง');
+        }
     }
 }
 

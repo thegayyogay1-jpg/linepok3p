@@ -7440,6 +7440,13 @@ app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
         return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการประมวลผลระบบ' });
     }
 });
+// ----------------------------------------------------
+// 5. สั่งให้ Server รัน (app.listen) อยู่ท้ายสุดเสมอ
+// ----------------------------------------------------
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+});
 // ==========================================
 // API: ดึงข้อมูลโปรไฟล์และยอดเงินคงเหลือของผู้เล่น
 // ==========================================
@@ -7720,13 +7727,6 @@ app.post('/api/admin/approve-deposit', async (req, res) => {
         console.error('Approve Deposit Error:', error);
         return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการอนุมัติ' });
     }
-});
-// ----------------------------------------------------
-// 5. สั่งให้ Server รัน (app.listen) อยู่ท้ายสุดเสมอ
-// ----------------------------------------------------
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
 });
 
 app.use(express.static(__dirname));

@@ -7262,15 +7262,15 @@ app.post('/api/deposit/create', async (req, res) => {
             if (currentSession) {
                 const timePassed = now - currentSession.createdAt;
 
-                // หากยังไม่เกิน 5 นาที -> ส่ง Session เดิมกลับไป
+                // หากยังไม่เกิน 5 นาที -> ส่งยอดเดิม + แจ้งเตือน
                 if (timePassed < EXPIRE_TIME) {
                     const remainingSeconds = Math.ceil((EXPIRE_TIME - timePassed) / 1000);
                     return res.json({
                         success: true,
-                        isExisting: true, // บอก Frontend ว่าเป็นรายการเดิมที่ค้างอยู่
-                        amount: Number(currentSession.amount),
+                        isExisting: true, // บอก Frontend ว่าเป็นรายการเดิม
+                        amount: Number(currentSession.amount), // 👈 ล็อคให้ใช้อยอดเดิมเท่านั้น (เช่น 50)
                         remainingSeconds: remainingSeconds,
-                        message: 'คุณมีรายการฝากค้างอยู่ กรุณาโอนเงินตามเวลาที่กำหนด'
+                        message: `ท่านมีรายการฝากยอด ${currentSession.amount} บาท ค้างอยู่ กรุณาทำรายการให้เสร็จสิ้น`
                     });
                 }
             }

@@ -7414,9 +7414,13 @@ app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
             slipImage: imageBase64,
             reason: failReason,
             status: 'PENDING',
-            timestamp: now.getTime(), // 👈 บันทึก Timestamp ตัวเลขสำหรับเรียงลำดับเวลา
-            created_at: now.toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }) // 👈 กำหนด Timezone ไทยให้ชัวร์
-        };
+            time: new Date().toLocaleTimeString('th-TH', { 
+                timeZone: 'Asia/Bangkok', 
+                hour: '2-digit', 
+                minute: '2-digit',
+                hour12: false 
+            }),
+        }
 
         // บันทึกลง Firebase Database
         if (typeof db !== 'undefined') {

@@ -344,13 +344,14 @@ async function processPokDengBet(userId, betText) {
             if (hasError) break;
             for (let c = 1; c <= maxLegs; c++) { betTracker[c] = 'player'; }
 
-        } else if (targetStr === "รจ") {
+        } else if (targetStr === "รจ" || targetStr === "จ") {
+            // 🟢 แทงเจ้ามือสู้ทุกขา (จ หรือ รจ)
             legsCount = maxLegs;
             betTypeDetail = `แทงเจ้ามือสู้ทุกขา (${maxLegs} ขา) ขาละ ${price} บาท`;
             for (let c = 1; c <= maxLegs; c++) {
                 if (betTracker[c] === 'player') {
                     hasError = true;
-                    errorMsg = `❌ แทง รจ ไม่ได้! ขา ${c} มีการแทงฝั่งผู้เล่นค้างไว้แล้ว`;
+                    errorMsg = `❌ แทงเจ้ามือไม่ได้! ขา ${c} มีการแทงฝั่งผู้เล่นค้างไว้แล้ว`;
                     break;
                 }
             }
@@ -358,10 +359,11 @@ async function processPokDengBet(userId, betText) {
             for (let c = 1; c <= maxLegs; c++) { betTracker[c] = 'dealer'; }
 
         } else if (targetStr.startsWith('จ')) {
+            // 🟢 แทงระบุขาเจ้ามือ (เช่น จ1, จ123)
             const legs = targetStr.substring(1);
             if (legs === "") {
                 hasError = true;
-                errorMsg = `⚠️ ไม่ระบุเลขขาเจ้ามือในบรรทัด: "${line}"`;
+                errorMsg = `⚠️ ไม่ระบุเลขขาเจ้ามือในบรรทัด: "${line}" (เช่น จ123-100)`;
                 break;
             }
 
@@ -386,6 +388,7 @@ async function processPokDengBet(userId, betText) {
             for (let c of targetLegs) { betTracker[c] = 'dealer'; }
 
         } else {
+            // 🟢 แทงขาผู้เล่นปกติ (เช่น 123-100)
             let isLegsValid = targetStr.split('').every(char => allowedLegs.includes(char));
             if (!isLegsValid) {
                 hasError = true;

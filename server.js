@@ -4948,6 +4948,23 @@ try {
         hiloType = 'สูง';
     }
 
+    // 🟢 [ปรับแก้] ดึงแต้มโดยยึด twoCards (2 ใบ) เป็นหลักก่อน
+    const formattedLegs = (tempRoomResults || []).map((leg, index) => {
+        if (!leg) return { legIndex: index + 1, point: "-", deng: 1 };
+        
+        // สลับเอา twoCards ขึ้นก่อน threeCards
+        const activeCards = leg.twoCards || leg.threeCards || {};
+        const pointVal = activeCards.score !== undefined ? activeCards.score : (leg.point ?? "-");
+        const dengVal = activeCards.mult !== undefined ? activeCards.mult : (leg.deng ?? 1);
+
+        return {
+            ...leg,
+            legIndex: leg.leg || (index + 1),
+            point: pointVal, // 👈 ได้แต้มของไพ่ 2 ใบก่อนเสมอ
+            deng: dengVal
+        };
+    });
+
     // 🛡️ ดึงแต้มเจ้ามือ ป้องกัน undefined
     const dealerPointValue = tempDealerResult 
         ? (tempDealerResult.point ?? tempDealerResult.score ?? 0) 

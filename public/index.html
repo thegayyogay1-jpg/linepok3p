@@ -1301,86 +1301,165 @@ function listenToRoundResults() {
     });
 }
 
-// 2. ประมวลผลและเปิด Pop-up แสดงข้อมูลรอบปัจจุบัน
+// 🟢 เพิ่มฟังก์ชันแปลงแต้ม score เป็นชื่อไพ่พิเศษ และเช็กเด้งเฉพาะแต้มปกติ
+function formatPokDisplay(score, isPok, dengVal) {
+    const s = Number(score);
+    if (isNaN(s)) return score || "-";
+
+    // 1. ไพ่พิเศษ ไม่ต้องใส่ "ด" ต่อท้าย
+    if (s === 700) return "ตอง";
+    if (s === 600) return "สเตทฟลัช";
+    if (s === 500) return "เรียง";
+    if (s === 400) return "เซียน";
+    if (s === 7.5) return "7.5";
+
+    // 2. แต้มปกติ / ป๊อก ใส่ "ด" ต่อท้ายเมื่อมี 2 เด้งขึ้นไป
+    const dengSuffix = (Number(dengVal) > 1) ? "ด" : "";
+
+    if (s === 900 || (isPok && s === 9)) return `P9${dengSuffix}`;
+    if (s === 800 || (isPok && s === 8)) return `P8${dengSuffix}`;
+
+    const normalPoint = isPok ? (s % 100) : (s % 10);
+    return `${normalPoint}${dengSuffix}`;
+}
+
+// 2. ประมวลผลและเปิด Pop-up แสดงข้อมูลรอบปัจจุบัน (ใช้โครงสร้างเดิมของคุณ 100%)
 function checkAndShowUserResult(roundData) {
     if (!roundData) return;
 
-    // 🔍 เพิ่ม Log เพื่อดูค่าจริงที่ดึงได้
-    console.log("👉 currentUserId คือ:", typeof currentUserId !== 'undefined' ? currentUserId : 'ไม่มีตัวแปรนี้');
-    console.log("👉 ข้อมูล userSummaries ใน Firebase ทั้งหมด:", roundData.userSummaries);
-    // ดึงสรุปยอดรายบุคคลจาก roundData.userSummaries หรือข้อมูลผู้เล่นปัจจุบัน
+    // ดึงสรุปยอดรายบุคคลจาก roundData.userSummaries
     let userSummary = null;
     if (roundData.userSummaries && typeof currentUserId !== 'undefined' && currentUserId) {
         userSummary = roundData.userSummaries[currentUserId];
     }
 
-    console.log("👉 ผลลัพธ์ userSummary ที่หาเจอ:", userSummary);
-
     let detailHtml = '';
 
-    // --- ส่วนที่ 1: ผลป๊อกเด้ง (เจ้ามือ) ---
-    if (roundData.dealer) {
-        const dealerPoint = roundData.dealer.point ?? roundData.dealer.points ?? 0;
-        const dealerDeng = roundData.dealer.deng ?? 1;
+    // --- ส่วนที่ 1: ผลป๊อกเด้ง (เจ้ามือ + ขา 1-6) ---
+    const dealerObj = roundData.dealer || {};
+    const dealerPoint = roundData.dealerPoint !== undefined ? roundData.dealerPoint : (dealerObj.point !== undefined ? dealerObj.point : 0);
+    const dealerDeng = roundData.dealerDeng !== undefined ? roundData.dealerDeng : (dealerObj.deng !== undefined ? dealerObj.deng : 1);
+    const legsData = roundData.legs || roundData.players || [];
+
+    detailHtml += `
+        <div class="bg-gray-900/90 p-3 rounded-2xl border border-gray-700/80 text-center shadow-lg mb-2.5">
+            <!-- 👑 เจ้ามือ จัดเรียงใหญ่ชัดเจน -->
+            <div class="flex flex-col items-center justify-center mb-2">
+                <span class="text-xl leading-none mb-0.5">👑</span>
+                <span class="text-[11px] text-amber-400 font-bold uppercase tracking-wider">เจ้ามือ</span>
+                <span class="text-lg text-white font-black drop-shadow">${dealerPoint} แต้ม <span class="text-xs text-amber-300 font-normal">(${dealerDeng}เด้ง)</span></span>
+            </div>
+
+            <!-- กล่องแสดงขา 1 ถึง 6 (ขยายขนาดตัวอักษรและ padding ให้เต็มตา) -->
+            <div class="grid grid-cols-6 gap-1.5">
+    `;
+
+    for (let i = 1; i <= 6; i++) {
+        const leg = legsData.find(l => l && (l.leg === i || l.id === i)) || legsData[i] || legsData[i - 1] || {};
+
+        const twoCards = leg.twoCards || {};
+        const threeCards = leg.threeCards || {};
+        const activeCards = (twoCards.score !== undefined) ? twoCards : threeCards;
+
+        // ดึงค่าเด้ง
+        const dengVal = Number(activeCards.mult ?? activeCards.deng ?? leg.deng ?? 1);
+
+        let legPoint = "-";
+        let numericPoint = null;
+
+        if (twoCards.score !== undefined) {
+            legPoint = twoCards.score;
+            numericPoint = Number(twoCards.score);
+        } else if (threeCards.score !== undefined) {
+            legPoint = threeCards.score;
+            numericPoint = Number(threeCards.score);
+        } else if (leg.point !== undefined) {
+            legPoint = leg.point;
+            numericPoint = Number(leg.point);
+        }
+
+        let bgClass = "bg-gray-700/60 text-gray-400 border border-gray-600/40";
         
+        // 🎯 แปลงชื่อแต้มด้วยฟังก์ชันใหม่
+        let statusText = formatPokDisplay(legPoint, leg.isPok, dengVal);
+
+        const dPoint = Number(dealerPoint);
+
+        if (numericPoint !== null && !isNaN(numericPoint)) {
+            if (leg.winState === 'win' || leg.diff > 0 || numericPoint > dPoint) {
+                bgClass = "bg-emerald-600 text-white font-black shadow-md shadow-emerald-900/50 border border-emerald-400/50";
+            } else if (leg.winState === 'lose' || leg.diff < 0 || numericPoint < dPoint) {
+                bgClass = "bg-rose-600 text-white font-black shadow-md shadow-rose-900/50 border border-rose-400/50";
+            } else if (numericPoint === dPoint) {
+                bgClass = "bg-amber-300 text-amber-950 font-black shadow-md border border-amber-200";
+            }
+        }
+
         detailHtml += `
-            <div class="bg-gray-900/60 p-2.5 rounded-xl border border-gray-700/60 mb-2">
-                <div class="flex justify-between items-center text-xs mb-1">
-                    <span class="font-bold text-amber-400">👑 เจ้ามือ</span>
-                    <span class="font-black text-white">${dealerPoint} แต้ม (${dealerDeng} เด้ง)</span>
+            <div class="flex flex-col items-center">
+                <span class="text-[9px] text-gray-300 font-bold mb-0.5">ขา ${i}</span>
+                <div class="${bgClass} w-full py-1.5 rounded-lg text-xs flex items-center justify-center transition-all">
+                    ${statusText}
                 </div>
             </div>
         `;
     }
 
-    // --- ส่วนที่ 2: ผลไฮโล ---
+    detailHtml += `
+            </div>
+        </div>
+    `;
+
+    // --- ส่วนที่ 2: ผลไฮโล (ขยายขนาดลูกเต๋าและแท็กผลลัพธ์) ---
     if (roundData.hiloDices && Array.isArray(roundData.hiloDices)) {
         const dices = roundData.hiloDices;
-        const sum = dices.reduce((a, b) => Number(a) + Number(b), 0);
-        const hiloResultText = sum >= 11 ? 'สูง' : 'ต่ำ';
-        const hiloColor = sum >= 11 ? 'text-rose-400' : 'text-sky-400';
+        const sum = roundData.hiloSum ?? dices.reduce((a, b) => Number(a) + Number(b), 0);
+        const hiloType = roundData.hiloType ?? (sum >= 12 ? 'สูง' : 'ต่ำ');
+        const hiloColor = (hiloType === 'สูง' || sum >= 12) ? 'bg-rose-600 text-white' : 'bg-sky-600 text-white';
 
         detailHtml += `
-            <div class="bg-gray-900/60 p-2.5 rounded-xl border border-gray-700/60 mb-2">
-                <div class="text-[10px] font-bold text-purple-400 mb-1">🎲 ผลรางวัลไฮโล</div>
+            <div class="bg-gray-900/90 p-3 rounded-2xl border border-gray-700/80 mb-2.5 shadow-lg">
+                <div class="text-xs font-bold text-purple-300 mb-1.5 flex items-center gap-1">
+                    <span>🎲</span> ผลรางวัลไฮโล
+                </div>
                 <div class="flex items-center justify-between">
-                    <div class="flex gap-1">
-                        ${dices.map(d => `<span class="w-6 h-6 bg-white text-gray-900 font-bold rounded flex items-center justify-center text-xs shadow">${d}</span>`).join('')}
+                    <div class="flex gap-1.5">
+                        ${dices.map(d => `<span class="w-8 h-8 bg-white text-gray-950 font-black rounded-lg flex items-center justify-center text-sm shadow-md border border-gray-300">${d}</span>`).join('')}
                     </div>
-                    <div class="text-right">
-                        <span class="text-xs font-bold text-amber-300">${sum} แต้ม</span>
-                        <span class="text-xs font-black ${hiloColor} ml-1">(${hiloResultText})</span>
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-xs font-bold text-amber-300 bg-gray-800 px-2 py-1 rounded-md border border-gray-700">${sum} แต้ม</span>
+                        <span class="text-xs font-black ${hiloColor} px-2.5 py-1 rounded-md shadow">${hiloType}</span>
                     </div>
                 </div>
             </div>
         `;
     }
 
-    // --- ส่วนที่ 3: สรุปยอดได้/เสียของผู้เล่น ---
-    const pokWin = userSummary?.pokWin ?? 0;
-    const hiloWin = userSummary?.hiloWin ?? 0;
-    const totalWin = userSummary?.totalWin ?? (pokWin + hiloWin);
-    const balance = userSummary?.balance ?? userCredit ?? 0;
+    // --- ส่วนที่ 3: สรุปยอดได้/เสียของผู้เล่น (แมปฟิลด์ตรงกับ Firebase) ---
+    const pokWin = userSummary?.pokdengWinLoss ?? 0;
+    const hiloWin = userSummary?.hiloWinLoss ?? 0;
+    const totalWin = userSummary?.totalWinLoss ?? (pokWin + hiloWin);
+    const balance = userSummary?.balance ?? (typeof userCredit !== 'undefined' ? userCredit : 0);
 
     const totalClass = totalWin > 0 ? 'text-emerald-400' : (totalWin < 0 ? 'text-rose-400' : 'text-gray-300');
     const totalPrefix = totalWin > 0 ? '+' : '';
 
     detailHtml += `
-        <div class="bg-gray-900/80 p-2.5 rounded-xl border border-amber-500/30 space-y-1 text-xs">
-            <div class="font-bold text-amber-400 text-[11px] mb-1">สรุปผลได้เสียรอบนี้</div>
-            <div class="flex justify-between text-gray-300">
+        <div class="bg-gray-900/90 p-3 rounded-2xl border border-amber-500/40 space-y-1.5 text-xs shadow-lg">
+            <div class="font-bold text-amber-400 text-xs mb-1">สรุปผลได้เสียรอบนี้</div>
+            <div class="flex justify-between text-gray-300 text-xs">
                 <span>🎴 ป๊อกเด้ง:</span>
-                <span class="font-bold ${pokWin > 0 ? 'text-emerald-400' : (pokWin < 0 ? 'text-rose-400' : '')}">${pokWin > 0 ? '+' : ''}${pokWin.toLocaleString()} บาท</span>
+                <span class="font-bold ${pokWin > 0 ? 'text-emerald-400' : (pokWin < 0 ? 'text-rose-400' : 'text-gray-400')}">${pokWin > 0 ? '+' : ''}${pokWin.toLocaleString()} บาท</span>
             </div>
-            <div class="flex justify-between text-gray-300">
+            <div class="flex justify-between text-gray-300 text-xs">
                 <span>🎲 ไฮโล:</span>
-                <span class="font-bold ${hiloWin > 0 ? 'text-emerald-400' : (hiloWin < 0 ? 'text-rose-400' : '')}">${hiloWin > 0 ? '+' : ''}${hiloWin.toLocaleString()} บาท</span>
+                <span class="font-bold ${hiloWin > 0 ? 'text-emerald-400' : (hiloWin < 0 ? 'text-rose-400' : 'text-gray-400')}">${hiloWin > 0 ? '+' : ''}${hiloWin.toLocaleString()} บาท</span>
             </div>
-            <div class="border-t border-gray-700 pt-1 flex justify-between font-black text-sm">
+            <div class="border-t border-gray-700/80 pt-1.5 flex justify-between font-black text-sm">
                 <span class="text-white">• ยอดสุทธิรวม:</span>
                 <span class="${totalClass}">${totalPrefix}${totalWin.toLocaleString()} บาท</span>
             </div>
-            <div class="flex justify-between text-[11px] text-gray-400 pt-0.5">
+            <div class="flex justify-between text-xs text-gray-400 pt-0.5">
                 <span>• เครดิตคงเหลือ:</span>
                 <span class="text-amber-300 font-bold">${balance.toLocaleString()} บ.</span>
             </div>

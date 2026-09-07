@@ -274,7 +274,7 @@ function goToGamePage() {
     }
 
     // ฟังก์ชันเริ่มนับเวลาถอยหลัง
-    function startTimer(durationSeconds) {
+     function startTimer(durationSeconds) {
         clearInterval(timerInterval);
         let timer = durationSeconds;
 
@@ -289,11 +289,12 @@ function goToGamePage() {
 
             if (--timer < 0) {
                 clearInterval(timerInterval);
-                alert("⏰ หมดเวลาทำรายการ กรุณาเริ่มรายการใหม่อีกครั้ง");
+                showPendingAlert("⏰ หมดเวลาทำรายการ กรุณาเริ่มรายการใหม่อีกครั้ง");
                 goToStep1();
             }
         }, 1000);
     }
+
 
     function updateFileName(input) {
         const titleText = document.getElementById('uploadTitleText');
@@ -313,13 +314,13 @@ function goToGamePage() {
 
     async function goToStep2() {
         if (!userId) {
-            alert('⚠️ กำลังดึงข้อมูลสมาชิก LINE กรุณารอสักครู่แล้วลองกดใหม่อีกครั้งครับ');
+            showPendingAlert('⚠️ กำลังดึงข้อมูลสมาชิก LINE กรุณารอสักครู่แล้วลองกดใหม่อีกครั้งครับ');
             return;
         }
 
         const amtInput = document.getElementById('depositAmount').value;
         if (!amtInput || amtInput <= 0) {
-            alert('กรุณากรอกจำนวนเงินให้ถูกต้อง');
+            showPendingAlert('กรุณากรอกจำนวนเงินให้ถูกต้อง');
             return;
         }
 
@@ -336,31 +337,50 @@ function goToGamePage() {
 
             const data = await res.json();
 
+            // 1. กรณีติดค้างรอแอดมินอนุมัติ (สลิปเดิมไม่ผ่าน)
             if (!data.success && data.isPendingExists) {
-                alert(`⚠️ ${data.message}\n(ยอดค้าง: ${data.pendingAmount} บาท)`);
-                amountToDeposit = data.pendingAmount;
-                document.getElementById('displayAmount').innerText = amountToDeposit;
-                startTimer(data.remainingSeconds);
+                showPendingAlert(data.message || 'คุณมีรายการฝากค้างรอแอดมินตรวจสอบอยู่');
+                return;
+            }
+
+            // 2. กรณีมียอดเดิมค้างอยู่ (ยังไม่หมดเวลา 5 นาที) -> บังคับใช้อยอดเดิม
+            if (data.success && data.isExisting) {
+                showPendingAlert(`ท่านมีรายการฝากค้างอยู่จำนวน ${data.amount} บาท ระบบจะใช้อยอดเดิมนี้ในการทำรายการ`);
                 
+                amountToDeposit = data.amount;
+                document.getElementById('depositAmount').value = data.amount; // อัปเดตช่องกรอกให้ตรงยอดเดิม
+                document.getElementById('displayAmount').innerText = data.amount;
+                startTimer(data.remainingSeconds);
+
                 document.getElementById('step1').classList.remove('active');
                 document.getElementById('step2').classList.add('active');
-            } else if (data.success) {
+            } 
+            // 3. กรณีสร้างรายการใหม่สำเร็จ
+            else if (data.success) {
                 amountToDeposit = amtInput;
                 document.getElementById('displayAmount').innerText = amountToDeposit;
                 startTimer(data.remainingSeconds || 300);
 
                 document.getElementById('step1').classList.remove('active');
                 document.getElementById('step2').classList.add('active');
-            } else {
-                alert(data.message || 'เกิดข้อผิดพลาดในการสร้างรายการ');
+            } 
+            // 4. กรณีเกิดข้อผิดพลาดอื่นๆ
+            else {
+                showPendingAlert(data.message || 'เกิดข้อผิดพลาดในการสร้างรายการ');
             }
 
         } catch (err) {
-            alert('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
+            showPendingAlert('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
         } finally {
             nextBtn.disabled = false;
             nextBtn.innerText = 'ถัดไป (รับเลขบัญชี)';
         }
+    }
+
+    // 💡 ฟังก์ชันช่วยเรียก Modal แจ้งเตือน (แก้ปัญหาติดชื่อ Render URL)
+    function showPendingAlert(messageText) {
+        document.getElementById('pendingModalMessage').innerText = messageText;
+        document.getElementById('pendingModal').style.display = 'flex';
     }
 
     function goToStep1() {
@@ -372,7 +392,7 @@ function goToGamePage() {
     function copyAccount() {
         const acc = document.getElementById('accNum').innerText.replace(/-/g, '');
         navigator.clipboard.writeText(acc);
-        alert('คัดลอกเลขบัญชีเรียบร้อยแล้ว: ' + acc);
+        showPendingAlert('คัดลอกเลขบัญชีเรียบร้อยแล้ว: ' + acc);
     }
 
     function closePendingModal() {

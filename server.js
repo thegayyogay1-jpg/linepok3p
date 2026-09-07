@@ -7414,7 +7414,8 @@ app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
             slipImage: imageBase64,
             reason: failReason,
             status: 'PENDING',
-            created_at: new Date().toLocaleString('th-TH')
+            timestamp: now.getTime(), // 👈 บันทึก Timestamp ตัวเลขสำหรับเรียงลำดับเวลา
+            created_at: now.toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }) // 👈 กำหนด Timezone ไทยให้ชัวร์
         };
 
         // บันทึกลง Firebase Database

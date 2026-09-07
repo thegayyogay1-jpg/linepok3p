@@ -7242,7 +7242,7 @@ app.post('/api/deposit/create', async (req, res) => {
     }
 });
 
-// 📌 API รับรูปสลิปจากหน้าเว็บ (บันทึกลง Firebase เพื่อแสดงบนหน้าเว็บแอดมิน)
+// 📌 API รับรูปสลิปจากหน้าเว็บ (ทำงานร่วมกับระบบ Auto + ส่งแอดมินกรณีไม่ผ่าน)
 app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
     try {
         const { userId, amount } = req.body;
@@ -7252,7 +7252,17 @@ app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
             return res.status(400).json({ success: false, message: 'ข้อมูลไม่ครบถ้วน (ไม่พบ userId หรือยอดเงิน)' });
         }
 
+        const user = usersWallets[userId];
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลสมาชิกในระบบ' });
+        }
+
+        const depositAmount = Number(amount);
+        let failReason = ""; // ตัวแปรเก็บสาเหตุที่ Auto ไม่ผ่าน
+
+        // -------------------------------------------------------------
         // 1. ส่งรูปสลิปไปตรวจสอบกับ Slip2Go API
+        // -------------------------------------------------------------
         let isAutoApproved = false;
         let transRef = "";
         let senderName = "ไม่ระบุ";
@@ -7347,6 +7357,7 @@ app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
                         }
                     }
 
+                    // หากผ่านทุกข้อ
                     if (!failReason) {
                         isAutoApproved = true;
                     }
@@ -7360,7 +7371,9 @@ app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
             failReason = "ระบบสแกนสลิปขัดข้อง";
         }
 
-        // 🟢 1. กรณี Auto ผ่าน
+        // =============================================================
+        // 🟢 กรณีที่ 1: ตรวจสอบผ่านระบบ Auto สำเร็จ
+        // =============================================================
         if (isAutoApproved) {
             const memberNum = user.memberNumber;
             const creditResult = await creditUserByMemberNumber(memberNum, depositAmount);
@@ -7391,31 +7404,118 @@ app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
             });
         }
 
-        // ⏳ 2. กรณีต้องรอแอดมินอนุมัติ -> ส่งข้อมูล + รูปสลิป ขึ้น Firebase เพื่อโชว์หน้าเว็บแอดมิน
-        const depositId = `DEP_${Date.now()}`;
-        const imageBase64 = `data:${slipFile.mimetype};base64,${slipFile.buffer.toString('base64')}`;
-
-        const pendingData = {
-            id: depositId,
-            userId: userId,
-            memberNumber: user.memberNumber || '---',
-            userName: user.name || 'ไม่ระบุ',
-            amount: depositAmount,
-            slipImage: imageBase64,
-            reason: failReason,
-            status: 'PENDING',
-            created_at: new Date().toLocaleString('th-TH')
+        // =============================================================
+        // ⏳ กรณีที่ 2: Auto ไม่ผ่าน -> ส่งให้แอดมินตรวจสอบทาง LINE
+        // =============================================================
+        const ADMIN_ID = "U2fb9233e5c539ae3970cbd698e2e18db";
+        
+        const adminManualFlex = {
+            "type": "flex",
+            "altText": `🚨 แจ้งฝากเงินรอตรวจสอบ! คุณ ${user.name} ยอด ${depositAmount} บาท`,
+            "contents": {
+                "type": "bubble",
+                "styles": {
+                    "header": { "backgroundColor": "#141416" },
+                    "body": { "backgroundColor": "#1e1e22" },
+                    "footer": { "backgroundColor": "#141416" }
+                },
+                "header": {
+                    "type": "box",
+                    "layout": "vertical",
+                    "contents": [
+                        { "type": "text", "text": "⏳ มีรายการฝากเงินรอตรวจสอบ (จากหน้าเว็บ)", "weight": "bold", "color": "#ffaa00", "size": "md", "align": "center" }
+                    ]
+                },
+                "body": {
+                    "type": "box",
+                    "layout": "vertical",
+                    "spacing": "sm",
+                    "contents": [
+                        {
+                            "type": "box",
+                            "layout": "horizontal",
+                            "contents": [
+                                { "type": "text", "text": "🆔 สมาชิกเด่น:", "size": "sm", "color": "#8e8e93" },
+                                { "type": "text", "text": `ลำดับที่ ${user.memberNumber}`, "size": "sm", "color": "#ffffff", "weight": "bold", "align": "end" }
+                            ]
+                        },
+                        {
+                            "type": "box",
+                            "layout": "horizontal",
+                            "contents": [
+                                { "type": "text", "text": "👤 ชื่อลูกค้า:", "size": "sm", "color": "#8e8e93" },
+                                { "type": "text", "text": `คุณ ${user.name}`, "size": "sm", "color": "#ffffff", "weight": "bold", "align": "end" }
+                            ]
+                        },
+                        {
+                            "type": "box",
+                            "layout": "horizontal",
+                            "contents": [
+                                { "type": "text", "text": "💰 ยอดเงินที่แจ้ง:", "size": "sm", "color": "#ffffff", "weight": "bold" },
+                                { "type": "text", "text": `${depositAmount.toLocaleString()} บาท`, "size": "md", "color": "#00bfff", "weight": "bold", "align": "end" }
+                            ]
+                        },
+                        {
+                            "type": "box",
+                            "layout": "vertical",
+                            "margin": "md",
+                            "contents": [
+                                { "type": "text", "text": `⚠️ เหตุผลที่ไม่ผ่าน Auto: ${failReason}`, "size": "xs", "color": "#ff3b47", "wrap": true }
+                            ]
+                        }
+                    ]
+                },
+                "footer": {
+                    "type": "box",
+                    "layout": "horizontal",
+                    "spacing": "sm",
+                    "contents": [
+                        {
+                            "type": "button",
+                            "style": "primary",
+                            "color": "#00aa5b",
+                            "height": "sm",
+                            "action": {
+                                "type": "message",
+                                "label": "✅ อนุมัติฝาก",
+                                "text": `d ${user.memberNumber} ${depositAmount}`
+                            }
+                        },
+                        {
+                            "type": "button",
+                            "style": "secondary",
+                            "color": "#ff3b47",
+                            "height": "sm",
+                            "action": {
+                                "type": "message",
+                                "label": "❌ ปฏิเสธ",
+                                "text": `ยกเลิกฝาก ${user.memberNumber}`
+                            }
+                        }
+                    ]
+                }
+            }
         };
 
-        // บันทึกลง Firebase Database
-        if (typeof db !== 'undefined') {
-            await db.ref(`pendingDeposits/${depositId}`).set(pendingData);
+        // ยิงเข้า LINE แอดมิน
+        if (typeof axios !== 'undefined' && typeof TOKEN !== 'undefined') {
+            try {
+                await axios.post('https://api.line.me/v2/bot/message/push', {
+                    to: ADMIN_ID,
+                    messages: [adminManualFlex]
+                }, {
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` }
+                });
+            } catch (err) {
+                console.error("❌ ส่งแจ้งเตือนหาแอดมินล้มเหลว:", err.message);
+            }
         }
 
+        // ส่ง response กลับหน้าเว็บ ให้เด้ง Pop-up "กรุณารอแอดมินตรวจสอบ"
         return res.json({
             success: false,
             isPending: true,
-            message: `สลิปถูกส่งไปที่ระบบแอดมินเรียบร้อยแล้ว\nสาเหตุ: ${failReason}\nกรุณารอแอดมินอนุมัติสักครู่ครับ`
+            message: `สลิปถูกส่งให้แอดมินเรียบร้อยแล้ว\nสาเหตุ: ${failReason}\nกรุณารอแอดมินยืนยันสักครู่ครับ`
         });
 
     } catch (error) {
@@ -7423,6 +7523,7 @@ app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
         return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการประมวลผลระบบ' });
     }
 });
+
 
 // ==========================================
 // API: ดึงข้อมูลโปรไฟล์และยอดเงินคงเหลือของผู้เล่น

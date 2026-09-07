@@ -7251,36 +7251,65 @@ app.post('/api/deposit/create', async (req, res) => {
             }
         }
 
-     /// ⏱️ [เช็กที่ 2] เช็ก Session การขอเลขบัญชีค้างภายใน 5 นาที
+     // ⏱️ [เช็ก Session การขอเลขบัญชีค้างภายใน 5 นาที]
 const now = Date.now();
-const EXPIRE_TIME = 5 * 60 * 1000; // 5 นาที
+const EXPIRE_TIME = 5 * 60 * 1000;
 
 if (typeof db !== 'undefined') {
-    const sessionSnap = await db.ref(`activeDepositSessions/${userId}`).once('value');
-    const currentSession = sessionSnap.val();
-
-    if (currentSession) {
-        const timePassed = now - currentSession.createdAt;
-
-        // หากยังไม่เกิน 5 นาที -> ส่งยอดเดิม + แจ้งเตือน
-        if (timePassed < EXPIRE_TIME) {
-            const remainingSeconds = Math.ceil((EXPIRE_TIME - timePassed) / 1000);
-            return res.json({
-                success: true,
-                isExisting: true, // บอก Frontend ว่าเป็นรายการเดิม
-                amount: Number(currentSession.amount), // 👈 ล็อคให้ใช้อยอดเดิมเท่านั้น (เช่น 50)
-                remainingSeconds: remainingSeconds,
-                message: `ท่านมีรายการฝากยอด ${currentSession.amount} บาท ค้างอยู่ กรุณาทำรายการให้เสร็จสิ้น`
-            });
+    // 1. ดึงสลิปล่าสุดมาเช็กว่า แอดมินอนุมัติหรือปฏิเสธไปแล้วหรือยัง
+    const latestSlipSnap = await db.ref(`slips/${userId}`).limitToLast(1).once('value');
+    const latestSlipData = latestSlipSnap.val();
+    
+    let isAlreadyHandled = false;
+    if (latestSlipData) {
+        const key = Object.keys(latestSlipData)[0];
+        const status = latestSlipData[key].status;
+        // หากสถานะเปลี่ยนเป็น approved หรือ rejected แล้ว ถือว่าแอดมินจัดการแล้ว
+        if (status === 'approved' || status === 'rejected') {
+            isAlreadyHandled = true;
+            await db.ref(`activeDepositSessions/${userId}`).remove(); // ลบ Session ค้างทิ้ง
         }
     }
 
-    // หากไม่มี Session หรือหมดอายุแล้ว -> บันทึก Session ยอดใหม่
+    // 2. ถ้ายังไม่ถูกจัดการ ให้เช็ก Session ตามปกติ
+    if (!isAlreadyHandled) {
+        const sessionSnap = await db.ref(`activeDepositSessions/${userId}`).once('value');
+        const currentSession = sessionSnap.val();
+
+        if (currentSession) {
+            const timePassed = now - currentSession.createdAt;
+            if (timePassed < EXPIRE_TIME) {
+                const remainingSeconds = Math.ceil((EXPIRE_TIME - timePassed) / 1000);
+                return res.json({
+                    success: true,
+                    isExisting: true,
+                    amount: Number(currentSession.amount),
+                    remainingSeconds: remainingSeconds,
+                    message: `ท่านมีรายการฝากยอด ${currentSession.amount} บาท ค้างอยู่ ระบบจะใช้อยอดเดิมนี้ในการทำรายการ`
+                });
+            }
+        }
+    }
+
+    // หากไม่มี Session ค้าง หรือแอดมินจัดการไปแล้ว -> สร้าง Session ยอดใหม่
     await db.ref(`activeDepositSessions/${userId}`).set({
         amount: Number(amount),
         createdAt: now
     });
 }
+        // ตอบกลับข้อมูลเพื่อให้ Frontend ย้ายไปหน้า Step 2 (รายการใหม่)
+        return res.json({
+            success: true,
+            isExisting: false,
+            amount: Number(amount),
+            remainingSeconds: 300 // เวลาถอยหลัง 5 นาทีเต็ม
+        });
+
+    } catch (error) {
+        console.error('Create Deposit Error:', error);
+        return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดบนเซิร์ฟเวอร์' });
+    }
+});
 
 // 📌 API รับรูปสลิปจากหน้าเว็บ (บันทึกลง Firebase เพื่อแสดงบนหน้าเว็บแอดมิน)
 app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {

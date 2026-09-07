@@ -1579,38 +1579,57 @@ function checkAndShowUserResult(roundData) {
 
     htmlContent += `
         <div class="bg-gray-900/80 p-2.5 rounded-xl border border-gray-700/60 text-center">
-            <div class="text-[11px] text-amber-400 font-bold mb-1.5">👑 เจ้ามือ : <span class="text-sm text-white font-black">${dealerPoint}</span> แต้ม (${dealerDeng}เด้ง)</div>
+            <!-- 👑 จัดเรียงเจ้ามือแนวตั้ง: มงกุฎ -> เจ้ามือ -> แต้ม -->
+            <div class="flex flex-col items-center justify-center mb-2">
+                <span class="text-base leading-none mb-0.5">👑</span>
+                <span class="text-[11px] text-amber-400 font-bold">เจ้ามือ</span>
+                <span class="text-sm text-white font-black">${dealerPoint} แต้ม (${dealerDeng}เด้ง)</span>
+            </div>
+
+            <!-- กล่องแสดงขา 1 ถึง 6 -->
             <div class="grid grid-cols-6 gap-1">
     `;
 
     for (let i = 1; i <= 6; i++) {
-        // 🟢 1. ค้นหาข้อมูล leg ของขานั้นๆ
         const leg = legsData.find(l => l && (l.leg === i || l.id === i)) || legsData[i] || legsData[i - 1] || {};
 
-        // 🟢 2. เจาะอ่านแต้มจาก twoCards เป็นหลักก่อนเสมอ
+        // ดึงแต้มโดยยึด twoCards ก่อนเสมอ
         const twoCards = leg.twoCards || {};
         const threeCards = leg.threeCards || {};
 
         let legPoint = "-";
+        let numericPoint = null;
+
         if (twoCards.score !== undefined) {
-            legPoint = twoCards.score; // 🎯 ดึงจาก twoCards.score
+            legPoint = twoCards.score;
+            numericPoint = Number(twoCards.score);
         } else if (threeCards.score !== undefined) {
             legPoint = threeCards.score;
+            numericPoint = Number(threeCards.score);
         } else if (leg.point !== undefined) {
             legPoint = leg.point;
+            numericPoint = Number(leg.point);
         }
 
-        // 🟢 3. กำหนดสีและข้อความแสดงผล
-        let bgClass = "bg-gray-700 text-gray-300";
+        // 🎨 กำหนดสีกล่อง ชนะ(เขียว) / แพ้(แดง) / เสมอ(เหลืองอ่อน)
+        let bgClass = "bg-gray-700 text-gray-300"; // ค่าตั้งต้นหากไม่มีข้อมูล
         let statusText = `${legPoint}`;
 
+        const dPoint = Number(dealerPoint);
+
+        // เปรียบเทียบผลเพื่อใส่สี
+        if (numericPoint !== null && !isNaN(numericPoint)) {
+            if (leg.winState === 'win' || leg.diff > 0 || numericPoint > dPoint) {
+                bgClass = "bg-emerald-600 text-white font-bold shadow-emerald-900/40"; // 🟢 ชนะ = เขียว
+            } else if (leg.winState === 'lose' || leg.diff < 0 || numericPoint < dPoint) {
+                bgClass = "bg-rose-600 text-white font-bold shadow-rose-900/40";       // 🔴 แพ้ = แดง
+            } else if (numericPoint === dPoint) {
+                bgClass = "bg-amber-200 text-amber-900 font-bold shadow-amber-900/20"; // 🟡 เสมอ = เหลืองอ่อน
+            }
+        }
+
         if (leg.isPok) {
-            bgClass = "bg-lime-500 text-black font-black";
             statusText = `P${legPoint}`;
-        } else if (leg.winState === 'win' || leg.diff > 0) {
-            bgClass = "bg-emerald-600 text-white font-bold";
-        } else if (leg.winState === 'lose' || leg.diff < 0) {
-            bgClass = "bg-rose-600 text-white font-bold";
         }
 
         htmlContent += `

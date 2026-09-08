@@ -597,12 +597,20 @@ db.ref(`system_data/roundBets/${currentUserId}`).on('value', (snapPok) => {
     renderAllBetsUI();
 });
 
-// 3. ดึงโพยไฮโล
-db.ref(`system_data/hiloRoundBets/${currentUserId}`).on('value', (snapHilo) => {
-    console.log("🎲 [Hilo Firebase Update]:", snapHilo.val()); // 👈 เช็คไฮโล
-    localHiloBets = snapHilo.val() || {};
-    renderAllBetsUI();
-});
+// 3. ดึงโพยไฮโล (เพิ่มระบบตรวจจับตัวการสั่งลบด้วย console.trace)
+    db.ref(`system_data/hiloRoundBets/${currentUserId}`).on('value', (snapHilo) => {
+        const val = snapHilo.val();
+        console.log("🎲 [Hilo Firebase Update]:", val);
+
+        // 🟢 เพิ่มส่วนนี้: ถ้าค่าวินาทีถัดมากลายเป็น null ให้แกะรอยหาตัวสั่งลบทันที
+        if (val === null) {
+            console.warn("⚠️ [แจ้งเตือน] โพยไฮโลถูกสั่งลบเป็น null!");
+            console.trace(); // จะแสดงเส้นทางคำสั่งว่าใครเป็นคนสั่งลบ
+        }
+
+        localHiloBets = val || {};
+        renderAllBetsUI();
+    });
 }
 
 // 🟢 ฟังก์ชันวาด UI แสดงรายการโพยรวม (แก้ไขเฉพาะจุดกระจายเลขขา 456-50)

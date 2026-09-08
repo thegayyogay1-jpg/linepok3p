@@ -423,7 +423,7 @@
                 [1,2,3,4,5,6].forEach(i => {
                     document.write(`
                         <div onclick="placeBet('hilo', 'ตอง${i}')" class="bg-gray-700 hover:bg-gray-600 border border-gray-500 rounded-md py-2.5 text-center cursor-pointer relative active:scale-95 transition-transform">
-                            <span class="font-bold text-white text-sm">${i}</span>
+                            <span class="font-bold text-white text-sm sm:text-base">${String(i).repeat(3)}</span>
                             <span id="hilo-chip-ตอง${i}" class="hidden absolute -top-1.5 -right-1.5 px-1.5 py-0.5 bg-yellow-400 text-black text-[10px] font-bold rounded-full shadow">0</span>
                         </div>
                     `);

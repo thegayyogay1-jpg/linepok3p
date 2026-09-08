@@ -270,27 +270,6 @@
         </script>
     </div>
 
-    <!-- แถวที่ 3: โซนตองระบุ (ขยายกว้าง วางชิปง่าย) -->
-    <div class="bg-gray-800/80 border border-amber-500/40 rounded-lg p-2 space-y-1.5">
-        <div class="text-center font-bold text-amber-300 text-xs">ตองระบุ</div>
-        <div class="grid grid-cols-3 gap-1.5">
-            <script>
-                [1,2,3,4,5,6].forEach(i => {
-                    document.write(`
-                        <div onclick="placeBet('hilo', 'ตอง${i}')" class="bg-gray-700 hover:bg-gray-600 border border-gray-500 rounded-md py-2.5 text-center cursor-pointer relative active:scale-95 transition-transform">
-                            <span class="font-bold text-white text-sm">${i}</span>
-                            <span id="hilo-chip-ตอง${i}" class="hidden absolute -top-1.5 -right-1.5 px-1.5 py-0.5 bg-yellow-400 text-black text-[10px] font-bold rounded-full shadow">0</span>
-                        </div>
-                    `);
-                });
-            </script>
-        </div>
-        <div onclick="placeBet('hilo', 'ตอง')" class="bg-gray-700 hover:bg-gray-600 border border-amber-400/60 rounded-md py-2 text-center font-bold text-amber-200 cursor-pointer relative active:scale-95 transition-transform">
-            ตอง
-            <span id="hilo-chip-ตอง" class="hidden absolute -top-1 -right-1 px-1.5 bg-yellow-400 text-black text-[10px] font-bold rounded-full">0</span>
-        </div>
-    </div>
-
     <!-- แถวที่ 4: เต็งลูกเต๋า 1-6 (แก้ไขจุดแดง/จุดขาว ตรงตามกติกาจริง) -->
     <div class="grid grid-cols-3 gap-1.5 py-1">
         <!-- หน้า 1 (จุดแดง 1 จุด) -->
@@ -433,8 +412,29 @@
                 });
             </script>
         </div>
+        
     </div>
 </div>
+    <!-- แถวที่ 3: โซนตองระบุ (ขยายกว้าง วางชิปง่าย) -->
+    <div class="bg-gray-800/80 border border-amber-500/40 rounded-lg p-2 space-y-1.5">
+        <div class="text-center font-bold text-amber-300 text-xs">ตองระบุ</div>
+        <div class="grid grid-cols-3 gap-1.5">
+            <script>
+                [1,2,3,4,5,6].forEach(i => {
+                    document.write(`
+                        <div onclick="placeBet('hilo', 'ตอง${i}')" class="bg-gray-700 hover:bg-gray-600 border border-gray-500 rounded-md py-2.5 text-center cursor-pointer relative active:scale-95 transition-transform">
+                            <span class="font-bold text-white text-sm">${i}</span>
+                            <span id="hilo-chip-ตอง${i}" class="hidden absolute -top-1.5 -right-1.5 px-1.5 py-0.5 bg-yellow-400 text-black text-[10px] font-bold rounded-full shadow">0</span>
+                        </div>
+                    `);
+                });
+            </script>
+        </div>
+        <div onclick="placeBet('hilo', 'ตอง')" class="bg-gray-700 hover:bg-gray-600 border border-amber-400/60 rounded-md py-2 text-center font-bold text-amber-200 cursor-pointer relative active:scale-95 transition-transform">
+            ตอง
+            <span id="hilo-chip-ตอง" class="hidden absolute -top-1 -right-1 px-1.5 bg-yellow-400 text-black text-[10px] font-bold rounded-full">0</span>
+        </div>
+    </div>
 
         <!-- ยอดรวมเตรียมส่งโพย + ปุ่ม ยืนยัน / ยกเลิก -->
         <div class="bg-gray-800 p-3 rounded-lg border border-gray-700 space-y-3">

@@ -3754,7 +3754,7 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
                     price: lineTotalPrice
                 });
             }
-            // 💰 บันทึกยอดเมื่อไม่มีข้อผิดพลาด
+             // 💰 บันทึกยอดเมื่อไม่มีข้อผิดพลาด
             if (!hasError && totalHiloBet > 0) {
                 if (user.balance < totalHiloBet) {
                     replyText = `❌ เครดิตของคุณไม่พอสำหรับแทงไฮโลครับ!\n💸 ยอดแทงรวม: ${totalHiloBet} บาท\n💰 เครดิตคงเหลือของคุณ: ${user.balance} บาท`;
@@ -3779,9 +3779,6 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
                             betType: hb.betType,
                             pricePerLeg: hb.pricePerLeg,
                             price: hb.price,
-                            detail: `z${hb.target}-${hb.pricePerLeg}`, // 👈 เพิ่ม detail ให้ Frontend ดึงไปวาด
-                            actualBet: hb.price,                       // 👈 เพิ่ม actualBet ให้เหมือนป๊อกเด้ง
-                            holdCost: hb.price,                        // 👈 เพิ่ม holdCost ให้ Frontend คำนวณยอดรวมได้
                             time: new Date().toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok' }),
                             source: 'line'
                         });
@@ -3797,31 +3794,25 @@ else if (originalMsg.trim().toLowerCase().startsWith('z')) {
 
                     // 🌟 บันทึกข้อมูลลง Firebase แบบ Batch Update (ปลอดภัยและรวดเร็ว)
                     try {
-    const updates = {};
-    const currentHiloBets = hiloRoundBets[userId];
+                        const updates = {};
+                        updates[`system_data/hiloRoundBets/${userId}`] = hiloRoundBets[userId];
+                        updates[`system_data/usersWallets/${userId}/balance`] = user.balance;
+                        if (user.totalTurnover !== undefined) {
+                            updates[`system_data/usersWallets/${userId}/totalTurnover`] = (user.totalTurnover || 0) + totalHiloBet;
+                        }
 
-    // ป้องกันค่า undefined/null ลบทิ้งแบบป๊อกเด้ง
-    if (currentHiloBets && currentHiloBets.length > 0) {
-        updates[`system_data/hiloRoundBets/${userId}`] = currentHiloBets;
-    }
-    
-    updates[`system_data/usersWallets/${userId}/balance`] = user.balance;
-    if (user.totalTurnover !== undefined) {
-        updates[`system_data/usersWallets/${userId}/totalTurnover`] = (user.totalTurnover || 0) + totalHiloBet;
-    }
-
-    await db.ref().update(updates);
-} catch (dbErr) {
-    console.error("❌ บันทึกข้อมูลไฮโลลง Firebase ล้มเหลว:", dbErr.message);
-    user.balance += totalHiloBet; // คืนเงินหากบันทึกไม่สำเร็จ
-    
-    await axios.post('https://api.line.me/v2/bot/message/reply', {
-        replyToken: replyToken,
-        messages: [{ type: "text", text: "❌ เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองส่งโพยใหม่อีกครั้งครับ" }]
-    }, { headers: { 'Authorization': `Bearer ${TOKEN}` } });
-    return;
-}
-
+                        await db.ref().update(updates);
+                    } catch (dbErr) {
+                        console.error("❌ บันทึกข้อมูลไฮโลลง Firebase ล้มเหลว:", dbErr.message);
+                        user.balance += totalHiloBet; // คืนเงินหากบันทึกไม่สำเร็จ
+                        
+                        await axios.post('https://api.line.me/v2/bot/message/reply', {
+                            replyToken: replyToken,
+                            messages: [{ type: "text", text: "❌ เกิดข้อผิดพลาดในการบันทึกโพยไฮโล กรุณาลองส่งใหม่อีกครั้งครับ" }]
+                        }, { headers: { 'Authorization': `Bearer ${TOKEN}` } });
+                        return;
+                    }
+                    
                     // 🚀 ส่ง Flex Message ยืนยันโพยไฮโล
                     try {
                         await axios.post('https://api.line.me/v2/bot/message/reply', {

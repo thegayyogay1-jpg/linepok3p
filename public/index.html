@@ -901,30 +901,53 @@ function updateChipSelectorUI() {
         updateBoardUI(); // สั่งอัปเดตกระดาน (ชิปทุกตัวจะถูกซ่อนทันที)
     }
     
-// ✅ แก้ไขฟังก์ชัน buildIndividualBetCommands ให้ถูกต้อง
+// ✅ รวบรวมทุกรายการแทงบนหน้าเว็บให้เป็นข้อความเดียว (เชื่อมด้วย \n) ส่งยิง API แค่ 1 รอบ
 function buildIndividualBetCommands(pendingBetsObj, activeTab) {
-    const commands = [];
+    const commandLines = [];
     
-    for (const [key, amount] of Object.entries(pendingBetsObj)) {
-        if (!amount || amount <= 0) continue;
+    if (activeTab === 'pok') {
+        // --- ป๊อกเด้ง: จัดกลุ่มตาม (โหมดแทง + ราคาเงิน) ---
+        const grouped = {};
 
-        if (activeTab === 'pok') {
-            // ป๊อกเด้ง: แปลงให้ได้รูปแบบ "1-10" หรือ "เจ้าสู้ขา1-10"
+        for (const [key, amount] of Object.entries(pendingBetsObj)) {
+            if (!amount || amount <= 0) continue;
+
             const isDealer = key.startsWith('เจ้าสู้ขา');
             const legNum = key.replace('เจ้าสู้ขา', '').replace('ขาที่', '').trim();
-            const prefix = isDealer ? `จ${legNum}` : `${legNum}`;
-            
-            commands.push(`${prefix}-${amount}`);
-        } else {
-            // ไฮโล: เติม z นำหน้าเสมอ เช่น "z1-10" หรือ "zต-10"
-            // ลบ z ซ้ำซ้อน (ถ้ามี) แล้วใส่ z นำหน้าให้ถูกต้อง
+            const groupKey = `${isDealer ? 'จ' : 'p'}_${amount}`;
+
+            if (!grouped[groupKey]) {
+                grouped[groupKey] = {
+                    isDealer: isDealer,
+                    amount: amount,
+                    legs: []
+                };
+            }
+            grouped[groupKey].legs.push(legNum);
+        }
+
+        // สร้างบรรทัดคำสั่ง เช่น จ123-100, จ4-50, จ56-30
+        for (const group of Object.values(grouped)) {
+            group.legs.sort((a, b) => Number(a) - Number(b));
+            const legsStr = group.legs.join('');
+            const prefix = group.isDealer ? `จ${legsStr}` : `${legsStr}`;
+            commandLines.push(`${prefix}-${group.amount}`);
+        }
+
+    } else {
+        // --- ไฮโล: รวมคำสั่งไฮโล ---
+        for (const [key, amount] of Object.entries(pendingBetsObj)) {
+            if (!amount || amount <= 0) continue;
             const cleanKey = key.replace(/^z/i, '').trim();
-            
-            commands.push(`z${cleanKey}-${amount}`);
+            commandLines.push(`z${cleanKey}-${amount}`);
         }
     }
-    
-    return commands;
+
+    if (commandLines.length === 0) return [];
+
+    // 🌟 มัดรวมทุกบรรทัดด้วย \n ส่งออกไปเป็น 1 ข้อความก้อนเดียว
+    const singleCombinedCommand = commandLines.join('\n');
+    return [singleCombinedCommand];
 }
     // 🟢 ฟังก์ชันคืนค่า Class สีชิปตามยอดเงินที่วาง
 function getChipStyleByAmount(amount) {

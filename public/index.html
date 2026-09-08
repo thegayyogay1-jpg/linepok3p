@@ -613,7 +613,7 @@ function listenToUserData() {
     });
 }
 
-// 🟢 ฟังก์ชันวาด UI แสดงรายการโพยรวม (แสดงประวัติยอดบวก + ยอดรวม)
+// 🟢 ฟังก์ชันวาด UI แสดงรายการโพยรวม (แก้ไขระบบแยกขาป๊อกเด้ง + คำนวณราคาต่อขาถูกต้อง)
 function renderAllBetsUI() {
     const betsContainer = document.getElementById('myBetsContainer');
     if (!betsContainer) return;
@@ -636,20 +636,34 @@ function renderAllBetsUI() {
         totalHold += Number(bet.holdCost || 0);
 
         const rawText = String(bet.detail || bet.rawText || bet.target || 'ป๊อกเด้ง');
-        const price = Number(bet.actualBet || bet.price || bet.amount || 0);
-
         const isDealer = rawText.includes("จ");
-        const matchLeg = rawText.match(/\d+/);
-        let keyName = rawText;
-        if (matchLeg) {
-            keyName = isDealer ? `เจ้าสู้ขา ${matchLeg[0]}` : `ขาที่ ${matchLeg[0]}`;
-        }
 
-        if (!pokMap[keyName]) {
-            pokMap[keyName] = { total: 0, items: [] };
+        // แยกข้อความ เช่น "จ45-50" หรือ "45-50" หรือ "จ123-100"
+        const parts = rawText.split('-');
+        if (parts.length >= 2) {
+            const legsPart = parts[0].replace(/[^\d]/g, ''); // ดึงเฉพาะตัวเลขขา เช่น "45" หรือ "123"
+            const pricePerLeg = Number(parts[1]) || 0;       // ดึงราคาต่อขา เช่น 50
+
+            // วนลูปแยกทีละขา (เช่น "45" -> ขา 4 และ ขา 5)
+            const legs = legsPart.split('');
+            legs.forEach(legNum => {
+                const keyName = isDealer ? `เจ้าสู้ขา ${legNum}` : `ขาที่ ${legNum}`;
+                
+                if (!pokMap[keyName]) {
+                    pokMap[keyName] = { total: 0, items: [] };
+                }
+                pokMap[keyName].total += pricePerLeg;
+                pokMap[keyName].items.push(pricePerLeg);
+            });
+        } else {
+            // กรณีเป็นข้อความรูปแบบอื่น
+            const price = Number(bet.actualBet || bet.price || bet.amount || 0);
+            if (!pokMap[rawText]) {
+                pokMap[rawText] = { total: 0, items: [] };
+            }
+            pokMap[rawText].total += price;
+            pokMap[rawText].items.push(price);
         }
-        pokMap[keyName].total += price;
-        pokMap[keyName].items.push(price);
     });
 
     // 2. จัดกลุ่มและเก็บประวัติการแทงของ ไฮโล
@@ -681,7 +695,6 @@ function renderAllBetsUI() {
         html += `<div class="font-bold text-xs text-cyan-400 mb-1 flex items-center gap-1">♠️ โพยป๊อกเด้ง (${pokEntries.length} รายการ)</div>`;
         
         pokEntries.forEach(([displayName, data], index) => {
-            // สร้างข้อความประวัติการแทง เช่น "10+20" หรือแสดงค่าเดียว "10" ถ้าแทงครั้งเดียว
             const historyText = data.items.length > 1 
                 ? `<span class="text-[10px] text-gray-400 mr-1.5">(${data.items.join('+')})</span>` 
                 : '';
@@ -1259,6 +1272,7 @@ async function submitBoardBets() {
 
         // 2. เปลี่ยนเป็นหน้า "ส่งโพยสำเร็จ" พร้อมปุ่ม Good Luck ทันที!
         showModalState('success', 'ส่งโพยสำเร็จเรียบร้อย!', 'ระบบบันทึกรายการแทงของคุณแล้ว');
+        renderAllBetsUI();
         clearPendingBets();
 
     } catch (err) {

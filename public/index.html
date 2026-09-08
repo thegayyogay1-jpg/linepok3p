@@ -727,6 +727,10 @@ function listenToUserData() {
     // 1. ดึงข้อมูลกระเป๋าเงิน (ใช้ Path เดิมของคุณ)
     db.ref(`system_data/usersWallets/${currentUserId}`).on('value', (snapshot) => {
         const userData = snapshot.val();
+        
+        // 🟢 ตรวจสอบสถานะสมาชิกหลังจาก Firebase ส่งข้อมูลกลับมาแล้วที่นี่
+        checkUserAuth(userData);
+        
         if (userData) {
             document.getElementById('user-name').innerText = userData.nickname || userData.name || "สมาชิก";
             document.getElementById('user-id').innerText = `ID: ${userData.memberNumber || '-'}`;
@@ -1033,20 +1037,17 @@ function updateChipSelectorUI() {
         }
     });
 
-    // ฟังก์ชันเช็กสถานะการเข้าใช้งานทันทีที่โหลดหน้าเว็บ
-document.addEventListener("DOMContentLoaded", function () {
-    checkUserAuth();
-});
+// ปรับฟังก์ชันเช็กสมาชิกให้รับข้อมูลจาก Firebase มาตรวจสอบ
+function checkUserAuth(userData) {
+    const authModal = document.getElementById('authModal');
+    if (!authModal) return;
 
-document.addEventListener("DOMContentLoaded", function () {
-    checkUserAuth();
-});
-
-function checkUserAuth() {
-    const user = localStorage.getItem('userData'); 
-
-    if (!user) {
-        document.getElementById('authModal').classList.remove('hidden');
+    // ถ้าไม่มีข้อมูลผู้ใช้ใน Firebase หรือไม่มี memberNumber / role สมาชิก
+    if (!userData || (!userData.nickname && !userData.memberNumber)) {
+        authModal.classList.remove('hidden');
+    } else {
+        // ถ้าเป็นสมาชิกเรียบร้อยแล้ว ให้ซ่อน Pop-up ไว้
+        authModal.classList.add('hidden');
     }
 }
 

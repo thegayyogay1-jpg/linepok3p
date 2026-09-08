@@ -223,14 +223,15 @@
             </div>
         </div>
         
-       <!-- Section: โต๊ะแทงไฮโล -->
+      <!-- Section: โต๊ะแทงไฮโล -->
 <div id="section-hilo" class="bg-gray-900 p-3 rounded-xl border border-gray-700 space-y-2 hidden text-xs select-none">
     <h3 class="font-bold text-amber-400 text-center text-sm py-1 border-b border-gray-700">🎲 โต๊ะแทงไฮโล</h3>
+    
     <!-- ปุ่มกดดูอัตราจ่าย -->
-<button onclick="openHiloPayoutModal()" class="px-3 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs rounded-lg shadow-md border border-purple-400/30 flex items-center gap-1.5 transition-all transform active:scale-95">
-    <span>📊</span>
-    <span>อัตราจ่าย ไฮโล</span>
-</button>
+    <button onclick="openHiloPayoutModal()" class="px-3 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs rounded-lg shadow-md border border-purple-400/30 flex items-center gap-1.5 transition-all transform active:scale-95">
+        <span>📊</span>
+        <span>อัตราจ่าย ไฮโล</span>
+    </button>
 
     <!-- แถวที่ 1: ต่ำ / 11ไฮโล / สูง -->
     <div class="grid grid-cols-7 gap-1.5 h-16">
@@ -270,22 +271,22 @@
         </script>
     </div>
 
-    <!-- แถวที่ 4: เต็งลูกเต๋า 1-6 (แก้ไขจุดแดง/จุดขาว ตรงตามกติกาจริง) -->
+    <!-- แถวที่ 3: เต็งลูกเต๋า 1-6 -->
     <div class="grid grid-cols-3 gap-1.5 py-1">
-        <!-- หน้า 1 (จุดแดง 1 จุด) -->
+        <!-- หน้า 1 -->
         <div onclick="placeBet('hilo', '1')" class="bg-gray-800 border border-gray-600 rounded-lg py-3 flex justify-center items-center cursor-pointer relative">
             <span class="w-3.5 h-3.5 bg-red-500 rounded-full inline-block shadow"></span>
             <span id="hilo-chip-1" class="hidden absolute top-1 right-1 px-1.5 bg-yellow-400 text-black font-bold text-[9px] rounded-full">0</span>
         </div>
 
-        <!-- หน้า 2 (จุดขาว 2 จุด) -->
+        <!-- หน้า 2 -->
         <div onclick="placeBet('hilo', '2')" class="bg-gray-800 border border-gray-600 rounded-lg py-3 flex justify-center items-center gap-2 cursor-pointer relative">
             <span class="w-3 h-3 bg-white rounded-full inline-block"></span>
             <span class="w-3 h-3 bg-white rounded-full inline-block"></span>
             <span id="hilo-chip-2" class="hidden absolute top-1 right-1 px-1.5 bg-yellow-400 text-black font-bold text-[9px] rounded-full">0</span>
         </div>
 
-        <!-- หน้า 3 (จุดขาว 3 จุด) -->
+        <!-- หน้า 3 -->
         <div onclick="placeBet('hilo', '3')" class="bg-gray-800 border border-gray-600 rounded-lg py-3 flex justify-center items-center gap-1.5 cursor-pointer relative">
             <span class="w-3 h-3 bg-white rounded-full inline-block"></span>
             <span class="w-3 h-3 bg-white rounded-full inline-block"></span>
@@ -293,7 +294,7 @@
             <span id="hilo-chip-3" class="hidden absolute top-1 right-1 px-1.5 bg-yellow-400 text-black font-bold text-[9px] rounded-full">0</span>
         </div>
 
-        <!-- หน้า 4 (จุดแดง 4 จุด) -->
+        <!-- หน้า 4 -->
         <div onclick="placeBet('hilo', '4')" class="bg-gray-800 border border-gray-600 rounded-lg py-3 flex justify-center items-center gap-1.5 cursor-pointer relative">
             <div class="grid grid-cols-2 gap-1">
                 <span class="w-2.5 h-2.5 bg-red-500 rounded-full inline-block"></span>
@@ -304,7 +305,7 @@
             <span id="hilo-chip-4" class="hidden absolute top-1 right-1 px-1.5 bg-yellow-400 text-black font-bold text-[9px] rounded-full">0</span>
         </div>
 
-        <!-- หน้า 5 (จุดขาว 5 จุด) -->
+        <!-- หน้า 5 -->
         <div onclick="placeBet('hilo', '5')" class="bg-gray-800 border border-gray-600 rounded-lg py-3 flex justify-center items-center gap-1 cursor-pointer relative">
             <span class="w-2.5 h-2.5 bg-white rounded-full inline-block"></span>
             <span class="w-2.5 h-2.5 bg-white rounded-full inline-block"></span>
@@ -314,7 +315,7 @@
             <span id="hilo-chip-5" class="hidden absolute top-1 right-1 px-1.5 bg-yellow-400 text-black font-bold text-[9px] rounded-full">0</span>
         </div>
 
-        <!-- หน้า 6 (จุดขาว 6 จุด) -->
+        <!-- หน้า 6 -->
         <div onclick="placeBet('hilo', '6')" class="bg-gray-800 border border-gray-600 rounded-lg py-3 flex justify-center items-center gap-1 cursor-pointer relative">
             <div class="grid grid-cols-3 gap-1">
                 <span class="w-2 h-2 bg-white rounded-full inline-block"></span>
@@ -328,76 +329,74 @@
         </div>
     </div>
 
-    <!-- 🎲 โต๊ด 2 ตัว (จัดกลุ่มตามเลขหน้า) -->
-<div class="mb-4">
-    <div class="text-center text-xs font-semibold text-gray-400 mb-2">โต๊ด 2 ตัว</div>
-    <div class="flex flex-col gap-2">
+    <!-- แถวที่ 4: โต๊ด 2 ตัว -->
+    <div class="mb-2">
+        <div class="text-center text-xs font-semibold text-gray-400 mb-1.5">โต๊ด 2 ตัว</div>
+        <div class="flex flex-col gap-2">
+            <!-- กลุ่มขึ้นต้นด้วย 1 -->
+            <div class="grid grid-cols-5 gap-1.5 bg-gray-800/40 p-1.5 rounded-lg border border-gray-700/50">
+                <button onclick="placeBet('hilo', '12')" class="relative bg-gray-800 hover:bg-gray-700 active:scale-95 text-white py-2.5 rounded-md font-bold text-sm border border-gray-700 transition-all">
+                    12 <span id="hilo-chip-12" class="hidden">0</span>
+                </button>
+                <button onclick="placeBet('hilo', '13')" class="relative bg-gray-800 hover:bg-gray-700 active:scale-95 text-white py-2.5 rounded-md font-bold text-sm border border-gray-700 transition-all">
+                    13 <span id="hilo-chip-13" class="hidden">0</span>
+                </button>
+                <button onclick="placeBet('hilo', '14')" class="relative bg-gray-800 hover:bg-gray-700 active:scale-95 text-white py-2.5 rounded-md font-bold text-sm border border-gray-700 transition-all">
+                    14 <span id="hilo-chip-14" class="hidden">0</span>
+                </button>
+                <button onclick="placeBet('hilo', '15')" class="relative bg-gray-800 hover:bg-gray-700 active:scale-95 text-white py-2.5 rounded-md font-bold text-sm border border-gray-700 transition-all">
+                    15 <span id="hilo-chip-15" class="hidden">0</span>
+                </button>
+                <button onclick="placeBet('hilo', '16')" class="relative bg-gray-800 hover:bg-gray-700 active:scale-95 text-white py-2.5 rounded-md font-bold text-sm border border-gray-700 transition-all">
+                    16 <span id="hilo-chip-16" class="hidden">0</span>
+                </button>
+            </div>
 
-        <!-- กลุ่มขึ้นต้นด้วย 1 -->
-        <div class="grid grid-cols-5 gap-1.5 bg-gray-800/40 p-1.5 rounded-lg border border-gray-700/50">
-            <button onclick="placeBet('hilo', '12')" class="relative bg-gray-800 hover:bg-gray-700 active:scale-95 text-white py-2.5 rounded-md font-bold text-sm border border-gray-700 transition-all">
-                12 <span id="hilo-chip-12" class="hidden">0</span>
-            </button>
-            <button onclick="placeBet('hilo', '13')" class="relative bg-gray-800 hover:bg-gray-700 active:scale-95 text-white py-2.5 rounded-md font-bold text-sm border border-gray-700 transition-all">
-                13 <span id="hilo-chip-13" class="hidden">0</span>
-            </button>
-            <button onclick="placeBet('hilo', '14')" class="relative bg-gray-800 hover:bg-gray-700 active:scale-95 text-white py-2.5 rounded-md font-bold text-sm border border-gray-700 transition-all">
-                14 <span id="hilo-chip-14" class="hidden">0</span>
-            </button>
-            <button onclick="placeBet('hilo', '15')" class="relative bg-gray-800 hover:bg-gray-700 active:scale-95 text-white py-2.5 rounded-md font-bold text-sm border border-gray-700 transition-all">
-                15 <span id="hilo-chip-15" class="hidden">0</span>
-            </button>
-            <button onclick="placeBet('hilo', '16')" class="relative bg-gray-800 hover:bg-gray-700 active:scale-95 text-white py-2.5 rounded-md font-bold text-sm border border-gray-700 transition-all">
-                16 <span id="hilo-chip-16" class="hidden">0</span>
-            </button>
+            <!-- กลุ่มขึ้นต้นด้วย 2 -->
+            <div class="grid grid-cols-4 gap-1.5 bg-gray-800/40 p-1.5 rounded-lg border border-gray-700/50">
+                <button onclick="placeBet('hilo', '23')" class="relative bg-gray-800 hover:bg-gray-700 active:scale-95 text-white py-2.5 rounded-md font-bold text-sm border border-gray-700 transition-all">
+                    23 <span id="hilo-chip-23" class="hidden">0</span>
+                </button>
+                <button onclick="placeBet('hilo', '24')" class="relative bg-gray-800 hover:bg-gray-700 active:scale-95 text-white py-2.5 rounded-md font-bold text-sm border border-gray-700 transition-all">
+                    24 <span id="hilo-chip-24" class="hidden">0</span>
+                </button>
+                <button onclick="placeBet('hilo', '25')" class="relative bg-gray-800 hover:bg-gray-700 active:scale-95 text-white py-2.5 rounded-md font-bold text-sm border border-gray-700 transition-all">
+                    25 <span id="hilo-chip-25" class="hidden">0</span>
+                </button>
+                <button onclick="placeBet('hilo', '26')" class="relative bg-gray-800 hover:bg-gray-700 active:scale-95 text-white py-2.5 rounded-md font-bold text-sm border border-gray-700 transition-all">
+                    26 <span id="hilo-chip-26" class="hidden">0</span>
+                </button>
+            </div>
+
+            <!-- กลุ่มขึ้นต้นด้วย 3 -->
+            <div class="grid grid-cols-3 gap-1.5 bg-gray-800/40 p-1.5 rounded-lg border border-gray-700/50">
+                <button onclick="placeBet('hilo', '34')" class="relative bg-gray-800 hover:bg-gray-700 active:scale-95 text-white py-2.5 rounded-md font-bold text-sm border border-gray-700 transition-all">
+                    34 <span id="hilo-chip-34" class="hidden">0</span>
+                </button>
+                <button onclick="placeBet('hilo', '35')" class="relative bg-gray-800 hover:bg-gray-700 active:scale-95 text-white py-2.5 rounded-md font-bold text-sm border border-gray-700 transition-all">
+                    35 <span id="hilo-chip-35" class="hidden">0</span>
+                </button>
+                <button onclick="placeBet('hilo', '36')" class="relative bg-gray-800 hover:bg-gray-700 active:scale-95 text-white py-2.5 rounded-md font-bold text-sm border border-gray-700 transition-all">
+                    36 <span id="hilo-chip-36" class="hidden">0</span>
+                </button>
+            </div>
+
+            <!-- กลุ่มขึ้นต้นด้วย 4 และ 5 -->
+            <div class="grid grid-cols-3 gap-1.5 bg-gray-800/40 p-1.5 rounded-lg border border-gray-700/50">
+                <button onclick="placeBet('hilo', '45')" class="relative bg-gray-800 hover:bg-gray-700 active:scale-95 text-white py-2.5 rounded-md font-bold text-sm border border-gray-700 transition-all">
+                    45 <span id="hilo-chip-45" class="hidden">0</span>
+                </button>
+                <button onclick="placeBet('hilo', '46')" class="relative bg-gray-800 hover:bg-gray-700 active:scale-95 text-white py-2.5 rounded-md font-bold text-sm border border-gray-700 transition-all">
+                    46 <span id="hilo-chip-46" class="hidden">0</span>
+                </button>
+                <button onclick="placeBet('hilo', '56')" class="relative bg-gray-800 hover:bg-gray-700 active:scale-95 text-white py-2.5 rounded-md font-bold text-sm border border-gray-700 transition-all">
+                    56 <span id="hilo-chip-56" class="hidden">0</span>
+                </button>
+            </div>
         </div>
-
-        <!-- กลุ่มขึ้นต้นด้วย 2 -->
-        <div class="grid grid-cols-4 gap-1.5 bg-gray-800/40 p-1.5 rounded-lg border border-gray-700/50">
-            <button onclick="placeBet('hilo', '23')" class="relative bg-gray-800 hover:bg-gray-700 active:scale-95 text-white py-2.5 rounded-md font-bold text-sm border border-gray-700 transition-all">
-                23 <span id="hilo-chip-23" class="hidden">0</span>
-            </button>
-            <button onclick="placeBet('hilo', '24')" class="relative bg-gray-800 hover:bg-gray-700 active:scale-95 text-white py-2.5 rounded-md font-bold text-sm border border-gray-700 transition-all">
-                24 <span id="hilo-chip-24" class="hidden">0</span>
-            </button>
-            <button onclick="placeBet('hilo', '25')" class="relative bg-gray-800 hover:bg-gray-700 active:scale-95 text-white py-2.5 rounded-md font-bold text-sm border border-gray-700 transition-all">
-                25 <span id="hilo-chip-25" class="hidden">0</span>
-            </button>
-            <button onclick="placeBet('hilo', '26')" class="relative bg-gray-800 hover:bg-gray-700 active:scale-95 text-white py-2.5 rounded-md font-bold text-sm border border-gray-700 transition-all">
-                26 <span id="hilo-chip-26" class="hidden">0</span>
-            </button>
-        </div>
-
-        <!-- กลุ่มขึ้นต้นด้วย 3 -->
-        <div class="grid grid-cols-3 gap-1.5 bg-gray-800/40 p-1.5 rounded-lg border border-gray-700/50">
-            <button onclick="placeBet('hilo', '34')" class="relative bg-gray-800 hover:bg-gray-700 active:scale-95 text-white py-2.5 rounded-md font-bold text-sm border border-gray-700 transition-all">
-                34 <span id="hilo-chip-34" class="hidden">0</span>
-            </button>
-            <button onclick="placeBet('hilo', '35')" class="relative bg-gray-800 hover:bg-gray-700 active:scale-95 text-white py-2.5 rounded-md font-bold text-sm border border-gray-700 transition-all">
-                35 <span id="hilo-chip-35" class="hidden">0</span>
-            </button>
-            <button onclick="placeBet('hilo', '36')" class="relative bg-gray-800 hover:bg-gray-700 active:scale-95 text-white py-2.5 rounded-md font-bold text-sm border border-gray-700 transition-all">
-                36 <span id="hilo-chip-36" class="hidden">0</span>
-            </button>
-        </div>
-
-        <!-- กลุ่มขึ้นต้นด้วย 4 และ 5 -->
-        <div class="grid grid-cols-3 gap-1.5 bg-gray-800/40 p-1.5 rounded-lg border border-gray-700/50">
-            <button onclick="placeBet('hilo', '45')" class="relative bg-gray-800 hover:bg-gray-700 active:scale-95 text-white py-2.5 rounded-md font-bold text-sm border border-gray-700 transition-all">
-                45 <span id="hilo-chip-45" class="hidden">0</span>
-            </button>
-            <button onclick="placeBet('hilo', '46')" class="relative bg-gray-800 hover:bg-gray-700 active:scale-95 text-white py-2.5 rounded-md font-bold text-sm border border-gray-700 transition-all">
-                46 <span id="hilo-chip-46" class="hidden">0</span>
-            </button>
-            <button onclick="placeBet('hilo', '56')" class="relative bg-gray-800 hover:bg-gray-700 active:scale-95 text-white py-2.5 rounded-md font-bold text-sm border border-gray-700 transition-all">
-                56 <span id="hilo-chip-56" class="hidden">0</span>
-            </button>
-        </div>
-
     </div>
-</div>
 
-    <!-- แถวที่ 6: โต๊ด 3 ตัว -->
+    <!-- แถวที่ 5: โต๊ด 3 ตัว -->
     <div class="space-y-1 pt-1 border-t border-gray-700">
         <div class="text-center font-bold text-gray-400 text-[11px]">โต๊ด 3 ตัว</div>
         <div class="grid grid-cols-6 gap-1">
@@ -408,9 +407,14 @@
                             ${k}
                             <span id="hilo-chip-${k}" class="hidden absolute -top-1 -right-1 px-1 bg-yellow-400 text-black text-[8px] font-bold rounded-full">0</span>
                         </div>
+                    `);
+                });
+            </script>
+        </div>
+    </div>
 
-                        <!-- แถวที่ 3: โซนตองระบุ (ขยายกว้าง วางชิปง่าย) -->
-    <div class="bg-gray-800/80 border border-amber-500/40 rounded-lg p-2 space-y-1.5">
+    <!-- แถวที่ 6 (ล่างสุด): โซนตองระบุ & ตองรวม -->
+    <div class="bg-gray-800/80 border border-amber-500/40 rounded-lg p-2 space-y-1.5 mt-2">
         <div class="text-center font-bold text-amber-300 text-xs">ตองระบุ</div>
         <div class="grid grid-cols-3 gap-1.5">
             <script>
@@ -429,12 +433,7 @@
             <span id="hilo-chip-ตอง" class="hidden absolute -top-1 -right-1 px-1.5 bg-yellow-400 text-black text-[10px] font-bold rounded-full">0</span>
         </div>
     </div>
-                    `);
-                });
-            </script>
-        </div>
-        
-    </div>
+
 </div>
  </main>
 

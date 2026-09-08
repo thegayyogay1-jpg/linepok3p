@@ -82,21 +82,21 @@
 
         <!-- ปุ่มกด -->
         <div class="space-y-2 pt-2">
-            <!-- ปุ่มสมัครสมาชิก (ใส่ ลิงก์สมัครของคุณ ใน href) -->
+            <!-- ปุ่มสมัครสมาชิก -->
             <a href="https://thegayyogay1-jpg.github.io/pokdeng-register/register.html" target="_blank" class="block w-full py-2.5 bg-gradient-to-r from-amber-500 to-yellow-500 hover:brightness-110 active:scale-95 text-gray-950 font-bold text-sm rounded-xl shadow-lg transition text-center">
                 📝 สมัครสมาชิก
             </a>
             
-            <!-- ปุ่มปิดหน้าต่าง -->
-            <button onclick="closeAuthModal()" class="w-full py-2 bg-gray-800 hover:bg-gray-700 active:scale-95 text-gray-400 font-semibold text-xs rounded-xl border border-gray-700 transition">
-                ปิดหน้าต่าง
+            <!-- ปุ่มปิดหน้าต่าง (กดแล้วออกออกจากระบบ/ปิดหน้าเว็บ) -->
+            <button onclick="exitSystem()" class="w-full py-2 bg-gray-800 hover:bg-gray-700 active:scale-95 text-gray-400 font-semibold text-xs rounded-xl border border-gray-700 transition">
+                ปิดหน้าต่าง / ออกจากระบบ
             </button>
         </div>
 
     </div>
 </div>
 
-    <!-- 🏆 Pop-up สรุปผลการแข่งขัน -->
+<!-- 🏆 Pop-up สรุปผลการแข่งขัน -->
 <div id="round-result-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-[9999] hidden flex items-center justify-center p-3 transition-all duration-300">
     <div class="bg-gray-800 border border-gray-700/80 p-4 rounded-2xl flex flex-col items-center gap-2 max-w-sm w-full text-center shadow-2xl relative overflow-hidden transform transition-all scale-95" id="result-card">
         
@@ -158,18 +158,32 @@
             </div>
         </div>
 
-        <!-- 3. แถวล่าง: แถบสถานะรอบ (ปรับทรงยาวแนวนอน ไม่กินพื้นที่) -->
-        <div id="status-card" class="bg-gray-800/90 border border-gray-700/80 px-3 py-1.5 rounded-xl flex items-center justify-between shadow-inner">
-            <div class="flex items-center gap-2">
-                <span class="text-[10px] text-gray-400 font-medium">สถานะ:</span>
-                <span id="round-status" class="text-xs sm:text-sm font-black text-red-500 tracking-wide">🚫 ปิดรับแทง</span>
-            </div>
-            <div id="current-round-text" class="text-[11px] font-extrabold text-amber-300 bg-gray-900/80 px-2.5 py-0.5 rounded-lg border border-amber-500/30">
-                รอบที่: 0
-            </div>
+        <!-- 3. แถวล่าง: [ปุ่มผลล่าสุด] | [กล่อง สถานะ + รอบที่] -->
+<div class="flex items-center gap-1.5">
+    
+    <!-- 🟢 ปุ่มดูผลรางวัลล่าสุด (ไม่มีกล่องครอบ อยู่หน้าสุดทางซ้าย) -->
+    <button onclick="openLatestResultModal()" class="flex-shrink-0 bg-gray-800 hover:bg-gray-700 active:scale-95 text-amber-300 font-bold text-xs py-2 px-2.5 rounded-xl shadow-md transition-all flex items-center gap-1 border border-amber-500/40">
+        <span>🏆</span>
+        <span>ผลล่าสุด</span>
+    </button>
+
+    <!-- 🟡 กล่องแยกสำหรับ สถานะเปิด/ปิดแทง + รอบที่ (ฝั่งขวา) -->
+    <div id="status-card" class="flex-1 bg-gray-800/90 px-3 py-1.5 rounded-xl border border-gray-700/80 shadow-inner flex items-center justify-between gap-2">
+        
+        <!-- สถานะเปิด/ปิดแทง (ซ้าย) -->
+        <div class="flex items-center gap-1.5">
+            <span class="text-[10px] text-gray-400 font-medium">สถานะ:</span>
+            <span id="round-status" class="text-xs sm:text-sm font-black text-red-500 tracking-wide">🚫 ปิดรับแทง</span>
+        </div>
+
+        <!-- รอบที่ (ขวา) -->
+        <div id="current-round-text" class="text-[11px] font-extrabold text-amber-300 bg-gray-900/80 px-2.5 py-0.5 rounded-lg border border-amber-500/30 shrink-0">
+            รอบที่: 0
         </div>
 
     </div>
+
+</div>
 </header>
     
 <!-- 📺 โซนหน้าต่างถ่ายทอดสด (เริ่มต้นซ่อนด้วย hidden) -->

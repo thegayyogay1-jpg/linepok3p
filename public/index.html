@@ -1586,36 +1586,29 @@ function toggleLoading(show, message = "กำลังประมวลผล 
         }
     }
     
+let currentFirebaseData = null; // เก็บไว้ให้ปุ่ม "ผลล่าสุด" เรียกดูได้
 let lastNotifiedRound = 0;
-let lastNotifiedTime = 0; // 🟢 เพิ่มตัวแปรเช็กเวลาที่ออกผลล่าสุด
-let isFirstLoad = true;
+let isFirstLoad = true; // ตัวแปรบล็อกการเด้งครั้งแรกสุด
 
 function listenToRoundResults() {
     db.ref('currentRoundResult').on('value', (snapshot) => {
         const data = snapshot.val();
+        console.log("ข้อมูลรอบล่าสุดจาก Firebase:", data);
+
         if (!data || !data.round) return;
 
-        // เก็บข้อมูลไว้ให้ปุ่ม "ผลล่าสุด" ดึงไปใช้
-        currentFirebaseData = data;
+        currentFirebaseData = data; // บันทึกข้อมูลไว้ใช้กับปุ่มกด
 
-        // ดึงเวลาอัปเดตผลจาก Firebase (ถ้าไม่มีให้ใช้เวลาปัจจุบัน)
-        const currentResultTime = data.updatedAt || data.timestamp || Date.now();
-
-        // 1. ครั้งแรกที่เปิดเว็บมา: บันทึกเลขรอบและเวลาไว้ แต่ยังไม่เด้ง Pop-up
+        // 🟢 ถ้าเปิดเว็บมาครั้งแรก ให้จำเลขรอบปัจจุบันไว้เลย แล้วข้ามการเปิด Pop-up
         if (isFirstLoad) {
-            lastNotifiedRound = data.round;
-            lastNotifiedTime = currentResultTime;
-            isFirstLoad = false;
-            return;
+            lastNotifiedRound = data.round; // บันทึกรอบปัจจุบัน (เช่น รอบ 15)
+            isFirstLoad = false; // ปลดล็อก
+            return; // จบการทำงาน ไม่สั่งเปิด Pop-up
         }
 
-        // 2. 🟢 เด้ง Pop-up เมื่อ: เป็นรอบใหม่ (round มากกว่าเดิม) 
-        // OR เป็นการกดยืนยันผลใหม่ในรอบเดิม (เวลาอัปเดตใหม่กว่าเดิม)
-        if (data.round > lastNotifiedRound || currentResultTime > lastNotifiedTime) {
+        // 🟢 เมื่อแอดมินออกผลรอบใหม่ (เช่น รอบ 16) เงื่อนไขนี้จะทำงานตามปกติแบบโค้ดเดิมของคุณ
+        if (data.round > lastNotifiedRound) {
             lastNotifiedRound = data.round;
-            lastNotifiedTime = currentResultTime;
-            
-            // เรียกฟังก์ชันเปิด Pop-up
             checkAndShowUserResult(data);
         }
     });

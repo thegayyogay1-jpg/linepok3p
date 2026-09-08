@@ -1586,30 +1586,36 @@ function toggleLoading(show, message = "กำลังประมวลผล 
         }
     }
     
-// Variable กันเด้งซ้ำรอบเดิม
-let currentFirebaseData = null; // เก็บข้อมูลที่ Firebase ส่งมาเดิมๆ
 let lastNotifiedRound = 0;
+let lastNotifiedTime = 0; // 🟢 เพิ่มตัวแปรเช็กเวลาที่ออกผลล่าสุด
+let isFirstLoad = true;
 
-// 1. ฟังผล Real-time จาก Firebase
 function listenToRoundResults() {
     db.ref('currentRoundResult').on('value', (snapshot) => {
         const data = snapshot.val();
-        console.log("ข้อมูลรอบล่าสุดจาก Firebase:", data);
-
         if (!data || !data.round) return;
 
-        currentFirebaseData = data; // 🟢 จำค่าเดิมไว้แค่นี้เลย
+        // เก็บข้อมูลไว้ให้ปุ่ม "ผลล่าสุด" ดึงไปใช้
+        currentFirebaseData = data;
 
-        // เช็คว่ารอบใหม่กว่ารอบที่เคยแสดงหรือไม่ (ไม่ใช้ currentUserId ในเงื่อนไขเพื่อป้องกันตัวแปรหลุด)
+        // ดึงเวลาอัปเดตผลจาก Firebase (ถ้าไม่มีให้ใช้เวลาปัจจุบัน)
+        const currentResultTime = data.updatedAt || data.timestamp || Date.now();
+
+        // 1. ครั้งแรกที่เปิดเว็บมา: บันทึกเลขรอบและเวลาไว้ แต่ยังไม่เด้ง Pop-up
         if (isFirstLoad) {
             lastNotifiedRound = data.round;
-            isFirstLoad = false; // ปลดล็อกสำหรับการอัปเดตรอบถัดไป
+            lastNotifiedTime = currentResultTime;
+            isFirstLoad = false;
             return;
         }
-        
-        // 🟢 จะเด้ง Pop-up ก็ต่อเมื่อมีการออกผล "รอบใหม่" ในขณะที่เปิดหน้าเว็บอยู่อย่างแท้จริง
-        if (data.round > lastNotifiedRound) {
+
+        // 2. 🟢 เด้ง Pop-up เมื่อ: เป็นรอบใหม่ (round มากกว่าเดิม) 
+        // OR เป็นการกดยืนยันผลใหม่ในรอบเดิม (เวลาอัปเดตใหม่กว่าเดิม)
+        if (data.round > lastNotifiedRound || currentResultTime > lastNotifiedTime) {
             lastNotifiedRound = data.round;
+            lastNotifiedTime = currentResultTime;
+            
+            // เรียกฟังก์ชันเปิด Pop-up
             checkAndShowUserResult(data);
         }
     });

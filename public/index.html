@@ -851,20 +851,6 @@ function renderAllBetsUI() {
     if (summaryGrandTotalEl) summaryGrandTotalEl.innerText = (totalPokBetAmount + totalHiloBetAmount).toLocaleString();
 }
 
-    html += `
-        <div class="grid grid-cols-2 gap-2 mt-3">
-            <button onclick="cancelMyBets('r', 'ป๊อกเด้ง')" class="py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-lg shadow border border-red-500 flex items-center justify-center gap-1">
-                🗑️ คืนโพยป๊อก
-            </button>
-            <button onclick="cancelMyBets('rz', 'ไฮโล')" class="py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-lg shadow border border-purple-500 flex items-center justify-center gap-1">
-                🗑️ คืนโพยไฮโล
-            </button>
-        </div>
-    `;
-
-    betsContainer.innerHTML = html;
-
-    
    // 🟢 อัปเดต ฟังก์ชันคืนโพย (cancelMyBets)
 async function cancelMyBets(command, gameName) {
     if (!isRoundOpen) return alert('⚠️ ขณะนี้ปิดรับแทงแล้ว ไม่สามารถยกเลิกโพยได้ครับ');

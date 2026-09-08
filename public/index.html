@@ -89,40 +89,50 @@
     </div>
 </div>
 
-   <!-- Header ปรับการ์ดฝั่งขวา + เครดิตเรียงแนวตั้งตัวใหญ่เด่น -->
-<header class="bg-gray-900 px-4 py-3 shadow-2xl sticky top-0 z-50 border-b border-gray-800">
-    <!-- โลโก้ POKNAJA 3D -->
-    <div class="text-center mb-2.5">
-        <h1 class="logo-3d-animated text-2xl font-black tracking-widest uppercase">
-            POKNAJA
-        </h1>
-    </div>
-
-    <!-- ส่วนปุ่มฝาก-ถอน และ การ์ดข้อมูลผู้ใช้ -->
-    <div class="flex justify-between items-center gap-3">
+   <!-- Header รวมปุ่มฝาก-ถอน การ์ดผู้ใช้ และ แถบสถานะรอบ (Sticky ติดด้านบน) -->
+<header class="bg-gray-900 px-3 py-2 shadow-2xl sticky top-0 z-50 border-b border-gray-800">
+    <div class="max-w-xl mx-auto space-y-2">
         
-        <!-- ฝั่งซ้าย: ปุ่มฝาก และ ปุ่มถอน (ปุ่มทรงนูนเต็มพื้นที่) -->
-        <div class="flex flex-col gap-2 w-28 shrink-0">
-            <a href="https://liff.line.me/2011387264-5A3dDh8M" class="flex items-center justify-center gap-1.5 py-2 px-3 bg-gradient-to-r from-emerald-600 to-green-500 hover:from-emerald-500 hover:to-green-400 text-white font-bold text-base rounded-2xl shadow-lg border border-green-400/40 transition-all transform active:scale-95 no-underline">
-                <span>📥</span> ฝาก
-            </a>
-            <a href="https://liff.line.me/2011387264-NTNwr9uN" class="flex items-center justify-center gap-1.5 py-2 px-3 bg-gradient-to-r from-red-600 to-rose-500 hover:from-red-500 hover:to-rose-400 text-white font-bold text-base rounded-2xl shadow-lg border border-red-400/40 transition-all transform active:scale-95 no-underline">
-                <span>📤</span> ถอน
-            </a>
+        <!-- 1. โลโก้ POKNAJA 3D -->
+        <div class="text-center">
+            <h1 class="logo-3d-animated text-2xl sm:text-3xl font-black tracking-widest uppercase leading-tight">
+                POKNAJA
+            </h1>
         </div>
 
-        <!-- ฝั่งขวา: การ์ดสรุปข้อมูลผู้ใช้ (ใส่กรอบ + จัดระเบียบเครดิตแนวตั้ง) -->
-        <div class="flex-1 bg-gray-800/80 backdrop-blur-md p-2.5 rounded-2xl border border-gray-700/60 shadow-inner flex flex-col justify-between text-right">
-            <!-- บรรทัดบน: ID และชื่อ -->
-            <div class="text-xs text-gray-300 font-medium truncate border-b border-gray-700/50 pb-1 mb-1">
-                <span id="user-id" class="text-white font-extrabold">-</span> 
-                [<span id="user-name" class="text-amber-400 font-bold">กำลังโหลด...</span>]
+        <!-- 2. แถวบน: ปุ่มฝาก-ถอน (ซ้าย) + การ์ดข้อมูลผู้ใช้ (ขวา) -->
+        <div class="flex justify-between items-center gap-2">
+            <!-- ฝั่งซ้าย: ปุ่มฝาก และ ปุ่มถอน -->
+            <div class="flex flex-col gap-1 w-24 shrink-0">
+                <a href="https://liff.line.me/2011387264-5A3dDh8M" class="flex items-center justify-center gap-1 py-1 px-2 bg-gradient-to-r from-emerald-600 to-green-500 hover:from-emerald-500 hover:to-green-400 text-white font-bold text-xs rounded-xl shadow-md border border-green-400/40 transition-all transform active:scale-95 no-underline">
+                    <span>📥</span> ฝาก
+                </a>
+                <a href="https://liff.line.me/2011387264-NTNwr9uN" class="flex items-center justify-center gap-1 py-1 px-2 bg-gradient-to-r from-red-600 to-rose-500 hover:from-red-500 hover:to-rose-400 text-white font-bold text-xs rounded-xl shadow-md border border-red-400/40 transition-all transform active:scale-95 no-underline">
+                    <span>📤</span> ถอน
+                </a>
             </div>
-            
-            <!-- บรรทัดล่าง: เครดิตเรียงแนวตั้ง (ตัวเลขใหญ่เต็มตา) -->
-            <div class="flex flex-col items-end leading-tight">
-                <span class="text-[11px] text-gray-400 font-semibold tracking-wider">เครดิตคงเหลือ</span>
-                <span id="user-balance" class="text-emerald-400 font-black text-2xl tracking-tight drop-shadow-[0_0_12px_rgba(52,211,153,0.5)]">0 ฿</span>
+
+            <!-- ฝั่งขวา: การ์ดสรุปข้อมูลผู้ใช้ -->
+            <div class="flex-1 bg-gray-800/80 backdrop-blur-md px-2.5 py-1.5 rounded-xl border border-gray-700/60 shadow-inner flex flex-col justify-between text-right">
+                <div class="text-[11px] text-gray-300 font-medium truncate border-b border-gray-700/50 pb-0.5 mb-0.5">
+                    <span id="user-id" class="text-white font-extrabold">-</span> 
+                    [<span id="user-name" class="text-amber-400 font-bold">กำลังโหลด...</span>]
+                </div>
+                <div class="flex flex-col items-end leading-tight">
+                    <span class="text-[9px] text-gray-400 font-semibold tracking-wider">เครดิตคงเหลือ</span>
+                    <span id="user-balance" class="text-emerald-400 font-black text-lg sm:text-xl tracking-tight drop-shadow-[0_0_8px_rgba(52,211,153,0.4)]">0 ฿</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. แถวล่าง: แถบสถานะรอบ (ปรับทรงยาวแนวนอน ไม่กินพื้นที่) -->
+        <div id="status-card" class="bg-gray-800/90 border border-gray-700/80 px-3 py-1.5 rounded-xl flex items-center justify-between shadow-inner">
+            <div class="flex items-center gap-2">
+                <span class="text-[10px] text-gray-400 font-medium">สถานะ:</span>
+                <span id="round-status" class="text-xs sm:text-sm font-black text-red-500 tracking-wide">🚫 ปิดรับแทง</span>
+            </div>
+            <div id="current-round-text" class="text-[11px] font-extrabold text-amber-300 bg-gray-900/80 px-2.5 py-0.5 rounded-lg border border-amber-500/30">
+                รอบที่: 0
             </div>
         </div>
 
@@ -171,13 +181,6 @@
 
     <main class="max-w-xl mx-auto p-2 sm:p-4 space-y-4">
         
-        <!-- แถบสถานะรอบ -->
-        <div id="status-card" class="bg-gray-800 p-3 rounded-lg border border-gray-700 text-center">
-            <div class="text-xs text-gray-400">สถานะห้องปัจจุบัน</div>
-            <div id="round-status" class="text-lg font-bold text-red-500">🚫 ปิดรับแทง</div>
-            <div id="current-round-text" class="text-xs text-yellow-300 mt-1">รอบที่: 0</div>
-        </div>
-
         <!-- แท็บสลับโหมด แทงป๊อกเด้ง / แทงไฮโล -->
         <div class="flex bg-gray-800 rounded-lg p-1 border border-gray-700">
             <button id="tab-pok" onclick="switchTab('pok')" class="flex-1 py-2 text-sm font-bold rounded-md bg-yellow-500 text-gray-900">🎴 ป๊อกเด้ง</button>

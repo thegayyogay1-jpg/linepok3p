@@ -190,7 +190,7 @@
     </button>
 </div>
 
-<main class="max-w-xl mx-auto p-2 sm:p-4 space-y-4">
+<main class="max-w-xl mx-auto p-2 sm:p-4 space-y-4 pb-40">
         
         <!-- แท็บสลับโหมด แทงป๊อกเด้ง / แทงไฮโล -->
         <div class="flex bg-gray-800 rounded-lg p-1 border border-gray-700">
@@ -435,50 +435,60 @@
             <span id="hilo-chip-ตอง" class="hidden absolute -top-1 -right-1 px-1.5 bg-yellow-400 text-black text-[10px] font-bold rounded-full">0</span>
         </div>
     </div>
+ </main>
 
-        <!-- ยอดรวมเตรียมส่งโพย + ปุ่ม ยืนยัน / ยกเลิก -->
-        <div class="bg-gray-800 p-3 rounded-lg border border-gray-700 space-y-3">
-            <div class="flex justify-between items-center text-sm px-2">
-                <span class="text-gray-400">ยอดเงินลงโพยรอบนี้:</span>
-                <span id="total-pending-amount" class="text-xl font-bold text-yellow-400">0 ฿</span>
-            </div>
-            <div class="flex gap-2">
-                <button onclick="clearPendingBets()" class="flex-1 py-2.5 bg-gray-600 hover:bg-gray-500 text-white font-bold rounded-lg shadow">
-                    ❌ ยกเลิก
-                </button>
-                <button onclick="submitBoardBets()" class="flex-2 w-2/3 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-gray-900 font-bold rounded-lg shadow hover:brightness-110">
-                    ✅ ยืนยันส่งโพย
-                </button>
-            </div>
+     <!-- 📌 แถบควบคุมด้านล่างแบบ Sticky ลอยติดขอบล่างตลอดเวลา (สไตล์คาสิโนออนไลน์) -->
+<div class="fixed bottom-0 left-0 right-0 bg-gray-900/95 backdrop-blur-md border-t border-amber-500/30 px-2 py-1.5 z-40 shadow-2xl space-y-1.5">
+    <div class="max-w-md mx-auto space-y-1.5">
+        
+        <!-- 1. Selector ชิปเลือกราคา (อยู่ด้านบนสุด) -->
+        <div class="flex justify-between items-center gap-1 overflow-x-auto px-1 py-0.5">
+            <script>
+                const chips = [1, 5, 10, 25, 50, 100, 500];
+                chips.forEach((val, idx) => {
+                    const active = idx === 2 ? 'chip-active' : '';
+                    document.write(`
+                        <button id="chip-btn-${val}" onclick="selectChip(${val})" class="chip ${active} flex-shrink-0 w-9 h-9 sm:w-11 sm:h-11 rounded-full border-2 border-yellow-500 bg-gray-900 text-yellow-400 font-bold text-xs sm:text-sm flex items-center justify-center shadow-md active:scale-90 transition-transform">
+                            ${val}
+                        </button>
+                    `);
+                });
+            </script>
         </div>
 
-        <!-- Selector ชิปเลือกราคา (ตรึงอยู่ด้านล่าง) -->
-        <div class="fixed bottom-0 left-0 right-0 bg-gray-800/95 backdrop-blur-md border-t border-gray-700 p-2 z-40">
-            <div class="max-w-md mx-auto flex justify-between items-center gap-1 overflow-x-auto px-1">
-                <script>
-                    const chips = [1, 5, 10, 25, 50, 100, 500];
-                    chips.forEach((val, idx) => {
-                        const active = idx === 2 ? 'chip-active' : '';
-                        document.write(`
-                            <button id="chip-btn-${val}" onclick="selectChip(${val})" class="chip ${active} flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-yellow-500 bg-gray-900 text-yellow-400 font-bold text-xs sm:text-sm flex items-center justify-center shadow-lg">
-                                ${val}
-                            </button>
-                        `);
-                    });
-                </script>
+        <!-- 2. แถบควบคุมด้านล่าง: [รายการโพย] | [กล่อง ยอดรวม + ปุ่มยกเลิก + ปุ่มยืนยัน] -->
+        <div class="flex items-center gap-1.5">
+            
+            <!-- 🟢 ปุ่มเปิด Pop-up รายการโพย (ไม่มีกล่องครอบ อยู่หน้าสุด) -->
+            <button onclick="openBetsModal()" class="flex-shrink-0 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs py-2 px-2.5 rounded-xl shadow-md transition-all flex items-center gap-1 border border-indigo-400/30">
+                <span>📋 โพย</span>
+                <span class="bg-indigo-950 text-indigo-300 px-1.5 py-0.5 rounded-full text-[10px]" id="totalBetsBadge">0</span>
+            </button>
+
+            <!-- 🟡 กล่องแยกสำหรับ ยอดรวม + ปุ่มยกเลิก / ยืนยัน -->
+            <div class="flex-1 bg-gray-800/90 p-1.5 rounded-xl border border-gray-700/80 shadow-inner flex items-center gap-2">
+                
+                <!-- ยอดเงินรวม -->
+                <div class="flex flex-col justify-center px-1 min-w-[70px]">
+                    <span class="text-[10px] text-gray-400 leading-none">ยอดรวม:</span>
+                    <span id="total-pending-amount" class="text-xs sm:text-sm font-black text-yellow-400 leading-tight truncate">0 ฿</span>
+                </div>
+
+                <!-- ปุ่ม ยกเลิก & ยืนยัน -->
+                <div class="flex-1 flex gap-1">
+                    <button onclick="clearPendingBets()" class="flex-1 py-1.5 bg-gray-700 hover:bg-gray-600 active:scale-95 text-gray-200 font-bold text-xs rounded-lg shadow transition whitespace-nowrap">
+                        ❌ ยกเลิก
+                    </button>
+                    <button onclick="submitBoardBets()" class="flex-1 py-1.5 bg-gradient-to-r from-emerald-500 to-green-600 hover:brightness-110 active:scale-95 text-gray-950 font-black text-xs rounded-lg shadow-lg transition whitespace-nowrap">
+                        ✅ ยืนยัน
+                    </button>
+                </div>
+
             </div>
+
         </div>
 
-        <!-- 🟢 ปุ่มเปิด Pop-up รายการโพย (วางแทนตำแหน่งเดิม) -->
-<div class="bg-gray-800/80 p-3 rounded-2xl border border-gray-700/60 shadow-lg flex items-center justify-between">
-    <div class="flex items-center gap-2">
-        <span class="text-lg">📋</span>
-        <span class="text-xs text-gray-300 font-semibold">โพยที่คุณแทงรอบนี้</span>
     </div>
-    <button onclick="openBetsModal()" class="bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs py-2 px-3 rounded-xl shadow-md transition-all flex items-center gap-1.5 border border-indigo-400/30">
-        <span>ดูรายการโพย</span>
-        <span class="bg-indigo-950 text-indigo-300 px-1.5 py-0.5 rounded-full text-[10px]" id="totalBetsBadge">0</span>
-    </button>
 </div>
 
 <!-- 🏆 Pop-up Modal แสดงรายการโพยแยกหมวด + ยอดรวม -->
@@ -551,8 +561,6 @@
 
     </div>
 </div>
-
-    </main>
 
     <!-- 🌟 Professional Interactive Result Modal -->
 <div id="loading-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 hidden flex items-center justify-center p-4 transition-all duration-300">

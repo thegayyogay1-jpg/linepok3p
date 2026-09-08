@@ -1960,13 +1960,13 @@ function formatPokScore(score, isPok, dengVal) {
     if (s === 600) return "สเตทฟลัช";
     if (s === 500) return "เรียง";
     if (s === 400) return "เซียน";
-    if (s === 7.5) return "7.5";
 
     // 2. กลุ่มป๊อก และแต้มธรรมดา (เช็กต่อท้าย "ด" เฉพาะกลุ่มนี้)
     const dengSuffix = (Number(dengVal) > 1) ? "ด" : "";
 
     if (s === 900 || (isPok && s === 9)) return `P9${dengSuffix}`;
     if (s === 800 || (isPok && s === 8)) return `P8${dengSuffix}`;
+    if (s === 7.5 || (isPok && s === 7.5)) return `7.5${dengSuffix}`;
 
     // แต้มธรรมดา 0-7
     const normalPoint = isPok ? (s % 100) : (s % 10);

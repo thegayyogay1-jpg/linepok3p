@@ -491,7 +491,7 @@
                     <span id="pokArrow" class="text-gray-400 text-xs transition-transform duration-200">▼</span>
                 </button>
                 
-                <div id="pokSection" class="p-3 space-y-2 border-t border-slate-700/50 bg-slate-900/50">
+                <div id="pokSection" class="hidden p-3 space-y-2 border-t border-slate-700/50 bg-slate-900/50">
                     <div id="pokListContainer" class="space-y-1 text-xs"></div>
                     <div class="pt-2 border-t border-slate-800 text-right text-xs font-semibold text-amber-400">
                         🔒 ล็อกค้ำประกันป๊อก: <span id="pokTotalHold">0</span> ฿
@@ -508,7 +508,7 @@
                     <span id="hiloArrow" class="text-gray-400 text-xs transition-transform duration-200">▼</span>
                 </button>
                 
-                <div id="hiloSection" class="p-3 space-y-2 border-t border-slate-700/50 bg-slate-900/50">
+                <div id="hiloSection" class="hidden p-3 space-y-2 border-t border-slate-700/50 bg-slate-900/50">
                     <div id="hiloListContainer" class="space-y-1 text-xs"></div>
                     <div class="pt-2 border-t border-slate-800 text-right text-xs font-semibold text-amber-400">
                         🔒 ล็อกค้ำประกันไฮโล: <span id="hiloTotalHold">0</span> ฿
@@ -757,18 +757,20 @@ function renderAllBetsUI() {
         }
     });
 
-    // 2. จัดกลุ่มและเก็บประวัติการแทงของ ไฮโล (Logic เดิม)
+   // 2. จัดกลุ่มและเก็บประวัติการแทงของ ไฮโล
     const hiloMap = {};
 
     hiloListRaw.forEach(bet => {
         if (!bet) return;
-        totalHiloHold += Number(bet.holdCost || 0);
+
+        // 🟢 อ่านค่า holdCost ถ้ามี ถ้าไม่มีให้ยึดจากราคาแทงก่อน
+        const price = Number(bet.actualBet || bet.price || bet.amount || 0);
+        totalHiloHold += Number(bet.holdCost || bet.hold || bet.totalHold || price);
 
         let targetName = bet.target || bet.detail || bet.rawText || bet.option || bet.category || 'ไฮโล';
         if (typeof targetName === 'object') targetName = JSON.stringify(targetName);
         
         targetName = String(targetName).replace(/^z/i, '').split('-')[0].trim();
-        const price = Number(bet.actualBet || bet.price || bet.amount || 0);
 
         if (!hiloMap[targetName]) {
             hiloMap[targetName] = { total: 0, items: [] };
@@ -783,7 +785,8 @@ function renderAllBetsUI() {
     const pokEntries = Object.entries(pokMap);
     
     if (pokContainer) {
-        document.getElementById('pokCountText').innerText = `(${pokEntries.length} รายการ)`;
+        const pokCountEl = document.getElementById('pokCountText');
+        if (pokCountEl) pokCountEl.innerText = `(${pokEntries.length} รายการ)`;
         if (pokEntries.length === 0) {
             pokContainer.innerHTML = `<div class="text-gray-500 text-center py-2 text-xs">ยังไม่มีรายการแทงป๊อกเด้ง</div>`;
         } else {
@@ -812,7 +815,8 @@ function renderAllBetsUI() {
     const hiloEntries = Object.entries(hiloMap);
 
     if (hiloContainer) {
-        document.getElementById('hiloCountText').innerText = `(${hiloEntries.length} รายการ)`;
+        const hiloCountEl = document.getElementById('hiloCountText');
+        if (hiloCountEl) hiloCountEl.innerText = `(${hiloEntries.length} รายการ)`;
         if (hiloEntries.length === 0) {
             hiloContainer.innerHTML = `<div class="text-gray-500 text-center py-2 text-xs">ยังไม่มีรายการแทงไฮโล</div>`;
         } else {
@@ -844,7 +848,10 @@ function renderAllBetsUI() {
     const summaryGrandTotalEl = document.getElementById('summaryGrandTotal');
 
     if (pokHoldEl) pokHoldEl.innerText = totalPokHold.toLocaleString();
-    if (hiloHoldEl) hiloHoldEl.innerText = totalHiloHold.toLocaleString();
+
+    // 🟢 ดึงยอดไฮโลจากยอดรวมแทงที่ตรงกันแน่ๆ มาแสดงถ้า totalHiloHold เป็น 0
+    const finalHiloHold = totalHiloHold > 0 ? totalHiloHold : totalHiloBetAmount;
+    if (hiloHoldEl) hiloHoldEl.innerText = finalHiloHold.toLocaleString();
 
     if (summaryPokEl) summaryPokEl.innerText = totalPokBetAmount.toLocaleString();
     if (summaryHiloEl) summaryHiloEl.innerText = totalHiloBetAmount.toLocaleString();

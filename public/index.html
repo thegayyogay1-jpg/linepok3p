@@ -139,7 +139,7 @@
     </div>
 </header>
     
-<!-- 📺 โซนหน้าต่างถ่ายทอดสด (เริ่มต้นซ่อนด้วย class 'hidden') -->
+<!-- 📺 โซนหน้าต่างถ่ายทอดสด (เริ่มต้นซ่อนด้วย hidden) -->
 <div id="live-container" class="max-w-xl mx-auto my-3 px-2 hidden">
     <div class="bg-gray-800 rounded-2xl overflow-hidden border border-amber-500/40 shadow-2xl">
         <!-- แถบสถานะการถ่ายทอดสด -->
@@ -157,7 +157,7 @@
                 <button onclick="syncLiveStream()" class="text-[10px] bg-emerald-600 hover:bg-emerald-500 active:scale-95 transition text-white font-bold px-2.5 py-1 rounded shadow flex items-center gap-1">
                     🔄 ดึงภาพสด (แก้ดีเลย์)
                 </button>
-                <!-- 👁️ ปุ่มซ่อนหน้าจอ -->
+                <!-- 🙈 ปุ่มซ่อนหน้าจอ -->
                 <button onclick="toggleLivePlayer()" class="text-[10px] bg-gray-700 hover:bg-gray-600 active:scale-95 transition px-2 py-1 rounded text-gray-300">
                     🙈 ซ่อนหน้าจอ
                 </button>
@@ -179,7 +179,7 @@
     </div>
 </div>
 
-<!-- 🔘 ปุ่มสำหรับกดเปิดถ่ายทอดสด (จะแสดงออกมาเฉพาะตอนที่หน้าจอถ่ายทอดสดถูกซ่อนอยู่) -->
+<!-- 🔘 ปุ่มเปิดถ่ายทอดสด (โชว์ไว้ตั้งแต่แรก) -->
 <div id="show-live-btn-container" class="max-w-xl mx-auto my-2 px-2 text-center">
     <button onclick="toggleLivePlayer()" class="w-full bg-gray-800/90 hover:bg-gray-700 border border-amber-500/40 text-amber-400 font-bold text-xs py-2 px-4 rounded-xl shadow-lg flex items-center justify-center gap-2 active:scale-95 transition">
         <span class="relative flex h-2 w-2">
@@ -978,23 +978,37 @@ function updateChipSelectorUI() {
         }
     });
 
-    // ฟังก์ชัน สลับการแสดงผล / ซ่อน หน้าต่างถ่ายทอดสด
+    // ฟังก์ชันสลับการ ซ่อน/แสดง หน้าต่างถ่ายทอดสด
 function toggleLivePlayer() {
-    const liveContainer = document.getElementById('live-container');
-    const showBtnContainer = document.getElementById('show-live-btn-container');
+        const liveContainer = document.getElementById('live-container');
+        const showBtnContainer = document.getElementById('show-live-btn-container');
 
-    if (liveContainer && showBtnContainer) {
-        // สลับการซ่อน/แสดง
-        liveContainer.classList.toggle('hidden');
-        
-        // ถ้าหน้าต่างสดซ่อนอยู่ ให้แสดงปุ่มกดเปิด แต่ถ้าหน้าต่างสดแสดงอยู่ ให้ซ่อนปุ่มกดเปิด
-        if (liveContainer.classList.contains('hidden')) {
-            showBtnContainer.classList.remove('hidden');
-        } else {
+        if (!liveContainer || !showBtnContainer) return;
+
+        const isHidden = liveContainer.classList.contains('hidden');
+
+        if (isHidden) {
+            // เปิดหน้าต่างสด + ซ่อนปุ่มเปิด
+            liveContainer.classList.remove('hidden');
             showBtnContainer.classList.add('hidden');
+        } else {
+            // ซ่อนหน้าต่างสด + แสดงปุ่มเปิด
+            liveContainer.classList.add('hidden');
+            showBtnContainer.classList.remove('hidden');
         }
     }
-}
+
+    // 2. ฟังก์ชัน ดึงภาพสด (แก้ดีเลย์)
+    function syncLiveStream() {
+        const iframe = document.getElementById('user-live-iframe');
+        if (iframe && iframe.src) {
+            const currentSrc = iframe.src;
+            iframe.src = '';
+            setTimeout(() => {
+                iframe.src = currentSrc;
+            }, 100);
+        }
+    }
 
     // ฟังก์ชัน เปิด/ปิด Pop-up Modal
 function openBetsModal() {
@@ -1774,52 +1788,60 @@ function closeRoundResultModal() {
 </div>
     <!-- 📍 วางสคริปต์ถ่ายทอดสดตรงนี้ (ก่อนปิด </body>) -->
 <script>
-  db.ref('settings/live_url').on('value', (snapshot) => {
-    const rawUrl = snapshot.val();
-    const liveContainer = document.getElementById('live-container');
-    const iframe = document.getElementById('user-live-iframe');
-    const playerBox = document.getElementById('live-player-box');
+    db.ref('settings/live_url').on('value', (snapshot) => {
+        const rawUrl = snapshot.val();
+        const liveContainer = document.getElementById('live-container');
+        const showBtnContainer = document.getElementById('show-live-btn-container');
+        const playerBox = document.getElementById('live-player-box');
 
-    if (rawUrl && rawUrl.trim() !== '') {
-        // กรณีเป็นลิงก์ TikTok
-        if (rawUrl.includes('tiktok.com')) {
-            if (iframe) iframe.src = '';
-            // แสดงหน้าต่างแนะนำให้เปิด TikTok Pop-up
-            playerBox.innerHTML = `
-                <div class="flex flex-col items-center justify-center h-full p-6 text-center bg-gray-900 text-white">
-                    <div class="w-16 h-16 bg-black rounded-full flex items-center justify-center border border-pink-500 mb-3 shadow-lg shadow-pink-500/20">
-                        <span class="text-2xl">🎵</span>
-                    </div>
-                    <h3 class="font-bold text-sm text-pink-400 mb-1">ถ่ายทอดสดจาก TikTok LIVE</h3>
-                    <p class="text-[11px] text-gray-400 mb-4">TikTok ไม่อนุญาตให้เล่นวิดีโอสดในเว็บตรงๆ กดปุ่มด้านล่างเพื่อเปิดหน้าต่างไลฟ์สด</p>
-                    <a href="${rawUrl}" target="_blank" class="bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 text-white font-bold text-xs px-5 py-2.5 rounded-full shadow-lg transition active:scale-95 flex items-center gap-2">
-                        ▶️ เปิดดูไลฟ์สด TikTok
-                    </a>
-                </div>
-            `;
-        } else {
-            // กรณีเป็น Facebook หรือ YouTube (ใช้ iframe ตามปกติ)
-            let embedUrl = '';
-            if (rawUrl.includes('facebook.com')) {
-                embedUrl = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(rawUrl)}&show_text=false&autoplay=true&mute=1`;
-            } else if (rawUrl.includes('youtube.com') || rawUrl.includes('youtu.be')) {
-                const videoId = rawUrl.split('v=')[1] || rawUrl.split('/').pop();
-                embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1`;
+        if (rawUrl && rawUrl.trim() !== '') {
+            // กรณีเป็นลิงก์ TikTok
+            if (rawUrl.includes('tiktok.com')) {
+                if (playerBox) {
+                    playerBox.innerHTML = `
+                        <div class="flex flex-col items-center justify-center h-full p-6 text-center bg-gray-900 text-white">
+                            <div class="w-16 h-16 bg-black rounded-full flex items-center justify-center border border-pink-500 mb-3 shadow-lg shadow-pink-500/20">
+                                <span class="text-2xl">🎵</span>
+                            </div>
+                            <h3 class="font-bold text-sm text-pink-400 mb-1">ถ่ายทอดสดจาก TikTok LIVE</h3>
+                            <p class="text-[11px] text-gray-400 mb-4">TikTok ไม่อนุญาตให้เล่นวิดีโอสดในเว็บตรงๆ กดปุ่มด้านล่างเพื่อเปิดหน้าต่างไลฟ์สด</p>
+                            <a href="${rawUrl}" target="_blank" class="bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 text-white font-bold text-xs px-5 py-2.5 rounded-full shadow-lg transition active:scale-95 flex items-center gap-2">
+                                ▶️ เปิดดูไลฟ์สด TikTok
+                            </a>
+                        </div>
+                    `;
+                }
             } else {
-                embedUrl = rawUrl;
+                // กรณีเป็น Facebook หรือ YouTube (ใช้ iframe ตามปกติ)
+                let embedUrl = '';
+                if (rawUrl.includes('facebook.com')) {
+                    embedUrl = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(rawUrl)}&show_text=false&autoplay=true&mute=1`;
+                } else if (rawUrl.includes('youtube.com') || rawUrl.includes('youtu.be')) {
+                    const videoId = rawUrl.split('v=')[1] || rawUrl.split('/').pop();
+                    embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1`;
+                } else {
+                    embedUrl = rawUrl;
+                }
+
+                if (playerBox) {
+                    playerBox.innerHTML = `
+                        <div class="absolute inset-0 z-10 bg-transparent pointer-events-auto [clip-path:polygon(0_0,_100%_0,_100%_calc(100%-60px),_0_calc(100%-60px))]"></div>
+                        <iframe id="user-live-iframe" src="${embedUrl}" class="w-full h-full border-0 transform scale-90 origin-center" allowfullscreen="true" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"></iframe>
+                    `;
+                }
             }
 
-            playerBox.innerHTML = `
-                <div class="absolute inset-0 z-10 bg-transparent pointer-events-auto [clip-path:polygon(0_0,_100%_0,_100%_calc(100%-60px),_0_calc(100%-60px))]"></div>
-                <iframe id="user-live-iframe" src="${embedUrl}" class="w-full h-full border-0 transform scale-90 origin-center" allowfullscreen="true" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"></iframe>
-            `;
+            // แสดงเฉพาะปุ่ม "เปิดหน้าต่างถ่ายทอดสด" ไว้ก่อน (ถ้าหน้าต่างสดถูกปิดอยู่)
+            if (showBtnContainer && liveContainer && liveContainer.classList.contains('hidden')) {
+                showBtnContainer.classList.remove('hidden');
+            }
+        } else {
+            // ถ้าไม่มีลิงก์ถ่ายทอดสด ให้ซ่อนทั้งสองอย่าง
+            if (liveContainer) liveContainer.classList.add('hidden');
+            if (showBtnContainer) showBtnContainer.classList.add('hidden');
         }
+    });
 
-        if (liveContainer) liveContainer.classList.remove('hidden');
-    } else {
-        if (liveContainer) liveContainer.classList.add('hidden');
-    }
-});
     // 🟢 ฟังก์ชันช่วยแปลงแต้ม Score และกรองไพ่พิเศษไม่ให้ติดตัว "ด" (ใช้ฟังก์ชันนี้ตัวเดียวพอครับ)
 function formatPokScore(score, isPok, dengVal) {
     const s = Number(score);

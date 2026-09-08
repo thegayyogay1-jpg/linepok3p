@@ -1038,19 +1038,34 @@ document.addEventListener("DOMContentLoaded", function () {
     checkUserAuth();
 });
 
+document.addEventListener("DOMContentLoaded", function () {
+    checkUserAuth();
+});
+
 function checkUserAuth() {
-    // เปลี่ยน 'userData' หรือ 'userToken' ตามชื่อที่ระบบของคุณใช้เก็บใน LocalStorage
     const user = localStorage.getItem('userData'); 
 
-    // ถ้าไม่มีข้อมูลในระบบ ให้เปิด Pop-up แสดงขึ้นมา
     if (!user) {
         document.getElementById('authModal').classList.remove('hidden');
     }
 }
 
-// ฟังก์ชันสำหรับปิด Pop-up
+// ฟังก์ชันปิด Pop-up พร้อมเด้งออกจากหน้าเว็บ
 function closeAuthModal() {
     document.getElementById('authModal').classList.add('hidden');
+
+    // ปิดหน้า LIFF หากใช้งานในแอป LINE
+    if (typeof liff !== 'undefined' && liff.isLoggedIn && liff.isInClient()) {
+        liff.closeWindow();
+    } else {
+        // ลองสั่งปิดหน้าต่างเบราว์เซอร์
+        window.close();
+        
+        // Backup หากเบราว์เซอร์ไม่ยินยอมให้ปิดหน้าต่าง ให้พาออกจากเว็บทันที
+        setTimeout(function() {
+            window.location.replace("https://line.me/R/ti/g/XuqERSRvq3");
+        }, 200);
+    }
 }
 
     // ฟังก์ชันสลับการ ซ่อน/แสดง หน้าต่างถ่ายทอดสด
@@ -1571,6 +1586,7 @@ function toggleLoading(show, message = "กำลังประมวลผล 
     }
     
 // Variable กันเด้งซ้ำรอบเดิม
+let isFirstLoad = true; // 🟢 เพิ่มตัวแปรเช็กการเปิดเว็บครั้งแรก
 let lastNotifiedRound = 0;
 
 // 1. ฟังผล Real-time จาก Firebase
@@ -1581,7 +1597,17 @@ function listenToRoundResults() {
 
         if (!data || !data.round) return;
 
+        / 🟢 เก็บข้อมูลรอบล่าสุดไว้ในตัวแปรเสมอ (เพื่อให้ปุ่ม "ผลล่าสุด" ดึงไปใช้ได้ตลอดเวลา)
+        latestRoundResultData = data;
+
         // เช็คว่ารอบใหม่กว่ารอบที่เคยแสดงหรือไม่ (ไม่ใช้ currentUserId ในเงื่อนไขเพื่อป้องกันตัวแปรหลุด)
+        if (isFirstLoad) {
+            lastNotifiedRound = data.round;
+            isFirstLoad = false; // ปลดล็อกสำหรับการอัปเดตรอบถัดไป
+            return;
+        }
+        
+        // 🟢 จะเด้ง Pop-up ก็ต่อเมื่อมีการออกผล "รอบใหม่" ในขณะที่เปิดหน้าเว็บอยู่อย่างแท้จริง
         if (data.round > lastNotifiedRound) {
             lastNotifiedRound = data.round;
             checkAndShowUserResult(data);

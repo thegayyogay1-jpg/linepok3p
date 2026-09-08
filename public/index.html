@@ -590,17 +590,19 @@ function listenToUserData() {
         }
     });
 
-    // 2. ดึงโพยป๊อกเด้ง แบบ Instant Sync (ใช้ Path เดิม)
-    db.ref(`system_data/roundBets/${currentUserId}`).on('value', (snapPok) => {
-        localPokBets = snapPok.val() || {};
-        renderAllBetsUI();
-    });
+    // 2. ดึงโพยป๊อกเด้ง
+db.ref(`system_data/roundBets/${currentUserId}`).on('value', (snapPok) => {
+    console.log("♠️ [Pok Firebase Update]:", snapPok.val()); // 👈 เช็คป๊อกเด้ง
+    localPokBets = snapPok.val() || {};
+    renderAllBetsUI();
+});
 
-    // 3. ดึงโพยไฮโล แบบ Instant Sync (แก้ตามป๊อกเด้งเพื่อให้ Realtime ทันที)
-    db.ref(`system_data/hiloRoundBets/${currentUserId}`).on('value', (snapHilo) => {
-        localHiloBets = snapHilo.val() || {};
-        renderAllBetsUI();
-    });
+// 3. ดึงโพยไฮโล
+db.ref(`system_data/hiloRoundBets/${currentUserId}`).on('value', (snapHilo) => {
+    console.log("🎲 [Hilo Firebase Update]:", snapHilo.val()); // 👈 เช็คไฮโล
+    localHiloBets = snapHilo.val() || {};
+    renderAllBetsUI();
+});
 }
 
 // 🟢 ฟังก์ชันวาด UI แสดงรายการโพยรวม (แก้ไขเฉพาะจุดกระจายเลขขา 456-50)

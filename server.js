@@ -739,6 +739,9 @@ async function processHiloBetSubmission(userId, rawMessage, source = 'web') {
         });
     });
 
+    // 🟢 [เพิ่มบรรทัดนี้] สั่งซิงก์ข้อมูลโพยไฮโลลง Firebase ทันที (เหมือนของป๊อกเด้ง)
+    await db.ref(`system_data/hiloRoundBets/${userId}`).set(hiloRoundBets[userId]);
+
     return { 
         success: true, 
         message: "บันทึกโพยสำเร็จ", 

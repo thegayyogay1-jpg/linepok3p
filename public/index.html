@@ -532,7 +532,7 @@
     let selectedChipValue = 10;
     let pendingBets = {}; 
     let localPokBets = {};
-    let localHiloBets = [];
+    let localHiloBets = {};
 
     // 2. เริ่มต้น LIFF
     async function initLIFF() {
@@ -592,23 +592,13 @@ function listenToUserData() {
 
     // 2. ดึงโพยป๊อกเด้ง แบบ Instant Sync (ใช้ Path เดิม)
     db.ref(`system_data/roundBets/${currentUserId}`).on('value', (snapPok) => {
-        const data = snapPok.val() || {};
-        // แปลงเป็น Array ทันทีเพื่อป้องกัน Object Key ชนกัน
-        localPokBets = Object.entries(data).map(([key, val]) => ({
-            ...val,
-            _firebaseKey: key
-        }));
+        localPokBets = snapPok.val() || {};
         renderAllBetsUI();
     });
 
-    // 3. ดึงโพยไฮโล แบบ Instant Sync แก้ปัญหาดีเลย์ (ใช้ Path เดิม)
+    // 3. ดึงโพยไฮโล แบบ Instant Sync (แก้ตามป๊อกเด้งเพื่อให้ Realtime ทันที)
     db.ref(`system_data/hiloRoundBets/${currentUserId}`).on('value', (snapHilo) => {
-        const data = snapHilo.val() || {};
-        // แปลงเป็น Array ทันทีเพื่อให้อัปเดต Realtime ทันทีไม่รอคำสั่งถัดไป
-        localHiloBets = Object.entries(data).map(([key, val]) => ({
-            ...val,
-            _firebaseKey: key
-        }));
+        localHiloBets = snapHilo.val() || {};
         renderAllBetsUI();
     });
 }

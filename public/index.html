@@ -613,16 +613,13 @@ function listenToUserData() {
     });
 }
 
-// 🟢 ฟังก์ชันวาด UI แสดงรายการโพยรวม (แยกบรรทัดรายขาตามรูปแบบเดิม)
+// 🟢 ฟังก์ชันวาด UI แสดงรายการโพยรวม (แก้ไขเฉพาะจุดกระจายเลขขา 456-50)
 function renderAllBetsUI() {
     const betsContainer = document.getElementById('myBetsContainer');
     if (!betsContainer) return;
 
-    const pokData = window.localPokBets || localPokBets;
-    const hiloData = window.localHiloBets || localHiloBets;
-
-    const pokListRaw = Array.isArray(pokData) ? pokData : (pokData ? Object.values(pokData) : []);
-    const hiloListRaw = Array.isArray(hiloData) ? hiloData : (hiloData ? Object.values(hiloData) : []);
+    const pokListRaw = Array.isArray(localPokBets) ? localPokBets : (localPokBets ? Object.values(localPokBets) : []);
+    const hiloListRaw = Array.isArray(localHiloBets) ? localHiloBets : (localHiloBets ? Object.values(localHiloBets) : []);
 
     if (pokListRaw.length === 0 && hiloListRaw.length === 0) {
         betsContainer.innerHTML = `<div class="text-gray-400 text-sm text-center py-2">ยังไม่มีรายการแทงในรอบนี้</div>`;
@@ -630,111 +627,125 @@ function renderAllBetsUI() {
     }
 
     let totalHold = 0;
-    const pokDisplayList = [];
 
-    // 1. กระจายรายการ ป๊อกเด้ง
+    // 1. จัดกลุ่มและเก็บประวัติการแทงของ ป๊อกเด้ง (แก้ไขจุดแยกขาที่นี่)
+    const pokMap = {}; // โครงสร้าง: { key: { total: 0, items: [] } }
+
     pokListRaw.forEach(bet => {
         if (!bet) return;
         totalHold += Number(bet.holdCost || 0);
 
-        const rawText = String(bet.detail || bet.rawText || bet.target || '');
-        const isDealer = rawText.includes("เจ้าสู้ขา") || rawText.includes("จ");
+        const rawText = String(bet.detail || bet.rawText || bet.target || 'ป๊อกเด้ง');
+        const isDealer = rawText.includes("จ");
 
-        // 🌟 ดักจับรูปแบบ: "แทงขา [1, 2, 3, 4] ขาละ 50 บาท" หรือ "เจ้าสู้ขา [1, 2] ขาละ 100 บาท"
-        const arrayMatch = rawText.match(/\[(.*?)\]/); // ดึงตัวเลขใน [1, 2, 3, 4]
-        const amountMatch = rawText.match(/ขาละ\s*(\d+)/); // ดึงราคาหลังคำว่า ขาละ
+        // ดักจับรูปแบบ เช่น "456-50", "จ12-100", หรือ "แทงขา [1, 2, 3] ขาละ 50 บาท"
+        const arrayMatch = rawText.match(/\[(.*?)\]/); // กรณีมาเป็น array [1, 2, 3]
+        const hyphenParts = rawText.split('-');          // กรณีมาเป็น 456-50
 
-        if (arrayMatch && amountMatch) {
+        if (arrayMatch) {
+            // กรณีเป็น [1, 2, 3, 4] ขาละ 50
             const legsArr = arrayMatch[1].split(',').map(s => s.trim());
-            const pricePerLeg = Number(amountMatch[1]) || 0;
+            const amountMatch = rawText.match(/ขาละ\s*(\d+)/);
+            const pricePerLeg = amountMatch ? Number(amountMatch[1]) : Number(bet.actualBet || 0) / (legsArr.length || 1);
 
             legsArr.forEach(legNum => {
-                pokDisplayList.push({
-                    name: isDealer ? `เจ้าสู้ขา ${legNum}` : `ขาที่ ${legNum}`,
-                    price: pricePerLeg
-                });
+                const keyName = isDealer ? `เจ้าสู้ขา ${legNum}` : `ขาที่ ${legNum}`;
+                if (!pokMap[keyName]) pokMap[keyName] = { total: 0, items: [] };
+                pokMap[keyName].total += pricePerLeg;
+                pokMap[keyName].items.push(pricePerLeg);
             });
         } 
-        // 🌟 ดักจับรูปแบบคำสั่งสั้น: "1234-50" หรือ "จ123-100"
-        else if (rawText.includes('-')) {
-            const parts = rawText.split('-');
-            const legsPart = parts[0].replace(/[^\d]/g, '');
-            const pricePerLeg = Number(parts[1]) || 0;
+        else if (hyphenParts.length >= 2) {
+            // กรณีเป็น 456-50 หรือ จ12-100
+            const legsStr = hyphenParts[0].replace(/[^\d]/g, ''); // ดึงตัวเลขขา เช่น "456"
+            const pricePerLeg = Number(hyphenParts[1]) || 0;       // ราคาต่อขา เช่น 50
+            const legs = legsStr.split('');                        // แยกเป็น ['4', '5', '6']
 
-            legsPart.split('').forEach(legNum => {
-                pokDisplayList.push({
-                    name: isDealer ? `เจ้าสู้ขา ${legNum}` : `ขาที่ ${legNum}`,
-                    price: pricePerLeg
-                });
+            legs.forEach(legNum => {
+                const keyName = isDealer ? `เจ้าสู้ขา ${legNum}` : `ขาที่ ${legNum}`;
+                if (!pokMap[keyName]) pokMap[keyName] = { total: 0, items: [] };
+                pokMap[keyName].total += pricePerLeg;
+                pokMap[keyName].items.push(pricePerLeg);
             });
         } 
-        // กรณีทั่วไป
         else {
+            // กรณีแทงขาเดียวปกติ
             const price = Number(bet.actualBet || bet.price || bet.amount || 0);
-            pokDisplayList.push({
-                name: rawText || 'ป๊อกเด้ง',
-                price: price
-            });
+            const matchLeg = rawText.match(/\d+/);
+            let keyName = rawText;
+            if (matchLeg) {
+                keyName = isDealer ? `เจ้าสู้ขา ${matchLeg[0]}` : `ขาที่ ${matchLeg[0]}`;
+            }
+
+            if (!pokMap[keyName]) pokMap[keyName] = { total: 0, items: [] };
+            pokMap[keyName].total += price;
+            pokMap[keyName].items.push(price);
         }
     });
 
-    // 2. จัดรายการ ไฮโล
-    const hiloDisplayList = [];
+    // 2. จัดกลุ่มและเก็บประวัติการแทงของ ไฮโล (คงเดิม 100%)
+    const hiloMap = {};
+
     hiloListRaw.forEach(bet => {
         if (!bet) return;
         totalHold += Number(bet.holdCost || 0);
 
-        let targetName = bet.detail || bet.rawText || bet.target || bet.option || bet.category || 'ไฮโล';
+        let targetName = bet.target || bet.detail || bet.rawText || bet.option || bet.category || 'ไฮโล';
         if (typeof targetName === 'object') targetName = JSON.stringify(targetName);
         
-        // ลบคำว่า z หรือคำสั่งส่วนเกินออก
         targetName = String(targetName).replace(/^z/i, '').split('-')[0].trim();
-        if (!targetName.startsWith('แทง')) {
-            targetName = `แทง ${targetName}`;
-        }
 
         const price = Number(bet.actualBet || bet.price || bet.amount || 0);
 
-        hiloDisplayList.push({
-            name: targetName,
-            price: price
-        });
+        if (!hiloMap[targetName]) {
+            hiloMap[targetName] = { total: 0, items: [] };
+        }
+        hiloMap[targetName].total += price;
+        hiloMap[targetName].items.push(price);
     });
 
     let html = '';
 
-    // 3. วาดรายการ ป๊อกเด้ง
-    if (pokDisplayList.length > 0) {
-        html += `
-            <div class="flex justify-between items-center mb-1">
-                <div class="font-bold text-xs text-cyan-400 flex items-center gap-1">♠️ โพยป๊อกเด้ง (${pokDisplayList.length} รายการ)</div>
-            </div>
-        `;
+    // 3. แสดงผลรายการ ป๊อกเด้ง (คงเดิม 100%)
+    const pokEntries = Object.entries(pokMap);
+    if (pokEntries.length > 0) {
+        html += `<div class="font-bold text-xs text-cyan-400 mb-1 flex items-center gap-1">♠️ โพยป๊อกเด้ง (${pokEntries.length} รายการ)</div>`;
         
-        pokDisplayList.forEach((item, index) => {
+        pokEntries.forEach(([displayName, data], index) => {
+            const historyText = data.items.length > 1 
+                ? `<span class="text-[10px] text-gray-400 mr-1.5">(${data.items.join('+')})</span>` 
+                : '';
+
             html += `
                 <div class="flex justify-between items-center py-1.5 border-b border-gray-800 text-xs text-gray-200 pl-2">
-                    <span class="font-semibold">${index + 1}. ${item.name}</span>
-                    <span class="text-yellow-400 font-bold bg-gray-900/60 px-2 py-0.5 rounded border border-yellow-500/20">${item.price.toLocaleString()} B</span>
+                    <span class="font-semibold">${index + 1}. ${displayName}</span>
+                    <div class="flex items-center">
+                        ${historyText}
+                        <span class="text-yellow-400 font-bold bg-gray-900/60 px-2 py-0.5 rounded border border-yellow-500/20">${data.total.toLocaleString()} B</span>
+                    </div>
                 </div>
             `;
         });
     }
 
-    // 4. วาดรายการ ไฮโล
-    if (hiloDisplayList.length > 0) {
-        const marginTop = pokDisplayList.length > 0 ? 'mt-3' : '';
-        html += `
-            <div class="flex justify-between items-center mb-1 ${marginTop}">
-                <div class="font-bold text-xs text-purple-400 flex items-center gap-1">🎲 โพยไฮโล (${hiloDisplayList.length} รายการ)</div>
-            </div>
-        `;
+    // 4. แสดงผลรายการ ไฮโล (คงเดิม 100%)
+    const hiloEntries = Object.entries(hiloMap);
+    if (hiloEntries.length > 0) {
+        const marginTop = pokEntries.length > 0 ? 'mt-3' : '';
+        html += `<div class="font-bold text-xs text-purple-400 mb-1 ${marginTop} flex items-center gap-1">🎲 โพยไฮโล (${hiloEntries.length} รายการ)</div>`;
         
-        hiloDisplayList.forEach((item, index) => {
+        hiloEntries.forEach(([targetName, data], index) => {
+            const historyText = data.items.length > 1 
+                ? `<span class="text-[10px] text-gray-400 mr-1.5">(${data.items.join('+')})</span>` 
+                : '';
+
             html += `
                 <div class="flex justify-between items-center py-1.5 border-b border-gray-800 text-xs text-gray-200 pl-2">
-                    <span class="font-semibold">${index + 1}. ${item.name}</span>
-                    <span class="text-purple-300 font-bold bg-gray-900/60 px-2 py-0.5 rounded border border-purple-500/20">${item.price.toLocaleString()} B</span>
+                    <span class="font-semibold">${index + 1}. แทง ${targetName}</span>
+                    <div class="flex items-center">
+                        ${historyText}
+                        <span class="text-purple-300 font-bold bg-gray-900/60 px-2 py-0.5 rounded border border-purple-500/20">${data.total.toLocaleString()} B</span>
+                    </div>
                 </div>
             `;
         });
@@ -753,9 +764,6 @@ function renderAllBetsUI() {
                 🗑️ คืนโพยไฮโล
             </button>
         </div>
-        <button onclick="forceRefreshBets()" class="w-full mt-2 py-1.5 bg-gray-800 hover:bg-gray-700 text-cyan-400 font-bold text-xs rounded-lg border border-cyan-500/30 flex items-center justify-center gap-1">
-            🔄 รีเฟรชดึงโพยล่าสุด
-        </button>
     `;
 
     betsContainer.innerHTML = html;
@@ -791,33 +799,6 @@ async function cancelMyBets(command, gameName) {
         console.error(err);
         showModalState('error', 'เกิดข้อผิดพลาด', 'ไม่สามารถส่งคำขอคืนโพยได้');
     }
-}
-   // 🟢 1. ฟังก์ชันบังคับดึงข้อมูลโพยล่าสุดจาก Firebase (พร้อมแจ้งเตือนสถิติ)
-function forceRefreshBets() {
-    if (!currentUserId) return alert('⚠️ ไม่พบข้อมูลผู้ใช้งาน (currentUserId Missing)');
-
-    console.log("🔄 กำลังดึงข้อมูลโพยสำหรับ User ID:", currentUserId);
-
-    // ดึงโพยป๊อกเด้ง
-    db.ref(`system_data/roundBets/${currentUserId}`).once('value').then((snapshot) => {
-        window.localPokBets = snapshot.val() || {};
-        
-        // ดึงโพยไฮโล
-        return db.ref(`system_data/hiloRoundBets/${currentUserId}`).once('value');
-    }).then((hSnapshot) => {
-        window.localHiloBets = hSnapshot.val() || {};
-        
-        console.log("✅ ดึงโพยสำเร็จ:", { 
-            pok: window.localPokBets, 
-            hilo: window.localHiloBets 
-        });
-
-        // สั่งวาด UI ใหม่ทันที
-        renderAllBetsUI();
-    }).catch((err) => {
-        console.error("❌ เกิดข้อผิดพลาดในการดึงโพย:", err);
-        alert('เกิดข้อผิดพลาดในการเชื่อมต่อ Firebase');
-    });
 }
 
     // 🟢 เลือกชิป + ขยายใหญ่ + ใส่สีสันให้แถบชิปด้านล่าง

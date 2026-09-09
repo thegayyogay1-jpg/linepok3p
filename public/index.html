@@ -688,13 +688,13 @@
     </div>
 </div>
 
-    //!-- 📌 Modal แสดงโพยย้อนหลัง 10 รอบ --
-<div id="history-modal" class="hidden fixed inset-0 bg-black/85 z-50 flex items-center justify-center p-3 backdrop-blur-sm" onclick="closeHistoryModal()">
-    <div class="bg-gray-900 border border-gray-700 w-full max-w-lg rounded-2xl p-4 shadow-2xl relative max-h-[90vh] flex flex-col" onclick="event.stopPropagation()">
+    <!-- 📌 Modal แสดงโพยย้อนหลัง 10 รอบ (ขยายความกว้างเป็น max-w-4xl เพื่อให้เห็นครบไม่เลื่อน) -->
+<div id="history-modal" class="hidden fixed inset-0 bg-black/85 z-50 flex items-center justify-center p-2 sm:p-4 backdrop-blur-sm" onclick="closeHistoryModal()">
+    <div class="bg-gray-900 border border-gray-700 w-full max-w-4xl rounded-2xl p-3 sm:p-5 shadow-2xl relative max-h-[92vh] flex flex-col" onclick="event.stopPropagation()">
         
         <!-- Header -->
         <div class="flex justify-between items-center border-b border-gray-800 pb-3 mb-3 shrink-0">
-            <h3 class="text-base font-bold text-amber-400 flex items-center gap-2">
+            <h3 class="text-sm sm:text-base font-bold text-amber-400 flex items-center gap-2">
                 📜 ประวัติผลย้อนหลัง 10 รอบล่าสุด
             </h3>
             <button onclick="closeHistoryModal()" class="text-gray-400 hover:text-white font-bold text-lg px-2">✕</button>
@@ -706,7 +706,7 @@
         </div>
 
         <!-- Footer -->
-        <div class="border-t border-gray-800 pt-3 mt-3 text-center text-[11px] text-gray-400 shrink-0">
+        <div class="border-t border-gray-800 pt-2.5 mt-2.5 text-center text-[11px] text-gray-400 shrink-0">
             ✨ ข้อมูลดึงจากระบบ pastRoundsData แบบเรียลไทม์
         </div>
     </div>
@@ -1625,20 +1625,20 @@ function openHistoryModal() {
             return;
         }
 
-        // โครงสร้างตารางหลัก
+        // โครงสร้างตารางเต็มความกว้าง พอดีจอ ไม่ต้องเลื่อน
         let html = `
-            <div class="overflow-x-auto">
-                <table class="w-full text-center text-xs border-collapse min-w-[650px]">
+            <div class="w-full">
+                <table class="w-full text-center border-collapse text-[11px] sm:text-xs">
                     <thead>
                         <tr class="bg-gray-800 text-gray-300 border-b border-gray-700">
-                            <th class="p-2 border border-gray-700/50">รอบ</th>
-                            <th class="p-2 border border-gray-700/50 text-cyan-400">เจ้ามือ</th>
-                            <th class="p-2 border border-gray-700/50">ขา 1</th>
-                            <th class="p-2 border border-gray-700/50">ขา 2</th>
-                            <th class="p-2 border border-gray-700/50">ขา 3</th>
-                            <th class="p-2 border border-gray-700/50">ขา 4</th>
-                            <th class="p-2 border border-gray-700/50">ขา 5</th>
-                            <th class="p-2 border border-gray-700/50">ขา 6</th>
+                            <th class="py-2 px-1 border border-gray-700/60 w-[8%]">รอบ</th>
+                            <th class="py-2 px-1 border border-gray-700/60 text-cyan-400 font-bold w-[13%]">เจ้ามือ</th>
+                            <th class="py-2 px-1 border border-gray-700/60 w-[13%]">ขา 1</th>
+                            <th class="py-2 px-1 border border-gray-700/60 w-[13%]">ขา 2</th>
+                            <th class="py-2 px-1 border border-gray-700/60 w-[13%]">ขา 3</th>
+                            <th class="py-2 px-1 border border-gray-700/60 w-[13%]">ขา 4</th>
+                            <th class="py-2 px-1 border border-gray-700/60 w-[13%]">ขา 5</th>
+                            <th class="py-2 px-1 border border-gray-700/60 w-[14%]">ขา 6</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-800/60 font-semibold">
@@ -1647,59 +1647,97 @@ function openHistoryModal() {
         roundKeys.forEach(roundNum => {
             const roundInfo = data[roundNum] || {};
             const dealer = roundInfo.dealer || {};
-            const hiloText = roundInfo.hilo || 'ไม่มีข้อมูล';
+            const hiloText = roundInfo.hilo || '';
             const rooms = roundInfo.rooms || {};
 
             // แต้มเจ้ามือ
             const dealerScoreNum = dealer.score !== undefined ? Number(dealer.score) : null;
-            const dealerDisplay = dealer.name || dealer.v || (dealerScoreNum !== null ? dealerScoreNum : '-');
+            const dealerDisplay = dealer.name || dealer.v || (dealerScoreNum !== null ? dealerScoreNum + " แต้ม" : '-');
 
             // --- 1. แถวป๊อกเด้ง ---
-            html += `<tr class="bg-gray-950/60 hover:bg-gray-900/50 transition">`;
-            html += `<td class="p-2 border border-gray-800 font-bold text-amber-400">#${roundNum}</td>`;
-            html += `<td class="p-2 border border-gray-800 bg-cyan-950/40 text-cyan-300 font-bold">${dealerDisplay}</td>`;
+            html += `<tr class="bg-gray-950/60">`;
+            html += `<td class="py-2 px-1 border border-gray-800 font-bold text-amber-400">#${roundNum}</td>`;
+            html += `<td class="py-2 px-1 border border-gray-800 bg-cyan-950/50 text-cyan-300 font-bold">${dealerDisplay}</td>`;
 
             // คำนวณสีและแสดงผลแต่ละขา (1-6)
             for (let i = 1; i <= 6; i++) {
                 const roomData = rooms[i] || rooms[String(i)] || {};
                 const cardObj = roomData.threeCards || roomData.twoCards || {};
                 const legScoreNum = cardObj.score !== undefined ? Number(cardObj.score) : null;
-                const legDisplay = cardObj.name || cardObj.v || (legScoreNum !== null ? legScoreNum : '-');
+                
+                let legDisplay = cardObj.name || cardObj.v;
+                if (!legDisplay && legScoreNum !== null) {
+                    legDisplay = legScoreNum + " แต้ม";
+                } else if (!legDisplay) {
+                    legDisplay = '-';
+                }
 
                 // ฟังก์ชันกำหนดสีเทียบกับเจ้ามือ: ชนะ (เขียว), แพ้ (แดง), เสมอ (เหลือง)
-                let colorClass = "bg-gray-900 text-gray-400"; // default
+                let colorClass = "bg-gray-900 text-gray-400";
                 if (legScoreNum !== null && dealerScoreNum !== null) {
                     if (legScoreNum > dealerScoreNum) {
-                        colorClass = "bg-emerald-950/80 text-emerald-400 border border-emerald-500/30"; // ชนะ (เขียว)
+                        colorClass = "bg-emerald-950/90 text-emerald-400 border border-emerald-500/30"; // ชนะ (เขียว)
                     } else if (legScoreNum < dealerScoreNum) {
-                        colorClass = "bg-rose-950/80 text-rose-400 border border-rose-500/30"; // แพ้ (แดง)
+                        colorClass = "bg-rose-950/90 text-rose-400 border border-rose-500/30"; // แพ้ (แดง)
                     } else {
-                        colorClass = "bg-amber-950/80 text-amber-400 border border-amber-500/30"; // เสมอ (เหลือง)
+                        colorClass = "bg-amber-950/90 text-amber-400 border border-amber-500/30"; // เสมอ (เหลือง)
                     }
                 }
 
-                html += `<td class="p-2 border border-gray-800 ${colorClass}">${legDisplay}</td>`;
+                html += `<td class="py-2 px-1 border border-gray-800 ${colorClass}">${legDisplay}</td>`;
             }
             html += `</tr>`;
 
-            // --- 2. แถวผลไฮโล ---
-            let hiloColor = "bg-purple-950/50 text-purple-300 border-purple-800"; // Default สีไฮโล
+            // --- 2. แถวผลไฮโล (แยกเป็น 3 กล่องใหญ่) ---
+            let diceBox = '-', sumBox = '-', resultBox = '-';
+            
+            if (hiloText && hiloText !== 'ไม่มีข้อมูล') {
+                const parts = hiloText.split(' ');
+                diceBox = parts[0] || '-';
+                sumBox = parts[1] || '-';
+                resultBox = parts[2] || parts[1] || '-';
+                if (parts.length === 2 && !parts[1].includes('แต้ม')) {
+                    sumBox = '-';
+                    resultBox = parts[1];
+                }
+            }
 
-            if (hiloText.includes("สูง")) {
-                hiloColor = "bg-rose-950/80 text-rose-400 border-rose-500/40"; // สูง (แดง)
-            } else if (hiloText.includes("ต่ำ")) {
-                hiloColor = "bg-sky-950/80 text-sky-400 border-sky-500/40"; // ต่ำ (ฟ้า)
-            } else if (hiloText.includes("11ไฮโล") || hiloText.includes("ไฮโล")) {
-                hiloColor = "bg-emerald-950/80 text-emerald-400 border-emerald-500/40"; // 11ไฮโล/ไฮโล (เขียว)
-            } else if (hiloText.includes("ตอง")) {
-                hiloColor = "bg-amber-950/80 text-amber-400 border-amber-500/40"; // ตอง (เหลือง)
+            // กำหนดสีกล่องผลลัพธ์ไฮโล (สูง-แดง, ต่ำ-ฟ้า, 11ไฮโล/ไฮโล-เขียว, ตอง-เหลือง)
+            let resultColor = "bg-purple-900/60 text-purple-300 border-purple-700/50";
+            if (resultBox.includes("สูง")) {
+                resultColor = "bg-rose-600/90 text-white border-rose-400/50"; // สูง (แดง)
+            } else if (resultBox.includes("ต่ำ")) {
+                resultColor = "bg-sky-600/90 text-white border-sky-400/50"; // ต่ำ (ฟ้า)
+            } else if (resultBox.includes("11ไฮโล") || resultBox.includes("ไฮโล")) {
+                resultColor = "bg-emerald-600/90 text-white border-emerald-400/50"; // ไฮโล (เขียว)
+            } else if (resultBox.includes("ตอง")) {
+                resultColor = "bg-amber-500/90 text-black border-amber-300/50"; // ตอง (เหลือง)
             }
 
             html += `
-                <tr class="bg-gray-900/40 text-[11px]">
-                    <td colspan="8" class="p-1.5 border border-gray-800/80 text-left px-3">
-                        <span class="text-gray-400 font-bold mr-2">🎲 ผลไฮโล:</span>
-                        <span class="px-2 py-0.5 rounded border font-bold ${hiloColor}">${hiloText}</span>
+                <tr class="bg-gray-900/40">
+                    <td colspan="8" class="py-2 px-3 border border-gray-800/80 text-left">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="text-xs font-black text-purple-300 flex items-center gap-1 shrink-0">
+                                🎲 ผลไฮโล:
+                            </span>
+                            
+                            <!-- กล่อง 1: หน้าลูกเต๋า (เช่น 2-3-6) -->
+                            <div class="bg-gray-950 border border-gray-700 text-amber-300 font-mono font-bold text-xs sm:text-sm px-2.5 py-1 rounded-lg shadow-sm">
+                                ${diceBox}
+                            </div>
+
+                            <!-- กล่อง 2: แต้มรวม (เช่น (11แต้ม)) -->
+                            ${sumBox !== '-' ? `
+                            <div class="bg-gray-800 border border-gray-600 text-gray-200 font-bold text-xs sm:text-sm px-2.5 py-1 rounded-lg shadow-sm">
+                                ${sumBox}
+                            </div>` : ''}
+
+                            <!-- กล่อง 3: ผลลัพธ์ (เช่น 11ไฮโล / สูง / ต่ำ) ใหญ่ชัดเจน -->
+                            <div class="${resultColor} font-black text-xs sm:text-sm px-3 py-1 rounded-lg shadow-md border">
+                                ${resultBox}
+                            </div>
+                        </div>
                     </td>
                 </tr>
             `;

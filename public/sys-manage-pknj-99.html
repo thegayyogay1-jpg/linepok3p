@@ -3,156 +3,347 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>POKNAJA - Admin System & Live</title>
+    <title>POKNAJA - Admin System & Live Monitor</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Firebase SDK (v8) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>    
+    <style>
+        /* ซ่อน Scrollbar */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
 </head>
-    
-<body class="bg-gray-950 text-white min-h-screen p-3 sm:p-6 font-sans">
-    <!-- Header -->
-    <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6 pb-4 border-b border-gray-800 max-w-7xl mx-auto">
-        <div>
-            <h1 class="text-2xl font-black text-amber-400 tracking-wider">POKNAJA ADMIN</h1>
-            <p class="text-xs text-gray-400">ระบบจัดการหลังบ้าน + ถ่ายทอดสด + ตรวจสอบรายการเคสฝากไม่ผ่าน</p>
-        </div>
-        <div class="flex items-center gap-2">
-            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-
-                ● Live Real-time Connected
-            </span>
-        </div>
-    </header>
+<body class="bg-gray-950 text-white min-h-screen flex font-sans">
 
     <!-- เสียงแจ้งเตือน (Audio Elements) -->
     <audio id="sound-deposit" src="https://www.myinstants.com/media/sounds/snkneo-geo-insert-coin-sound.mp3" preload="auto"></audio>
     <audio id="sound-withdraw" src="https://www.myinstants.com/media/sounds/mario_coin_sound.mp3" preload="auto"></audio>
-    
-    <!-- ปุ่มเปิด/ปิดเสียงแจ้งเตือน (วางไว้ใน Header) -->
-    <button id="toggle-sound-btn" onclick="toggleSound()" class="px-3 py-1 text-xs font-bold rounded-full bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700 transition">
-        🔇 เปิดเสียงแจ้งเตือน
-    </button>
-    
-    <main class="max-w-7xl mx-auto space-y-8">
-        
-        <!-- Zone 1: จัดการหน้าจอถ่ายทอดสด (Live Stream Management) -->
-        <section class="bg-gray-900 rounded-2xl p-4 sm:p-5 border border-gray-800 shadow-xl">
-            <h2 class="text-base font-bold text-amber-400 mb-3 flex items-center gap-2">
-                
-                📹 ควบคุมวิดีโอถ่ายทอดสด (Facebook Live Embed)
-            </h2>
-            <div class="flex flex-col md:flex-row gap-3 items-center">
-                <input type="text" id="live-url-input" placeholder="วางลิงก์วิดีโอ Facebook Live ที่นี่..." 
-                    class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-amber-400">
-                <button onclick="updateLiveUrl()" 
-                    class="w-full md:w-auto bg-amber-500 hover:bg-amber-400 text-black font-bold px-6 py-2 rounded-xl text-sm transition-all shrink-0">
-                    อัปเดตลิงก์ไลฟ์สด
-                </button>
+
+    <!-- 📌 1. Sidebar ด้านซ้าย (เมนูสลับหน้า) -->
+    <aside class="w-64 bg-gray-900 border-r border-gray-800 flex flex-col shrink-0 min-h-screen sticky top-0 z-50">
+        <!-- Header โลโก้แอดมิน -->
+        <div class="p-4 border-b border-gray-800">
+            <h1 class="text-xl font-black text-amber-400 tracking-wider">POKNAJA ADMIN</h1>
+            <p class="text-[10px] text-gray-400">ระบบจัดการหลังบ้าน + ถ่ายทอดสด</p>
+        </div>
+
+        <!-- รายการเมนูสำหรับเลือกสลับหน้า -->
+        <nav class="flex-1 p-3 space-y-1 text-sm font-semibold">
+            <!-- เมนูที่ 1: ยอดแทงเรียลไทม์ (หน้าหลัก) -->
+            <button onclick="switchTab('live-monitor')" id="btn-live-monitor" 
+                class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 font-bold transition-all">
+                <span>📊</span>
+                <span>ยอดแทงรวมเรียลไทม์</span>
+            </button>
+
+            <!-- เมนูที่ 2: รายการฝาก - ถอน -->
+            <button onclick="switchTab('finance')" id="btn-finance" 
+                class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-gray-400 hover:bg-gray-800 hover:text-white transition-all">
+                <span>💰</span>
+                <span>รายการฝาก - ถอน</span>
+            </button>
+
+            <!-- เมนูที่ 3: ถ่ายทอดสด -->
+            <button onclick="switchTab('stream')" id="btn-stream" 
+                class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-gray-400 hover:bg-gray-800 hover:text-white transition-all">
+                <span>📹</span>
+                <span>ถ่ายทอดสด (Live)</span>
+            </button>
+
+            <!-- เมนูที่ 4: ค้นหาประวัติการแทง -->
+            <button onclick="switchTab('history')" id="btn-history" 
+                class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-gray-400 hover:bg-gray-800 hover:text-white transition-all">
+                <span>🔍</span>
+                <span>ค้นหาประวัติการแทง</span>
+            </button>
+        </nav>
+
+        <!-- ปุ่มเปิด/ปิดเสียง และสถานะการเชื่อมต่อ -->
+        <div class="p-3 border-t border-gray-800 space-y-3">
+            <button id="toggle-sound-btn" onclick="toggleSound()" class="w-full py-1.5 text-xs font-bold rounded-lg bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700 transition text-center">
+                🔇 เปิดเสียงแจ้งเตือน
+            </button>
+            <div class="flex items-center justify-between text-[11px] text-gray-400">
+                <span>สถานะระบบ:</span>
+                <span class="inline-flex items-center text-emerald-400 font-bold">● Live Connected</span>
             </div>
-            <!-- จอพรีวิวไลฟ์สดฝั่งแอดมิน -->
-            <div class="mt-4 max-w-md mx-auto aspect-video bg-black rounded-xl overflow-hidden border border-gray-800 relative">
-                <iframe id="admin-live-preview" class="w-full h-full border-0" allowfullscreen="true" 
-                    allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"></iframe>
+        </div>
+    </aside>
+
+    <!-- 📊 2. Main Content ด้านขวา (โซนแสดงเนื้อหาตามเมนู) -->
+    <main class="flex-1 p-4 sm:p-6 space-y-6 overflow-y-auto min-w-0">
+
+        <!-- ========================================== -->
+        <!-- 🟡 SECTION 1: ยอดแทงรวมเรียลไทม์ (Live Bet Monitor) -->
+        <!-- ========================================== -->
+        <section id="sec-live-monitor" class="tab-content space-y-6">
+            <div class="flex justify-between items-center border-b border-gray-800 pb-3">
+                <h2 class="text-xl font-bold text-yellow-400 flex items-center gap-2">
+                    <span>📊</span> Live Bet Monitor (สรุปยอดแทงเรียลไทม์)
+                </h2>
+            </div>
+
+            <!-- 💰 การ์ดสรุปยอดรวมภาพรวม -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-gray-900 p-4 rounded-2xl border border-gray-800 shadow-xl">
+                    <div class="text-gray-400 text-xs font-semibold">ยอดแทงรวมทุกเกม</div>
+                    <div id="total-all-bets" class="text-3xl font-extrabold text-yellow-400 mt-1">0 ฿</div>
+                </div>
+                <div class="bg-gray-900 p-4 rounded-2xl border border-gray-800 shadow-xl">
+                    <div class="text-gray-400 text-xs font-semibold">ยอดแทงรวม ป๊อกเด้ง</div>
+                    <div id="total-pok-bets" class="text-3xl font-extrabold text-cyan-400 mt-1">0 ฿</div>
+                </div>
+                <div class="bg-gray-900 p-4 rounded-2xl border border-gray-800 shadow-xl">
+                    <div class="text-gray-400 text-xs font-semibold">ยอดแทงรวม ไฮโล</div>
+                    <div id="total-hilo-bets" class="text-3xl font-extrabold text-purple-400 mt-1">0 ฿</div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- 🎰 โซนสรุปยอด ป๊อกเด้ง (12 ขา) -->
+                <div class="bg-gray-900 rounded-2xl border border-gray-800 p-4 space-y-4 shadow-xl">
+                    <div class="flex justify-between items-center border-b border-gray-800 pb-2">
+                        <h3 class="text-lg font-bold text-yellow-400">🎰 สรุปยอด ป๊อกเด้ง (12 ขา)</h3>
+                        <span class="text-xs text-gray-400">เรียลไทม์</span>
+                    </div>
+
+                    <!-- ฝั่งผู้เล่น แทงสู้เจ้ามือ (6 ขา) -->
+                    <div>
+                        <h4 class="text-xs font-bold text-cyan-400 mb-2">🔹 แทงผู้เล่น (สู้เจ้ามือ)</h4>
+                        <div class="grid grid-cols-3 gap-2">
+                            <script>
+                                for(let i=1; i<=6; i++){
+                                    document.write(`
+                                        <div class="bg-gray-800 border border-cyan-900/60 p-2.5 rounded-xl text-center transition-all duration-300">
+                                            <div class="text-xs font-bold text-cyan-300">ขาที่ ${i}</div>
+                                            <div id="pok-player-${i}" class="text-lg font-extrabold text-white mt-0.5">0 ฿</div>
+                                        </div>
+                                    `);
+                                }
+                            </script>
+                        </div>
+                    </div>
+
+                    <!-- ฝั่งเจ้ามือ แทงสู้ผู้เล่น (6 ขา) -->
+                    <div>
+                        <h4 class="text-xs font-bold text-red-400 mb-2">🔻 แทงเจ้ามือ (สู้ผู้เล่น)</h4>
+                        <div class="grid grid-cols-3 gap-2">
+                            <script>
+                                for(let i=1; i<=6; i++){
+                                    document.write(`
+                                        <div class="bg-gray-800 border border-red-900/60 p-2.5 rounded-xl text-center transition-all duration-300">
+                                            <div class="text-xs font-bold text-red-300">ขาที่ ${i}</div>
+                                            <div id="pok-dealer-${i}" class="text-lg font-extrabold text-white mt-0.5">0 ฿</div>
+                                        </div>
+                                    `);
+                                }
+                            </script>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 🎲 โซนสรุปยอด ไฮโล -->
+                <div class="bg-gray-900 rounded-2xl border border-gray-800 p-4 space-y-4 shadow-xl">
+                    <div class="flex justify-between items-center border-b border-gray-800 pb-2">
+                        <h3 class="text-lg font-bold text-amber-400">🎲 สรุปยอด ไฮโล</h3>
+                        <span class="text-xs text-gray-400">เรียลไทม์</span>
+                    </div>
+
+                    <!-- ต่ำ / 11 ไฮโล / สูง -->
+                    <div class="grid grid-cols-3 gap-2">
+                        <div class="bg-gray-800 border border-gray-700 p-3 rounded-xl text-center">
+                            <div class="text-xs font-bold text-gray-300">ต่ำ</div>
+                            <div id="hilo-ต" class="text-xl font-extrabold text-emerald-400 mt-1">0 ฿</div>
+                        </div>
+                        <div class="bg-gray-800 border border-gray-700 p-3 rounded-xl text-center">
+                            <div class="text-xs font-bold text-amber-300">11 ไฮโล</div>
+                            <div id="hilo-11" class="text-xl font-extrabold text-amber-400 mt-1">0 ฿</div>
+                        </div>
+                        <div class="bg-gray-800 border border-gray-700 p-3 rounded-xl text-center">
+                            <div class="text-xs font-bold text-gray-300">สูง</div>
+                            <div id="hilo-ส" class="text-xl font-extrabold text-red-400 mt-1">0 ฿</div>
+                        </div>
+                    </div>
+
+                    <!-- รายการแทงอื่นๆ -->
+                    <div>
+                        <h4 class="text-xs font-bold text-gray-400 mb-2">📌 รายการแทงอื่นๆ (แสดงเฉพาะที่มีคนวาง)</h4>
+                        <div class="bg-gray-800 rounded-xl p-2 max-h-56 overflow-y-auto no-scrollbar border border-gray-700">
+                            <table class="w-full text-xs text-left">
+                                <thead class="text-gray-400 border-b border-gray-700">
+                                    <tr>
+                                        <th class="py-1 px-2">ตัวเลือก</th>
+                                        <th class="py-1 px-2 text-right">ยอดรวม</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="hilo-other-list" class="divide-y divide-gray-700/50">
+                                    <tr>
+                                        <td colspan="2" class="text-center py-4 text-gray-500">ยังไม่มีรายการแทง</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
         </section>
-        <!-- Zone 2: ตารางรายการฝากเงินไม่ผ่าน & ถอนค้างตรวจสอบ -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- ฝากไม่ผ่าน (Pending Review) -->
-            <section class="bg-gray-900 rounded-2xl p-4 border border-gray-800 shadow-xl">
-                <h2 class="text-base font-bold text-amber-400 mb-4 flex justify-between items-center">
-                    <span class="flex items-center gap-1.5">⚠️ รายการฝากเงินที่ต้องตรวจสอบ (สแกนไม่ผ่าน)</span>
-                    <span id="deposit-count" class="text-xs bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2.5 py-0.5 rounded-full font-bold">0</span>
+
+        <!-- ========================================== -->
+        <!-- 🟢 SECTION 2: รายการฝาก - ถอน (จากโค้ดเดิม) -->
+        <!-- ========================================== -->
+        <section id="sec-finance" class="tab-content hidden space-y-6">
+            <div class="flex justify-between items-center border-b border-gray-800 pb-3">
+                <h2 class="text-xl font-bold text-emerald-400 flex items-center gap-2">
+                    <span>💰</span> ระบบจัดการ การฝาก - ถอนเงิน
                 </h2>
+            </div>
+
+            <!-- ตารางรายการฝากเงินรอตรวจสอบ (pendingDeposits) -->
+            <div class="bg-gray-900 rounded-2xl p-4 sm:p-5 border border-gray-800 shadow-xl space-y-3">
+                <h3 class="text-base font-bold text-amber-400 flex justify-between items-center">
+                    <span>⏳ รายการฝากเงินรอตรวจสอบ (pendingDeposits)</span>
+                    <span class="badge text-xs bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2.5 py-0.5 rounded-full font-bold">0</span>
+                </h3>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left text-xs text-gray-300">
                         <thead class="bg-gray-950 text-gray-400 uppercase border-b border-gray-800 text-[10px]">
                             <tr>
-                                <th class="p-2.5">เวลา / ID</th>
+                                <th class="p-2.5">ข้อมูลผู้ฝาก / ธนาคาร</th>
                                 <th class="p-2.5">ยอดเงิน</th>
                                 <th class="p-2.5 text-center">สลิป</th>
-                                <th class="p-2.5">สาเหตุที่ไม่ผ่าน</th>
+                                <th class="p-2.5">สาเหตุ</th>
                                 <th class="p-2.5 text-center">จัดการ</th>
                             </tr>
                         </thead>
-                        <tbody id="deposit-pending-list" class="divide-y divide-gray-800">
+                        <tbody id="pendingDepositTableBody" class="divide-y divide-gray-800">
                             <tr><td colspan="5" class="text-center py-6 text-gray-500">ไม่มีรายการฝากค้างตรวจสอบ</td></tr>
                         </tbody>
                     </table>
                 </div>
-            </section>
+            </div>
 
-            <!-- ถอนค้าง (Pending Withdraw) -->
-            <section class="bg-gray-900 rounded-2xl p-4 border border-gray-800 shadow-xl">
-                <h2 class="text-base font-bold text-rose-400 mb-4 flex justify-between items-center">
-                    <span>📤 รายการแจ้งถอน (รอโอน)</span>
-                    <span id="withdraw-count" class="text-xs bg-rose-500/20 text-rose-400 border border-rose-500/30 px-2.5 py-0.5 rounded-full font-bold">0</span>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- ฝากไม่ผ่าน (deposit_pending_reviews) -->
+                <div class="bg-gray-900 rounded-2xl p-4 border border-gray-800 shadow-xl space-y-3">
+                    <h3 class="text-base font-bold text-amber-400 flex justify-between items-center">
+                        <span class="flex items-center gap-1.5">⚠️ รายการฝากเงินสแกนไม่ผ่าน</span>
+                        <span id="deposit-count" class="text-xs bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2.5 py-0.5 rounded-full font-bold">0</span>
+                    </h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs text-gray-300">
+                            <thead class="bg-gray-950 text-gray-400 uppercase border-b border-gray-800 text-[10px]">
+                                <tr>
+                                    <th class="p-2.5">เวลา / ID</th>
+                                    <th class="p-2.5">ยอดเงิน</th>
+                                    <th class="p-2.5 text-center">สลิป</th>
+                                    <th class="p-2.5">สาเหตุที่ไม่ผ่าน</th>
+                                    <th class="p-2.5 text-center">จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="deposit-pending-list" class="divide-y divide-gray-800">
+                                <tr><td colspan="5" class="text-center py-6 text-gray-500">ไม่มีรายการฝากค้างตรวจสอบ</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ถอนค้าง (withdrawQueue) -->
+                <div class="bg-gray-900 rounded-2xl p-4 border border-gray-800 shadow-xl space-y-3">
+                    <h3 class="text-base font-bold text-rose-400 flex justify-between items-center">
+                        <span>📤 รายการแจ้งถอน (รอโอน)</span>
+                        <span id="withdraw-count" class="text-xs bg-rose-500/20 text-rose-400 border border-rose-500/30 px-2.5 py-0.5 rounded-full font-bold">0</span>
+                    </h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs text-gray-300">
+                            <thead class="bg-gray-950 text-gray-400 uppercase border-b border-gray-800 text-[10px]">
+                                <tr>
+                                    <th class="p-2.5">ID / บัญชี</th>
+                                    <th class="p-2.5">ธนาคาร / เลขบัญชี</th>
+                                    <th class="p-2.5">ยอดถอน</th>
+                                    <th class="p-2.5 text-center">จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="withdraw-pending-list" class="divide-y divide-gray-800">
+                                <tr><td colspan="4" class="text-center py-6 text-gray-500">ไม่มีรายการถอนค้าง</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- 🔵 SECTION 3: จัดการวิดีโอถ่ายทอดสด (จากโค้ดเดิม) -->
+        <!-- ========================================== -->
+        <section id="sec-stream" class="tab-content hidden space-y-6">
+            <div class="flex justify-between items-center border-b border-gray-800 pb-3">
+                <h2 class="text-xl font-bold text-amber-400 flex items-center gap-2">
+                    <span>📹</span> ควบคุมวิดีโอถ่ายทอดสด (Facebook Live Embed)
                 </h2>
+            </div>
+
+            <div class="bg-gray-900 rounded-2xl p-4 sm:p-5 border border-gray-800 shadow-xl space-y-4">
+                <div class="flex flex-col md:flex-row gap-3 items-center">
+                    <input type="text" id="live-url-input" placeholder="วางลิงก์วิดีโอ Facebook Live ที่นี่..." 
+                        class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-amber-400">
+                    <button onclick="updateLiveUrl()" 
+                        class="w-full md:w-auto bg-amber-500 hover:bg-amber-400 text-black font-bold px-6 py-2 rounded-xl text-sm transition-all shrink-0">
+                        อัปเดตลิงก์ไลฟ์สด
+                    </button>
+                </div>
+                <!-- จอพรีวิวไลฟ์สดฝั่งแอดมิน -->
+                <div class="mt-4 max-w-md mx-auto aspect-video bg-black rounded-xl overflow-hidden border border-gray-800 relative">
+                    <iframe id="admin-live-preview" class="w-full h-full border-0" allowfullscreen="true" 
+                        allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"></iframe>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- 🟣 SECTION 4: ค้นหาประวัติการแทงย้อนหลัง (จากโค้ดเดิม) -->
+        <!-- ========================================== -->
+        <section id="sec-history" class="tab-content hidden space-y-6">
+            <div class="flex justify-between items-center border-b border-gray-800 pb-3">
+                <h2 class="text-xl font-bold text-blue-400 flex items-center gap-2">
+                    <span>🔍</span> ค้นหาประวัติการแทงย้อนหลังสมาชิก
+                </h2>
+            </div>
+
+            <div class="bg-gray-900 rounded-2xl p-4 sm:p-5 border border-gray-800 shadow-xl space-y-4">
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <input type="text" id="search-user-id" placeholder="พิมพ์ ID ผู้เล่น หรือ ชื่อผู้ใช้..." 
+                        class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-blue-400">
+                    <button onclick="searchBetHistory()" 
+                        class="w-full sm:w-auto bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 py-2 rounded-xl text-sm transition-all shrink-0">
+                        ค้นหาประวัติ
+                    </button>
+                </div>
+                <!-- ตารางแสดงประวัติการเล่น -->
                 <div class="overflow-x-auto">
                     <table class="w-full text-left text-xs text-gray-300">
                         <thead class="bg-gray-950 text-gray-400 uppercase border-b border-gray-800 text-[10px]">
                             <tr>
-                                <th class="p-2.5">ID / บัญชี</th>
-                                <th class="p-2.5">ธนาคาร / เลขบัญชี</th>
-                                <th class="p-2.5">ยอดถอน</th>
-                                <th class="p-2.5 text-center">จัดการ</th>
+                                <th class="p-2.5">เวลาที่แทง</th>
+                                <th class="p-2.5">ID / ชื่อ</th>
+                                <th class="p-2.5">รอบที่</th>
+                                <th class="p-2.5">ฝั่งที่แทง</th>
+                                <th class="p-2.5">จำนวนเงิน</th>
+                                <th class="p-2.5 text-center">ผลลัพธ์</th>
                             </tr>
                         </thead>
-                        <tbody id="withdraw-pending-list" class="divide-y divide-gray-800">
-                            <tr><td colspan="3" class="text-center py-6 text-gray-500">ไม่มีรายการถอนค้าง</td></tr>
+                        <tbody id="bet-history-list" class="divide-y divide-gray-800">
+                            <tr><td colspan="6" class="text-center py-6 text-gray-500">กรุณากรอก ID ผู้เล่นเพื่อค้นหาข้อมูล</td></tr>
                         </tbody>
                     </table>
                 </div>
-            </section>
-        </div>
-
-        <!-- Zone 3: ค้นหาและเช็กประวัติการเล่นย้อนหลัง (Betting History Search) -->
-        <section class="bg-gray-900 rounded-2xl p-4 sm:p-5 border border-gray-800 shadow-xl">
-            <h2 class="text-base font-bold text-blue-400 mb-4 flex items-center gap-2">
-                
-                🔍 ค้นหาประวัติการแทงย้อนหลังสมาชิก
-            </h2>
-            <div class="flex flex-col sm:flex-row gap-3 mb-4">
-                <input type="text" id="search-user-id" placeholder="พิมพ์ ID ผู้เล่น หรือ ชื่อผู้ใช้..." 
-                    class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-blue-400">
-                <button onclick="searchBetHistory()" 
-                    class="w-full sm:w-auto bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 py-2 rounded-xl text-sm transition-all shrink-0">
-                    
-                    ค้นหาประวัติ
-                </button>
-            </div>
-            <!-- ตารางแสดงประวัติการเล่น -->
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-xs text-gray-300">
-                    <thead class="bg-gray-950 text-gray-400 uppercase border-b border-gray-800 text-[10px]">
-                        <tr>
-                            <th class="p-2.5">เวลาที่แทง</th>
-                            <th class="p-2.5">ID / ชื่อ</th>
-                            <th class="p-2.5">รอบที่</th>
-                            <th class="p-2.5">ฝั่งที่แทง</th>
-                            <th class="p-2.5">จำนวนเงิน</th>
-                            <th class="p-2.5 text-center">ผลลัพธ์</th>
-                        </tr>
-                    </thead>
-                    <tbody id="bet-history-list" class="divide-y divide-gray-800">
-                        <tr><td colspan="6" class="text-center py-6 text-gray-500">กรุณากรอก ID ผู้เล่นเพื่อค้นหาข้อมูล</td></tr>
-                    </tbody>
-                </table>
             </div>
         </section>
 
-        <!-- ตารางแสดงรายการฝากเงินรอตรวจสอบ (โค้ดใหม่ที่นำมาต่อ) -->
-<div class="card" style="margin-top: 20px; background: #1e1e22; padding: 20px; border-radius: 12px; color: #fff;">
-    <h3>⏳ รายการฝากเงินรอตรวจสอบ (หน้าเว็บแอดมิน)</h3>
-    <div id="pendingDepositList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; margin-top: 15px;">
-        
-        <!-- รายการจะถูกโหลดมาใส่ที่นี่ -->
-    </div>
-</div>
     </main>
-    
-    <!-- Modal สำหรับขยายดูรูปสลิป -->
+
+    <!-- Modal สำหรับขยายดูรูปสลิป (จากโค้ดเดิม) -->
     <div id="image-modal" class="hidden fixed inset-0 bg-black/85 z-50 flex items-center justify-center p-4" onclick="closeModal()">
         <div class="max-w-xs w-full bg-gray-900 p-3 rounded-2xl border border-gray-700 shadow-2xl relative" onclick="event.stopPropagation()">
             <button onclick="closeModal()" class="absolute top-2 right-3 text-gray-400 hover:text-white font-bold text-sm">✕</button>
@@ -161,12 +352,30 @@
             <p class="text-center text-[10px] text-gray-500 mt-2">คลิกภายนอกเพื่อปิดหน้าต่าง</p>
         </div>
     </div>
-    
-    <!-- Firebase Configuration & Realtime Scripts -->
+
+    <!-- ========================================== -->
+    <!-- ⚡ Firebase Configuration & Realtime Scripts -->
+    <!-- ========================================== -->
     <script>
+        // 🔄 ฟังก์ชันสลับ Tab หน้าจอ Sidebar
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(sec => sec.classList.add('hidden'));
+            
+            const targetSec = document.getElementById(`sec-${tabId}`);
+            if (targetSec) targetSec.classList.remove('hidden');
+
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.className = "nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-gray-400 hover:bg-gray-800 hover:text-white transition-all font-semibold";
+            });
+
+            const activeBtn = document.getElementById(`btn-${tabId}`);
+            if (activeBtn) {
+                activeBtn.className = "nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 font-bold transition-all";
+            }
+        }
 
         // ==========================================
-        // 🔔 ระบบเสียงแจ้งเตือน (Audio Notification System)
+        // 🔔 ระบบเสียงแจ้งเตือน ( Audio Notification System )
         // ==========================================
         let isSoundEnabled = false;
         let previousDepositKeys = new Set();
@@ -174,22 +383,19 @@
         let isFirstLoadDeposit = true;
         let isFirstLoadWithdraw = true;
         
-        // ฟังก์ชันเปิด/ปิด เสียง
         function toggleSound() {
             isSoundEnabled = !isSoundEnabled;
             const btn = document.getElementById('toggle-sound-btn');
             if (isSoundEnabled) {
                 btn.innerText = '🔔 เปิดเสียงแจ้งเตือนแล้ว';
-                btn.className = 'px-3 py-1 text-xs font-bold rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition';
-                // เล่นเสียงตัวอย่างสั้นๆ เพื่อให้ Browser ปลดล็อกสิทธิ์ Autoplay
+                btn.className = 'w-full py-1.5 text-xs font-bold rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition text-center';
                 document.getElementById('sound-deposit').play().catch(() => {});
             } else {
                 btn.innerText = '🔇 เปิดเสียงแจ้งเตือน';
-                btn.className = 'px-3 py-1 text-xs font-bold rounded-full bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700 transition';
+                btn.className = 'w-full py-1.5 text-xs font-bold rounded-lg bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700 transition text-center';
             }
         }
         
-        // ฟังก์ชันสั่งเล่นเสียงฝากไม่ผ่าน
         function playDepositSound() {
             if (isSoundEnabled) {
                 const audio = document.getElementById('sound-deposit');
@@ -198,7 +404,6 @@
             }
         }
         
-        // ฟังก์ชันสั่งเล่นเสียงถอนเงิน
         function playWithdrawSound() {
             if (isSoundEnabled) {
                 const audio = document.getElementById('sound-withdraw');
@@ -207,17 +412,194 @@
             }
         }
 
-        // 1. ตั้งค่า Firebase Config
+        // 1. ตั้งค่า Firebase Config (จากโค้ดเดิม)
         const firebaseConfig = {
             databaseURL: "https://my-pokdeng-bot-default-rtdb.asia-southeast1.firebasedatabase.app/"
-
         };
         if (!firebase.apps.length) {
             firebase.initializeApp(firebaseConfig);
         }
         const db = firebase.database();
 
+        // ==========================================
+        // 📊 ระบบยอดแทงรวมเรียลไทม์ (Live Bet Monitor)
+        // ==========================================
+        let currentSummary = { totalAll: 0, totalPok: 0, totalHilo: 0, pok: {}, hilo: {} };
+
+        db.ref('system_data/roundBets').on('value', (snapshot) => {
+            processPokData(snapshot.val() || {});
+        });
+
+        db.ref('system_data/hiloRoundBets').on('value', (snapshot) => {
+            processHiloData(snapshot.val() || {});
+        });
+
+        function processPokData(allUsersBets) {
+            let pokMap = {};
+            let totalPok = 0;
+
+            Object.values(allUsersBets).forEach(userBets => {
+                const betsList = Array.isArray(userBets) ? userBets : (userBets ? Object.values(userBets) : []);
+                
+                betsList.forEach(bet => {
+                    if (!bet) return;
+                    const rawText = String(bet.detail || bet.rawText || bet.target || '');
+                    const isDealer = rawText.includes("จ");
+                    const arrayMatch = rawText.match(/\[(.*?)\]/);
+                    const hyphenParts = rawText.split('-');
+
+                    if (arrayMatch) {
+                        const legsArr = arrayMatch[1].split(',').map(s => s.trim());
+                        const amountMatch = rawText.match(/ขาละ\s*(\d+)/);
+                        const pricePerLeg = amountMatch ? Number(amountMatch[1]) : Number(bet.actualBet || 0) / (legsArr.length || 1);
+
+                        legsArr.forEach(legNum => {
+                            const key = isDealer ? `dealer_${legNum}` : `player_${legNum}`;
+                            pokMap[key] = (pokMap[key] || 0) + pricePerLeg;
+                            totalPok += pricePerLeg;
+                        });
+                    } else if (hyphenParts.length >= 2) {
+                        const legsStr = hyphenParts[0].replace(/[^\d]/g, '');
+                        const pricePerLeg = Number(hyphenParts[1]) || 0;
+                        legsStr.split('').forEach(legNum => {
+                            const key = isDealer ? `dealer_${legNum}` : `player_${legNum}`;
+                            pokMap[key] = (pokMap[key] || 0) + pricePerLeg;
+                            totalPok += pricePerLeg;
+                        });
+                    } else {
+                        const price = Number(bet.actualBet || bet.price || bet.amount || 0);
+                        const matchLeg = rawText.match(/\d+/);
+                        if (matchLeg) {
+                            const key = isDealer ? `dealer_${matchLeg[0]}` : `player_${matchLeg[0]}`;
+                            pokMap[key] = (pokMap[key] || 0) + price;
+                            totalPok += price;
+                        }
+                    }
+                });
+            });
+
+            currentSummary.pok = pokMap;
+            currentSummary.totalPok = totalPok;
+            currentSummary.totalAll = currentSummary.totalPok + currentSummary.totalHilo;
+            updateDashboardUI(currentSummary);
+        }
+
+        function processHiloData(allUsersBets) {
+            let hiloMap = {};
+            let totalHilo = 0;
+
+            Object.values(allUsersBets).forEach(userBets => {
+                const betsList = Array.isArray(userBets) ? userBets : (userBets ? Object.values(userBets) : []);
+                
+                betsList.forEach(bet => {
+                    if (!bet) return;
+                    const price = Number(bet.actualBet || bet.price || bet.amount || 0);
+                    let targetName = bet.target || bet.detail || bet.rawText || bet.option || bet.category || 'ไฮโล';
+                    if (typeof targetName === 'object') targetName = JSON.stringify(targetName);
+                    targetName = String(targetName).replace(/^z/i, '').split('-')[0].trim();
+
+                    hiloMap[targetName] = (hiloMap[targetName] || 0) + price;
+                    totalHilo += price;
+                });
+            });
+
+            currentSummary.hilo = hiloMap;
+            currentSummary.totalHilo = totalHilo;
+            currentSummary.totalAll = currentSummary.totalPok + currentSummary.totalHilo;
+            updateDashboardUI(currentSummary);
+        }
+
+        function updateDashboardUI(data) {
+            if (!data) return;
+
+            document.getElementById('total-all-bets').innerText = `${(data.totalAll || 0).toLocaleString()} ฿`;
+            document.getElementById('total-pok-bets').innerText = `${(data.totalPok || 0).toLocaleString()} ฿`;
+            document.getElementById('total-hilo-bets').innerText = `${(data.totalHilo || 0).toLocaleString()} ฿`;
+
+            for(let i=1; i<=6; i++){
+                const pCard = document.getElementById(`pok-player-${i}`)?.parentElement;
+                if (pCard) {
+                    pCard.className = "bg-gray-800 border border-cyan-900/60 p-2.5 rounded-xl text-center transition-all duration-300";
+                    pCard.querySelector('div:first-child').className = "text-xs font-bold text-cyan-300";
+                    pCard.querySelector('div:first-child').innerHTML = `ขาที่ ${i}`;
+                }
+                document.getElementById(`pok-player-${i}`).innerText = '0 ฿';
+
+                const dCard = document.getElementById(`pok-dealer-${i}`)?.parentElement;
+                if (dCard) {
+                    dCard.className = "bg-gray-800 border border-red-900/60 p-2.5 rounded-xl text-center transition-all duration-300";
+                    dCard.querySelector('div:first-child').className = "text-xs font-bold text-red-300";
+                    dCard.querySelector('div:first-child').innerHTML = `ขาที่ ${i}`;
+                }
+                document.getElementById(`pok-dealer-${i}`).innerText = '0 ฿';
+            }
+
+            let maxPlayerVal = 0;
+            let maxDealerVal = 0;
+
+            if (data.pok) {
+                Object.keys(data.pok).forEach(key => {
+                    const val = data.pok[key] || 0;
+                    const el = document.getElementById(`pok-${key.replace('_', '-')}`);
+                    if (el) el.innerText = `${val.toLocaleString()} ฿`;
+
+                    if (key.startsWith('player_') && val > maxPlayerVal) maxPlayerVal = val;
+                    else if (key.startsWith('dealer_') && val > maxDealerVal) maxDealerVal = val;
+                });
+
+                if (maxPlayerVal > 0) {
+                    for (let i = 1; i <= 6; i++) {
+                        if ((data.pok[`player_${i}`] || 0) === maxPlayerVal) {
+                            const pCard = document.getElementById(`pok-player-${i}`)?.parentElement;
+                            if (pCard) {
+                                pCard.className = "bg-gradient-to-b from-cyan-950 to-cyan-900 border-2 border-cyan-400 p-2.5 rounded-xl text-center shadow-lg shadow-cyan-500/20 scale-105 transition-all duration-300 relative";
+                                pCard.querySelector('div:first-child').className = "text-xs font-black text-cyan-200 flex items-center justify-center gap-1";
+                                pCard.querySelector('div:first-child').innerHTML = `👑 ขาที่ ${i} <span class="text-[10px] bg-cyan-400 text-black font-extrabold px-1 rounded-full">TOP</span>`;
+                            }
+                        }
+                    }
+                }
+
+                if (maxDealerVal > 0) {
+                    for (let i = 1; i <= 6; i++) {
+                        if ((data.pok[`dealer_${i}`] || 0) === maxDealerVal) {
+                            const dCard = document.getElementById(`pok-dealer-${i}`)?.parentElement;
+                            if (dCard) {
+                                dCard.className = "bg-gradient-to-b from-red-950 to-red-900 border-2 border-red-400 p-2.5 rounded-xl text-center shadow-lg shadow-red-500/20 scale-105 transition-all duration-300 relative";
+                                dCard.querySelector('div:first-child').className = "text-xs font-black text-red-200 flex items-center justify-center gap-1";
+                                dCard.querySelector('div:first-child').innerHTML = `👑 ขาที่ ${i} <span class="text-[10px] bg-red-400 text-black font-extrabold px-1 rounded-full">TOP</span>`;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (data.hilo) {
+                document.getElementById('hilo-ต').innerText = `${(data.hilo['ต'] || 0).toLocaleString()} ฿`;
+                document.getElementById('hilo-11').innerText = `${(data.hilo['11'] || 0).toLocaleString()} ฿`;
+                document.getElementById('hilo-ส').innerText = `${(data.hilo['ส'] || 0).toLocaleString()} ฿`;
+
+                const otherListEl = document.getElementById('hilo-other-list');
+                let otherHtml = '';
+                
+                Object.keys(data.hilo).forEach(zone => {
+                    if (!['ต', '11', 'ส'].includes(zone) && data.hilo[zone] > 0) {
+                        otherHtml += `
+                            <tr>
+                                <td class="py-1.5 px-2 font-bold text-amber-300">${zone}</td>
+                                <td class="py-1.5 px-2 text-right font-extrabold text-white">${data.hilo[zone].toLocaleString()} ฿</td>
+                            </tr>
+                        `;
+                    }
+                });
+
+                otherListEl.innerHTML = otherHtml || '<tr><td colspan="2" class="text-center py-4 text-gray-500">ยังไม่มีรายการแทงอื่นๆ</td></tr>';
+            }
+        }
+
+        // ==========================================
         // 2. ดึงข้อมูลรายการฝากเงินที่สแกนไม่ผ่าน (deposit_pending_reviews)
+        // ==========================================
         db.ref('deposit_pending_reviews').on('value', (snapshot) => {
             const list = document.getElementById('deposit-pending-list');
             const data = snapshot.val();
@@ -250,10 +632,10 @@
                         </td>
                         <td class="p-2.5 text-center">
                             <div class="flex justify-center gap-1">
-                                <button onclick="approveDeposit('${key}', '${item.userId}', ${item.amount})" class="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] px-2 py-1 rounded font-bold">
+                                <button onclick="approveDepositReviews('${key}', '${item.userId}', ${item.amount})" class="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] px-2 py-1 rounded font-bold">
                                     อนุมัติ
                                 </button>
-                                <button onclick="rejectDeposit('${key}')" class="bg-rose-600 hover:bg-rose-500 text-white text-[10px] px-2 py-1 rounded font-bold">
+                                <button onclick="rejectDepositReviews('${key}')" class="bg-rose-600 hover:bg-rose-500 text-white text-[10px] px-2 py-1 rounded font-bold">
                                     ปฏิเสธ
                                 </button>
                             </div>
@@ -264,14 +646,10 @@
            document.getElementById('deposit-count').innerText = count;
         });
 
-        // 3. ฟังก์ชันการอนุมัติฝากเงิน (เพิ่มเครดิตเข้า usersWallets อัตโนมัติ + ลบเคสค้าง)
-        function approveDeposit(key, userId, amount) {
+        function approveDepositReviews(key, userId, amount) {
             if (confirm(`ยืนยันการอนุมัติฝากเงิน ฿${amount} ให้ ID: ${userId}?`)) {
-                
-                // เพิ่มเครดิตให้สมาชิก
                 db.ref(`usersWallets/${userId}/balance`).transaction((current) => (current || 0) + Number(amount), (error, committed) => {
                     if (committed) {
-                        // ลบออกจากรายการค้างตรวจสอบเมื่อปรับเงินสำเร็จ
                         db.ref(`deposit_pending_reviews/${key}`).remove();
                         alert('ปรับเพิ่มเครดิตเรียบร้อยแล้ว!');
                     } else if (error) {
@@ -280,14 +658,348 @@
                 });
             }
         }
-        // ปฏิเสธรายการฝาก
-        function rejectDeposit(key) {
+
+        function rejectDepositReviews(key) {
             if (confirm('ปฏิเสธรายการฝากนี้หรือไม่?')) {
                 db.ref(`deposit_pending_reviews/${key}`).remove();
             }
         }
 
-        // 4. ระบบค้นหาประวัติการเล่นย้อนหลัง (Betting History)
+        // ==========================================
+        // 🛠️ ดึงรายการถอนเงินจาก system_data/withdrawQueue มาแสดงผล
+        // ==========================================
+        db.ref('system_data/withdrawQueue').on('value', async (snapshot) => {
+            const list = document.getElementById('withdraw-pending-list');
+            const data = snapshot.val();
+            list.innerHTML = '';
+
+            if (!data || (Array.isArray(data) && data.length === 0)) {
+                list.innerHTML = '<tr><td colspan="4" class="text-center py-6 text-gray-500">ไม่มีรายการถอนค้าง</td></tr>';
+                document.getElementById('withdraw-count').innerText = '0';
+                previousWithdrawKeys.clear();
+                return;
+            }
+
+            const queueList = Array.isArray(data) ? data : Object.values(data);
+            const currentKeys = new Set();
+            
+            queueList.forEach((item) => {
+                if (item) {
+                    const uniqueKey = `${item.memberNumber}_${item.time}_${item.amount}`;
+                    currentKeys.add(uniqueKey);
+                }
+            });
+
+            if (!isFirstLoadWithdraw) {
+                for (let key of currentKeys) {
+                    if (!previousWithdrawKeys.has(key)) {
+                        if (typeof playWithdrawSound === 'function') {
+                            playWithdrawSound();
+                        }
+                        break;
+                    }
+                }
+            } else {
+                isFirstLoadWithdraw = false;
+            }
+            previousWithdrawKeys = currentKeys;
+
+            const usersSnap = await db.ref('system_data/usersWallets').once('value');
+            const usersData = usersSnap.val() || {};
+
+            let count = 0;
+            
+            queueList.forEach((item, index) => {
+                if (item) {
+                    count++;
+                    const userObj = Object.values(usersData).find(u => String(u.memberNumber) === String(item.memberNumber)) || {};
+                    const bankName = item.bankName || userObj.bankName || userObj.bank || 'ไม่ระบุธนาคาร';
+                    const accountNo = item.accountNo || item.bankAccount || userObj.accountNo || userObj.bankAccount || '-';
+
+                    list.innerHTML += `
+                        <tr class="hover:bg-gray-800/40 transition">
+                            <td class="p-2.5">
+                                <div class="font-bold text-white">คุณ ${item.name || 'ไม่ระบุชื่อ'} (ID: ${item.memberNumber || '-'})</div>
+                                <div class="text-[10px] text-gray-400">⏰ เวลาแจ้งถอน: ${item.time || '-'}</div>
+                            </td>
+                            <td class="p-2.5">
+                                <div class="font-bold text-amber-400 text-xs">${bankName}</div>
+                                <div class="text-xs text-emerald-400 font-mono flex items-center gap-1 mt-0.5">
+                                    <span>${accountNo}</span>
+                                    ${accountNo !== '-' ? `
+                                        <button onclick="navigator.clipboard.writeText('${accountNo}'); alert('คัดลอกเลขบัญชี ${accountNo} แล้ว');" 
+                                                class="bg-gray-800 hover:bg-gray-700 text-gray-300 text-[9px] px-1.5 py-0.5 rounded border border-gray-700">
+                                            📋 ก๊อป
+                                        </button>
+                                    ` : ''}
+                                </div>
+                            </td>
+                            <td class="p-2.5 font-bold text-rose-400 text-sm">${Number(item.amount || 0).toLocaleString()} ฿</td>
+                            <td class="p-2.5 text-center">
+                                <div class="flex justify-center gap-1">
+                                    <button onclick="approveWithdrawQueue(${index}, '${item.memberNumber}')" class="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] px-2.5 py-1.5 rounded font-bold transition">
+                                       ✅ โอนแล้ว
+                                    </button>
+                                    <button onclick="rejectWithdrawQueue(${index}, '${item.memberNumber}')" class="bg-rose-600 hover:bg-rose-500 text-white text-[10px] px-2.5 py-1.5 rounded font-bold transition">
+                                        ❌ ยกเลิก
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }
+            });
+            document.getElementById('withdraw-count').innerText = count;
+        });
+
+        async function approveWithdrawQueue(index, memberNumber) {
+            if (confirm(`ยืนยันโอนเงินเรียบร้อยแล้วใช่หรือไม่?`)) {
+                try {
+                    const queueSnap = await db.ref('system_data/withdrawQueue').once('value');
+                    const queue = queueSnap.val() || [];
+                    const queueList = Array.isArray(queue) ? queue : Object.values(queue);
+                    const updatedQueue = queueList.filter(item => item && String(item.memberNumber) !== String(memberNumber));
+                    
+                    if (updatedQueue.length === 0) {
+                        await db.ref('system_data/withdrawQueue').remove();
+                    } else {
+                        await db.ref('system_data/withdrawQueue').set(updatedQueue);
+                    }
+
+                    const usersSnap = await db.ref('system_data/usersWallets').once('value');
+                    const users = usersSnap.val() || {};
+                    const targetKey = Object.keys(users).find(k => String(users[k].memberNumber) === String(memberNumber));
+
+                    if (targetKey) {
+                        const user = users[targetKey];
+                        const amt = Number(user.pendingWithdrawAmount || 0);
+                        const currentBalance = Number(user.balance || 0);
+                        const currentTotalWithdraw = Number(user.totalWithdraw || 0);
+
+                        await db.ref(`system_data/usersWallets/${targetKey}`).update({
+                            balance: Math.max(0, currentBalance - amt),
+                            totalWithdraw: currentTotalWithdraw + amt,
+                            activePromotion: null,
+                            turnoverTarget: 0,
+                            isWithdrawLocked: false,
+                            pendingWithdrawAmount: 0
+                        });
+                    }
+
+                    alert('✅ ดำเนินการอนุมัติรายการถอนเรียบร้อยแล้ว');
+                } catch (error) {
+                    console.error("❌ เกิดข้อผิดพลาดในการอนุมัติรายการถอน:", error);
+                    alert('❌ เกิดข้อผิดพลาดในการอนุมัติ กรุณาลองใหม่อีกครั้ง');
+                }
+            }
+        }
+
+        function rejectWithdrawQueue(index, memberNumber) {
+            if (confirm('ต้องการยกเลิกรายการถอนนี้ใช่หรือไม่?')) {
+                db.ref('system_data/withdrawQueue').once('value', (snap) => {
+                    const queue = snap.val() || [];
+                    const queueList = Array.isArray(queue) ? queue : Object.values(queue);
+                    const updatedQueue = queueList.filter(item => item && String(item.memberNumber) !== String(memberNumber));
+                    db.ref('system_data/withdrawQueue').set(updatedQueue);
+                });
+                db.ref('system_data/usersWallets').once('value', (snap) => {
+                    const users = snap.val() || {};
+                    const targetKey = Object.keys(users).find(k => String(users[k].memberNumber) === String(memberNumber));
+                    if (targetKey) {
+                        db.ref(`system_data/usersWallets/${targetKey}`).update({
+                            isWithdrawLocked: false,
+                            pendingWithdrawAmount: 0
+                        });
+                    }
+                });
+                alert('ยกเลิกรายการถอนและปลดล็อกบัญชีเรียบร้อยแล้ว');
+            }
+        }
+
+        // ==========================================
+        // 📥 ดึงข้อมูลรายการฝากเงินรอตรวจสอบจาก pendingDeposits
+        // ==========================================
+        db.ref('pendingDeposits').on('value', async (snapshot) => {
+            const tableBody = document.getElementById('pendingDepositTableBody');
+            const countBadge = document.querySelector('#sec-finance .badge');
+            
+            if (!tableBody) return;
+            
+            tableBody.innerHTML = '';
+            const data = snapshot.val();
+            
+            if (!data) {
+                tableBody.innerHTML = '<tr><td colspan="5" class="text-center py-6 text-gray-500">ไม่มีรายการฝากค้างตรวจสอบ</td></tr>';
+                if (countBadge) countBadge.innerText = '0';
+                previousDepositKeys.clear();
+                return;
+            }
+
+            const currentKeys = new Set();
+            Object.entries(data).forEach(([key, item]) => {
+                if (item && item.status && item.status.toUpperCase() === 'PENDING') {
+                    currentKeys.add(key);
+                }
+            });
+
+            if (!isFirstLoadDeposit) {
+                for (let key of currentKeys) {
+                    if (!previousDepositKeys.has(key)) {
+                        playDepositSound();
+                        break;
+                    }
+                }
+            } else {
+                isFirstLoadDeposit = false;
+            }
+            previousDepositKeys = currentKeys;
+
+            let walletsData = {};
+            try {
+                const walletsSnap = await db.ref('usersWallets').once('value');
+                walletsData = walletsSnap.val() || {};
+            } catch (e) {
+                console.error("❌ ไม่สามารถดึง usersWallets ได้:", e);
+            }
+            
+            let pendingCount = 0;
+            const entries = Object.entries(data);
+
+            for (const [key, item] of entries) {
+                if (item.status && item.status.toUpperCase() === 'PENDING') {
+                    pendingCount++;
+                    
+                    let formattedDate = item.created_at || '-';
+                    if (formattedDate === '-' && item.id) {
+                        const timestamp = Number(item.id.replace('DEP_', ''));
+                        if (!isNaN(timestamp)) {
+                            formattedDate = new Date(timestamp).toLocaleString('th-TH');
+                        }
+                    }
+
+                    const displayName = item.userName || item.name || 'ไม่ระบุชื่อ';
+                    const displayUserId = item.memberNumber || item.userId || '-';
+
+                    let bankName = item.bankName || item.bank || '-';
+                    let accountNumber = item.bankAccount || item.accountNumber || '-';
+
+                    if (bankName === '-' || accountNumber === '-') {
+                        const targetUserId = item.userId || item.lineId || item.userKey;
+                        if (targetUserId && walletsData[targetUserId]) {
+                            bankName = walletsData[targetUserId].bankName || bankName;
+                            accountNumber = walletsData[targetUserId].bankAccount || accountNumber;
+                        } 
+                        else if (displayUserId !== '-') {
+                            const matchedUser = Object.values(walletsData).find(
+                                user => String(user.memberNumber) === String(displayUserId)
+                            );
+                            if (matchedUser) {
+                                bankName = matchedUser.bankName || bankName;
+                                accountNumber = matchedUser.bankAccount || accountNumber;
+                            }
+                        }
+                    }
+
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-gray-800/40 transition";
+                    tr.innerHTML = `
+                        <td class="p-2.5">
+                            <div class="font-bold text-white text-sm">${displayName}</div>
+                            <div class="text-xs text-cyan-400 mt-0.5">
+                                🏦 ${bankName} : <span class="font-mono text-white font-bold">${accountNumber}</span>
+                            </div>
+                            <div class="text-[10px] text-gray-400 mt-0.5">ID/Member: ${displayUserId}</div>
+                            <div class="text-[10px] text-gray-500">เวลา: ${formattedDate}</div>
+                        </td>
+                        <td class="p-2.5 text-cyan-400 font-extrabold text-sm">
+                            ${Number(item.amount || 0).toLocaleString()} ฿
+                        </td>
+                        <td class="p-2.5 text-center">
+                            ${item.slipImage ? `
+                                <img src="${item.slipImage}" 
+                                     class="w-10 h-14 object-cover rounded border border-gray-700 cursor-pointer mx-auto" 
+                                     onclick="showImage('${item.slipImage}')">
+                            ` : '<span class="text-gray-500 text-[10px]">ไม่มีสลิป</span>'}
+                        </td>
+                        <td class="p-2.5 text-rose-400 font-medium text-[11px]">
+                            ${item.reason || item.failReason || '-'}
+                        </td>
+                        <td class="p-2.5 text-center">
+                            <div class="flex justify-center gap-1">
+                                <button onclick="approveDeposit('${key}', '${displayUserId}', ${item.amount})" 
+                                        class="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] px-2.5 py-1.5 rounded font-bold transition">
+                                    อนุมัติ
+                                </button>
+                                <button onclick="rejectDeposit('${key}')" 
+                                        class="bg-rose-600 hover:bg-rose-500 text-white text-[10px] px-2.5 py-1.5 rounded font-bold transition">
+                                    ปฏิเสธ
+                                </button>
+                            </div>
+                        </td>
+                    `;
+                    tableBody.appendChild(tr);
+                }
+            }
+
+            if (countBadge) countBadge.innerText = pendingCount;
+            
+            if (pendingCount === 0) {
+                tableBody.innerHTML = '<tr><td colspan="5" class="text-center py-6 text-gray-500">ไม่มีรายการฝากค้างตรวจสอบ</td></tr>';
+            }
+        });
+
+        async function approveDeposit(depositId, memberNumber, amount) {
+            if (!confirm(`ยืนยันเติมเงิน ${amount} บาท ให้สมาชิกลำดับที่ ${memberNumber} ?`)) return;
+            try {
+                const response = await fetch('/api/admin/approve-deposit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ depositId, memberNumber, amount })
+                });
+                const resData = await response.json();
+                
+                if (resData.success) {
+                    const depSnap = await db.ref(`pendingDeposits/${depositId}`).once('value');
+                    const depData = depSnap.val();
+                    const targetUserId = depData?.userId || depData?.lineId;
+
+                    if (targetUserId) {
+                        await db.ref(`activeDepositSessions/${targetUserId}`).remove();
+                    }
+
+                    alert('✅ อนุมัติและเติมเงินเรียบร้อยแล้ว');
+                } else {
+                    alert('❌ เกิดข้อผิดพลาด: ' + resData.message);
+                }
+            } catch (err) {
+                console.error(err);
+                alert('❌ ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
+            }
+        }
+
+        async function rejectDeposit(depositId) {
+            if (!confirm('ยืนยันปฏิเสธรายการนี้ ?')) return;
+            try {
+                const depSnap = await db.ref(`pendingDeposits/${depositId}`).once('value');
+                const depData = depSnap.val();
+                const targetUserId = depData?.userId || depData?.lineId;
+
+                await db.ref(`pendingDeposits/${depositId}`).update({ status: 'REJECTED' });
+
+                if (targetUserId) {
+                    await db.ref(`activeDepositSessions/${targetUserId}`).remove();
+                }
+
+                alert('❌ ปฏิเสธรายการเรียบร้อยแล้ว');
+            } catch (err) {
+                console.error(err);
+                alert('เกิดข้อผิดพลาดในการยกเลิก');
+            }
+        }
+
+        // ==========================================
+        // 🔍 ค้นหาประวัติการแทงย้อนหลัง (จากโค้ดเดิม)
+        // ==========================================
         function searchBetHistory() {
             const query = document.getElementById('search-user-id').value.trim();
             const list = document.getElementById('bet-history-list');
@@ -323,7 +1035,10 @@
                 }
             });
         }
-        // 5. อัปเดต URL ไลฟ์สด
+
+        // ==========================================
+        // 📹 อัปเดต URL ไลฟ์สด และ Modal รูปภาพ (จากโค้ดเดิม)
+        // ==========================================
         function updateLiveUrl() {
             const rawUrl = document.getElementById('live-url-input').value.trim();
             if (!rawUrl) return alert('กรุณาวางลิงก์ถ่ายทอดสด');
@@ -332,384 +1047,16 @@
             document.getElementById('admin-live-preview').src = embedUrl;
             alert('อัปเดตช่องถ่ายทอดสดเรียบร้อยแล้ว!');
         }
-        // 6. Modal รูปภาพสลิป
+
         function showImage(src) {
             if(!src || src === 'null' || src === 'undefined') return alert('ไม่พบไฟล์รูปภาพสลิป');
             document.getElementById('modal-img').src = src;
             document.getElementById('image-modal').classList.remove('hidden');
         }
+
         function closeModal() {
             document.getElementById('image-modal').classList.add('hidden');
         }
-        // ==========================================
-// 🛠️ ดึงรายการถอนเงินจาก system_data/withdrawQueue มาแสดงผล
-// ==========================================
-db.ref('system_data/withdrawQueue').on('value', async (snapshot) => {
-    const list = document.getElementById('withdraw-pending-list');
-    const data = snapshot.val();
-    list.innerHTML = '';
-
-    if (!data || (Array.isArray(data) && data.length === 0)) {
-        list.innerHTML = '<tr><td colspan="4" class="text-center py-6 text-gray-500">ไม่มีรายการถอนค้าง</td></tr>';
-        document.getElementById('withdraw-count').innerText = '0';
-        previousWithdrawKeys.clear(); // ล้างคีย์เมื่อไม่มีรายการค้าง
-        return;
-    }
-
-    // 💡 1. ดึงคีย์รายการถอนปัจจุบันเพื่อใช้ตรวจจับรายการใหม่
-    const queueList = Array.isArray(data) ? data : Object.values(data);
-    const currentKeys = new Set();
-    
-    queueList.forEach((item) => {
-        if (item) {
-            // สร้าง Key อ้างอิงจาก ID + เวลา + ยอดเงิน
-            const uniqueKey = `${item.memberNumber}_${item.time}_${item.amount}`;
-            currentKeys.add(uniqueKey);
-        }
-    });
-
-    // 🔔 2. ตรวจสอบว่ามีรายการถอนเข้ามาใหม่หรือไม่ (ถ้าไม่ใช่การโหลดครั้งแรก)
-    if (!isFirstLoadWithdraw) {
-        for (let key of currentKeys) {
-            if (!previousWithdrawKeys.has(key)) {
-                if (typeof playWithdrawSound === 'function') {
-                    playWithdrawSound(); // เล่นเสียงถอนทันทีเมื่อมีรายการใหม่
-                }
-                break;
-            }
-        }
-    } else {
-        isFirstLoadWithdraw = false;
-    }
-    previousWithdrawKeys = currentKeys; // อัปเดตรายการล่าสุดเก็บไว้
-
-    // 💡 ดึงข้อมูลกระเป๋าเงินสมาชิกเพื่อเอาข้อมูลธนาคาร
-    const usersSnap = await db.ref('system_data/usersWallets').once('value');
-    const usersData = usersSnap.val() || {};
-
-    let count = 0;
-    
-    queueList.forEach((item, index) => {
-        if (item) {
-            count++;
-            
-            // ค้นหาข้อมูลสมาชิกใน usersWallets เพื่อดึงเลขบัญชี
-            const userObj = Object.values(usersData).find(u => String(u.memberNumber) === String(item.memberNumber)) || {};
-            
-            // อ่านค่าธนาคารและเลขบัญชี (ดึงจาก item ก่อน ถ้าไม่มีให้ดึงจาก userObj)
-            const bankName = item.bankName || userObj.bankName || userObj.bank || 'ไม่ระบุธนาคาร';
-            const accountNo = item.accountNo || item.bankAccount || userObj.accountNo || userObj.bankAccount || '-';
-
-            list.innerHTML += `
-                <tr class="hover:bg-gray-800/40 transition">
-                    <td class="p-2.5">
-                        <div class="font-bold text-white">คุณ ${item.name || 'ไม่ระบุชื่อ'} (ID: ${item.memberNumber || '-'})</div>
-                        <div class="text-[10px] text-gray-400">⏰ เวลาแจ้งถอน: ${item.time || '-'}</div>
-                    </td>
-                    
-                    <!-- 👈 คอลัมน์แสดงข้อมูลธนาคารและเลขบัญชีที่เพิ่มใหม่ -->
-                    <td class="p-2.5">
-                        <div class="font-bold text-amber-400 text-xs">${bankName}</div>
-                        <div class="text-xs text-emerald-400 font-mono flex items-center gap-1 mt-0.5">
-                            <span>${accountNo}</span>
-                            ${accountNo !== '-' ? `
-                                <button onclick="navigator.clipboard.writeText('${accountNo}'); alert('คัดลอกเลขบัญชี ${accountNo} แล้ว');" 
-                                        class="bg-gray-800 hover:bg-gray-700 text-gray-300 text-[9px] px-1.5 py-0.5 rounded border border-gray-700">
-                                    📋 ก๊อป
-                                </button>
-                            ` : ''}
-                        </div>
-                    </td>
-
-                    <td class="p-2.5 font-bold text-rose-400 text-sm">${Number(item.amount || 0).toLocaleString()} ฿</td>
-                    <td class="p-2.5 text-center">
-                        <div class="flex justify-center gap-1">
-                            <button onclick="approveWithdrawQueue(${index}, '${item.memberNumber}')" class="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] px-2.5 py-1.5 rounded font-bold transition">
-                               ✅ โอนแล้ว
-                            </button>
-                            <button onclick="rejectWithdrawQueue(${index}, '${item.memberNumber}')" class="bg-rose-600 hover:bg-rose-500 text-white text-[10px] px-2.5 py-1.5 rounded font-bold transition">
-                                ❌ ยกเลิก
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-            `;
-        }
-    });
-    document.getElementById('withdraw-count').innerText = count;
-});
-
-// 🟢 ฟังก์ชันเมื่อแอดมินกด "โอนแล้ว" บนหน้าเว็บ (ปรับปรุงให้ตรงกับฝั่งบอทหลัก 100%)
-async function approveWithdrawQueue(index, memberNumber) {
-    if (confirm(`ยืนยันโอนเงินเรียบร้อยแล้วใช่หรือไม่?`)) {
-        try {
-            // 1. ดึงคิวทั้งหมดลงมาแล้วกรองรายการคนนี้ออก
-            const queueSnap = await db.ref('system_data/withdrawQueue').once('value');
-            const queue = queueSnap.val() || [];
-            const queueList = Array.isArray(queue) ? queue : Object.values(queue);
-            
-            // กรองรายการที่ไม่ใช่สมาชิกคนนี้ออก
-            const updatedQueue = queueList.filter(item => item && String(item.memberNumber) !== String(memberNumber));
-            
-            // บันทึกคิวใหม่กลับขึ้น Firebase (ถ้าหมดคิวให้ลบ node ทิ้ง)
-            if (updatedQueue.length === 0) {
-                await db.ref('system_data/withdrawQueue').remove();
-            } else {
-                await db.ref('system_data/withdrawQueue').set(updatedQueue);
-            }
-
-            // 2. หักเงิน ปลดล็อกบัญชี สะสมยอดถอน และล้างเทิร์นใน usersWallets
-            const usersSnap = await db.ref('system_data/usersWallets').once('value');
-            const users = usersSnap.val() || {};
-            const targetKey = Object.keys(users).find(k => String(users[k].memberNumber) === String(memberNumber));
-
-            if (targetKey) {
-                const user = users[targetKey];
-                const amt = Number(user.pendingWithdrawAmount || 0);
-                const currentBalance = Number(user.balance || 0);
-                const currentTotalWithdraw = Number(user.totalWithdraw || 0);
-
-                // อัปเดตข้อมูลให้ตรงตามโลจิกคำสั่ง Y ในบอทหลัก
-                await db.ref(`system_data/usersWallets/${targetKey}`).update({
-                    balance: Math.max(0, currentBalance - amt), // 1. หักเงิน
-                    totalWithdraw: currentTotalWithdraw + amt,  // 2. บวกสะสมยอดถอน
-                    activePromotion: null,                      // 3. ล้างโปรโมชั่น
-                    turnoverTarget: 0,                         // 4. ล้างเทิร์นโอเวอร์
-                    isWithdrawLocked: false,                    // 5. ปลดล็อกบัญชี
-                    pendingWithdrawAmount: 0                    // 6. ล้างยอดค้างถอน
-                });
-
-                // 3. (สำคัญมาก) ถ้ามี API หรือ Endpoint บน Backend สำหรับโหลดข้อมูลเข้า RAM ใหม่ ให้ยิงเรียกตรงนี้ 
-                // เพื่อให้ RAM ของบอทหลักอัปเดตตาม Firebase ทันที เช่น:
-                // await fetch('/api/reload-firebase-data', { method: 'POST' });
-            }
-
-            alert('✅ ดำเนินการอนุมัติรายการถอนเรียบร้อยแล้ว');
-            
-        } catch (error) {
-            console.error("❌ เกิดข้อผิดพลาดในการอนุมัติรายการถอน:", error);
-            alert('❌ เกิดข้อผิดพลาดในการอนุมัติ กรุณาลองใหม่อีกครั้ง');
-        }
-    }
-}
-
-// 🔴 ฟังก์ชันเมื่อแอดมินกด "ยกเลิก" บนหน้าเว็บ
-function rejectWithdrawQueue(index, memberNumber) {
-    if (confirm('ต้องการยกเลิกรายการถอนนี้ใช่หรือไม่?')) {
-        // 1. ดึงคิวทั้งหมดลงมาแล้วกรองรายการคนนี้ออก
-        db.ref('system_data/withdrawQueue').once('value', (snap) => {
-            const queue = snap.val() || [];
-            const queueList = Array.isArray(queue) ? queue : Object.values(queue);
-            const updatedQueue = queueList.filter(item => item && String(item.memberNumber) !== String(memberNumber));
-            db.ref('system_data/withdrawQueue').set(updatedQueue);
-        });
-        // 2. ปลดล็อกบัญชีสมาชิกใน usersWallets
-        db.ref('system_data/usersWallets').once('value', (snap) => {
-            const users = snap.val() || {};
-            const targetKey = Object.keys(users).find(k => String(users[k].memberNumber) === String(memberNumber));
-            if (targetKey) {
-                db.ref(`system_data/usersWallets/${targetKey}`).update({
-                    isWithdrawLocked: false,
-                    pendingWithdrawAmount: 0
-                });
-            }
-        });
-        alert('ยกเลิกรายการถอนและปลดล็อกบัญชีเรียบร้อยแล้ว');
-    }
-}
-
-        // ดึงข้อมูลรายการฝากเงินรอตรวจสอบจาก Firebase
-    db.ref('pendingDeposits').on('value', async (snapshot) => {
-    const tableBody = document.getElementById('pendingDepositTableBody') || 
-                      document.querySelector('table tbody') ||
-                      document.querySelector('.card tbody');
-    const countBadge = document.querySelector('.card span') || document.querySelector('.badge');
-    
-    if (!tableBody) return;
-    
-    tableBody.innerHTML = '';
-    const data = snapshot.val();
-    
-    if (!data) {
-        tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #888; padding: 20px;">ไม่มีรายการฝากค้างตรวจสอบ</td></tr>';
-        if (countBadge) countBadge.innerText = '0';
-        previousDepositKeys.clear(); // ล้างความจำเมื่อไม่มีรายการค้าง
-        return;
-    }
-
-        // 🔔 2. ส่วนตรวจจับรายการใหม่เพื่อเล่นเสียงเตือน (เพิ่มตรงจุดนี้)
-    const currentKeys = new Set();
-    Object.entries(data).forEach(([key, item]) => {
-        if (item && item.status && item.status.toUpperCase() === 'PENDING') {
-            currentKeys.add(key);
-        }
-    });
-
-    if (!isFirstLoadDeposit) {
-        for (let key of currentKeys) {
-            if (!previousDepositKeys.has(key)) {
-                playDepositSound(); // 🔔 เรียกเล่นเสียงฝากเมื่อมีรายการใหม่เข้ามา!
-                break;
-            }
-        }
-    } else {
-        isFirstLoadDeposit = false;
-    }
-    previousDepositKeys = currentKeys; // อัปเดตรายการปัจจุบันไว้เปรียบเทียบครั้งถัดไป
-
-    // 💡 ดึงข้อมูล usersWallets ทั้งหมดเตรียมไว้ก่อน
-    let walletsData = {};
-    try {
-        const walletsSnap = await db.ref('usersWallets').once('value');
-        walletsData = walletsSnap.val() || {};
-    } catch (e) {
-        console.error("❌ ไม่สามารถดึง usersWallets ได้:", e);
-    }
-    
-    let pendingCount = 0;
-    const entries = Object.entries(data);
-
-    for (const [key, item] of entries) {
-        if (item.status && item.status.toUpperCase() === 'PENDING') {
-            pendingCount++;
-            
-            // 1. แปลงวันที่
-            let formattedDate = item.created_at || '-';
-            if (formattedDate === '-' && item.id) {
-                const timestamp = Number(item.id.replace('DEP_', ''));
-                if (!isNaN(timestamp)) {
-                    formattedDate = new Date(timestamp).toLocaleString('th-TH');
-                }
-            }
-
-            const displayName = item.userName || item.name || 'ไม่ระบุชื่อ';
-            const displayUserId = item.memberNumber || item.userId || '-';
-
-            // 2. ดึงข้อมูลธนาคาร
-            let bankName = item.bankName || item.bank || '-';
-            let accountNumber = item.bankAccount || item.accountNumber || '-';
-
-            // 💡 ถ้าในรายการฝากไม่มีข้อมูล ให้ค้นหาใน walletsData ด้วย LINE ID หรือ memberNumber
-            if (bankName === '-' || accountNumber === '-') {
-                // กรณีที่ 1: ค้นหาด้วย LINE ID ตรงๆ
-                const targetUserId = item.userId || item.lineId || item.userKey;
-                if (targetUserId && walletsData[targetUserId]) {
-                    bankName = walletsData[targetUserId].bankName || bankName;
-                    accountNumber = walletsData[targetUserId].bankAccount || accountNumber;
-                } 
-                // กรณีที่ 2: ถ้าหาไม่เจอ ให้ค้นหาหาคนที่มี memberNumber ตรงกัน
-                else if (displayUserId !== '-') {
-                    const matchedUser = Object.values(walletsData).find(
-                        user => String(user.memberNumber) === String(displayUserId)
-                    );
-                    if (matchedUser) {
-                        bankName = matchedUser.bankName || bankName;
-                        accountNumber = matchedUser.bankAccount || accountNumber;
-                    }
-                }
-            }
-
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td style="padding: 10px; text-align: left;">
-                    <div style="font-weight: bold; color: #fff; font-size: 15px;">${displayName}</div>
-                    <div style="font-size: 12px; color: #4da6ff; margin-top: 3px;">
-                        🏦 ${bankName} : <span style="font-family: monospace; font-size: 13px; color: #fff; font-weight: bold;">${accountNumber}</span>
-                    </div>
-                    <div style="font-size: 11px; color: #aaa; margin-top: 2px;">ID/Member: ${displayUserId}</div>
-                    <small style="color: #888; font-size: 10px;">เวลา: ${formattedDate}</small>
-                </td>
-                <td style="padding: 10px; color: #00bfff; font-weight: bold; font-size: 16px;">
-                    ${Number(item.amount || 0).toLocaleString()} บาท
-                </td>
-                <td style="padding: 10px;">
-                    ${item.slipImage ? `
-                        <img src="${item.slipImage}" 
-                             style="width: 45px; height: 60px; object-fit: cover; border-radius: 4px; cursor: pointer; border: 1px solid #444;" 
-                             onclick="showImage('${item.slipImage}')">
-                    ` : '<span style="color:#666;">ไม่มีสลิป</span>'}
-                </td>
-                <td style="padding: 10px; color: #ff3b47;">
-                    ${item.reason || item.failReason || '-'}
-                </td>
-                <td style="padding: 10px;">
-                    <button onclick="approveDeposit('${key}', '${displayUserId}', ${item.amount})" 
-                            style="background: #00aa5b; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; margin-right: 5px;">
-                        อนุมัติ
-                    </button>
-                    <button onclick="rejectDeposit('${key}')" 
-                            style="background: #ff3b47; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">
-                        ปฏิเสธ
-                    </button>
-                </td>
-            `;
-            tableBody.appendChild(tr);
-        }
-    }
-
-    if (countBadge) countBadge.innerText = pendingCount;
-    
-    if (pendingCount === 0) {
-        tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #888; padding: 20px;">ไม่มีรายการฝากค้างตรวจสอบ</td></tr>';
-    }
-});
-
-    // ฟังก์ชันกดปุ่มอนุมัติฝากเงิน (ใช้โลจิกเดิม + สั่งล้าง activeDepositSessions เพิ่มเติม)
-async function approveDeposit(depositId, memberNumber, amount) {
-    if (!confirm(`ยืนยันเติมเงิน ${amount} บาท ให้สมาชิกลำดับที่ ${memberNumber} ?`)) return;
-    try {
-        // 1. เรียก API อนุมัติเติมเงิน (ตามโค้ดเดิมของคุณ)
-        const response = await fetch('/api/admin/approve-deposit', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ depositId, memberNumber, amount })
-        });
-        const resData = await response.json();
-        
-        if (resData.success) {
-            // 2. ⚡ [ส่วนที่เพิ่ม] สั่งล้าง Session ถอยหลัง 5 นาที เพื่อให้ลูกค้ากดฝากใหม่ได้ทันที
-            // ดึง lineId หรือ userId จากรายการนั้นเพื่อลบ session
-            const depSnap = await db.ref(`pendingDeposits/${depositId}`).once('value');
-            const depData = depSnap.val();
-            const targetUserId = depData?.userId || depData?.lineId;
-
-            if (targetUserId) {
-                await db.ref(`activeDepositSessions/${targetUserId}`).remove();
-            }
-
-            alert('✅ อนุมัติและเติมเงินเรียบร้อยแล้ว');
-        } else {
-            alert('❌ เกิดข้อผิดพลาด: ' + resData.message);
-        }
-    } catch (err) {
-        console.error(err);
-        alert('❌ ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
-    }
-}
-
-// ฟังก์ชันกดปุ่มปฏิเสธ (ใช้โลจิกเดิม + สั่งล้าง activeDepositSessions เพิ่มเติม)
-async function rejectDeposit(depositId) {
-    if (!confirm('ยืนยันปฏิเสธรายการนี้ ?')) return;
-    try {
-        // 1. ⚡ [ส่วนที่เพิ่ม] อ่านข้อมูลเพื่อเอา userId มาล้าง Session ก่อนเปลี่ยนสถานะ
-        const depSnap = await db.ref(`pendingDeposits/${depositId}`).once('value');
-        const depData = depSnap.val();
-        const targetUserId = depData?.userId || depData?.lineId;
-
-        // 2. เปลี่ยนสถานะรายการเป็น REJECTED (ตามโค้ดเดิม)
-        await db.ref(`pendingDeposits/${depositId}`).update({ status: 'REJECTED' });
-
-        // 3. ⚡ [ส่วนที่เพิ่ม] สั่งลบ Session ถอยหลัง 5 นาที ออกทันที
-        if (targetUserId) {
-            await db.ref(`activeDepositSessions/${targetUserId}`).remove();
-        }
-
-        alert('❌ ปฏิเสธรายการเรียบร้อยแล้ว');
-    } catch (err) {
-        console.error(err);
-        alert('เกิดข้อผิดพลาดในการยกเลิก');
-    }
-}
-</script>
+    </script>
 </body>
 </html>

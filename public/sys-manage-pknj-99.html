@@ -33,30 +33,42 @@
         <nav class="flex-1 p-3 space-y-1 text-sm font-semibold">
             <!-- เมนูที่ 1: ยอดแทงเรียลไทม์ (หน้าหลัก) -->
             <button onclick="switchTab('live-monitor')" id="btn-live-monitor" 
-                class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 font-bold transition-all">
-                <span>📊</span>
-                <span>ยอดแทงรวมเรียลไทม์</span>
+                class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center justify-between bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 font-bold transition-all">
+                <div class="flex items-center gap-2.5">
+                    <span>📊</span>
+                    <span>ยอดแทงรวมเรียลไทม์</span>
+                </div>
             </button>
 
-            <!-- เมนูที่ 2: รายการฝาก - ถอน -->
+            <!-- เมนูที่ 2: รายการฝาก - ถอน (พร้อมตัวป้ายแดง Notification) -->
             <button onclick="switchTab('finance')" id="btn-finance" 
-                class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-gray-400 hover:bg-gray-800 hover:text-white transition-all">
-                <span>💰</span>
-                <span>รายการฝาก - ถอน</span>
+                class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center justify-between text-gray-400 hover:bg-gray-800 hover:text-white transition-all">
+                <div class="flex items-center gap-2.5">
+                    <span>💰</span>
+                    <span>รายการฝาก - ถอน</span>
+                </div>
+                <!-- 🔴 ป้ายตัวเลขค้างอ่าน -->
+                <span id="sidebar-finance-badge" class="hidden bg-rose-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-lg shadow-rose-500/50 animate-pulse">
+                    0
+                </span>
             </button>
 
             <!-- เมนูที่ 3: ถ่ายทอดสด -->
             <button onclick="switchTab('stream')" id="btn-stream" 
-                class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-gray-400 hover:bg-gray-800 hover:text-white transition-all">
-                <span>📹</span>
-                <span>ถ่ายทอดสด (Live)</span>
+                class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center justify-between text-gray-400 hover:bg-gray-800 hover:text-white transition-all">
+                <div class="flex items-center gap-2.5">
+                    <span>📹</span>
+                    <span>ถ่ายทอดสด (Live)</span>
+                </div>
             </button>
 
             <!-- เมนูที่ 4: ค้นหาประวัติการแทง -->
             <button onclick="switchTab('history')" id="btn-history" 
-                class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-gray-400 hover:bg-gray-800 hover:text-white transition-all">
-                <span>🔍</span>
-                <span>ค้นหาประวัติการแทง</span>
+                class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center justify-between text-gray-400 hover:bg-gray-800 hover:text-white transition-all">
+                <div class="flex items-center gap-2.5">
+                    <span>🔍</span>
+                    <span>ค้นหาประวัติการแทง</span>
+                </div>
             </button>
         </nav>
 
@@ -85,7 +97,6 @@
                 </h2>
             </div>
 
-            <!-- 💰 การ์ดสรุปยอดรวมภาพรวม -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div class="bg-gray-900 p-4 rounded-2xl border border-gray-800 shadow-xl">
                     <div class="text-gray-400 text-xs font-semibold">ยอดแทงรวมทุกเกม</div>
@@ -109,7 +120,6 @@
                         <span class="text-xs text-gray-400">เรียลไทม์</span>
                     </div>
 
-                    <!-- ฝั่งผู้เล่น แทงสู้เจ้ามือ (6 ขา) -->
                     <div>
                         <h4 class="text-xs font-bold text-cyan-400 mb-2">🔹 แทงผู้เล่น (สู้เจ้ามือ)</h4>
                         <div class="grid grid-cols-3 gap-2">
@@ -126,7 +136,6 @@
                         </div>
                     </div>
 
-                    <!-- ฝั่งเจ้ามือ แทงสู้ผู้เล่น (6 ขา) -->
                     <div>
                         <h4 class="text-xs font-bold text-red-400 mb-2">🔻 แทงเจ้ามือ (สู้ผู้เล่น)</h4>
                         <div class="grid grid-cols-3 gap-2">
@@ -151,7 +160,6 @@
                         <span class="text-xs text-gray-400">เรียลไทม์</span>
                     </div>
 
-                    <!-- ต่ำ / 11 ไฮโล / สูง -->
                     <div class="grid grid-cols-3 gap-2">
                         <div class="bg-gray-800 border border-gray-700 p-3 rounded-xl text-center">
                             <div class="text-xs font-bold text-gray-300">ต่ำ</div>
@@ -167,7 +175,6 @@
                         </div>
                     </div>
 
-                    <!-- รายการแทงอื่นๆ -->
                     <div>
                         <h4 class="text-xs font-bold text-gray-400 mb-2">📌 รายการแทงอื่นๆ (แสดงเฉพาะที่มีคนวาง)</h4>
                         <div class="bg-gray-800 rounded-xl p-2 max-h-56 overflow-y-auto no-scrollbar border border-gray-700">
@@ -191,7 +198,7 @@
         </section>
 
         <!-- ========================================== -->
-        <!-- 🟢 SECTION 2: รายการฝาก - ถอน (จากโค้ดเดิม) -->
+        <!-- 🟢 SECTION 2: รายการฝาก - ถอน -->
         <!-- ========================================== -->
         <section id="sec-finance" class="tab-content hidden space-y-6">
             <div class="flex justify-between items-center border-b border-gray-800 pb-3">
@@ -275,7 +282,7 @@
         </section>
 
         <!-- ========================================== -->
-        <!-- 🔵 SECTION 3: จัดการวิดีโอถ่ายทอดสด (จากโค้ดเดิม) -->
+        <!-- 🔵 SECTION 3: จัดการวิดีโอถ่ายทอดสด -->
         <!-- ========================================== -->
         <section id="sec-stream" class="tab-content hidden space-y-6">
             <div class="flex justify-between items-center border-b border-gray-800 pb-3">
@@ -293,7 +300,6 @@
                         อัปเดตลิงก์ไลฟ์สด
                     </button>
                 </div>
-                <!-- จอพรีวิวไลฟ์สดฝั่งแอดมิน -->
                 <div class="mt-4 max-w-md mx-auto aspect-video bg-black rounded-xl overflow-hidden border border-gray-800 relative">
                     <iframe id="admin-live-preview" class="w-full h-full border-0" allowfullscreen="true" 
                         allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"></iframe>
@@ -302,7 +308,7 @@
         </section>
 
         <!-- ========================================== -->
-        <!-- 🟣 SECTION 4: ค้นหาประวัติการแทงย้อนหลัง (จากโค้ดเดิม) -->
+        <!-- 🟣 SECTION 4: ค้นหาประวัติการแทงย้อนหลัง -->
         <!-- ========================================== -->
         <section id="sec-history" class="tab-content hidden space-y-6">
             <div class="flex justify-between items-center border-b border-gray-800 pb-3">
@@ -320,7 +326,6 @@
                         ค้นหาประวัติ
                     </button>
                 </div>
-                <!-- ตารางแสดงประวัติการเล่น -->
                 <div class="overflow-x-auto">
                     <table class="w-full text-left text-xs text-gray-300">
                         <thead class="bg-gray-950 text-gray-400 uppercase border-b border-gray-800 text-[10px]">
@@ -343,7 +348,7 @@
 
     </main>
 
-    <!-- Modal สำหรับขยายดูรูปสลิป (จากโค้ดเดิม) -->
+    <!-- Modal สำหรับขยายดูรูปสลิป -->
     <div id="image-modal" class="hidden fixed inset-0 bg-black/85 z-50 flex items-center justify-center p-4" onclick="closeModal()">
         <div class="max-w-xs w-full bg-gray-900 p-3 rounded-2xl border border-gray-700 shadow-2xl relative" onclick="event.stopPropagation()">
             <button onclick="closeModal()" class="absolute top-2 right-3 text-gray-400 hover:text-white font-bold text-sm">✕</button>
@@ -357,21 +362,44 @@
     <!-- ⚡ Firebase Configuration & Realtime Scripts -->
     <!-- ========================================== -->
     <script>
+        // 🔴 ตัวแปรติดตามการแจ้งเตือน Sidebar Badge
+        let pendingDepositCount = 0;
+        let pendingReviewCount = 0;
+        let pendingWithdrawCount = 0;
+        let currentTab = 'live-monitor';
+
+        function updateSidebarBadge() {
+            const totalPending = pendingDepositCount + pendingReviewCount + pendingWithdrawCount;
+            const badgeEl = document.getElementById('sidebar-finance-badge');
+            
+            if (!badgeEl) return;
+
+            if (currentTab !== 'finance' && totalPending > 0) {
+                badgeEl.innerText = totalPending > 99 ? '99+' : totalPending;
+                badgeEl.classList.remove('hidden');
+            } else {
+                badgeEl.classList.add('hidden');
+            }
+        }
+
         // 🔄 ฟังก์ชันสลับ Tab หน้าจอ Sidebar
         function switchTab(tabId) {
+            currentTab = tabId;
             document.querySelectorAll('.tab-content').forEach(sec => sec.classList.add('hidden'));
             
             const targetSec = document.getElementById(`sec-${tabId}`);
             if (targetSec) targetSec.classList.remove('hidden');
 
             document.querySelectorAll('.nav-btn').forEach(btn => {
-                btn.className = "nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-gray-400 hover:bg-gray-800 hover:text-white transition-all font-semibold";
+                btn.className = "nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center justify-between text-gray-400 hover:bg-gray-800 hover:text-white transition-all font-semibold";
             });
 
             const activeBtn = document.getElementById(`btn-${tabId}`);
             if (activeBtn) {
-                activeBtn.className = "nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 font-bold transition-all";
+                activeBtn.className = "nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center justify-between bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 font-bold transition-all";
             }
+
+            updateSidebarBadge();
         }
 
         // ==========================================
@@ -412,7 +440,7 @@
             }
         }
 
-        // 1. ตั้งค่า Firebase Config (จากโค้ดเดิม)
+        // 1. ตั้งค่า Firebase Config
         const firebaseConfig = {
             databaseURL: "https://my-pokdeng-bot-default-rtdb.asia-southeast1.firebasedatabase.app/"
         };
@@ -608,6 +636,8 @@
             if (!data) {
                 list.innerHTML = '<tr><td colspan="5" class="text-center py-6 text-gray-500">ไม่มีรายการฝากค้างตรวจสอบ</td></tr>';
                 document.getElementById('deposit-count').innerText = '0';
+                pendingReviewCount = 0;
+                updateSidebarBadge();
                 return;
             }
 
@@ -643,7 +673,9 @@
                     </tr>
                 `;
             });
-           document.getElementById('deposit-count').innerText = count;
+            document.getElementById('deposit-count').innerText = count;
+            pendingReviewCount = count;
+            updateSidebarBadge();
         });
 
         function approveDepositReviews(key, userId, amount) {
@@ -676,6 +708,8 @@
             if (!data || (Array.isArray(data) && data.length === 0)) {
                 list.innerHTML = '<tr><td colspan="4" class="text-center py-6 text-gray-500">ไม่มีรายการถอนค้าง</td></tr>';
                 document.getElementById('withdraw-count').innerText = '0';
+                pendingWithdrawCount = 0;
+                updateSidebarBadge();
                 previousWithdrawKeys.clear();
                 return;
             }
@@ -750,6 +784,8 @@
                 }
             });
             document.getElementById('withdraw-count').innerText = count;
+            pendingWithdrawCount = count;
+            updateSidebarBadge();
         });
 
         async function approveWithdrawQueue(index, memberNumber) {
@@ -831,6 +867,8 @@
             if (!data) {
                 tableBody.innerHTML = '<tr><td colspan="5" class="text-center py-6 text-gray-500">ไม่มีรายการฝากค้างตรวจสอบ</td></tr>';
                 if (countBadge) countBadge.innerText = '0';
+                pendingDepositCount = 0;
+                updateSidebarBadge();
                 previousDepositKeys.clear();
                 return;
             }
@@ -942,6 +980,8 @@
             }
 
             if (countBadge) countBadge.innerText = pendingCount;
+            pendingDepositCount = pendingCount;
+            updateSidebarBadge();
             
             if (pendingCount === 0) {
                 tableBody.innerHTML = '<tr><td colspan="5" class="text-center py-6 text-gray-500">ไม่มีรายการฝากค้างตรวจสอบ</td></tr>';
@@ -998,7 +1038,7 @@
         }
 
         // ==========================================
-        // 🔍 ค้นหาประวัติการแทงย้อนหลัง (จากโค้ดเดิม)
+        // 🔍 ค้นหาประวัติการแทงย้อนหลัง
         // ==========================================
         function searchBetHistory() {
             const query = document.getElementById('search-user-id').value.trim();
@@ -1037,7 +1077,7 @@
         }
 
         // ==========================================
-        // 📹 อัปเดต URL ไลฟ์สด และ Modal รูปภาพ (จากโค้ดเดิม)
+        // 📹 อัปเดต URL ไลฟ์สด และ Modal รูปภาพ
         // ==========================================
         function updateLiveUrl() {
             const rawUrl = document.getElementById('live-url-input').value.trim();

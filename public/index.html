@@ -256,12 +256,6 @@
         <div id="section-pok" class="bg-gray-800 p-3 rounded-lg border border-gray-700 space-y-3">
             <h3 class="font-bold text-yellow-400 border-b border-gray-700 pb-2 text-center">🎰 โต๊ะแทงป๊อกเด้ง</h3>
 
-            <!-- ปุ่มสลับโหมด แทงผู้เล่น / แทงเจ้ามือ -->
-            <div class="flex justify-center gap-2">
-                <button id="btn-pok-player" onclick="setPokMode('player')" class="px-4 py-2 text-sm font-bold rounded-lg border-2 border-cyan-400 bg-cyan-900 text-cyan-200 shadow-md">แทงผู้เล่น</button>
-                <button id="btn-pok-dealer" onclick="setPokMode('dealer')" class="px-4 py-2 text-sm font-bold rounded-md border border-gray-600 bg-gray-700 text-gray-400">แทงเจ้ามือ</button>
-            </div>
-
             <!-- ช่องวางแทง ขา 1 - 6 -->
             <div class="grid grid-cols-3 gap-2 pt-2">
                 <script>
@@ -1242,40 +1236,47 @@ function toggleSection(sectionId) {
         document.getElementById('total-pending-amount').innerText = `${total.toLocaleString()} ฿`;
     }
 
-    // 📱 ระบบปัดซ้าย-ขวา เพื่อสลับแท็บ (Pokdeng <-> Hilo)
-(function initSwipeTabs() {
-    const swipeArea = document.getElementById('game-swipe-area');
-    if (!swipeArea) return;
+    // 💡 1. ปรับฟังก์ชัน switchTab ให้สั่ง Scroll ไปยังหน้าที่เลือก
+function switchTab(tab) {
+    const carousel = document.getElementById('game-carousel');
+    const pagePok = document.getElementById('page-pok');
+    const pageHilo = document.getElementById('page-hilo');
+    
+    const btnPok = document.getElementById('tab-pok');
+    const btnHilo = document.getElementById('tab-hilo');
 
-    let startX = 0;
-    let startY = 0;
-    let endX = 0;
-    let endY = 0;
+    if (tab === 'pok') {
+        carousel.scrollTo({ left: 0, behavior: 'smooth' });
+        // ปรับ Styling ปุ่มแท็บ
+        btnPok.className = "flex-1 py-2 text-sm font-bold rounded-md bg-purple-600 text-white transition-all";
+        btnHilo.className = "flex-1 py-2 text-sm font-bold rounded-md text-gray-400 transition-all";
+    } else {
+        carousel.scrollTo({ left: carousel.offsetWidth, behavior: 'smooth' });
+        // ปรับ Styling ปุ่มแท็บ
+        btnHilo.className = "flex-1 py-2 text-sm font-bold rounded-md bg-purple-600 text-white transition-all";
+        btnPok.className = "flex-1 py-2 text-sm font-bold rounded-md text-gray-400 transition-all";
+    }
+}
 
-    swipeArea.addEventListener('touchstart', (e) => {
-        startX = e.touches[0].clientX;
-        startY = e.touches[0].clientY;
-    }, { passive: true });
+// 💡 2. ตรวจจับการ Scroll/ปัดหน้าจอเพื่อเปลี่ยนสถานะปุ่มแท็บอัตโนมัติ
+document.getElementById('game-carousel').addEventListener('scroll', function() {
+    const carousel = this;
+    const scrollPosition = carousel.scrollLeft;
+    const halfWidth = carousel.offsetWidth / 2;
 
-    swipeArea.addEventListener('touchend', (e) => {
-        endX = e.changedTouches[0].clientX;
-        endY = e.changedTouches[0].clientY;
+    const btnPok = document.getElementById('tab-pok');
+    const btnHilo = document.getElementById('tab-hilo');
 
-        const diffX = endX - startX;
-        const diffY = endY - startY;
-
-        // เช็กว่าเป็นการปัดแนวนอนมากกว่าแนวตั้ง (ระยะปัดเกิน 50px)
-        if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
-            if (diffX < 0) {
-                // 👈 ปัดซ้าย -> สลับไป "ไฮโล"
-                switchTab('hilo');
-            } else {
-                // 👉 ปัดขวา -> สลับไป "ป๊อกเด้ง"
-                switchTab('pok');
-            }
-        }
-    }, { passive: true });
-})();
+    if (scrollPosition > halfWidth) {
+        // อยู่ฝั่งไฮโล
+        btnHilo.className = "flex-1 py-2 text-sm font-bold rounded-md bg-purple-600 text-white transition-all";
+        btnPok.className = "flex-1 py-2 text-sm font-bold rounded-md text-gray-400 transition-all";
+    } else {
+        // อยู่ฝั่งป๊อกเด้ง
+        btnPok.className = "flex-1 py-2 text-sm font-bold rounded-md bg-purple-600 text-white transition-all";
+        btnHilo.className = "flex-1 py-2 text-sm font-bold rounded-md text-gray-400 transition-all";
+    }
+});
 
     // 🟢 ฟังก์ชันยกเลิก / ล้างชิปทั้งหมด
     function clearPendingBets() {

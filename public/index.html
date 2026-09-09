@@ -170,6 +170,12 @@
         <span>ผลล่าสุด</span>
     </button>
 
+    <!-- 🟣 เพิ่มตรงนี้: ปุ่มโพยย้อนหลัง 10 รอบ -->
+    <button onclick="openHistoryModal()" class="flex-shrink-0 bg-gray-800 hover:bg-gray-700 active:scale-95 text-indigo-300 font-bold text-xs py-2 px-2.5 rounded-xl shadow-md transition-all flex items-center gap-1 border border-indigo-500/40">
+        <span>📜</span>
+        <span>โพยย้อนหลัง</span>
+    </button>
+
     <!-- 🟡 กล่องแยกสำหรับ สถานะเปิด/ปิดแทง + รอบที่ (ฝั่งขวา) -->
     <div id="status-card" class="flex-1 bg-gray-800/90 px-3 py-1.5 rounded-xl border border-gray-700/80 shadow-inner flex items-center justify-between gap-2">
         
@@ -1567,6 +1573,139 @@ function closeResultModal() {
     }, 200);
 }
 
+////////////////////////////////////////////////
+/////ฟังก์ชันเปิด Modal และดึงข้อมูล 10 รอบล่าสุด///////
+/////////////////////////////////////////////////
+function openHistoryModal() {
+    const modal = document.getElementById('history-modal');
+    const container = document.getElementById('history-modal-body');
+    
+    // แสดง Modal
+    modal.classList.remove('hidden');
+    container.innerHTML = '<div class="text-center text-gray-400 py-8">⏳ กำลังดึงข้อมูลผลย้อนหลัง...</div>';
+
+    // ดึงข้อมูลจาก Firebase path: system_data/pastRoundsData
+    firebase.database().ref('system_data/pastRoundsData').once('value', (snapshot) => {
+        const data = snapshot.val();
+        
+        if (!data) {
+            container.innerHTML = '<div class="text-center text-gray-500 py-8">ยังไม่มีข้อมูลผลย้อนหลัง</div>';
+            return;
+        }
+
+        // แปลง Key เป็นตัวเลข เรียงจากรอบใหม่สุดไปรอบเก่า และตัดมาเฉพาะ 10 รอบล่าสุด
+        const roundKeys = Object.keys(data)
+            .map(Number)
+            .sort((a, b) => b - a)
+            .slice(0, 10);
+
+        if (roundKeys.length === 0) {
+            container.innerHTML = '<div class="text-center text-gray-500 py-8">ยังไม่มีข้อมูลผลย้อนหลัง</div>';
+            return;
+        }
+
+        let html = '';
+
+        roundKeys.forEach(roundNum => {
+            const roundInfo = data[roundNum] || {};
+            const dealer = roundInfo.dealer || {};
+            const hiloText = roundInfo.hilo || 'ไม่มีข้อมูล';
+            const rooms = roundInfo.rooms || {};
+
+            // แต้มเจ้ามือ
+            const dealerScore = dealer.score !== undefined ? dealer.score : (dealer.v || '-');
+
+            // แต้มขา 1 ถึง 6
+            let legScores = {};
+            for (let i = 1; i <= 6; i++) {
+                const roomData = rooms[i] || rooms[String(i)] || {};
+                const cardObj = roomData.threeCards || roomData.twoCards || {};
+                legScores[i] = cardObj.score !== undefined ? cardObj.score : (cardObj.v || '-');
+            }
+
+            // จัดการข้อความไฮโล
+            let hiloDice = '-', hiloSum = '-', hiloResult = '-';
+            if (hiloText && hiloText !== 'ไม่มีข้อมูล') {
+                const parts = hiloText.split(' ');
+                hiloDice = parts[0] || '-';
+                hiloSum = parts[1] ? parts[1].replace('(', '').replace(')', '') : '-';
+                hiloResult = parts[2] || '-';
+            }
+
+            // เรนเดอร์การ์ดตารางสถิติ
+            html += `
+                <div class="bg-gray-950/80 border border-gray-800 rounded-xl p-3 space-y-2 shadow-lg">
+                    <div class="flex justify-between items-center border-b border-gray-800/80 pb-1.5">
+                        <span class="text-xs font-black text-amber-400">รอบที่: #${roundNum}</span>
+                        <span class="text-[10px] bg-amber-500/10 text-amber-300 border border-amber-500/20 px-2 py-0.5 rounded-full font-bold">เสร็จสิ้น</span>
+                    </div>
+
+                    <!-- 🎴 ป๊อกเด้ง -->
+                    <div class="space-y-1">
+                        <div class="grid grid-cols-4 gap-1 text-[11px] font-bold text-center text-gray-400 bg-gray-900/90 py-1 rounded-lg border border-gray-800">
+                            <span>รอบ</span>
+                            <span class="text-cyan-400">เจ้ามือ</span>
+                            <span class="text-gray-300">ขา 1 / 4</span>
+                            <span class="text-gray-300">ขา 2 / 5</span>
+                        </div>
+
+                        <div class="grid grid-cols-4 gap-1 text-center font-black text-xs">
+                            <div class="bg-gray-900 border border-gray-800 py-2 rounded-lg text-amber-400 flex items-center justify-center font-bold">
+                                #${roundNum}
+                            </div>
+                            <div class="bg-cyan-600/90 text-white py-2 rounded-lg border border-cyan-400/30 flex items-center justify-center text-sm">
+                                ${dealerScore}
+                            </div>
+                            <div class="bg-rose-600/90 text-white py-2 rounded-lg border border-rose-400/30 flex items-center justify-center text-sm">
+                                ${legScores[1]}
+                            </div>
+                            <div class="bg-rose-600/90 text-white py-2 rounded-lg border border-rose-400/30 flex items-center justify-center text-sm">
+                                ${legScores[2]}
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-4 gap-1 text-center font-black text-xs">
+                            <div class="bg-transparent"></div>
+                            <div class="bg-rose-600/90 text-white py-2 rounded-lg border border-rose-400/30 flex items-center justify-center text-sm">
+                                ${legScores[3]}
+                            </div>
+                            <div class="bg-rose-600/90 text-white py-2 rounded-lg border border-rose-400/30 flex items-center justify-center text-sm">
+                                ${legScores[4]}
+                            </div>
+                            <div class="bg-rose-600/90 text-white py-2 rounded-lg border border-rose-400/30 flex items-center justify-center text-sm">
+                                ${legScores[5]}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 🎲 ไฮโล -->
+                    <div class="grid grid-cols-4 gap-1 text-center font-black text-xs pt-1">
+                        <div class="bg-purple-950/80 border border-purple-800 text-purple-300 py-1.5 rounded-lg flex items-center justify-center text-[11px]">
+                            🎲 ไฮโล
+                        </div>
+                        <div class="bg-purple-900/50 border border-purple-700/50 text-purple-200 py-1.5 rounded-lg flex items-center justify-center font-mono">
+                            ${hiloDice}
+                        </div>
+                        <div class="bg-amber-500/20 border border-amber-500/40 text-amber-300 py-1.5 rounded-lg flex items-center justify-center text-[11px]">
+                            ${hiloSum}
+                        </div>
+                        <div class="bg-rose-600/90 border border-rose-400/30 text-white py-1.5 rounded-lg flex items-center justify-center text-[11px]">
+                            ${hiloResult}
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+    });
+}
+
+// ฟังก์ชันปิด Modal
+function closeHistoryModal() {
+    document.getElementById('history-modal').classList.add('hidden');
+}
+
 // 🟢 อัปเดต ฟังก์ชันยืนยันส่งโพย (submitBoardBets)
 async function submitBoardBets() {
     if (!isRoundOpen) return alert('⚠️ ขณะนี้ปิดรับแทงอยู่ครับ');
@@ -2244,6 +2383,29 @@ function closeRoundResultModal() {
     const modal = document.getElementById('round-result-modal');
     if (modal) modal.classList.add('hidden');
 }
+    //!-- 📌 Modal แสดงโพยย้อนหลัง 10 รอบ --
+<div id="history-modal" class="hidden fixed inset-0 bg-black/85 z-50 flex items-center justify-center p-3 backdrop-blur-sm" onclick="closeHistoryModal()">
+    <div class="bg-gray-900 border border-gray-700 w-full max-w-lg rounded-2xl p-4 shadow-2xl relative max-h-[90vh] flex flex-col" onclick="event.stopPropagation()">
+        
+        <!-- Header -->
+        <div class="flex justify-between items-center border-b border-gray-800 pb-3 mb-3 shrink-0">
+            <h3 class="text-base font-bold text-amber-400 flex items-center gap-2">
+                📜 ประวัติผลย้อนหลัง 10 รอบล่าสุด
+            </h3>
+            <button onclick="closeHistoryModal()" class="text-gray-400 hover:text-white font-bold text-lg px-2">✕</button>
+        </div>
+
+        <!-- Content Area: ตารางสถิติย้อนหลัง -->
+        <div id="history-modal-body" class="overflow-y-auto space-y-4 pr-1 flex-1">
+            <div class="text-center text-gray-500 py-8">กำลังโหลดข้อมูล...</div>
+        </div>
+
+        <!-- Footer -->
+        <div class="border-t border-gray-800 pt-3 mt-3 text-center text-[11px] text-gray-400 shrink-0">
+            ✨ ข้อมูลดึงจากระบบ pastRoundsData แบบเรียลไทม์
+        </div>
+    </div>
+</div>
 </script>
 </body>
 </html>

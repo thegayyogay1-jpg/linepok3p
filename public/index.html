@@ -11,6 +11,8 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <!-- LINE LIFF SDK -->
     <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+      <!-- นำบรรทัดนี้ไปใส่ใน <head> ของ HTML -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     
     <style>
       /* 🌟 เอฟเฟกต์ชิปเด้งตอนวาง (Bounce) */
@@ -983,6 +985,7 @@ async function cancelMyBets(command, gameName) {
         console.error(err);
         showModalState('error', 'เกิดข้อผิดพลาด', 'ไม่สามารถส่งคำขอคืนโพยได้');
     }
+}
 }
 
     // 🟢 เลือกชิป + ขยายใหญ่ + ใส่สีสันให้แถบชิปด้านล่าง

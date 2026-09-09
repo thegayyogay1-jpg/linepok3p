@@ -312,18 +312,22 @@ function goToGamePage() {
         }
     }
 
-    // 🟢 ปรับฟังก์ชัน goToStep2 เมื่อติดป๊อปอัปยอดเดิม (ยังไม่ได้โอน)
+    // 🟢 ปรับฟังก์ชัน goToStep2 ตัดเศษสตางค์ทิ้ง
     async function goToStep2() {
         if (!userId) {
             showPendingAlert('⚠️ กำลังดึงข้อมูลสมาชิก LINE กรุณารอสักครู่แล้วลองกดใหม่อีกครั้งครับ');
             return;
         }
 
-        const amtInput = document.getElementById('depositAmount').value;
+        let amtInput = document.getElementById('depositAmount').value;
         if (!amtInput || amtInput <= 0) {
             showPendingAlert('กรุณากรอกจำนวนเงินให้ถูกต้อง');
             return;
         }
+
+        // 🛑 ปัดเศษทิ้งให้เหลือเฉพาะจำนวนเต็ม (เช่น 100.01 หรือ 100.1 จะกลายเป็น 100)
+        amtInput = Math.floor(parseFloat(amtInput));
+        document.getElementById('depositAmount').value = amtInput; // อัปเดตช่องอินพุตให้เป็นเลขจำนวนเต็ม
 
         const nextBtn = document.getElementById('nextBtn');
         nextBtn.disabled = true;
@@ -340,27 +344,27 @@ function goToGamePage() {
 
             // กรณีติดค้างรอแอดมินอนุมัติจริง
             if (!data.success && data.isPendingExists) {
-                hasSubmittedSlip = true; // กรณีนี้เคยส่งสลิปแล้ว
+                hasSubmittedSlip = true;
                 showPendingAlert(data.message || 'คุณมีรายการฝากค้างรอแอดมินตรวจสอบอยู่');
                 return;
             }
 
             // กรณีมียอดเดิมค้างอยู่ (ยังไม่กดโอน) -> ใช้อยอดเดิมแล้วสลับไป Step 2
             if (data.success && data.isExisting) {
-                hasSubmittedSlip = false; // 👈 ยังไม่ได้กดยืนยันการโอน
-                amountToDeposit = data.amount;
-                document.getElementById('depositAmount').value = data.amount;
-                document.getElementById('displayAmount').innerText = data.amount;
+                hasSubmittedSlip = false;
+                amountToDeposit = Math.floor(parseFloat(data.amount)); // ปัดเศษฝั่งแสดงผลด้วย
+                document.getElementById('depositAmount').value = amountToDeposit;
+                document.getElementById('displayAmount').innerText = amountToDeposit;
                 startTimer(data.remainingSeconds);
 
                 document.getElementById('step1').classList.remove('active');
                 document.getElementById('step2').classList.add('active');
 
-                showPendingAlert(`ท่านมีรายการฝากค้างอยู่จำนวน ${data.amount} บาท ระบบจะใช้อยอดเดิมนี้ในการทำรายการ`);
+                showPendingAlert(`ท่านมีรายการฝากค้างอยู่จำนวน ${amountToDeposit} บาท ระบบจะใช้อยอดเดิมนี้ในการทำรายการ`);
             } 
             // กรณีสร้างรายการใหม่สำเร็จ
             else if (data.success) {
-                hasSubmittedSlip = false; // 👈 ยังไม่ได้กดยืนยันการโอน
+                hasSubmittedSlip = false;
                 amountToDeposit = amtInput;
                 document.getElementById('displayAmount').innerText = amountToDeposit;
                 startTimer(data.remainingSeconds || 300);

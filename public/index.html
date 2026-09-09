@@ -933,13 +933,6 @@ function renderAllBetsUI() {
     if (summaryGrandTotalEl) summaryGrandTotalEl.innerText = (totalPokBetAmount + totalHiloBetAmount).toLocaleString();
 }
 
-   // 🟢 อัปเดต ฟังก์ชันคืนโพย (cancelMyBets)
-async function cancelMyBets(command, gameName) {
-    if (!isRoundOpen) {
-        showModalState('error', 'แจ้งเตือน', '⚠️ ขณะนี้ปิดรับแทงแล้ว ไม่สามารถยกเลิกโพยได้ครับ');
-        return;
-    }
-
     // 🟢 อัปเดต ฟังก์ชันคืนโพย (cancelMyBets) แบบไม่มีชื่อลิงก์ติด
 async function cancelMyBets(command, gameName) {
     if (!isRoundOpen) return alert('⚠️ ขณะนี้ปิดรับแทงแล้ว ไม่สามารถยกเลิกโพยได้ครับ');

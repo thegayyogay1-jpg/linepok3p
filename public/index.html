@@ -1604,11 +1604,9 @@ function openHistoryModal() {
     const modal = document.getElementById('history-modal');
     const container = document.getElementById('history-modal-body');
     
-    // แสดง Modal
     modal.classList.remove('hidden');
     container.innerHTML = '<div class="text-center text-gray-400 py-8">⏳ กำลังดึงข้อมูลผลย้อนหลัง...</div>';
 
-    // ดึงข้อมูลจาก Firebase path: system_data/pastRoundsData
     firebase.database().ref('system_data/pastRoundsData').once('value', (snapshot) => {
         const data = snapshot.val();
         
@@ -1617,7 +1615,6 @@ function openHistoryModal() {
             return;
         }
 
-        // แปลง Key เป็นตัวเลข เรียงจากรอบใหม่สุดไปรอบเก่า และตัดมาเฉพาะ 10 รอบล่าสุด
         const roundKeys = Object.keys(data)
             .map(Number)
             .sort((a, b) => b - a)
@@ -1628,7 +1625,24 @@ function openHistoryModal() {
             return;
         }
 
-        let html = '';
+        // โครงสร้างตารางหลัก
+        let html = `
+            <div class="overflow-x-auto">
+                <table class="w-full text-center text-xs border-collapse min-w-[650px]">
+                    <thead>
+                        <tr class="bg-gray-800 text-gray-300 border-b border-gray-700">
+                            <th class="p-2 border border-gray-700/50">รอบ</th>
+                            <th class="p-2 border border-gray-700/50 text-cyan-400">เจ้ามือ</th>
+                            <th class="p-2 border border-gray-700/50">ขา 1</th>
+                            <th class="p-2 border border-gray-700/50">ขา 2</th>
+                            <th class="p-2 border border-gray-700/50">ขา 3</th>
+                            <th class="p-2 border border-gray-700/50">ขา 4</th>
+                            <th class="p-2 border border-gray-700/50">ขา 5</th>
+                            <th class="p-2 border border-gray-700/50">ขา 6</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-800/60 font-semibold">
+        `;
 
         roundKeys.forEach(roundNum => {
             const roundInfo = data[roundNum] || {};
@@ -1637,89 +1651,65 @@ function openHistoryModal() {
             const rooms = roundInfo.rooms || {};
 
             // แต้มเจ้ามือ
-            const dealerScore = dealer.score !== undefined ? dealer.score : (dealer.v || '-');
+            const dealerScoreNum = dealer.score !== undefined ? Number(dealer.score) : null;
+            const dealerDisplay = dealer.name || dealer.v || (dealerScoreNum !== null ? dealerScoreNum : '-');
 
-            // แต้มขา 1 ถึง 6
-            let legScores = {};
+            // --- 1. แถวป๊อกเด้ง ---
+            html += `<tr class="bg-gray-950/60 hover:bg-gray-900/50 transition">`;
+            html += `<td class="p-2 border border-gray-800 font-bold text-amber-400">#${roundNum}</td>`;
+            html += `<td class="p-2 border border-gray-800 bg-cyan-950/40 text-cyan-300 font-bold">${dealerDisplay}</td>`;
+
+            // คำนวณสีและแสดงผลแต่ละขา (1-6)
             for (let i = 1; i <= 6; i++) {
                 const roomData = rooms[i] || rooms[String(i)] || {};
                 const cardObj = roomData.threeCards || roomData.twoCards || {};
-                legScores[i] = cardObj.score !== undefined ? cardObj.score : (cardObj.v || '-');
+                const legScoreNum = cardObj.score !== undefined ? Number(cardObj.score) : null;
+                const legDisplay = cardObj.name || cardObj.v || (legScoreNum !== null ? legScoreNum : '-');
+
+                // ฟังก์ชันกำหนดสีเทียบกับเจ้ามือ: ชนะ (เขียว), แพ้ (แดง), เสมอ (เหลือง)
+                let colorClass = "bg-gray-900 text-gray-400"; // default
+                if (legScoreNum !== null && dealerScoreNum !== null) {
+                    if (legScoreNum > dealerScoreNum) {
+                        colorClass = "bg-emerald-950/80 text-emerald-400 border border-emerald-500/30"; // ชนะ (เขียว)
+                    } else if (legScoreNum < dealerScoreNum) {
+                        colorClass = "bg-rose-950/80 text-rose-400 border border-rose-500/30"; // แพ้ (แดง)
+                    } else {
+                        colorClass = "bg-amber-950/80 text-amber-400 border border-amber-500/30"; // เสมอ (เหลือง)
+                    }
+                }
+
+                html += `<td class="p-2 border border-gray-800 ${colorClass}">${legDisplay}</td>`;
+            }
+            html += `</tr>`;
+
+            // --- 2. แถวผลไฮโล ---
+            let hiloColor = "bg-purple-950/50 text-purple-300 border-purple-800"; // Default สีไฮโล
+
+            if (hiloText.includes("สูง")) {
+                hiloColor = "bg-rose-950/80 text-rose-400 border-rose-500/40"; // สูง (แดง)
+            } else if (hiloText.includes("ต่ำ")) {
+                hiloColor = "bg-sky-950/80 text-sky-400 border-sky-500/40"; // ต่ำ (ฟ้า)
+            } else if (hiloText.includes("11ไฮโล") || hiloText.includes("ไฮโล")) {
+                hiloColor = "bg-emerald-950/80 text-emerald-400 border-emerald-500/40"; // 11ไฮโล/ไฮโล (เขียว)
+            } else if (hiloText.includes("ตอง")) {
+                hiloColor = "bg-amber-950/80 text-amber-400 border-amber-500/40"; // ตอง (เหลือง)
             }
 
-            // จัดการข้อความไฮโล
-            let hiloDice = '-', hiloSum = '-', hiloResult = '-';
-            if (hiloText && hiloText !== 'ไม่มีข้อมูล') {
-                const parts = hiloText.split(' ');
-                hiloDice = parts[0] || '-';
-                hiloSum = parts[1] ? parts[1].replace('(', '').replace(')', '') : '-';
-                hiloResult = parts[2] || '-';
-            }
-
-            // เรนเดอร์การ์ดตารางสถิติ
             html += `
-                <div class="bg-gray-950/80 border border-gray-800 rounded-xl p-3 space-y-2 shadow-lg">
-                    <div class="flex justify-between items-center border-b border-gray-800/80 pb-1.5">
-                        <span class="text-xs font-black text-amber-400">รอบที่: #${roundNum}</span>
-                        <span class="text-[10px] bg-amber-500/10 text-amber-300 border border-amber-500/20 px-2 py-0.5 rounded-full font-bold">เสร็จสิ้น</span>
-                    </div>
-
-                    <!-- 🎴 ป๊อกเด้ง -->
-                    <div class="space-y-1">
-                        <div class="grid grid-cols-4 gap-1 text-[11px] font-bold text-center text-gray-400 bg-gray-900/90 py-1 rounded-lg border border-gray-800">
-                            <span>รอบ</span>
-                            <span class="text-cyan-400">เจ้ามือ</span>
-                            <span class="text-gray-300">ขา 1 / 4</span>
-                            <span class="text-gray-300">ขา 2 / 5</span>
-                        </div>
-
-                        <div class="grid grid-cols-4 gap-1 text-center font-black text-xs">
-                            <div class="bg-gray-900 border border-gray-800 py-2 rounded-lg text-amber-400 flex items-center justify-center font-bold">
-                                #${roundNum}
-                            </div>
-                            <div class="bg-cyan-600/90 text-white py-2 rounded-lg border border-cyan-400/30 flex items-center justify-center text-sm">
-                                ${dealerScore}
-                            </div>
-                            <div class="bg-rose-600/90 text-white py-2 rounded-lg border border-rose-400/30 flex items-center justify-center text-sm">
-                                ${legScores[1]}
-                            </div>
-                            <div class="bg-rose-600/90 text-white py-2 rounded-lg border border-rose-400/30 flex items-center justify-center text-sm">
-                                ${legScores[2]}
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-4 gap-1 text-center font-black text-xs">
-                            <div class="bg-transparent"></div>
-                            <div class="bg-rose-600/90 text-white py-2 rounded-lg border border-rose-400/30 flex items-center justify-center text-sm">
-                                ${legScores[3]}
-                            </div>
-                            <div class="bg-rose-600/90 text-white py-2 rounded-lg border border-rose-400/30 flex items-center justify-center text-sm">
-                                ${legScores[4]}
-                            </div>
-                            <div class="bg-rose-600/90 text-white py-2 rounded-lg border border-rose-400/30 flex items-center justify-center text-sm">
-                                ${legScores[5]}
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 🎲 ไฮโล -->
-                    <div class="grid grid-cols-4 gap-1 text-center font-black text-xs pt-1">
-                        <div class="bg-purple-950/80 border border-purple-800 text-purple-300 py-1.5 rounded-lg flex items-center justify-center text-[11px]">
-                            🎲 ไฮโล
-                        </div>
-                        <div class="bg-purple-900/50 border border-purple-700/50 text-purple-200 py-1.5 rounded-lg flex items-center justify-center font-mono">
-                            ${hiloDice}
-                        </div>
-                        <div class="bg-amber-500/20 border border-amber-500/40 text-amber-300 py-1.5 rounded-lg flex items-center justify-center text-[11px]">
-                            ${hiloSum}
-                        </div>
-                        <div class="bg-rose-600/90 border border-rose-400/30 text-white py-1.5 rounded-lg flex items-center justify-center text-[11px]">
-                            ${hiloResult}
-                        </div>
-                    </div>
-                </div>
+                <tr class="bg-gray-900/40 text-[11px]">
+                    <td colspan="8" class="p-1.5 border border-gray-800/80 text-left px-3">
+                        <span class="text-gray-400 font-bold mr-2">🎲 ผลไฮโล:</span>
+                        <span class="px-2 py-0.5 rounded border font-bold ${hiloColor}">${hiloText}</span>
+                    </td>
+                </tr>
             `;
         });
+
+        html += `
+                    </tbody>
+                </table>
+            </div>
+        `;
 
         container.innerHTML = html;
     });

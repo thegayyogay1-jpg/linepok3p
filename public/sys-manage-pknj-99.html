@@ -352,8 +352,31 @@ db.ref('system_data/withdrawQueue').on('value', async (snapshot) => {
     if (!data || (Array.isArray(data) && data.length === 0)) {
         list.innerHTML = '<tr><td colspan="4" class="text-center py-6 text-gray-500">ไม่มีรายการถอนค้าง</td></tr>'; // 👈 เปลี่ยน colspan เป็น 4
         document.getElementById('withdraw-count').innerText = '0';
+        previousWithdrawKeys.clear(); // ล้างรายการค้างเมื่อไม่มีข้อมูล
         return;
     }
+
+    // 🔔 2. ส่วนตรวจจับรายการแจ้งถอนใหม่เพื่อเล่นเสียงเตือน (เพิ่มตรงจุดนี้)
+    const currentKeys = new Set();
+    queueList.forEach((item) => {
+        if (item) {
+            // สร้าง Unique Key อ้างอิงจาก memberNumber + time
+            const uniqueKey = `${item.memberNumber}_${item.time}`;
+            currentKeys.add(uniqueKey);
+        }
+    });
+
+    if (!isFirstLoadWithdraw) {
+        for (let key of currentKeys) {
+            if (!previousWithdrawKeys.has(key)) {
+                playWithdrawSound(); // 🔔 เรียกเล่นเสียงถอนเมื่อมีรายการแจ้งถอนใหม่เข้ามา!
+                break;
+            }
+        }
+    } else {
+        isFirstLoadWithdraw = false;
+    }
+    previousWithdrawKeys = currentKeys; // อัปเดตรายการปัจจุบันไว้เปรียบเทียบครั้งถัดไป
 
     // 💡 ดึงข้อมูลกระเป๋าเงินสมาชิกเพื่อเอาข้อมูลธนาคาร
     const usersSnap = await db.ref('system_data/usersWallets').once('value');

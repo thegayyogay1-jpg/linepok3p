@@ -688,6 +688,30 @@
     </div>
 </div>
 
+    //!-- 📌 Modal แสดงโพยย้อนหลัง 10 รอบ --
+<div id="history-modal" class="hidden fixed inset-0 bg-black/85 z-50 flex items-center justify-center p-3 backdrop-blur-sm" onclick="closeHistoryModal()">
+    <div class="bg-gray-900 border border-gray-700 w-full max-w-lg rounded-2xl p-4 shadow-2xl relative max-h-[90vh] flex flex-col" onclick="event.stopPropagation()">
+        
+        <!-- Header -->
+        <div class="flex justify-between items-center border-b border-gray-800 pb-3 mb-3 shrink-0">
+            <h3 class="text-base font-bold text-amber-400 flex items-center gap-2">
+                📜 ประวัติผลย้อนหลัง 10 รอบล่าสุด
+            </h3>
+            <button onclick="closeHistoryModal()" class="text-gray-400 hover:text-white font-bold text-lg px-2">✕</button>
+        </div>
+
+        <!-- Content Area: ตารางสถิติย้อนหลัง -->
+        <div id="history-modal-body" class="overflow-y-auto space-y-4 pr-1 flex-1">
+            <div class="text-center text-gray-500 py-8">กำลังโหลดข้อมูล...</div>
+        </div>
+
+        <!-- Footer -->
+        <div class="border-t border-gray-800 pt-3 mt-3 text-center text-[11px] text-gray-400 shrink-0">
+            ✨ ข้อมูลดึงจากระบบ pastRoundsData แบบเรียลไทม์
+        </div>
+    </div>
+</div>
+
 <script>
     // 1. Firebase Config
     const firebaseConfig = {
@@ -2383,29 +2407,7 @@ function closeRoundResultModal() {
     const modal = document.getElementById('round-result-modal');
     if (modal) modal.classList.add('hidden');
 }
-    //!-- 📌 Modal แสดงโพยย้อนหลัง 10 รอบ --
-<div id="history-modal" class="hidden fixed inset-0 bg-black/85 z-50 flex items-center justify-center p-3 backdrop-blur-sm" onclick="closeHistoryModal()">
-    <div class="bg-gray-900 border border-gray-700 w-full max-w-lg rounded-2xl p-4 shadow-2xl relative max-h-[90vh] flex flex-col" onclick="event.stopPropagation()">
-        
-        <!-- Header -->
-        <div class="flex justify-between items-center border-b border-gray-800 pb-3 mb-3 shrink-0">
-            <h3 class="text-base font-bold text-amber-400 flex items-center gap-2">
-                📜 ประวัติผลย้อนหลัง 10 รอบล่าสุด
-            </h3>
-            <button onclick="closeHistoryModal()" class="text-gray-400 hover:text-white font-bold text-lg px-2">✕</button>
-        </div>
-
-        <!-- Content Area: ตารางสถิติย้อนหลัง -->
-        <div id="history-modal-body" class="overflow-y-auto space-y-4 pr-1 flex-1">
-            <div class="text-center text-gray-500 py-8">กำลังโหลดข้อมูล...</div>
-        </div>
-
-        <!-- Footer -->
-        <div class="border-t border-gray-800 pt-3 mt-3 text-center text-[11px] text-gray-400 shrink-0">
-            ✨ ข้อมูลดึงจากระบบ pastRoundsData แบบเรียลไทม์
-        </div>
-    </div>
-</div>
+    
 </script>
 </body>
 </html>

@@ -7595,9 +7595,9 @@ app.post('/api/upload-slip', upload.single('slipImage'), async (req, res) => {
                         failReason = "สลิปไม่ได้โอนเข้าบัญชีร้าน";
                     }
 
-                    // ⛔ [เช็กที่ 4] ยอดเงิน
-                    if (slipAmount < depositAmount) {
-                        failReason = `ยอดเงินในสลิป (${slipAmount}) น้อยกว่าที่แจ้ง (${depositAmount})`;
+                    // ⛔ [เช็กที่ 4] ยอดเงิน (ต้องตรงกันเป๊ะๆ เท่านั้น)
+                    if (Number(slipAmount) !== Number(depositAmount)) {
+                        failReason = `ยอดเงินในสลิป (${slipAmount}) ไม่ตรงกับยอดที่แจ้ง (${depositAmount})`;
                     }
 
                     // ⛔ [เช็กที่ 5] ชื่อผู้โอน

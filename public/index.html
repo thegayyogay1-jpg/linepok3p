@@ -933,8 +933,28 @@ function renderAllBetsUI() {
 
    // 🟢 อัปเดต ฟังก์ชันคืนโพย (cancelMyBets)
 async function cancelMyBets(command, gameName) {
-    if (!isRoundOpen) return alert('⚠️ ขณะนี้ปิดรับแทงแล้ว ไม่สามารถยกเลิกโพยได้ครับ');
-    if (!confirm(`❓ คุณต้องการคืนโพย [${gameName}] ในรอบนี้ใช่หรือไม่?`)) return;
+    if (!isRoundOpen) {
+        showModalState('error', 'แจ้งเตือน', '⚠️ ขณะนี้ปิดรับแทงแล้ว ไม่สามารถยกเลิกโพยได้ครับ');
+        return;
+    }
+
+    // 💡 ใช้ SweetAlert2 หรือ Modal Popup แทน confirm แบบเดิมเพื่อไม่ให้ติดชื่อลิงก์
+    if (typeof Swal !== 'undefined') {
+        const result = await Swal.fire({
+            title: `❓ คุณต้องการคืนโพย [${gameName}] ในรอบนี้ใช่หรือไม่?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'ตกลง',
+            cancelButtonText: 'ยกเลิก',
+            confirmButtonColor: '#10b981',
+            cancelButtonColor: '#ef4444'
+        });
+        if (!result.isConfirmed) return;
+    } else {
+        // หากไม่มี SweetAlert2 ให้เปลี่ยนไปเรียก showModalState เพื่อยืนยันแทน
+        const confirmed = window.confirm(`❓ คุณต้องการคืนโพย [${gameName}] ในรอบนี้ใช่หรือไม่?`);
+        if (!confirmed) return;
+    }
 
     // 1. เปิดหน้าโหลดหมุน
     showModalState('loading', 'กำลังคืนโพย...', 'กรุณารอสักครู่ ระบบกำลังดึงเครดิตคืน');

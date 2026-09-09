@@ -1615,9 +1615,10 @@ function openHistoryModal() {
             return;
         }
 
+        // ปรับเป็น (a - b) เพื่อให้เรียงลำดับรอบจาก น้อย -> มาก (เช่น 1, 2, 3...)
         const roundKeys = Object.keys(data)
             .map(Number)
-            .sort((a, b) => b - a)
+            .sort((a, b) => a - b)
             .slice(0, 10);
 
         if (roundKeys.length === 0) {
@@ -1705,13 +1706,13 @@ function openHistoryModal() {
             // กำหนดสีกล่องผลลัพธ์ไฮโล (สูง-แดง, ต่ำ-ฟ้า, 11ไฮโล/ไฮโล-เขียว, ตอง-เหลือง)
             let resultColor = "bg-purple-900/60 text-purple-300 border-purple-700/50";
             if (resultBox.includes("สูง")) {
-                resultColor = "bg-rose-600/90 text-white border-rose-400/50"; // สูง (แดง)
+                resultColor = "bg-rose-600/90 text-white border-rose-400/50";
             } else if (resultBox.includes("ต่ำ")) {
-                resultColor = "bg-sky-600/90 text-white border-sky-400/50"; // ต่ำ (ฟ้า)
+                resultColor = "bg-sky-600/90 text-white border-sky-400/50";
             } else if (resultBox.includes("11ไฮโล") || resultBox.includes("ไฮโล")) {
-                resultColor = "bg-emerald-600/90 text-white border-emerald-400/50"; // ไฮโล (เขียว)
+                resultColor = "bg-emerald-600/90 text-white border-emerald-400/50";
             } else if (resultBox.includes("ตอง")) {
-                resultColor = "bg-amber-500/90 text-black border-amber-300/50"; // ตอง (เหลือง)
+                resultColor = "bg-amber-500/90 text-black border-amber-300/50";
             }
 
             html += `

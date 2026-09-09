@@ -351,7 +351,8 @@ db.ref('system_data/withdrawQueue').on('value', async (snapshot) => {
 
     if (!data || (Array.isArray(data) && data.length === 0)) {
         list.innerHTML = '<tr><td colspan="4" class="text-center py-6 text-gray-500">ไม่มีรายการถอนค้าง</td></tr>'; // 👈 เปลี่ยน colspan เป็น 4
-        document.getElementById('withdraw-count').innerText = '0';
+        const countElem = document.getElementById('withdraw-count');
+        if (countElem) countElem.innerText = '0';
         previousWithdrawKeys.clear(); // ล้างรายการค้างเมื่อไม่มีข้อมูล
         return;
     }
@@ -434,7 +435,8 @@ db.ref('system_data/withdrawQueue').on('value', async (snapshot) => {
             `;
         }
     });
-    document.getElementById('withdraw-count').innerText = count;
+    const countElem = document.getElementById('withdraw-count');
+    if (countElem) countElem.innerText = count;
 });
 
 // 🟢 ฟังก์ชันเมื่อแอดมินกด "โอนแล้ว" บนหน้าเว็บ (ปรับปรุงให้ตรงกับฝั่งบอทหลัก 100%)

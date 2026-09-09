@@ -10,6 +10,16 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
+    
+    <!-- เสียงแจ้งเตือน (Audio Elements) -->
+<audio id="sound-deposit" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
+<audio id="sound-withdraw" src="https://assets.mixkit.co/active_storage/sfx/2874/2874-preview.mp3" preload="auto"></audio>
+
+<!-- ปุ่มเปิด/ปิดเสียงแจ้งเตือน (วางไว้ใน Header) -->
+<button id="toggle-sound-btn" onclick="toggleSound()" class="px-3 py-1 text-xs font-bold rounded-full bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700 transition">
+    🔇 เปิดเสียงแจ้งเตือน
+</button>
+    
 <body class="bg-gray-950 text-white min-h-screen p-3 sm:p-6 font-sans">
     <!-- Header -->
     <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6 pb-4 border-b border-gray-800 max-w-7xl mx-auto">
@@ -154,6 +164,48 @@
     
     <!-- Firebase Configuration & Realtime Scripts -->
     <script>
+
+        // ==========================================
+        // 🔔 ระบบเสียงแจ้งเตือน (Audio Notification System)
+        // ==========================================
+        let isSoundEnabled = false;
+        let previousDepositKeys = new Set();
+        let previousWithdrawKeys = new Set();
+        let isFirstLoadDeposit = true;
+        let isFirstLoadWithdraw = true;
+        
+        // ฟังก์ชันเปิด/ปิด เสียง
+        function toggleSound() {
+            isSoundEnabled = !isSoundEnabled;
+            const btn = document.getElementById('toggle-sound-btn');
+            if (isSoundEnabled) {
+                btn.innerText = '🔔 เปิดเสียงแจ้งเตือนแล้ว';
+                btn.className = 'px-3 py-1 text-xs font-bold rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition';
+                // เล่นเสียงตัวอย่างสั้นๆ เพื่อให้ Browser ปลดล็อกสิทธิ์ Autoplay
+                document.getElementById('sound-deposit').play().catch(() => {});
+            } else {
+                btn.innerText = '🔇 เปิดเสียงแจ้งเตือน';
+                btn.className = 'px-3 py-1 text-xs font-bold rounded-full bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700 transition';
+            }
+        }
+        
+        // ฟังก์ชันสั่งเล่นเสียงฝากไม่ผ่าน
+        function playDepositSound() {
+            if (isSoundEnabled) {
+                const audio = document.getElementById('sound-deposit');
+                audio.currentTime = 0;
+                audio.play().catch(e => console.log('Audio play blocked:', e));
+            }
+        }
+        
+        // ฟังก์ชันสั่งเล่นเสียงถอนเงิน
+        function playWithdrawSound() {
+            if (isSoundEnabled) {
+                const audio = document.getElementById('sound-withdraw');
+                audio.currentTime = 0;
+                audio.play().catch(e => console.log('Audio play blocked:', e));
+            }
+        }
 
         // 1. ตั้งค่า Firebase Config
         const firebaseConfig = {

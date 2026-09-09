@@ -11,6 +11,8 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <!-- LINE LIFF SDK -->
     <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <!-- นำบรรทัดนี้ไปใส่ใน <head> ของ HTML -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     
     <style>
       /* 🌟 เอฟเฟกต์ชิปเด้งตอนวาง (Bounce) */
@@ -938,23 +940,25 @@ async function cancelMyBets(command, gameName) {
         return;
     }
 
-    // 💡 ใช้ SweetAlert2 หรือ Modal Popup แทน confirm แบบเดิมเพื่อไม่ให้ติดชื่อลิงก์
-    if (typeof Swal !== 'undefined') {
-        const result = await Swal.fire({
-            title: `❓ คุณต้องการคืนโพย [${gameName}] ในรอบนี้ใช่หรือไม่?`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'ตกลง',
-            cancelButtonText: 'ยกเลิก',
-            confirmButtonColor: '#10b981',
-            cancelButtonColor: '#ef4444'
-        });
-        if (!result.isConfirmed) return;
-    } else {
-        // หากไม่มี SweetAlert2 ให้เปลี่ยนไปเรียก showModalState เพื่อยืนยันแทน
-        const confirmed = window.confirm(`❓ คุณต้องการคืนโพย [${gameName}] ในรอบนี้ใช่หรือไม่?`);
-        if (!confirmed) return;
-    }
+    // 🟢 อัปเดต ฟังก์ชันคืนโพย (cancelMyBets) แบบไม่มีชื่อลิงก์ติด
+async function cancelMyBets(command, gameName) {
+    if (!isRoundOpen) return alert('⚠️ ขณะนี้ปิดรับแทงแล้ว ไม่สามารถยกเลิกโพยได้ครับ');
+
+    // 💡 ใช้ SweetAlert2 แสดงกล่องยืนยัน (ไม่มีชื่อ Domain ขึ้นแน่นอน)
+    const confirmResult = await Swal.fire({
+        title: `❓ คุณต้องการคืนโพย [${gameName}] ในรอบนี้ใช่หรือไม่?`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'ตกลง',
+        cancelButtonText: 'ยกเลิก',
+        confirmButtonColor: '#10b981',
+        cancelButtonColor: '#ef4444',
+        background: '#1f2937',
+        color: '#ffffff'
+    });
+
+    // ถ้ากด "ยกเลิก" หรือปิดกล่อง ให้หยุดทำงานทันที
+    if (!confirmResult.isConfirmed) return;
 
     // 1. เปิดหน้าโหลดหมุน
     showModalState('loading', 'กำลังคืนโพย...', 'กรุณารอสักครู่ ระบบกำลังดึงเครดิตคืน');

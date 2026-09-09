@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-time Monitor - แดชบอร์ดสรุปยอดแทง</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Socket.io Client Library -->
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        /* ซ่อน Scrollbar สำหรับโซนแสดงผล */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-gray-950 text-white min-h-screen font-sans flex flex-col">
+
+    <!-- 📌 Header Bar / ปุ่มควบคุม & ย้อนกลับ -->
+    <header class="bg-gray-900 border-b border-gray-800 p-4 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-3">
+            <div class="flex items-center gap-3">
+                <!-- 🔙 ปุ่มย้อนกลับไปหน้า Admin หลัก -->
+                <a href="sys-manage-pknj-99.html" class="px-3.5 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 font-bold text-sm rounded-lg border border-gray-700 flex items-center gap-2 transition-all">
+                    <span>⬅️</span>
+                    <span>กลับหน้าแอดมิน</span>
+                </a>
+                <h1 class="text-xl font-bold text-yellow-400 flex items-center gap-2">
+                    <span>📊</span>
+                    <span>Live Bet Monitor</span>
+                </h1>
+            </div>
+
+            <!-- 🟢 สถานะการเชื่อมต่อ WebSocket & ข้อมูลรอบ -->
+            <div class="flex items-center gap-4 text-xs font-semibold">
+                <div class="bg-gray-800 px-3 py-1.5 rounded-lg border border-gray-700 flex items-center gap-2">
+                    <span>สถานะรอบ:</span>
+                    <span id="round-status" class="text-emerald-400 font-bold">🟢 เปิดรับแทง (รอบที่ 1)</span>
+                </div>
+                <div class="bg-gray-800 px-3 py-1.5 rounded-lg border border-gray-700 flex items-center gap-2">
+                    <span>การเชื่อมต่อ:</span>
+                    <span id="socket-status" class="text-red-400">🔴 Offline</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 📊 Main Content Area -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 space-y-6">
+
+        <!-- 💰 การ์ดสรุปยอดรวมภาพรวม -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-gray-900 p-4 rounded-xl border border-gray-800 shadow-md">
+                <div class="text-gray-400 text-xs font-semibold">ยอดแทงรวมทุกเกม</div>
+                <div id="total-all-bets" class="text-3xl font-extrabold text-yellow-400 mt-1">0 ฿</div>
+            </div>
+            <div class="bg-gray-900 p-4 rounded-xl border border-gray-800 shadow-md">
+                <div class="text-gray-400 text-xs font-semibold">ยอดแทงรวม ป๊อกเด้ง</div>
+                <div id="total-pok-bets" class="text-3xl font-extrabold text-cyan-400 mt-1">0 ฿</div>
+            </div>
+            <div class="bg-gray-900 p-4 rounded-xl border border-gray-800 shadow-md">
+                <div class="text-gray-400 text-xs font-semibold">ยอดแทงรวม ไฮโล</div>
+                <div id="total-hilo-bets" class="text-3xl font-extrabold text-purple-400 mt-1">0 ฿</div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+            <!-- 🎰 โซนสรุปยอด ป๊อกเด้ง (12 ขา) -->
+            <div class="bg-gray-900 rounded-xl border border-gray-800 p-4 space-y-4">
+                <div class="flex justify-between items-center border-b border-gray-800 pb-2">
+                    <h2 class="text-lg font-bold text-yellow-400">🎰 สรุปยอด ป๊อกเด้ง (12 ขา)</h2>
+                    <span class="text-xs text-gray-400">อัปเดตแบบเรียลไทม์</span>
+                </div>
+
+                <!-- ฝั่งผู้เล่น แทงสู้เจ้ามือ (6 ขา) -->
+                <div>
+                    <h3 class="text-xs font-bold text-cyan-400 mb-2">🔹 แทงผู้เล่น (สู้เจ้ามือ)</h3>
+                    <div class="grid grid-cols-3 gap-2">
+                        <script>
+                            for(let i=1; i<=6; i++){
+                                document.write(`
+                                    <div class="bg-gray-800 border border-cyan-900/60 p-2.5 rounded-lg text-center">
+                                        <div class="text-xs font-bold text-cyan-300">ขาที่ ${i}</div>
+                                        <div id="pok-player-${i}" class="text-lg font-extrabold text-white mt-0.5">0 ฿</div>
+                                    </div>
+                                `);
+                            }
+                        </script>
+                    </div>
+                </div>
+
+                <!-- ฝั่งเจ้ามือ แทงสู้ผู้เล่น (6 ขา) -->
+                <div>
+                    <h3 class="text-xs font-bold text-red-400 mb-2">🔻 แทงเจ้ามือ (สู้ผู้เล่น)</h3>
+                    <div class="grid grid-cols-3 gap-2">
+                        <script>
+                            for(let i=1; i<=6; i++){
+                                document.write(`
+                                    <div class="bg-gray-800 border border-red-900/60 p-2.5 rounded-lg text-center">
+                                        <div class="text-xs font-bold text-red-300">ขาที่ ${i}</div>
+                                        <div id="pok-dealer-${i}" class="text-lg font-extrabold text-white mt-0.5">0 ฿</div>
+                                    </div>
+                                `);
+                            }
+                        </script>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 🎲 โซนสรุปยอด ไฮโล -->
+            <div class="bg-gray-900 rounded-xl border border-gray-800 p-4 space-y-4">
+                <div class="flex justify-between items-center border-b border-gray-800 pb-2">
+                    <h2 class="text-lg font-bold text-amber-400">🎲 สรุปยอด ไฮโล</h2>
+                    <span class="text-xs text-gray-400">อัปเดตแบบเรียลไทม์</span>
+                </div>
+
+                <!-- ต่ำ / 11 ไฮโล / สูง -->
+                <div class="grid grid-cols-3 gap-2">
+                    <div class="bg-gray-800 border border-gray-700 p-3 rounded-lg text-center">
+                        <div class="text-xs font-bold text-gray-300">ต่ำ</div>
+                        <div id="hilo-ต" class="text-xl font-extrabold text-emerald-400 mt-1">0 ฿</div>
+                    </div>
+                    <div class="bg-gray-800 border border-gray-700 p-3 rounded-lg text-center">
+                        <div class="text-xs font-bold text-amber-300">11 ไฮโล</div>
+                        <div id="hilo-11" class="text-xl font-extrabold text-amber-400 mt-1">0 ฿</div>
+                    </div>
+                    <div class="bg-gray-800 border border-gray-700 p-3 rounded-lg text-center">
+                        <div class="text-xs font-bold text-gray-300">สูง</div>
+                        <div id="hilo-ส" class="text-xl font-extrabold text-red-400 mt-1">0 ฿</div>
+                    </div>
+                </div>
+
+                <!-- ตารางสรุปรายการโพยไฮโลอื่นๆ (เต็ง/โต๊ด/ตอง) -->
+                <div>
+                    <h3 class="text-xs font-bold text-gray-400 mb-2">📌 รายการแทงอื่นๆ (แสดงเฉพาะที่มีคนวาง)</h3>
+                    <div class="bg-gray-800 rounded-lg p-2 max-h-56 overflow-y-auto no-scrollbar border border-gray-700">
+                        <table class="w-full text-xs text-left">
+                            <thead class="text-gray-400 border-b border-gray-700">
+                                <tr>
+                                    <th class="py-1 px-2">ตัวเลือก</th>
+                                    <th class="py-1 px-2 text-right">ยอดรวม</th>
+                                </tr>
+                            </thead>
+                            <tbody id="hilo-other-list" class="divide-y divide-gray-700/50">
+                                <tr>
+                                    <td colspan="2" class="text-center py-4 text-gray-500">ยังไม่มีรายการแทง</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- ⚡ Logic สคริปต์ดึงและอัปเดตข้อมูลด้วย WebSocket -->
+    <script>
+        // ประกาศสร้างตัวเชื่อมต่อ WebSocket
+        const socket = typeof io !== 'undefined' ? io() : null;
+
+        if (socket) {
+            socket.on('connect', () => {
+                const statusEl = document.getElementById('socket-status');
+                statusEl.innerText = '🟢 Online';
+                statusEl.className = 'text-emerald-400 font-bold';
+                
+                // ขอข้อมูลสรุปยอดล่าสุดทันทีที่ต่อติด
+                socket.emit('admin_get_summary');
+            });
+
+            socket.on('disconnect', () => {
+                const statusEl = document.getElementById('socket-status');
+                statusEl.innerText = '🔴 Offline';
+                statusEl.className = 'text-red-400';
+            });
+
+            // 📩 รับสัญญาณอัปเดตยอดรวมจาก Server (จะทำงานทั้งตอนคนกดแทง และกดยกเลิกโพย)
+            socket.on('update_bet_summary', (data) => {
+                updateDashboardUI(data);
+            });
+        }
+
+        // ฟังก์ชันวาดข้อมูลลง UI
+        function updateDashboardUI(data) {
+            if (!data) return;
+
+            // 1. ยอดรวมภาพรวม
+            document.getElementById('total-all-bets').innerText = `${(data.totalAll || 0).toLocaleString()} ฿`;
+            document.getElementById('total-pok-bets').innerText = `${(data.totalPok || 0).toLocaleString()} ฿`;
+            document.getElementById('total-hilo-bets').innerText = `${(data.totalHilo || 0).toLocaleString()} ฿`;
+
+            // 2. เคลียร์ค่าป๊อกเด้ง ( reset เป็น 0 )
+            for(let i=1; i<=6; i++){
+                document.getElementById(`pok-player-${i}`).innerText = '0 ฿';
+                document.getElementById(`pok-dealer-${i}`).innerText = '0 ฿';
+            }
+
+            // 3. ใส่ยอดป๊อกเด้ง
+            if (data.pok) {
+                Object.keys(data.pok).forEach(key => {
+                    // key format: "player_1", "dealer_3"
+                    const el = document.getElementById(`pok-${key.replace('_', '-')}`);
+                    if (el) el.innerText = `${data.pok[key].toLocaleString()} ฿`;
+                });
+            }
+
+            // 4. สรุปยอดไฮโลหลัก
+            if (data.hilo) {
+                document.getElementById('hilo-ต').innerText = `${(data.hilo['ต'] || 0).toLocaleString()} ฿`;
+                document.getElementById('hilo-11').innerText = `${(data.hilo['11'] || 0).toLocaleString()} ฿`;
+                document.getElementById('hilo-ส').innerText = `${(data.hilo['ส'] || 0).toLocaleString()} ฿`;
+
+                // วาดรายการไฮโลอื่นๆ ที่มีคนแทง
+                const otherListEl = document.getElementById('hilo-other-list');
+                let otherHtml = '';
+                
+                Object.keys(data.hilo).forEach(zone => {
+                    if (!['ต', '11', 'ส'].includes(zone) && data.hilo[zone] > 0) {
+                        otherHtml += `
+                            <tr>
+                                <td class="py-1.5 px-2 font-bold text-amber-300">${zone}</td>
+                                <td class="py-1.5 px-2 text-right font-extrabold text-white">${data.hilo[zone].toLocaleString()} ฿</td>
+                            </tr>
+                        `;
+                    }
+                });
+
+                otherListEl.innerHTML = otherHtml || '<tr><td colspan="2" class="text-center py-4 text-gray-500">ยังไม่มีรายการแทงอื่นๆ</td></tr>';
+            }
+        }
+    </script>
+</body>
+</html>

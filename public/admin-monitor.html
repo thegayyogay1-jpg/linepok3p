@@ -6,8 +6,6 @@
     <title>Real-time Monitor - แดชบอร์ดสรุปยอดแทง</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Socket.io Client Library -->
-    <script src="/socket.io/socket.io.js"></script>
     <style>
         /* ซ่อน Scrollbar สำหรับโซนแสดงผล */
         .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -31,15 +29,15 @@
                 </h1>
             </div>
 
-            <!-- 🟢 สถานะการเชื่อมต่อ WebSocket & ข้อมูลรอบ -->
+            <!-- 🟢 สถานะการเชื่อมต่อ Firebase & ข้อมูลรอบ -->
             <div class="flex items-center gap-4 text-xs font-semibold">
                 <div class="bg-gray-800 px-3 py-1.5 rounded-lg border border-gray-700 flex items-center gap-2">
                     <span>สถานะรอบ:</span>
-                    <span id="round-status" class="text-emerald-400 font-bold">🟢 เปิดรับแทง (รอบที่ 1)</span>
+                    <span id="round-status" class="text-emerald-400 font-bold">🟢 เปิดรับแทง</span>
                 </div>
                 <div class="bg-gray-800 px-3 py-1.5 rounded-lg border border-gray-700 flex items-center gap-2">
                     <span>การเชื่อมต่อ:</span>
-                    <span id="socket-status" class="text-red-400">🔴 Offline</span>
+                    <span id="socket-status" class="text-emerald-400 font-bold">🟢 Firebase Live</span>
                 </div>
             </div>
         </div>
@@ -80,7 +78,7 @@
                         <script>
                             for(let i=1; i<=6; i++){
                                 document.write(`
-                                    <div class="bg-gray-800 border border-cyan-900/60 p-2.5 rounded-lg text-center">
+                                    <div class="bg-gray-800 border border-cyan-900/60 p-2.5 rounded-lg text-center transition-all duration-300">
                                         <div class="text-xs font-bold text-cyan-300">ขาที่ ${i}</div>
                                         <div id="pok-player-${i}" class="text-lg font-extrabold text-white mt-0.5">0 ฿</div>
                                     </div>
@@ -97,7 +95,7 @@
                         <script>
                             for(let i=1; i<=6; i++){
                                 document.write(`
-                                    <div class="bg-gray-800 border border-red-900/60 p-2.5 rounded-lg text-center">
+                                    <div class="bg-gray-800 border border-red-900/60 p-2.5 rounded-lg text-center transition-all duration-300">
                                         <div class="text-xs font-bold text-red-300">ขาที่ ${i}</div>
                                         <div id="pok-dealer-${i}" class="text-lg font-extrabold text-white mt-0.5">0 ฿</div>
                                     </div>
@@ -157,134 +155,221 @@
 
     </main>
 
-    <!-- ⚡ Logic สคริปต์ดึงและอัปเดตข้อมูลด้วย WebSocket -->
+    <!-- ⚡ Firebase SDK & Real-time Script -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
     <script>
-        // ประกาศสร้างตัวเชื่อมต่อ WebSocket
-        const socket = typeof io !== 'undefined' ? io() : null;
-
-        if (socket) {
-            socket.on('connect', () => {
-                const statusEl = document.getElementById('socket-status');
-                statusEl.innerText = '🟢 Online';
-                statusEl.className = 'text-emerald-400 font-bold';
-                
-                // ขอข้อมูลสรุปยอดล่าสุดทันทีที่ต่อติด
-                socket.emit('admin_get_summary');
-            });
-
-            socket.on('disconnect', () => {
-                const statusEl = document.getElementById('socket-status');
-                statusEl.innerText = '🔴 Offline';
-                statusEl.className = 'text-red-400';
-            });
-
-            // 📩 รับสัญญาณอัปเดตยอดรวมจาก Server (จะทำงานทั้งตอนคนกดแทง และกดยกเลิกโพย)
-            socket.on('update_bet_summary', (data) => {
-                updateDashboardUI(data);
-            });
-        }
-
-        // ฟังก์ชันวาดข้อมูลลง UI
-        // ฟังก์ชันวาดข้อมูลลง UI + ไฮไลท์ขาอันดับ 1
-function updateDashboardUI(data) {
-    if (!data) return;
-
-    // 1. ยอดรวมภาพรวม
-    document.getElementById('total-all-bets').innerText = `${(data.totalAll || 0).toLocaleString()} ฿`;
-    document.getElementById('total-pok-bets').innerText = `${(data.totalPok || 0).toLocaleString()} ฿`;
-    document.getElementById('total-hilo-bets').innerText = `${(data.totalHilo || 0).toLocaleString()} ฿`;
-
-    // 2. เคลียร์ค่า และ Reset สไตล์ของป๊อกเด้งทั้ง 12 ขาให้เป็นค่าเริ่มต้น
-    for(let i=1; i<=6; i++){
-        // เคลียร์ฝั่งผู้เล่น
-        const pCard = document.getElementById(`pok-player-${i}`)?.parentElement;
-        if (pCard) {
-            pCard.className = "bg-gray-800 border border-cyan-900/60 p-2.5 rounded-lg text-center transition-all duration-300";
-            pCard.querySelector('div:first-child').className = "text-xs font-bold text-cyan-300";
-        }
-        document.getElementById(`pok-player-${i}`).innerText = '0 ฿';
-
-        // เคลียร์ฝั่งเจ้ามือ
-        const dCard = document.getElementById(`pok-dealer-${i}`)?.parentElement;
-        if (dCard) {
-            dCard.className = "bg-gray-800 border border-red-900/60 p-2.5 rounded-lg text-center transition-all duration-300";
-            dCard.querySelector('div:first-child').className = "text-xs font-bold text-red-300";
-        }
-        document.getElementById(`pok-dealer-${i}`).innerText = '0 ฿';
-    }
-
-    // 3. ใส่ยอดป๊อกเด้ง และหาค่าสูงสุดของแต่ละฝั่ง (Max Value)
-    let maxPlayerVal = 0;
-    let maxDealerVal = 0;
-
-    if (data.pok) {
-        // อัปเดตยอดเงินลงแต่ละขา พร้อมหาขามียอดสูงสุด
-        Object.keys(data.pok).forEach(key => {
-            const val = data.pok[key] || 0;
-            const el = document.getElementById(`pok-${key.replace('_', '-')}`);
-            if (el) el.innerText = `${val.toLocaleString()} ฿`;
-
-            if (key.startsWith('player_') && val > maxPlayerVal) {
-                maxPlayerVal = val;
-            } else if (key.startsWith('dealer_') && val > maxDealerVal) {
-                maxDealerVal = val;
-            }
-        });
-
-        // 🌟 ไฮไลท์อันดับ 1 ฝั่งผู้เล่น (ต้องมียอดมากกว่า 0)
-        if (maxPlayerVal > 0) {
-            for (let i = 1; i <= 6; i++) {
-                const val = data.pok[`player_${i}`] || 0;
-                if (val === maxPlayerVal) {
-                    const pCard = document.getElementById(`pok-player-${i}`)?.parentElement;
-                    if (pCard) {
-                        pCard.className = "bg-gradient-to-b from-cyan-950 to-cyan-900 border-2 border-cyan-400 p-2.5 rounded-lg text-center shadow-lg shadow-cyan-500/20 scale-105 transition-all duration-300 relative";
-                        pCard.querySelector('div:first-child').className = "text-xs font-black text-cyan-200 flex items-center justify-center gap-1";
-                        pCard.querySelector('div:first-child').innerHTML = `👑 ขาที่ ${i} <span class="text-[10px] bg-cyan-400 text-black font-extrabold px-1 rounded-full">TOP</span>`;
-                    }
-                }
-            }
-        }
-
-        // 🌟 ไฮไลท์อันดับ 1 ฝั่งเจ้ามือ (ต้องมียอดมากกว่า 0)
-        if (maxDealerVal > 0) {
-            for (let i = 1; i <= 6; i++) {
-                const val = data.pok[`dealer_${i}`] || 0;
-                if (val === maxDealerVal) {
-                    const dCard = document.getElementById(`pok-dealer-${i}`)?.parentElement;
-                    if (dCard) {
-                        dCard.className = "bg-gradient-to-b from-red-950 to-red-900 border-2 border-red-400 p-2.5 rounded-lg text-center shadow-lg shadow-red-500/20 scale-105 transition-all duration-300 relative";
-                        dCard.querySelector('div:first-child').className = "text-xs font-black text-red-200 flex items-center justify-center gap-1";
-                        dCard.querySelector('div:first-child').innerHTML = `👑 ขาที่ ${i} <span class="text-[10px] bg-red-400 text-black font-extrabold px-1 rounded-full">TOP</span>`;
-                    }
-                }
-            }
-        }
-    }
-
-    // 4. สรุปยอดไฮโลหลัก
-    if (data.hilo) {
-        document.getElementById('hilo-ต').innerText = `${(data.hilo['ต'] || 0).toLocaleString()} ฿`;
-        document.getElementById('hilo-11').innerText = `${(data.hilo['11'] || 0).toLocaleString()} ฿`;
-        document.getElementById('hilo-ส').innerText = `${(data.hilo['ส'] || 0).toLocaleString()} ฿`;
-
-        const otherListEl = document.getElementById('hilo-other-list');
-        let otherHtml = '';
+        // 1. ตั้งค่า Firebase
+        const firebaseConfig = {
+            databaseURL: "https://my-pokdeng-bot-default-rtdb.asia-southeast1.firebasedatabase.app/"
+        };
         
-        Object.keys(data.hilo).forEach(zone => {
-            if (!['ต', '11', 'ส'].includes(zone) && data.hilo[zone] > 0) {
-                otherHtml += `
-                    <tr>
-                        <td class="py-1.5 px-2 font-bold text-amber-300">${zone}</td>
-                        <td class="py-1.5 px-2 text-right font-extrabold text-white">${data.hilo[zone].toLocaleString()} ฿</td>
-                    </tr>
-                `;
-            }
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const db = firebase.database();
+
+        // ตัวแปรสำหรับเก็บยอดสรุปรวมชั่วคราว
+        let currentSummary = {
+            totalAll: 0,
+            totalPok: 0,
+            totalHilo: 0,
+            pok: {},
+            hilo: {}
+        };
+
+        // 2. ดึงข้อมูลโพยป๊อกเด้งของสมาชิก "ทุกคน" แบบเรียลไทม์
+        db.ref('system_data/roundBets').on('value', (snapshot) => {
+            const allUsersPokBets = snapshot.val() || {};
+            processPokData(allUsersPokBets);
         });
 
-        otherListEl.innerHTML = otherHtml || '<tr><td colspan="2" class="text-center py-4 text-gray-500">ยังไม่มีรายการแทงอื่นๆ</td></tr>';
-    }
-}
+        // 3. ดึงข้อมูลโพยไฮโลของสมาชิก "ทุกคน" แบบเรียลไทม์
+        db.ref('system_data/hiloRoundBets').on('value', (snapshot) => {
+            const allUsersHiloBets = snapshot.val() || {};
+            processHiloData(allUsersHiloBets);
+        });
+
+        // 🔄 ฟังก์ชันประมวลผลโพยป๊อกเด้งของทุกคน
+        function processPokData(allUsersBets) {
+            let pokMap = {};
+            let totalPok = 0;
+
+            Object.values(allUsersBets).forEach(userBets => {
+                const betsList = Array.isArray(userBets) ? userBets : (userBets ? Object.values(userBets) : []);
+                
+                betsList.forEach(bet => {
+                    if (!bet) return;
+                    
+                    const rawText = String(bet.detail || bet.rawText || bet.target || '');
+                    const isDealer = rawText.includes("จ");
+                    const arrayMatch = rawText.match(/\[(.*?)\]/);
+                    const hyphenParts = rawText.split('-');
+
+                    if (arrayMatch) {
+                        const legsArr = arrayMatch[1].split(',').map(s => s.trim());
+                        const amountMatch = rawText.match(/ขาละ\s*(\d+)/);
+                        const pricePerLeg = amountMatch ? Number(amountMatch[1]) : Number(bet.actualBet || 0) / (legsArr.length || 1);
+
+                        legsArr.forEach(legNum => {
+                            const key = isDealer ? `dealer_${legNum}` : `player_${legNum}`;
+                            pokMap[key] = (pokMap[key] || 0) + pricePerLeg;
+                            totalPok += pricePerLeg;
+                        });
+                    } else if (hyphenParts.length >= 2) {
+                        const legsStr = hyphenParts[0].replace(/[^\d]/g, '');
+                        const pricePerLeg = Number(hyphenParts[1]) || 0;
+                        legsStr.split('').forEach(legNum => {
+                            const key = isDealer ? `dealer_${legNum}` : `player_${legNum}`;
+                            pokMap[key] = (pokMap[key] || 0) + pricePerLeg;
+                            totalPok += pricePerLeg;
+                        });
+                    } else {
+                        const price = Number(bet.actualBet || bet.price || bet.amount || 0);
+                        const matchLeg = rawText.match(/\d+/);
+                        if (matchLeg) {
+                            const key = isDealer ? `dealer_${matchLeg[0]}` : `player_${matchLeg[0]}`;
+                            pokMap[key] = (pokMap[key] || 0) + price;
+                            totalPok += price;
+                        }
+                    }
+                });
+            });
+
+            currentSummary.pok = pokMap;
+            currentSummary.totalPok = totalPok;
+            currentSummary.totalAll = currentSummary.totalPok + currentSummary.totalHilo;
+            
+            updateDashboardUI(currentSummary);
+        }
+
+        // 🔄 ฟังก์ชันประมวลผลโพยไฮโลของทุกคน
+        function processHiloData(allUsersBets) {
+            let hiloMap = {};
+            let totalHilo = 0;
+
+            Object.values(allUsersBets).forEach(userBets => {
+                const betsList = Array.isArray(userBets) ? userBets : (userBets ? Object.values(userBets) : []);
+                
+                betsList.forEach(bet => {
+                    if (!bet) return;
+                    const price = Number(bet.actualBet || bet.price || bet.amount || 0);
+                    let targetName = bet.target || bet.detail || bet.rawText || bet.option || bet.category || 'ไฮโล';
+                    if (typeof targetName === 'object') targetName = JSON.stringify(targetName);
+                    targetName = String(targetName).replace(/^z/i, '').split('-')[0].trim();
+
+                    hiloMap[targetName] = (hiloMap[targetName] || 0) + price;
+                    totalHilo += price;
+                });
+            });
+
+            currentSummary.hilo = hiloMap;
+            currentSummary.totalHilo = totalHilo;
+            currentSummary.totalAll = currentSummary.totalPok + currentSummary.totalHilo;
+
+            updateDashboardUI(currentSummary);
+        }
+
+        // 🎨 ฟังก์ชันวาดข้อมูลลง UI + ไฮไลท์ขาอันดับ 1
+        function updateDashboardUI(data) {
+            if (!data) return;
+
+            // 1. ยอดรวมภาพรวม
+            document.getElementById('total-all-bets').innerText = `${(data.totalAll || 0).toLocaleString()} ฿`;
+            document.getElementById('total-pok-bets').innerText = `${(data.totalPok || 0).toLocaleString()} ฿`;
+            document.getElementById('total-hilo-bets').innerText = `${(data.totalHilo || 0).toLocaleString()} ฿`;
+
+            // 2. เคลียร์ค่า และ Reset สไตล์ของป๊อกเด้งทั้ง 12 ขาให้เป็นค่าเริ่มต้น
+            for(let i=1; i<=6; i++){
+                const pCard = document.getElementById(`pok-player-${i}`)?.parentElement;
+                if (pCard) {
+                    pCard.className = "bg-gray-800 border border-cyan-900/60 p-2.5 rounded-lg text-center transition-all duration-300";
+                    pCard.querySelector('div:first-child').className = "text-xs font-bold text-cyan-300";
+                    pCard.querySelector('div:first-child').innerHTML = `ขาที่ ${i}`;
+                }
+                document.getElementById(`pok-player-${i}`).innerText = '0 ฿';
+
+                const dCard = document.getElementById(`pok-dealer-${i}`)?.parentElement;
+                if (dCard) {
+                    dCard.className = "bg-gray-800 border border-red-900/60 p-2.5 rounded-lg text-center transition-all duration-300";
+                    dCard.querySelector('div:first-child').className = "text-xs font-bold text-red-300";
+                    dCard.querySelector('div:first-child').innerHTML = `ขาที่ ${i}`;
+                }
+                document.getElementById(`pok-dealer-${i}`).innerText = '0 ฿';
+            }
+
+            // 3. ใส่ยอดป๊อกเด้ง และหาค่าสูงสุดของแต่ละฝั่ง (Max Value)
+            let maxPlayerVal = 0;
+            let maxDealerVal = 0;
+
+            if (data.pok) {
+                Object.keys(data.pok).forEach(key => {
+                    const val = data.pok[key] || 0;
+                    const el = document.getElementById(`pok-${key.replace('_', '-')}`);
+                    if (el) el.innerText = `${val.toLocaleString()} ฿`;
+
+                    if (key.startsWith('player_') && val > maxPlayerVal) {
+                        maxPlayerVal = val;
+                    } else if (key.startsWith('dealer_') && val > maxDealerVal) {
+                        maxDealerVal = val;
+                    }
+                });
+
+                // 🌟 ไฮไลท์อันดับ 1 ฝั่งผู้เล่น
+                if (maxPlayerVal > 0) {
+                    for (let i = 1; i <= 6; i++) {
+                        const val = data.pok[`player_${i}`] || 0;
+                        if (val === maxPlayerVal) {
+                            const pCard = document.getElementById(`pok-player-${i}`)?.parentElement;
+                            if (pCard) {
+                                pCard.className = "bg-gradient-to-b from-cyan-950 to-cyan-900 border-2 border-cyan-400 p-2.5 rounded-lg text-center shadow-lg shadow-cyan-500/20 scale-105 transition-all duration-300 relative";
+                                pCard.querySelector('div:first-child').className = "text-xs font-black text-cyan-200 flex items-center justify-center gap-1";
+                                pCard.querySelector('div:first-child').innerHTML = `👑 ขาที่ ${i} <span class="text-[10px] bg-cyan-400 text-black font-extrabold px-1 rounded-full">TOP</span>`;
+                            }
+                        }
+                    }
+                }
+
+                // 🌟 ไฮไลท์อันดับ 1 ฝั่งเจ้ามือ
+                if (maxDealerVal > 0) {
+                    for (let i = 1; i <= 6; i++) {
+                        const val = data.pok[`dealer_${i}`] || 0;
+                        if (val === maxDealerVal) {
+                            const dCard = document.getElementById(`pok-dealer-${i}`)?.parentElement;
+                            if (dCard) {
+                                dCard.className = "bg-gradient-to-b from-red-950 to-red-900 border-2 border-red-400 p-2.5 rounded-lg text-center shadow-lg shadow-red-500/20 scale-105 transition-all duration-300 relative";
+                                dCard.querySelector('div:first-child').className = "text-xs font-black text-red-200 flex items-center justify-center gap-1";
+                                dCard.querySelector('div:first-child').innerHTML = `👑 ขาที่ ${i} <span class="text-[10px] bg-red-400 text-black font-extrabold px-1 rounded-full">TOP</span>`;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 4. สรุปยอดไฮโลหลัก
+            if (data.hilo) {
+                document.getElementById('hilo-ต').innerText = `${(data.hilo['ต'] || 0).toLocaleString()} ฿`;
+                document.getElementById('hilo-11').innerText = `${(data.hilo['11'] || 0).toLocaleString()} ฿`;
+                document.getElementById('hilo-ส').innerText = `${(data.hilo['ส'] || 0).toLocaleString()} ฿`;
+
+                const otherListEl = document.getElementById('hilo-other-list');
+                let otherHtml = '';
+                
+                Object.keys(data.hilo).forEach(zone => {
+                    if (!['ต', '11', 'ส'].includes(zone) && data.hilo[zone] > 0) {
+                        otherHtml += `
+                            <tr>
+                                <td class="py-1.5 px-2 font-bold text-amber-300">${zone}</td>
+                                <td class="py-1.5 px-2 text-right font-extrabold text-white">${data.hilo[zone].toLocaleString()} ฿</td>
+                            </tr>
+                        `;
+                    }
+                });
+
+                otherListEl.innerHTML = otherHtml || '<tr><td colspan="2" class="text-center py-4 text-gray-500">ยังไม่มีรายการแทงอื่นๆ</td></tr>';
+            }
+        }
     </script>
 </body>
 </html>

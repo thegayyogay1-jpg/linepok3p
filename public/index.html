@@ -61,6 +61,15 @@
         animation: logo3D 3.5s ease-in-out infinite, shine 3s linear infinite;
         text-shadow: 0px 2px 4px rgba(0,0,0,0.5);
       }
+        /* ซ่อน Scrollbar สำหรับ Chrome, Safari และ Opera */
+.scrollbar-none::-webkit-scrollbar {
+    display: none;
+}
+/* ซ่อน Scrollbar สำหรับ IE, Edge และ Firefox */
+.scrollbar-none {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+}
     </style>
 </head>
 <body class="bg-gray-900 text-white min-h-screen pb-24">

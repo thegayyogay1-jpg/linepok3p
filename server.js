@@ -7428,7 +7428,14 @@ app.post('/api/place-bet', async (req, res) => {
 // 📌 API สำหรับขอรับเลขบัญชี (สร้างรายการฝาก)
 app.post('/api/deposit/create', async (req, res) => {
     try {
-        const { userId, amount } = req.body;
+        let { userId, amount } = req.body;
+
+        // 🛑 บังคับปัดเศษทิ้งให้เป็นจำนวนเต็มทันที (เช่น 100.99 -> 100)
+        amount = Math.floor(Number(amount));
+        
+        if (isNaN(amount) || amount <= 0) {
+            return res.status(400).json({ success: false, message: 'จำนวนเงินไม่ถูกต้อง' });
+        }
 
         if (!userId) {
             return res.status(400).json({ success: false, message: 'ไม่พบ userId' });

@@ -246,6 +246,9 @@
             <button id="tab-pok" onclick="switchTab('pok')" class="flex-1 py-2 text-sm font-bold rounded-md bg-yellow-500 text-gray-900">🎴 ป๊อกเด้ง</button>
             <button id="tab-hilo" onclick="switchTab('hilo')" class="flex-1 py-2 text-sm font-bold rounded-md text-gray-400">🎲 ไฮโล</button>
         </div>
+    
+    <!-- ครอบพื้นที่โต๊ะด้วย div นี้เพื่อจับ Touch Event -->
+    <div id="game-swipe-area" class="touch-pan-y">    
         
  <!-- Section: กระดานป๊อกเด้ง -->
         <div id="section-pok" class="bg-gray-800 p-3 rounded-lg border border-gray-700 space-y-3">
@@ -500,6 +503,7 @@
     </div>
 
 </div>
+        </div>
  </main>
 
      <!-- 📌 แถบควบคุมด้านล่างแบบ Sticky ลอยติดขอบล่างตลอดเวลา (สไตล์คาสิโนออนไลน์) -->
@@ -1232,6 +1236,41 @@ function toggleSection(sectionId) {
         
         document.getElementById('total-pending-amount').innerText = `${total.toLocaleString()} ฿`;
     }
+
+    // 📱 ระบบปัดซ้าย-ขวา เพื่อสลับแท็บ (Pokdeng <-> Hilo)
+(function initSwipeTabs() {
+    const swipeArea = document.getElementById('game-swipe-area');
+    if (!swipeArea) return;
+
+    let startX = 0;
+    let startY = 0;
+    let endX = 0;
+    let endY = 0;
+
+    swipeArea.addEventListener('touchstart', (e) => {
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+    }, { passive: true });
+
+    swipeArea.addEventListener('touchend', (e) => {
+        endX = e.changedTouches[0].clientX;
+        endY = e.changedTouches[0].clientY;
+
+        const diffX = endX - startX;
+        const diffY = endY - startY;
+
+        // เช็กว่าเป็นการปัดแนวนอนมากกว่าแนวตั้ง (ระยะปัดเกิน 50px)
+        if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
+            if (diffX < 0) {
+                // 👈 ปัดซ้าย -> สลับไป "ไฮโล"
+                switchTab('hilo');
+            } else {
+                // 👉 ปัดขวา -> สลับไป "ป๊อกเด้ง"
+                switchTab('pok');
+            }
+        }
+    }, { passive: true });
+})();
 
     // 🟢 ฟังก์ชันยกเลิก / ล้างชิปทั้งหมด
     function clearPendingBets() {

@@ -298,8 +298,11 @@
         </div>
     </div>
 
-    <!-- แถวที่ 2: ต่ำ1-6 และ สูง1-6 -->
-    <div class="grid grid-cols-6 gap-1">
+    <!-- แถวที่ 2: ต่ำ1-6 และ สูง1-6 (จัดรูปแบบแบ่งฝั่ง 3x2 พร้อมเส้นกั้นกลาง) -->
+<div class="grid grid-cols-2 gap-2 my-2 p-1.5 bg-gray-900/60 rounded-xl border border-gray-700">
+    
+    <!-- 🔻 ฝั่งต่ำ (3 คอลัมน์ x 2 แถว) -->
+    <div class="grid grid-cols-3 gap-1 pr-1 border-r border-gray-500/80">
         <script>
             [1,2,3,4,5,6].forEach(i => {
                 document.write(`
@@ -309,6 +312,12 @@
                     </div>
                 `);
             });
+        </script>
+    </div>
+
+    <!-- 🔺 ฝั่งสูง (3 คอลัมน์ x 2 แถว) -->
+    <div class="grid grid-cols-3 gap-1 pl-1">
+        <script>
             [1,2,3,4,5,6].forEach(i => {
                 document.write(`
                     <div onclick="placeBet('hilo', 'ส${i}')" class="bg-gray-800 border border-gray-600 rounded py-2 text-center cursor-pointer active:bg-gray-700 relative">
@@ -319,6 +328,8 @@
             });
         </script>
     </div>
+
+</div>
 
     <!-- แถวที่ 3: เต็งลูกเต๋า 1-6 -->
     <div class="grid grid-cols-3 gap-1.5 py-1">

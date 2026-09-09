@@ -282,21 +282,26 @@
         <span>อัตราจ่าย ไฮโล</span>
     </button>
 
-    <!-- แถวที่ 1: ต่ำ / 11ไฮโล / สูง -->
-    <div class="grid grid-cols-7 gap-1.5 h-16">
-        <div onclick="placeBet('hilo', 'ต')" class="col-span-3 bg-gray-800 border border-gray-600 rounded-lg flex flex-col justify-center items-center cursor-pointer active:bg-gray-700 relative">
-            <span class="font-bold text-white text-base">ต่ำ</span>
-            <span id="hilo-chip-ต" class="hidden absolute top-1 right-1 px-1.5 bg-yellow-400 text-black font-bold text-[10px] rounded-full">0</span>
-        </div>
-        <div onclick="placeBet('hilo', '11')" class="col-span-1 bg-gray-800 border border-gray-600 rounded-lg flex flex-col justify-center items-center cursor-pointer active:bg-gray-700 relative text-center">
-            <span class="font-bold text-amber-300 text-xs leading-tight">11<br>ไฮโล</span>
-            <span id="hilo-chip-11" class="hidden absolute top-1 right-1 px-1 bg-yellow-400 text-black font-bold text-[9px] rounded-full">0</span>
-        </div>
-        <div onclick="placeBet('hilo', 'ส')" class="col-span-3 bg-gray-800 border border-gray-600 rounded-lg flex flex-col justify-center items-center cursor-pointer active:bg-gray-700 relative">
-            <span class="font-bold text-white text-base">สูง</span>
-            <span id="hilo-chip-ส" class="hidden absolute top-1 right-1 px-1.5 bg-yellow-400 text-black font-bold text-[10px] rounded-full">0</span>
-        </div>
+    <!-- แถวที่ 1: ต่ำ / 11ไฮโล / สูง (ปรับอัตราส่วนเป็น 2 : 1 : 2) -->
+<div class="grid grid-cols-5 gap-1.5 h-16">
+    <!-- ต่ำ (กว้าง 2 ช่อง) -->
+    <div onclick="placeBet('hilo', 'ต')" class="col-span-2 bg-gray-800 border border-gray-600 rounded-lg flex flex-col justify-center items-center cursor-pointer active:bg-gray-700 relative">
+        <span class="font-bold text-white text-base">ต่ำ</span>
+        <span id="hilo-chip-ต" class="hidden absolute top-1 right-1 px-1.5 bg-yellow-400 text-black font-bold text-[10px] rounded-full">0</span>
     </div>
+
+    <!-- 11 ไฮโล (กว้าง 1 ช่อง - ขยายใหญ่ขึ้นจากเดิม) -->
+    <div onclick="placeBet('hilo', '11')" class="col-span-1 bg-gray-800 border border-gray-600 rounded-lg flex flex-col justify-center items-center cursor-pointer active:bg-gray-700 relative text-center">
+        <span class="font-bold text-amber-300 text-xs leading-tight">11<br>ไฮโล</span>
+        <span id="hilo-chip-11" class="hidden absolute top-1 right-1 px-1 bg-yellow-400 text-black font-bold text-[9px] rounded-full">0</span>
+    </div>
+
+    <!-- สูง (กว้าง 2 ช่อง) -->
+    <div onclick="placeBet('hilo', 'ส')" class="col-span-2 bg-gray-800 border border-gray-600 rounded-lg flex flex-col justify-center items-center cursor-pointer active:bg-gray-700 relative">
+        <span class="font-bold text-white text-base">สูง</span>
+        <span id="hilo-chip-ส" class="hidden absolute top-1 right-1 px-1.5 bg-yellow-400 text-black font-bold text-[10px] rounded-full">0</span>
+    </div>
+</div>
 
     <!-- แถวที่ 2: ต่ำ1-6 และ สูง1-6 (จัดรูปแบบแบ่งฝั่ง 3x2 พร้อมเส้นกั้นกลาง) -->
 <div class="grid grid-cols-2 gap-2 my-2 p-1.5 bg-gray-900/60 rounded-xl border border-gray-700">

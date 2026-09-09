@@ -933,25 +933,51 @@ function renderAllBetsUI() {
     if (summaryGrandTotalEl) summaryGrandTotalEl.innerText = (totalPokBetAmount + totalHiloBetAmount).toLocaleString();
 }
 
-    // 🟢 อัปเดต ฟังก์ชันคืนโพย (cancelMyBets) แบบไม่มีชื่อลิงก์ติด
+    // 🟢 อัปเดต ฟังก์ชันคืนโพย (cancelMyBets) ปรับขนาด Popup ให้พอดีสวยงาม
 async function cancelMyBets(command, gameName) {
-    if (!isRoundOpen) return alert('⚠️ ขณะนี้ปิดรับแทงแล้ว ไม่สามารถยกเลิกโพยได้ครับ');
+    if (!isRoundOpen) {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                icon: 'warning',
+                title: 'แจ้งเตือน',
+                text: '⚠️ ขณะนี้ปิดรับแทงแล้ว ไม่สามารถยกเลิกโพยได้ครับ',
+                width: '320px', // 👈 กำหนดความกว้างใหม้พอดีๆ
+                background: '#1f2937',
+                color: '#ffffff',
+                confirmButtonColor: '#10b981'
+            });
+        } else {
+            alert('⚠️ ขณะนี้ปิดรับแทงแล้ว ไม่สามารถยกเลิกโพยได้ครับ');
+        }
+        return;
+    }
 
-    // 💡 ใช้ SweetAlert2 แสดงกล่องยืนยัน (ไม่มีชื่อ Domain ขึ้นแน่นอน)
-    const confirmResult = await Swal.fire({
-        title: `❓ คุณต้องการคืนโพย [${gameName}] ในรอบนี้ใช่หรือไม่?`,
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonText: 'ตกลง',
-        cancelButtonText: 'ยกเลิก',
-        confirmButtonColor: '#10b981',
-        cancelButtonColor: '#ef4444',
-        background: '#1f2937',
-        color: '#ffffff'
-    });
+    // 💡 ใช้ SweetAlert2 ขนาดกะทัดรัด
+    let isConfirmed = false;
+    if (typeof Swal !== 'undefined') {
+        const confirmResult = await Swal.fire({
+            title: `❓ คุณต้องการคืนโพย [${gameName}] ในรอบนี้ใช่หรือไม่?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'ตกลง',
+            cancelButtonText: 'ยกเลิก',
+            confirmButtonColor: '#10b981',
+            cancelButtonColor: '#ef4444',
+            width: '320px', // 👈 กำหนดความกว้าง 320px พอดีหน้าจอมือถือ/คอม
+            background: '#1f2937',
+            color: '#ffffff',
+            customClass: {
+                title: 'text-base font-bold', // ปรับขนาดตัวหนังสือหัวข้อให้เล็กลงพอดีๆ
+                popup: 'rounded-2xl' // เพิ่มความโค้งมนให้สวยงาม
+            }
+        });
+        isConfirmed = confirmResult.isConfirmed;
+    } else {
+        isConfirmed = confirm(`❓ คุณต้องการคืนโพย [${gameName}] ในรอบนี้ใช่หรือไม่?`);
+    }
 
     // ถ้ากด "ยกเลิก" หรือปิดกล่อง ให้หยุดทำงานทันที
-    if (!confirmResult.isConfirmed) return;
+    if (!isConfirmed) return;
 
     // 1. เปิดหน้าโหลดหมุน
     showModalState('loading', 'กำลังคืนโพย...', 'กรุณารอสักครู่ ระบบกำลังดึงเครดิตคืน');

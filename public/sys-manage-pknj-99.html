@@ -506,8 +506,29 @@ function rejectWithdrawQueue(index, memberNumber) {
     if (!data) {
         tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #888; padding: 20px;">ไม่มีรายการฝากค้างตรวจสอบ</td></tr>';
         if (countBadge) countBadge.innerText = '0';
+        previousDepositKeys.clear(); // ล้างความจำเมื่อไม่มีรายการค้าง
         return;
     }
+
+        // 🔔 2. ส่วนตรวจจับรายการใหม่เพื่อเล่นเสียงเตือน (เพิ่มตรงจุดนี้)
+    const currentKeys = new Set();
+    Object.entries(data).forEach(([key, item]) => {
+        if (item && item.status && item.status.toUpperCase() === 'PENDING') {
+            currentKeys.add(key);
+        }
+    });
+
+    if (!isFirstLoadDeposit) {
+        for (let key of currentKeys) {
+            if (!previousDepositKeys.has(key)) {
+                playDepositSound(); // 🔔 เรียกเล่นเสียงฝากเมื่อมีรายการใหม่เข้ามา!
+                break;
+            }
+        }
+    } else {
+        isFirstLoadDeposit = false;
+    }
+    previousDepositKeys = currentKeys; // อัปเดตรายการปัจจุบันไว้เปรียบเทียบครั้งถัดไป
 
     // 💡 ดึงข้อมูล usersWallets ทั้งหมดเตรียมไว้ก่อน
     let walletsData = {};

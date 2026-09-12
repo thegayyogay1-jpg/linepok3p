@@ -1599,6 +1599,8 @@ function closeResultModal() {
 ////////////////////////////////////////////////
 /////ฟังก์ชันเปิด Modal และดึงข้อมูล 10 รอบล่าสุด///////
 /////////////////////////////////////////////////
+let historyListenerRef = null; // ตัวแปรเก็บ Reference ของ Listener
+    
 function openHistoryModal() {
     const modal = document.getElementById('history-modal');
     const container = document.getElementById('history-modal-body');
@@ -1606,7 +1608,16 @@ function openHistoryModal() {
     modal.classList.remove('hidden');
     container.innerHTML = '<div class="text-center text-gray-400 py-8">⏳ กำลังดึงข้อมูลผลย้อนหลัง...</div>';
 
-    firebase.database().ref('system_data/pastRoundsData').once('value', (snapshot) => {
+    // ยกเลิก Listener เก่าก่อนหน้า (ถ้ามี) เพื่อป้องกันการซ้ำซ้อน
+    if (historyListenerRef) {
+        historyListenerRef.off();
+    }
+
+    // อัปเดตตำแหน่ง Reference ของ Firebase
+    historyListenerRef = firebase.database().ref('system_data/pastRoundsData');
+
+    // ใช้ .on('value') เพื่อติดตามข้อมูลแบบ Realtime
+    historyListenerRef.on('value', (snapshot) => {
         const data = snapshot.val();
         
         if (!data) {
@@ -1614,18 +1625,20 @@ function openHistoryModal() {
             return;
         }
 
-        // ปรับเป็น (a - b) เพื่อให้เรียงลำดับรอบจาก น้อย -> มาก (เช่น 1, 2, 3...)
+        // 1. ดึงเลขรอบทั้งหมดแล้วเรียงจาก มาก -> น้อย
+        // 2. ดึงเอามาเฉพาะ 10 รอบล่าสุด (.slice(0, 10))
+        // 3. กลับลำดับเรียงจาก น้อย -> มาก เพื่อแสดงผลจากบนลงล่าง (เช่น 2 ถึง 11)
         const roundKeys = Object.keys(data)
             .map(Number)
-            .sort((a, b) => a - b)
-            .slice(0, 10);
+            .sort((a, b) => b - a)
+            .slice(0, 10)
+            .sort((a, b) => a - b);
 
         if (roundKeys.length === 0) {
             container.innerHTML = '<div class="text-center text-gray-500 py-8">ยังไม่มีข้อมูลผลย้อนหลัง</div>';
             return;
         }
 
-        // โครงสร้างตารางเต็มความกว้าง พอดีจอ ไม่ต้องเลื่อน
         let html = `
             <div class="w-full">
                 <table class="w-full text-center border-collapse text-[11px] sm:text-xs">
@@ -1650,16 +1663,14 @@ function openHistoryModal() {
             const hiloText = roundInfo.hilo || '';
             const rooms = roundInfo.rooms || {};
 
-            // แต้มเจ้ามือ
             const dealerScoreNum = dealer.score !== undefined ? Number(dealer.score) : null;
             const dealerDisplay = dealer.name || dealer.v || (dealerScoreNum !== null ? dealerScoreNum + " แต้ม" : '-');
 
-            // --- 1. แถวป๊อกเด้ง ---
+            // --- แถวป๊อกเด้ง ---
             html += `<tr class="bg-gray-950/60">`;
             html += `<td class="py-2 px-1 border border-gray-800 font-bold text-amber-400">#${roundNum}</td>`;
             html += `<td class="py-2 px-1 border border-gray-800 bg-cyan-950/50 text-cyan-300 font-bold">${dealerDisplay}</td>`;
 
-            // คำนวณสีและแสดงผลแต่ละขา (1-6)
             for (let i = 1; i <= 6; i++) {
                 const roomData = rooms[i] || rooms[String(i)] || {};
                 const cardObj = roomData.threeCards || roomData.twoCards || {};
@@ -1672,15 +1683,14 @@ function openHistoryModal() {
                     legDisplay = '-';
                 }
 
-                // ฟังก์ชันกำหนดสีเทียบกับเจ้ามือ: ชนะ (เขียว), แพ้ (แดง), เสมอ (เหลือง)
                 let colorClass = "bg-gray-900 text-gray-400";
                 if (legScoreNum !== null && dealerScoreNum !== null) {
                     if (legScoreNum > dealerScoreNum) {
-                        colorClass = "bg-emerald-950/90 text-emerald-400 border border-emerald-500/30"; // ชนะ (เขียว)
+                        colorClass = "bg-emerald-950/90 text-emerald-400 border border-emerald-500/30";
                     } else if (legScoreNum < dealerScoreNum) {
-                        colorClass = "bg-rose-950/90 text-rose-400 border border-rose-500/30"; // แพ้ (แดง)
+                        colorClass = "bg-rose-950/90 text-rose-400 border border-rose-500/30";
                     } else {
-                        colorClass = "bg-amber-950/90 text-amber-400 border border-amber-500/30"; // เสมอ (เหลือง)
+                        colorClass = "bg-amber-950/90 text-amber-400 border border-amber-500/30";
                     }
                 }
 
@@ -1688,7 +1698,7 @@ function openHistoryModal() {
             }
             html += `</tr>`;
 
-            // --- 2. แถวผลไฮโล (แยกเป็น 3 กล่องใหญ่) ---
+            // --- แถวผลไฮโล ---
             let diceBox = '-', sumBox = '-', resultBox = '-';
             
             if (hiloText && hiloText !== 'ไม่มีข้อมูล') {
@@ -1702,7 +1712,6 @@ function openHistoryModal() {
                 }
             }
 
-            // กำหนดสีกล่องผลลัพธ์ไฮโล (สูง-แดง, ต่ำ-ฟ้า, 11ไฮโล/ไฮโล-เขียว, ตอง-เหลือง)
             let resultColor = "bg-purple-900/60 text-purple-300 border-purple-700/50";
             if (resultBox.includes("สูง")) {
                 resultColor = "bg-rose-600/90 text-white border-rose-400/50";
@@ -1721,19 +1730,13 @@ function openHistoryModal() {
                             <span class="text-xs font-black text-purple-300 flex items-center gap-1 shrink-0">
                                 🎲 ผลไฮโล:
                             </span>
-                            
-                            <!-- กล่อง 1: หน้าลูกเต๋า (เช่น 2-3-6) -->
                             <div class="bg-gray-950 border border-gray-700 text-amber-300 font-mono font-bold text-xs sm:text-sm px-2.5 py-1 rounded-lg shadow-sm">
                                 ${diceBox}
                             </div>
-
-                            <!-- กล่อง 2: แต้มรวม (เช่น (11แต้ม)) -->
                             ${sumBox !== '-' ? `
                             <div class="bg-gray-800 border border-gray-600 text-gray-200 font-bold text-xs sm:text-sm px-2.5 py-1 rounded-lg shadow-sm">
                                 ${sumBox}
                             </div>` : ''}
-
-                            <!-- กล่อง 3: ผลลัพธ์ (เช่น 11ไฮโล / สูง / ต่ำ) ใหญ่ชัดเจน -->
                             <div class="${resultColor} font-black text-xs sm:text-sm px-3 py-1 rounded-lg shadow-md border">
                                 ${resultBox}
                             </div>
@@ -1753,9 +1756,15 @@ function openHistoryModal() {
     });
 }
 
-// ฟังก์ชันปิด Modal
+// เพิ่มฟังก์ชันสำหรับปิด Modal และยกเลิกการฟังข้อมูลเพื่อประหยัดทรัพยากร
 function closeHistoryModal() {
-    document.getElementById('history-modal').classList.add('hidden');
+    const modal = document.getElementById('history-modal');
+    modal.classList.add('hidden');
+    
+    if (historyListenerRef) {
+        historyListenerRef.off();
+        historyListenerRef = null;
+    }
 }
 
 // 🟢 อัปเดต ฟังก์ชันยืนยันส่งโพย (submitBoardBets)
